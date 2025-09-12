@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import bcrypt from 'bcrypt';
 import { config } from 'dotenv';
 import { neon } from '@neondatabase/serverless';
 
@@ -249,7 +250,7 @@ app.post('/api/auth/login', async (req, res) => {
     try {
       console.log('Attempting database query for login...');
       users = await sql`
-        SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.profile_image,
+        SELECT u.id, u.email, u.password_hash, u.first_name, u.last_name, u.role, u.profile_image,
                v.id as vendor_id, v.business_name
         FROM users u
         LEFT JOIN vendors v ON u.id = v.user_id
@@ -292,8 +293,28 @@ app.post('/api/auth/login', async (req, res) => {
     const user = users[0];
     console.log('User found in database:', user);
     
-    // In production, you would verify the password hash here
-    // For now, just return the user data
+    // Verify password if password_hash exists
+    if (user.password_hash) {
+      try {
+        const isValidPassword = await bcrypt.compare(password, user.password_hash);
+        if (!isValidPassword) {
+          return res.status(401).json({
+            success: false,
+            message: 'Invalid email or password'
+          });
+        }
+      } catch (hashError) {
+        console.error('Password verification error:', hashError);
+        // If password verification fails, treat as invalid password
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password'
+        });
+      }
+    } else {
+      console.log('No password hash found for user, allowing login for demo');
+    }
+    
     res.json({
       success: true,
       message: 'Login successful',
@@ -343,10 +364,14 @@ app.post('/api/auth/register', async (req, res) => {
       });
     }
 
+    // Hash password before storing
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
     // Create new user in database
     const newUsers = await sql`
       INSERT INTO users (email, password_hash, first_name, last_name, role, created_at, updated_at)
-      VALUES (${email}, ${password}, ${name.split(' ')[0] || name}, ${name.split(' ')[1] || ''}, ${userType}, NOW(), NOW())
+      VALUES (${email}, ${hashedPassword}, ${name.split(' ')[0] || name}, ${name.split(' ')[1] || ''}, ${userType}, NOW(), NOW())
       RETURNING id, email, first_name, last_name, role, profile_image
     `;
 
