@@ -210,6 +210,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               value={formData.email}
               onChange={handleInputChange}
               placeholder="Enter your email"
+              autoComplete="email"
               className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all duration-300 bg-white/60 backdrop-blur-sm shadow-lg hover:shadow-xl relative z-10"
               required
             />
@@ -231,6 +232,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               value={formData.password}
               onChange={handleInputChange}
               placeholder="Enter your password"
+              autoComplete="current-password"
               className="w-full pl-12 pr-12 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all duration-300 bg-white/60 backdrop-blur-sm shadow-lg hover:shadow-xl relative z-10"
               required
             />

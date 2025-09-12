@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const token = localStorage.getItem('auth_token');
         if (token) {
           // Validate token with backend
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+          const apiUrl = import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
           const response = await fetch(`${apiUrl}/auth/verify`, {
             method: 'POST',
             headers: {
@@ -69,7 +69,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           if (response.ok) {
             const data = await response.json();
-            setUser(data.user);
+            // Only set user if we get valid data back
+            if (data.success && data.user) {
+              setUser(data.user);
+            } else {
+              localStorage.removeItem('auth_token');
+            }
           } else {
             localStorage.removeItem('auth_token');
           }
@@ -90,7 +95,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       
       // TODO: Implement actual login API call
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
       const fullUrl = `${apiUrl}/auth/login`;
       
       const response = await fetch(fullUrl, {
@@ -109,12 +114,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const data = await response.json();
       
-      // Store token and user data
-      localStorage.setItem('auth_token', data.token);
-      setUser(data.user);
-      
-      // Return user data for routing purposes
-      return data.user;
+      // Only store token and user if login was successful
+      if (data.success && data.user && data.token) {
+        localStorage.setItem('auth_token', data.token);
+        setUser(data.user);
+        return data.user;
+      } else {
+        throw new Error('Invalid login response');
+      }
       
     } catch (error) {
       console.error('Login error:', error);
@@ -158,8 +165,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
+    // Clear all auth-related data
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_data'); // In case there's any cached user data
     setUser(null);
+    
+    // Force a page reload to clear any stale state
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
   };
 
   const value: AuthContextType = {

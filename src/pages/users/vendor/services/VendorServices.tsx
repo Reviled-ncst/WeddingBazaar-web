@@ -113,6 +113,9 @@ export const VendorServices: React.FC = () => {
     availability: true
   });
 
+  // Get API base URL
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
+
   // Get current vendor ID (in a real app, this would come from auth context)
   const vendorId = '2-2025-003';
 
@@ -182,7 +185,7 @@ export const VendorServices: React.FC = () => {
   const fetchServices = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/api/services?vendorId=${vendorId}`);
+      const response = await fetch(`${apiUrl}/services?vendorId=${vendorId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch services');
       }
@@ -225,8 +228,8 @@ export const VendorServices: React.FC = () => {
       };
 
       const url = editingService 
-        ? `http://localhost:3001/api/services/${editingService.id}`
-        : 'http://localhost:3001/api/services';
+        ? `${apiUrl}/services/${editingService.id}`
+        : `${apiUrl}/services`;
       
       const method = editingService ? 'PUT' : 'POST';
       
@@ -300,7 +303,7 @@ export const VendorServices: React.FC = () => {
     if (!confirm('Are you sure you want to delete this service?')) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/api/services/${serviceId}`, {
+      const response = await fetch(`${apiUrl}/services/${serviceId}`, {
         method: 'DELETE',
       });
 
@@ -317,7 +320,7 @@ export const VendorServices: React.FC = () => {
   // Toggle service availability
   const toggleServiceAvailability = async (service: Service) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/services/${service.id}`, {
+      const response = await fetch(`${apiUrl}/services/${service.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

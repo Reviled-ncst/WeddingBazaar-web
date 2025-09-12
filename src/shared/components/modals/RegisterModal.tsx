@@ -483,6 +483,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                 value={formData.email}
                 onChange={handleInputChange}
                 placeholder="Enter your email"
+                autoComplete="email"
                 className={cn(
                   "w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
                   validationErrors.email 
@@ -615,6 +616,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                 value={formData.password}
                 onChange={handleInputChange}
                 placeholder="Create password"
+                autoComplete="new-password"
                 className={cn(
                   "w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
                   validationErrors.password 

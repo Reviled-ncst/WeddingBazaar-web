@@ -19,7 +19,7 @@ import type {
 // ============================================================================
 
 class BookingApiService {
-  private baseUrl = 'http://localhost:3001/api/bookings';
+  private baseUrl = import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
 
   // Get all bookings with advanced filtering
   async getAllBookings(params?: {
