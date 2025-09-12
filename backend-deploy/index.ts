@@ -41,165 +41,149 @@ app.get('/api/health', async (req, res) => {
 // Basic vendors endpoint
 app.get('/api/vendors', async (req, res) => {
   try {
-    const vendors = [
+    // Mock vendor data
+    const mockVendors = [
       {
         id: 1,
-        name: "Sample Wedding Photographer",
-        category: "photography",
-        location: "Manila",
+        name: 'Elegant Photography Studios',
+        category: 'Photography',
+        location: 'Manila',
         rating: 4.8,
-        price_range: "₱50,000 - ₱100,000"
+        reviewCount: 127,
+        priceRange: '₱25,000 - ₱80,000',
+        description: 'Professional wedding photography with artistic flair',
+        image: '/api/placeholder/300/200',
+        featured: true
       },
       {
         id: 2,
-        name: "Elite Catering Services",
-        category: "catering", 
-        location: "Quezon City",
+        name: 'Divine Catering Services',
+        category: 'Catering',
+        location: 'Quezon City',
         rating: 4.9,
-        price_range: "₱2,000 - ₱4,000 per person"
+        reviewCount: 89,
+        priceRange: '₱800 - ₱1,500 per head',
+        description: 'Exquisite culinary experiences for your special day',
+        image: '/api/placeholder/300/200',
+        featured: true
       }
     ];
-    
-    res.json({ success: true, vendors });
+
+    res.json({
+      success: true,
+      vendors: mockVendors
+    });
   } catch (error) {
     console.error('Error fetching vendors:', error);
-    res.status(500).json({ error: 'Failed to fetch vendors' });
-  }
-});
-
-// Featured vendors endpoint - THIS IS THE FIX!
-app.get('/api/vendors/featured', async (req, res) => {
-  try {
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 6;
-    
-    const featuredVendors = [
-      {
-        id: 1,
-        name: "Elite Wedding Photography",
-        category: "photography",
-        location: "Manila",
-        rating: 4.9,
-        price_range: "₱80,000 - ₱150,000",
-        image: "https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400",
-        featured: true
-      },
-      {
-        id: 2,
-        name: "Grandeur Catering Services",
-        category: "catering",
-        location: "Quezon City",
-        rating: 4.8,
-        price_range: "₱1,500 - ₱3,000 per person",
-        image: "https://images.unsplash.com/photo-1555244162-803834f70033?w=400",
-        featured: true
-      },
-      {
-        id: 3,
-        name: "Paradise Garden Venue",
-        category: "venue",
-        location: "Tagaytay",
-        rating: 4.9,
-        price_range: "₱200,000 - ₱500,000",
-        image: "https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400",
-        featured: true
-      },
-      {
-        id: 4,
-        name: "Harmony Wedding Band",
-        category: "music",
-        location: "Makati",
-        rating: 4.7,
-        price_range: "₱50,000 - ₱100,000",
-        image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400",
-        featured: true
-      },
-      {
-        id: 5,
-        name: "Bloom & Blossom Florists",
-        category: "florals",
-        location: "Pasig",
-        rating: 4.8,
-        price_range: "₱30,000 - ₱80,000",
-        image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400",
-        featured: true
-      },
-      {
-        id: 6,
-        name: "Perfect Day Planners",
-        category: "planning",
-        location: "BGC",
-        rating: 4.9,
-        price_range: "₱100,000 - ₱300,000",
-        image: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=400",
-        featured: true
-      }
-    ];
-
-    const limitedVendors = featuredVendors.slice(0, limit);
-    res.json({ success: true, vendors: limitedVendors });
-  } catch (error) {
-    console.error('Error fetching featured vendors:', error);
     res.status(500).json({
-      error: 'Failed to fetch featured vendors',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      success: false,
+      message: 'Error fetching vendors'
     });
   }
 });
 
-// Vendor categories endpoint - THIS IS THE OTHER FIX!
+// Featured vendors endpoint
+app.get('/api/vendors/featured', async (req, res) => {
+  try {
+    const featuredVendors = [
+      {
+        id: 1,
+        name: 'Elegant Photography Studios',
+        category: 'Photography',
+        location: 'Manila',
+        rating: 4.8,
+        reviewCount: 127,
+        priceRange: '₱25,000 - ₱80,000',
+        description: 'Professional wedding photography with artistic flair',
+        image: '/api/placeholder/300/200',
+        specialties: ['Wedding Photography', 'Engagement Shoots', 'Pre-nup'],
+        yearsExperience: 8
+      },
+      {
+        id: 2,
+        name: 'Divine Catering Services',
+        category: 'Catering',
+        location: 'Quezon City',
+        rating: 4.9,
+        reviewCount: 89,
+        priceRange: '₱800 - ₱1,500 per head',
+        description: 'Exquisite culinary experiences for your special day',
+        image: '/api/placeholder/300/200',
+        specialties: ['Filipino Cuisine', 'International Buffet', 'Custom Menus'],
+        yearsExperience: 12
+      }
+    ];
+
+    res.json({
+      success: true,
+      vendors: featuredVendors
+    });
+  } catch (error) {
+    console.error('Error fetching featured vendors:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching featured vendors'
+    });
+  }
+});
+
+// Vendor categories endpoint
 app.get('/api/vendors/categories', async (req, res) => {
   try {
     const categories = [
       {
-        id: 'photography',
+        id: 1,
         name: 'Photography',
-        description: 'Professional wedding photographers',
+        description: 'Capture your special moments',
         icon: '📸',
-        count: 45
+        vendorCount: 45
       },
       {
-        id: 'catering',
+        id: 2,
         name: 'Catering',
-        description: 'Wedding catering services',
+        description: 'Delicious food for your guests',
         icon: '🍽️',
-        count: 32
+        vendorCount: 32
       },
       {
-        id: 'venue',
+        id: 3,
         name: 'Venues',
-        description: 'Wedding venues and locations',
-        icon: '🏛️',
-        count: 28
+        description: 'Perfect locations for your wedding',
+        icon: '🏰',
+        vendorCount: 28
       },
       {
-        id: 'music',
+        id: 4,
         name: 'Music & Entertainment',
-        description: 'DJs, bands, and entertainment',
+        description: 'Keep the party going',
         icon: '🎵',
-        count: 22
+        vendorCount: 22
       },
       {
-        id: 'florals',
-        name: 'Florals',
-        description: 'Wedding flowers and decorations',
+        id: 5,
+        name: 'Flowers & Decoration',
+        description: 'Beautiful floral arrangements',
         icon: '🌸',
-        count: 18
+        vendorCount: 38
       },
       {
-        id: 'planning',
+        id: 6,
         name: 'Wedding Planning',
-        description: 'Professional wedding planners',
+        description: 'Full-service wedding coordination',
         icon: '📋',
-        count: 15
+        vendorCount: 15
       }
     ];
 
-    res.json({ success: true, categories });
+    res.json({
+      success: true,
+      categories: categories
+    });
   } catch (error) {
-    console.error('Error fetching vendor categories:', error);
+    console.error('Error fetching categories:', error);
     res.status(500).json({
-      error: 'Failed to fetch vendor categories',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      success: false,
+      message: 'Error fetching vendor categories'
     });
   }
 });
@@ -248,6 +232,46 @@ app.post('/api/auth/register', async (req, res) => {
     res.status(400).json({
       success: false,
       message: 'Email, password, and name are required'
+    });
+  }
+});
+
+// Auth verify endpoint - THIS WAS MISSING!
+app.get('/api/auth/verify', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No token provided'
+      });
+    }
+
+    // Mock token verification - for testing only
+    // In production, you would verify the JWT token here
+    if (token === 'mock-jwt-token' || token.startsWith('mock-')) {
+      res.json({
+        success: true,
+        user: {
+          id: 1,
+          email: 'test@example.com',
+          name: 'Test User',
+          userType: 'individual'
+        }
+      });
+    } else {
+      res.status(401).json({
+        success: false,
+        message: 'Invalid token'
+      });
+    }
+  } catch (error) {
+    console.error('Error verifying token:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during token verification'
     });
   }
 });
