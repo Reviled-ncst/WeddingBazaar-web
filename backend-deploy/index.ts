@@ -493,7 +493,20 @@ const verifyTokenHandler = async (req, res) => {
     if (token.startsWith('jwt-')) {
       const tokenParts = token.split('-');
       if (tokenParts.length >= 3) {
-        const userId = tokenParts[1];
+        // Extract user ID - everything between 'jwt-' and the last timestamp part
+        // For token like 'jwt-2-2025-003-1757707206812', user ID is '2-2025-003'
+        const lastPart = tokenParts[tokenParts.length - 1];
+        const isTimestamp = /^\d{13}$/.test(lastPart); // Check if last part is a 13-digit timestamp
+        
+        let userId;
+        if (isTimestamp) {
+          // Remove 'jwt-' prefix and timestamp suffix to get user ID
+          userId = token.substring(4, token.lastIndexOf('-'));
+        } else {
+          // Fallback: assume everything after 'jwt-' except last part is user ID
+          userId = tokenParts.slice(1, -1).join('-');
+        }
+        
         console.log('Extracted user ID from token:', userId);
         
         try {
