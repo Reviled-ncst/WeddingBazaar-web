@@ -735,3 +735,11 @@ app.get('/api/subscriptions/plans', async (req, res) => {
     });
   }
 });
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`🚀 Wedding Bazaar API server running on port ${PORT}`);
+  console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
+});
+
+export default app;
