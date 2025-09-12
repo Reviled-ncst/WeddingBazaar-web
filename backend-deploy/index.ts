@@ -1508,6 +1508,225 @@ app.put('/api/vendors/:vendorId/profile', async (req, res) => {
   }
 });
 
+// PayMongo payment endpoints
+app.post('/api/payments/create-intent', async (req, res) => {
+  try {
+    const { amount, currency = 'PHP', description = 'Wedding Bazaar Payment' } = req.body;
+    
+    // Check if PayMongo API keys are properly configured
+    const secretKey = process.env.PAYMONGO_SECRET_KEY || process.env.VITE_PAYMONGO_SECRET_KEY;
+    if (!secretKey || secretKey.includes('your_secret_key_here') || secretKey.includes('*')) {
+      return res.status(500).json({
+        success: false,
+        error: 'PayMongo API keys not properly configured. Please contact administrator.',
+        details: 'Payment processing is currently unavailable due to configuration issues.'
+      });
+    }
+
+    // Validate amount
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid amount specified'
+      });
+    }
+
+    // Create PayMongo Payment Intent
+    const response = await fetch('https://api.paymongo.com/v1/payment_intents', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${Buffer.from(secretKey + ':').toString('base64')}`
+      },
+      body: JSON.stringify({
+        data: {
+          attributes: {
+            amount: Math.round(amount * 100), // Convert to centavos
+            payment_method_allowed: ['card'],
+            payment_method_options: {
+              card: {
+                request_three_d_secure: 'automatic'
+              }
+            },
+            currency,
+            description,
+            statement_descriptor: 'Wedding Bazaar'
+          }
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json() as any;
+      console.error('PayMongo API Error:', error);
+      return res.status(response.status).json({
+        success: false,
+        error: 'Payment service error',
+        details: error.errors?.[0]?.detail || 'Failed to create payment intent'
+      });
+    }
+
+    const result = await response.json() as any;
+    res.json({
+      success: true,
+      paymentIntent: result.data
+    });
+  } catch (error) {
+    console.error('Payment intent creation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+// Create PayMongo Source for E-wallets (GCash, PayMaya, etc.)
+app.post('/api/payments/create-source', async (req, res) => {
+  try {
+    const { amount, type, currency = 'PHP', description = 'Wedding Bazaar Payment' } = req.body;
+    
+    // Check if PayMongo API keys are properly configured
+    const secretKey = process.env.PAYMONGO_SECRET_KEY || process.env.VITE_PAYMONGO_SECRET_KEY;
+    if (!secretKey || secretKey.includes('your_secret_key_here') || secretKey.includes('*')) {
+      return res.status(500).json({
+        success: false,
+        error: 'PayMongo API keys not properly configured. Please contact administrator.',
+        details: 'Payment processing is currently unavailable due to configuration issues.'
+      });
+    }
+
+    // Validate inputs
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid amount specified'
+      });
+    }
+
+    if (!['gcash', 'paymaya', 'grab_pay'].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid payment type. Supported types: gcash, paymaya, grab_pay'
+      });
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL || 'https://weddingbazaarph.web.app';
+    
+    // Create PayMongo Source
+    const response = await fetch('https://api.paymongo.com/v1/sources', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${Buffer.from(secretKey + ':').toString('base64')}`
+      },
+      body: JSON.stringify({
+        data: {
+          attributes: {
+            amount: Math.round(amount * 100), // Convert to centavos
+            currency,
+            type,
+            redirect: {
+              success: `${frontendUrl}/payment/callback?status=success`,
+              failed: `${frontendUrl}/payment/callback?status=failed`
+            },
+            billing: {
+              name: 'Wedding Bazaar Customer',
+              email: 'customer@weddingbazaar.com'
+            },
+            description
+          }
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json() as any;
+      console.error('PayMongo Source API Error:', error);
+      return res.status(response.status).json({
+        success: false,
+        error: 'Payment service error',
+        details: error.errors?.[0]?.detail || 'Failed to create payment source'
+      });
+    }
+
+    const result = await response.json() as any;
+    res.json({
+      success: true,
+      source: result.data
+    });
+  } catch (error) {
+    console.error('Payment source creation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+// Get payment status
+app.get('/api/payments/status/:paymentId', async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    
+    // Check if PayMongo API keys are properly configured
+    const secretKey = process.env.PAYMONGO_SECRET_KEY || process.env.VITE_PAYMONGO_SECRET_KEY;
+    if (!secretKey || secretKey.includes('your_secret_key_here') || secretKey.includes('*')) {
+      return res.status(500).json({
+        success: false,
+        error: 'PayMongo API keys not properly configured. Please contact administrator.'
+      });
+    }
+
+    // Get payment status from PayMongo
+    const response = await fetch(`https://api.paymongo.com/v1/payment_intents/${paymentId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${Buffer.from(secretKey + ':').toString('base64')}`
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json() as any;
+      console.error('PayMongo Status API Error:', error);
+      return res.status(response.status).json({
+        success: false,
+        error: 'Payment service error',
+        details: error.errors?.[0]?.detail || 'Failed to get payment status'
+      });
+    }
+
+    const result = await response.json() as any;
+    res.json({
+      success: true,
+      payment: result.data
+    });
+  } catch (error) {
+    console.error('Payment status check error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+// PayMongo webhook endpoint
+app.post('/api/payments/webhook', async (req, res) => {
+  try {
+    console.log('PayMongo webhook received:', req.body);
+    
+    // TODO: Verify webhook signature with PAYMONGO_WEBHOOK_SECRET
+    // TODO: Process payment updates (success, failed, etc.)
+    
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Wedding Bazaar API server running on port ${PORT}`);
