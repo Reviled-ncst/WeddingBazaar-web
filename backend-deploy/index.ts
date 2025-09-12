@@ -600,11 +600,138 @@ app.get('/api/services', async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Wedding Bazaar API server running on port ${PORT}`);
-  console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🔍 Database test: http://localhost:${PORT}/api/test-db`);
+// Vendor subscription endpoints
+app.get('/api/subscriptions/vendor/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    
+    // Mock subscription data - Enterprise plan for demo
+    const mockSubscription = {
+      id: 1,
+      vendor_id: vendorId,
+      plan_id: 'enterprise',
+      status: 'active',
+      current_period_start: '2025-09-01T00:00:00Z',
+      current_period_end: '2025-10-01T00:00:00Z',
+      trial_end: null,
+      stripe_subscription_id: 'sub_mock_enterprise',
+      created_at: '2025-09-01T00:00:00Z',
+      updated_at: '2025-09-12T00:00:00Z',
+      plan_name: 'Enterprise',
+      plan_description: 'Full-featured enterprise plan for large wedding businesses',
+      services_count: 8,
+      portfolio_items_count: 45,
+      monthly_bookings_count: 15,
+      current_bookings_count: 8,
+      monthly_messages_count: 75,
+      video_call_minutes_used: 120,
+      featured_listing_active: true,
+      social_integrations_count: 5,
+      api_calls_count: 2500,
+      webhook_calls_count: 150,
+      last_updated: '2025-09-12T15:30:00Z',
+      max_services: 999, // Unlimited
+      max_images_per_service: 999, // Unlimited
+      max_gallery_images: 999, // Unlimited
+      max_bookings_per_month: 999, // Unlimited
+      includes_featured_listing: true,
+      includes_custom_branding: true,
+      includes_analytics: true
+    };
+
+    res.json({
+      success: true,
+      subscription: mockSubscription
+    });
+  } catch (error) {
+    console.error('Error fetching vendor subscription:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching vendor subscription'
+    });
+  }
 });
 
-export default app;
+// Subscription plans endpoint
+app.get('/api/subscriptions/plans', async (req, res) => {
+  try {
+    const mockPlans = [
+      {
+        id: 'basic',
+        name: 'Basic',
+        description: 'Perfect for new wedding vendors',
+        price: 999,
+        billing_cycle: 'monthly',
+        features: [
+          'Up to 3 services',
+          'Basic portfolio (10 images)',
+          '20 bookings per month',
+          'Email support',
+          'Basic analytics'
+        ]
+      },
+      {
+        id: 'premium',
+        name: 'Premium',
+        description: 'Great for growing wedding businesses',
+        price: 1999,
+        billing_cycle: 'monthly',
+        features: [
+          'Up to 10 services',
+          'Enhanced portfolio (50 images)',
+          'Unlimited bookings',
+          'Priority support',
+          'Advanced analytics',
+          'Featured listing (7 days/month)'
+        ]
+      },
+      {
+        id: 'pro',
+        name: 'Professional',
+        description: 'For established wedding professionals',
+        price: 3999,
+        billing_cycle: 'monthly',
+        features: [
+          'Up to 25 services',
+          'Premium portfolio (100 images)',
+          'Unlimited bookings',
+          'Video consultations (60 min/month)',
+          'Custom branding',
+          'SEO tools',
+          'Export data'
+        ]
+      },
+      {
+        id: 'enterprise',
+        name: 'Enterprise',
+        description: 'Complete solution for large wedding businesses',
+        price: 7999,
+        billing_cycle: 'monthly',
+        features: [
+          'Unlimited services',
+          'Unlimited portfolio images',
+          'Unlimited bookings',
+          'Unlimited video consultations',
+          'Full custom branding',
+          'Advanced SEO tools',
+          'Multi-location support',
+          'Team management',
+          'API access',
+          'Custom contracts',
+          'Priority phone support'
+        ]
+      }
+    ];
+
+    res.json({
+      success: true,
+      plans: mockPlans
+    });
+  } catch (error) {
+    console.error('Error fetching subscription plans:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching subscription plans'
+    });
+  }
+});
