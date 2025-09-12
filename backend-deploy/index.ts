@@ -736,6 +736,214 @@ app.get('/api/subscriptions/plans', async (req, res) => {
   }
 });
 
+// Messaging API endpoints
+// Get conversations for a vendor
+app.get('/api/messaging/conversations/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    
+    // Mock conversation data
+    const mockConversations = [
+      {
+        id: 'conv-1',
+        vendorId: vendorId,
+        vendorName: 'Elegant Photography Studios',
+        serviceName: 'Wedding Photography Package',
+        userId: 'user-1',
+        userName: 'Maria Santos',
+        userType: 'couple',
+        lastMessage: {
+          id: 'msg-1',
+          content: 'Hi! I\'m interested in your wedding photography services for March 2024.',
+          senderId: 'user-1',
+          senderName: 'Maria Santos',
+          senderType: 'couple',
+          timestamp: new Date(Date.now() - 3600000).toISOString(),
+          messageType: 'text',
+          isRead: false
+        },
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+        updatedAt: new Date(Date.now() - 3600000).toISOString(),
+        unreadCount: 1
+      },
+      {
+        id: 'conv-2',
+        vendorId: vendorId,
+        vendorName: 'Elegant Photography Studios',
+        serviceName: 'Engagement Shoot',
+        userId: 'user-2',
+        userName: 'John & Sarah Cruz',
+        userType: 'couple',
+        lastMessage: {
+          id: 'msg-2',
+          content: 'Thank you for the beautiful engagement photos!',
+          senderId: 'user-2',
+          senderName: 'John & Sarah Cruz',
+          senderType: 'couple',
+          timestamp: new Date(Date.now() - 7200000).toISOString(),
+          messageType: 'text',
+          isRead: true
+        },
+        createdAt: new Date(Date.now() - 172800000).toISOString(),
+        updatedAt: new Date(Date.now() - 7200000).toISOString(),
+        unreadCount: 0
+      }
+    ];
+
+    res.json({
+      success: true,
+      conversations: mockConversations
+    });
+  } catch (error) {
+    console.error('Error fetching conversations:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching conversations'
+    });
+  }
+});
+
+// Create a new conversation
+app.post('/api/messaging/conversations', async (req, res) => {
+  try {
+    const { conversationId, vendorId, vendorName, serviceName, userId, userName, userType } = req.body;
+    
+    // Mock conversation creation
+    const newConversation = {
+      id: conversationId,
+      vendorId,
+      vendorName,
+      serviceName,
+      userId,
+      userName,
+      userType,
+      lastMessage: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      unreadCount: 0
+    };
+
+    res.json({
+      success: true,
+      conversation: newConversation
+    });
+  } catch (error) {
+    console.error('Error creating conversation:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating conversation'
+    });
+  }
+});
+
+// Get messages for a conversation
+app.get('/api/messaging/conversations/:conversationId/messages', async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
+    
+    // Mock messages data
+    const mockMessages = [
+      {
+        id: 'msg-1',
+        conversationId,
+        content: 'Hi! I\'m interested in your wedding photography services for March 2024.',
+        senderId: 'user-1',
+        senderName: 'Maria Santos',
+        senderType: 'couple',
+        timestamp: new Date(Date.now() - 7200000).toISOString(),
+        messageType: 'text',
+        isRead: false
+      },
+      {
+        id: 'msg-2',
+        conversationId,
+        content: 'Hello Maria! Thank you for your interest. I\'d be happy to help with your wedding photography. What date in March are you planning?',
+        senderId: 'vendor-1',
+        senderName: 'Elegant Photography Studios',
+        senderType: 'vendor',
+        timestamp: new Date(Date.now() - 3600000).toISOString(),
+        messageType: 'text',
+        isRead: true
+      },
+      {
+        id: 'msg-3',
+        conversationId,
+        content: 'We\'re thinking March 15th, 2024. Could you share your packages and availability?',
+        senderId: 'user-1',
+        senderName: 'Maria Santos',
+        senderType: 'couple',
+        timestamp: new Date(Date.now() - 1800000).toISOString(),
+        messageType: 'text',
+        isRead: false
+      }
+    ];
+
+    res.json({
+      success: true,
+      messages: mockMessages
+    });
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching messages'
+    });
+  }
+});
+
+// Send a new message
+app.post('/api/messaging/conversations/:conversationId/messages', async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { content, senderId, senderName, senderType, messageType = 'text' } = req.body;
+    
+    // Mock message creation
+    const newMessage = {
+      id: `msg-${Date.now()}`,
+      conversationId,
+      content,
+      senderId,
+      senderName,
+      senderType,
+      timestamp: new Date().toISOString(),
+      messageType,
+      isRead: false
+    };
+
+    res.json({
+      success: true,
+      message: newMessage
+    });
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error sending message'
+    });
+  }
+});
+
+// Mark messages as read
+app.put('/api/messaging/conversations/:conversationId/read', async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { userId } = req.body;
+    
+    // Mock mark as read
+    res.json({
+      success: true,
+      message: 'Messages marked as read'
+    });
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error marking messages as read'
+    });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Wedding Bazaar API server running on port ${PORT}`);
