@@ -560,18 +560,28 @@ const verifyTokenHandler = async (req, res) => {
 
     // Token is valid, get user data from database to ensure it's current
     try {
-      const userResult = await sql`
-        SELECT u.*, 
-               COALESCE(u.user_type, 'couple') as role,
-               vp.business_name,
-               vp.business_description,
-               vp.phone,
-               vp.website,
-               vp.profile_image
-        FROM users u
-        LEFT JOIN vendor_profiles vp ON u.id = vp.user_id
-        WHERE u.id = ${tokenValidation.user.id}
-      `;
+      // First try to get user data with vendor info
+      let userResult = [];
+      try {
+        userResult = await sql`
+          SELECT u.*, 
+                 COALESCE(u.user_type, 'couple') as role,
+                 v.business_name,
+                 v.id as vendor_id
+          FROM users u
+          LEFT JOIN vendors v ON u.id = v.user_id
+          WHERE u.id = ${tokenValidation.user.id}
+        `;
+      } catch (vendorJoinError) {
+        console.log('Vendor join failed, trying simple user query:', vendorJoinError.message);
+        // Fallback to simple user query
+        userResult = await sql`
+          SELECT u.*, 
+                 COALESCE(u.user_type, 'couple') as role
+          FROM users u
+          WHERE u.id = ${tokenValidation.user.id}
+        `;
+      }
       
       if (userResult.length === 0) {
         // User no longer exists, invalidate token
@@ -591,22 +601,32 @@ const verifyTokenHandler = async (req, res) => {
         user: {
           id: userData.id,
           email: userData.email,
-          firstName: userData.first_name || userData.business_name || 'User',
+          firstName: userData.first_name || 'User',
           lastName: userData.last_name || '',
           role: userData.role || 'couple',
           profileImage: userData.profile_image || '',
           phone: userData.phone || '',
           businessName: userData.business_name || '',
-          businessDescription: userData.business_description || '',
-          website: userData.website || ''
+          vendorId: userData.vendor_id || null
         }
       });
       
     } catch (dbError) {
       console.error('Database error during token verification:', dbError);
-      return res.status(500).json({
-        success: false,
-        message: 'Database error during token verification'
+      
+      // If database fails completely, return the token data we have
+      console.log('Using token data as fallback for user info');
+      res.json({
+        success: true,
+        user: {
+          id: tokenValidation.user.id,
+          email: tokenValidation.user.email,
+          firstName: 'User',
+          lastName: '',
+          role: tokenValidation.user.role || 'couple',
+          profileImage: '',
+          phone: ''
+        }
       });
     }
   } catch (error) {
