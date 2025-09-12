@@ -200,19 +200,27 @@ app.get('/api/vendors/categories', async (req, res) => {
 
 // Basic auth endpoints (mock)
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, userType } = req.body;
   
   // Mock authentication - for testing only
   if (email && password) {
+    // Determine role based on email or userType parameter
+    let role = 'couple'; // default
+    if (userType === 'vendor' || email.includes('vendor') || email.includes('business')) {
+      role = 'vendor';
+    } else if (userType === 'admin' || email.includes('admin')) {
+      role = 'admin';
+    }
+
     res.json({
       success: true,
       message: 'Login successful',
       user: {
         id: '1',
         email: email,
-        firstName: 'Test',
-        lastName: 'User', 
-        role: 'couple',
+        firstName: role === 'vendor' ? 'Business' : 'Test',
+        lastName: role === 'vendor' ? 'Owner' : 'User', 
+        role: role,
         profileImage: '',
         phone: ''
       },
@@ -278,14 +286,23 @@ const verifyTokenHandler = async (req, res) => {
     // Mock token verification - for testing only
     // In production, you would verify the JWT token here
     if (token === 'mock-jwt-token' || token.startsWith('mock-')) {
+      // For demo purposes, check if we have a vendor token or role indicator
+      let role = 'couple';
+      const authHeader = req.headers.authorization;
+      if (authHeader && (authHeader.includes('vendor') || token.includes('vendor'))) {
+        role = 'vendor';
+      } else if (authHeader && (authHeader.includes('admin') || token.includes('admin'))) {
+        role = 'admin';
+      }
+
       res.json({
         success: true,
         user: {
           id: '1',
-          email: 'test@example.com',
-          firstName: 'Test',
-          lastName: 'User',
-          role: 'couple',
+          email: role === 'vendor' ? 'vendor@example.com' : 'test@example.com',
+          firstName: role === 'vendor' ? 'Business' : 'Test',
+          lastName: role === 'vendor' ? 'Owner' : 'User',
+          role: role,
           profileImage: '',
           phone: ''
         }
