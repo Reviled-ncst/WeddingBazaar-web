@@ -208,10 +208,13 @@ app.post('/api/auth/login', async (req, res) => {
       success: true,
       message: 'Login successful',
       user: {
-        id: 1,
+        id: '1',
         email: email,
-        name: 'Test User',
-        userType: 'individual'
+        firstName: 'Test',
+        lastName: 'User', 
+        role: 'couple',
+        profileImage: '',
+        phone: ''
       },
       token: 'mock-jwt-token'
     });
@@ -232,10 +235,13 @@ app.post('/api/auth/register', async (req, res) => {
       success: true,
       message: 'Registration successful',
       user: {
-        id: Date.now(),
+        id: Date.now().toString(),
         email: email,
-        name: name,
-        userType: 'individual'
+        firstName: name.split(' ')[0] || name,
+        lastName: name.split(' ')[1] || '',
+        role: 'couple',
+        profileImage: '',
+        phone: ''
       }
     });
   } else {
@@ -275,10 +281,13 @@ const verifyTokenHandler = async (req, res) => {
       res.json({
         success: true,
         user: {
-          id: 1,
+          id: '1',
           email: 'test@example.com',
-          name: 'Test User',
-          userType: 'individual'
+          firstName: 'Test',
+          lastName: 'User',
+          role: 'couple',
+          profileImage: '',
+          phone: ''
         }
       });
     } else {

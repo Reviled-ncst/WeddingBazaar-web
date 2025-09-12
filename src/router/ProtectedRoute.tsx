@@ -47,10 +47,10 @@ const getUserLandingPage = (role?: string): string => {
     case 'couple':
       return '/individual';
     case 'vendor':
-      return '/vendors';
+      return '/vendor/dashboard';
     case 'admin':
       return '/admin';
     default:
-      return '/';
+      return '/individual';
   }
 };
