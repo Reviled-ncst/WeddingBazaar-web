@@ -487,7 +487,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Create new user in database
     const newUsers = await sql`
-      INSERT INTO users (email, password_hash, first_name, last_name, user_type, created_at, updated_at)
+      INSERT INTO users (email, password, first_name, last_name, user_type, created_at, updated_at)
       VALUES (${email}, ${hashedPassword}, ${name.split(' ')[0] || name}, ${name.split(' ')[1] || ''}, ${userType}, NOW(), NOW())
       RETURNING id, email, first_name, last_name, user_type, profile_image
     `;
