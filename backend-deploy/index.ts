@@ -537,21 +537,24 @@ const verifyTokenHandler = async (req, res) => {
     if (!token && req.query && req.query.token) {
       token = req.query.token;
     }
-    
+
     if (!token) {
+      console.log('❌ No token provided in request');
       return res.status(401).json({
         success: false,
         message: 'No token provided'
       });
     }
 
-    console.log('Verifying token:', token);
+    console.log('🔍 Verifying token:', token);
+    console.log('🔍 Active tokens count:', activeTokens.size);
+    console.log('🔍 Active tokens keys:', Array.from(activeTokens.keys()));
 
     // First, check if the token is in our active tokens store
     const tokenValidation = validateToken(token);
     
     if (!tokenValidation.valid) {
-      console.log('Token validation failed:', tokenValidation.error);
+      console.log('❌ Token validation failed:', tokenValidation.error);
       return res.status(401).json({
         success: false,
         message: tokenValidation.error || 'Invalid token'
