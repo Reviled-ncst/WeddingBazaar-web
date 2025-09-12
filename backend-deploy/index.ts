@@ -12,6 +12,84 @@ config();
 // Database connection
 const sql = neon(process.env.DATABASE_URL!);
 
+// In-memory token storage (in production, use Redis or database)
+const activeTokens = new Map<string, {
+  userId: string;
+  email: string;
+  role: string;
+  issuedAt: number;
+  expiresAt: number;
+}>();
+
+// Token expiration time (24 hours)
+const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+// Helper functions for token management
+function generateToken(userId: string): string {
+  return `jwt-${userId}-${Date.now()}`;
+}
+
+function storeToken(token: string, userId: string, email: string, role: string): void {
+  const now = Date.now();
+  activeTokens.set(token, {
+    userId,
+    email,
+    role,
+    issuedAt: now,
+    expiresAt: now + TOKEN_EXPIRY_MS
+  });
+  
+  console.log(`🔐 Token stored for user ${userId}: ${token}`);
+}
+
+function validateToken(token: string): { valid: boolean; user?: any; error?: string } {
+  // Check if token exists in our store
+  const tokenData = activeTokens.get(token);
+  
+  if (!tokenData) {
+    return { valid: false, error: 'Token not found or invalid' };
+  }
+  
+  // Check if token has expired
+  if (Date.now() > tokenData.expiresAt) {
+    activeTokens.delete(token);
+    return { valid: false, error: 'Token has expired' };
+  }
+  
+  return { 
+    valid: true, 
+    user: {
+      id: tokenData.userId,
+      email: tokenData.email,
+      role: tokenData.role
+    }
+  };
+}
+
+function invalidateToken(token: string): void {
+  activeTokens.delete(token);
+  console.log(`🗑️ Token invalidated: ${token}`);
+}
+
+function cleanupExpiredTokens(): void {
+  const now = Date.now();
+  let cleaned = 0;
+  
+  for (const [token, data] of activeTokens.entries()) {
+    if (now > data.expiresAt) {
+      activeTokens.delete(token);
+      cleaned++;
+    }
+  }
+  
+  if (cleaned > 0) {
+    console.log(`🧹 Cleaned up ${cleaned} expired tokens`);
+  }
+}
+
+// Clean up expired tokens every hour
+setInterval(cleanupExpiredTokens, 60 * 60 * 1000);
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -350,6 +428,10 @@ app.post('/api/auth/login', async (req, res) => {
       console.log('No password hash found for user, allowing login for demo');
     }
     
+    // Generate and store token
+    const token = generateToken(user.id);
+    storeToken(token, user.id, user.email, user.role);
+    
     res.json({
       success: true,
       message: 'Login successful',
@@ -364,7 +446,7 @@ app.post('/api/auth/login', async (req, res) => {
         vendorId: user.vendor_id,
         businessName: user.business_name
       },
-      token: `jwt-${user.id}-${Date.now()}`
+      token: token
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -412,6 +494,10 @@ app.post('/api/auth/register', async (req, res) => {
 
     const newUser = newUsers[0];
 
+    // Generate and store token
+    const token = generateToken(newUser.id);
+    storeToken(token, newUser.id, newUser.email, newUser.user_type);
+
     res.json({
       success: true,
       message: 'Registration successful',
@@ -424,7 +510,7 @@ app.post('/api/auth/register', async (req, res) => {
         profileImage: newUser.profile_image || '',
         phone: ''
       },
-      token: `jwt-${newUser.id}-${Date.now()}`
+      token: token
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -461,85 +547,66 @@ const verifyTokenHandler = async (req, res) => {
 
     console.log('Verifying token:', token);
 
-    // Parse our token format: jwt-${user.id}-${timestamp}
-    if (token.startsWith('jwt-')) {
-      const tokenParts = token.split('-');
-      if (tokenParts.length >= 3) {
-        // Extract user ID - everything between 'jwt-' and the last timestamp part
-        // For token like 'jwt-2-2025-003-1757707206812', user ID is '2-2025-003'
-        const lastPart = tokenParts[tokenParts.length - 1];
-        const isTimestamp = /^\d{13}$/.test(lastPart); // Check if last part is a 13-digit timestamp
-        
-        let userId;
-        if (isTimestamp) {
-          // Remove 'jwt-' prefix and timestamp suffix to get user ID
-          userId = token.substring(4, token.lastIndexOf('-'));
-        } else {
-          // Fallback: assume everything after 'jwt-' except last part is user ID
-          userId = tokenParts.slice(1, -1).join('-');
-        }
-        
-        console.log('Extracted user ID from token:', userId);
-        
-        try {
-          // Fetch real user data from database
-          const userResult = await sql`
-            SELECT u.*, 
-                   COALESCE(u.user_type, 'couple') as role,
-                   vp.business_name,
-                   vp.business_description,
-                   vp.phone,
-                   vp.website,
-                   vp.profile_image
-            FROM users u
-            LEFT JOIN vendor_profiles vp ON u.id = vp.user_id
-            WHERE u.id = ${userId}
-          `;
-          
-          if (userResult.length === 0) {
-            return res.status(401).json({
-              success: false,
-              message: 'User not found'
-            });
-          }
-          
-          const userData = userResult[0];
-          console.log('Found user data:', { id: userData.id, email: userData.email, role: userData.role });
-          
-          // Return real user data
-          res.json({
-            success: true,
-            user: {
-              id: userData.id,
-              email: userData.email,
-              firstName: userData.first_name || userData.business_name || 'User',
-              lastName: userData.last_name || '',
-              role: userData.role || 'couple',
-              profileImage: userData.profile_image || '',
-              phone: userData.phone || '',
-              businessName: userData.business_name || '',
-              businessDescription: userData.business_description || '',
-              website: userData.website || ''
-            }
-          });
-          
-        } catch (dbError) {
-          console.error('Database error during token verification:', dbError);
-          return res.status(500).json({
-            success: false,
-            message: 'Database error during token verification'
-          });
-        }
-      } else {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid token format'
-        });
-      }
-    } else {
+    // First, check if the token is in our active tokens store
+    const tokenValidation = validateToken(token);
+    
+    if (!tokenValidation.valid) {
+      console.log('Token validation failed:', tokenValidation.error);
       return res.status(401).json({
         success: false,
-        message: 'Invalid token format'
+        message: tokenValidation.error || 'Invalid token'
+      });
+    }
+
+    // Token is valid, get user data from database to ensure it's current
+    try {
+      const userResult = await sql`
+        SELECT u.*, 
+               COALESCE(u.user_type, 'couple') as role,
+               vp.business_name,
+               vp.business_description,
+               vp.phone,
+               vp.website,
+               vp.profile_image
+        FROM users u
+        LEFT JOIN vendor_profiles vp ON u.id = vp.user_id
+        WHERE u.id = ${tokenValidation.user.id}
+      `;
+      
+      if (userResult.length === 0) {
+        // User no longer exists, invalidate token
+        invalidateToken(token);
+        return res.status(401).json({
+          success: false,
+          message: 'User account no longer exists'
+        });
+      }
+      
+      const userData = userResult[0];
+      console.log('✅ Token verified for user:', { id: userData.id, email: userData.email, role: userData.role });
+      
+      // Return current user data
+      res.json({
+        success: true,
+        user: {
+          id: userData.id,
+          email: userData.email,
+          firstName: userData.first_name || userData.business_name || 'User',
+          lastName: userData.last_name || '',
+          role: userData.role || 'couple',
+          profileImage: userData.profile_image || '',
+          phone: userData.phone || '',
+          businessName: userData.business_name || '',
+          businessDescription: userData.business_description || '',
+          website: userData.website || ''
+        }
+      });
+      
+    } catch (dbError) {
+      console.error('Database error during token verification:', dbError);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error during token verification'
       });
     }
   } catch (error) {
@@ -554,6 +621,62 @@ const verifyTokenHandler = async (req, res) => {
 // Support both GET and POST for auth verify
 app.get('/api/auth/verify', verifyTokenHandler);
 app.post('/api/auth/verify', verifyTokenHandler);
+
+// Logout endpoint to invalidate tokens
+app.post('/api/auth/logout', async (req, res) => {
+  try {
+    // Try to get token from Authorization header first
+    let token = req.headers.authorization?.split(' ')[1];
+    
+    // If not in header, try to get from request body
+    if (!token && req.body && req.body.token) {
+      token = req.body.token;
+    }
+    
+    if (token) {
+      invalidateToken(token);
+      console.log(`📤 User logged out, token invalidated: ${token}`);
+    }
+    
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    console.error('Error during logout:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during logout'
+    });
+  }
+});
+
+// Debug endpoint to see active tokens (development only)
+app.get('/api/auth/debug/tokens', async (req, res) => {
+  try {
+    const tokens = Array.from(activeTokens.entries()).map(([token, data]) => ({
+      token: token.substring(0, 20) + '...', // Show only first 20 chars for security
+      userId: data.userId,
+      email: data.email,
+      role: data.role,
+      issuedAt: new Date(data.issuedAt).toISOString(),
+      expiresAt: new Date(data.expiresAt).toISOString(),
+      isExpired: Date.now() > data.expiresAt
+    }));
+    
+    res.json({
+      success: true,
+      activeTokens: tokens.length,
+      tokens: tokens
+    });
+  } catch (error) {
+    console.error('Error fetching debug tokens:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching debug tokens'
+    });
+  }
+});
 
 // Booking endpoints - Real database integration
 app.get('/api/bookings', async (req, res) => {
