@@ -76,7 +76,17 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
   const [sortBy, setSortBy] = useState<'score' | 'price' | 'rating'>('score');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // Calculate recommendations using DSS algorithm
+  // Helper function to calculate booking popularity score
+  const calculateBookingScore = (reviewCount: number): number => {
+    // Estimate bookings based on reviews (assuming 1 review per 3-5 bookings)
+    const estimatedBookings = reviewCount * 4;
+    if (estimatedBookings >= 200) return 30; // High booking volume
+    if (estimatedBookings >= 100) return 20; // Medium booking volume
+    if (estimatedBookings >= 50) return 15; // Moderate booking volume
+    return 10; // Lower booking volume
+  };
+
+  // Calculate recommendations using updated DSS algorithm focused on price, ratings, bookings
   const recommendations = useMemo(() => {
     if (!services.length) return [];
 
@@ -86,59 +96,76 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
       let score = 0;
       const reasons: string[] = [];
       
-      // Rating weight (30%)
-      const ratingScore = (service.rating / 5) * 30;
+      // 1. RATING SCORE (35% - Primary factor)
+      const ratingScore = (service.rating / 5) * 35;
       score += ratingScore;
-      if (service.rating >= 4.5) {
-        reasons.push(`Exceptional rating (${service.rating}/5)`);
+      if (service.rating >= 4.8) {
+        reasons.push(`Outstanding rating (${service.rating}/5) - Top tier quality`);
+      } else if (service.rating >= 4.5) {
+        reasons.push(`Exceptional rating (${service.rating}/5) - Premium quality`);
       } else if (service.rating >= 4.0) {
-        reasons.push(`High rating (${service.rating}/5)`);
+        reasons.push(`High rating (${service.rating}/5) - Quality service`);
+      } else if (service.rating >= 3.5) {
+        reasons.push(`Good rating (${service.rating}/5) - Reliable service`);
       }
 
-      // Review count weight (15%)
-      const reviewScore = Math.min(service.reviewCount / 100, 1) * 15;
-      score += reviewScore;
-      if (service.reviewCount >= 50) {
-        reasons.push(`Well-reviewed (${service.reviewCount} reviews)`);
+      // 2. BOOKING POPULARITY SCORE (25% - Based on review count as booking indicator)
+      const bookingScore = calculateBookingScore(service.reviewCount);
+      score += bookingScore;
+      const estimatedBookings = service.reviewCount * 4;
+      if (estimatedBookings >= 200) {
+        reasons.push(`High demand vendor (${estimatedBookings}+ estimated bookings)`);
+      } else if (estimatedBookings >= 100) {
+        reasons.push(`Popular vendor (${estimatedBookings}+ estimated bookings)`);
+      } else if (estimatedBookings >= 50) {
+        reasons.push(`Established vendor (${estimatedBookings}+ estimated bookings)`);
       }
 
-      // Location proximity weight (20%)
-      if (location && service.location.toLowerCase().includes(location.toLowerCase())) {
-        score += 20;
-        reasons.push('Located in your preferred area');
-      } else if (location) {
-        score += 10; // Partial score for nearby areas
-      }
-
-      // Budget compatibility weight (25%)
+      // 3. PRICE COMPATIBILITY SCORE (30% - Budget alignment)
       const estimatedCost = parsePriceRange(service.priceRange || '$$$');
-      if (estimatedCost <= budget * 0.7) {
-        score += 25;
-        reasons.push('Within comfortable budget range');
-      } else if (estimatedCost <= budget) {
-        score += 15;
-        reasons.push('Fits within budget');
+      const budgetPercentage = (estimatedCost / budget) * 100;
+      let priceScore = 0;
+      
+      if (budgetPercentage <= 50) {
+        priceScore = 30;
+        reasons.push(`Excellent value - Only ${budgetPercentage.toFixed(0)}% of budget`);
+      } else if (budgetPercentage <= 70) {
+        priceScore = 25;
+        reasons.push(`Good value - ${budgetPercentage.toFixed(0)}% of budget`);
+      } else if (budgetPercentage <= 90) {
+        priceScore = 20;
+        reasons.push(`Fair value - ${budgetPercentage.toFixed(0)}% of budget`);
+      } else if (budgetPercentage <= 100) {
+        priceScore = 15;
+        reasons.push(`At budget limit - ${budgetPercentage.toFixed(0)}% of budget`);
       } else {
-        score += 5;
-        reasons.push('Above budget - consider if essential');
+        priceScore = 5;
+        reasons.push(`Over budget - ${budgetPercentage.toFixed(0)}% of budget (consider if essential)`);
       }
+      score += priceScore;
 
-      // Priority categories weight (10%)
-      if (priorities.includes(service.category)) {
-        score += 10;
-        reasons.push('Matches your priority categories');
+      // 4. ADDITIONAL FACTORS (10% - Location, availability, features)
+      let additionalScore = 0;
+      
+      // Location bonus
+      if (location && service.location.toLowerCase().includes(location.toLowerCase())) {
+        additionalScore += 4;
+        reasons.push('Located in your preferred area');
       }
-
-      // Availability and features bonus
+      
+      // Availability bonus
       if (service.availability) {
-        score += 5;
-        reasons.push('Currently available');
+        additionalScore += 3;
+        reasons.push('Currently available for booking');
       }
-
-      if (service.features && service.features.length > 5) {
-        score += 5;
-        reasons.push('Comprehensive service package');
+      
+      // Features/specialization bonus
+      if (service.features && service.features.length > 3) {
+        additionalScore += 3;
+        reasons.push(`Comprehensive services (${service.features.length} specialties)`);
       }
+      
+      score += additionalScore;
 
       // Calculate priority based on score
       let priority: 'high' | 'medium' | 'low' = 'low';
