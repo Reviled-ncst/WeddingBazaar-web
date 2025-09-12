@@ -284,7 +284,7 @@ app.post('/api/auth/login', async (req, res) => {
     try {
       console.log('Attempting database query for login...');
       users = await sql`
-        SELECT u.id, u.email, u.password_hash, u.first_name, u.last_name, 
+        SELECT u.id, u.email, u.password, u.first_name, u.last_name, 
                COALESCE(u.role, 'couple') as role, u.profile_image,
                v.id as vendor_id, v.business_name
         FROM users u
@@ -299,7 +299,7 @@ app.post('/api/auth/login', async (req, res) => {
       try {
         console.log('Trying fallback query without role column...');
         users = await sql`
-          SELECT u.id, u.email, u.password_hash, u.first_name, u.last_name, 
+          SELECT u.id, u.email, u.password, u.first_name, u.last_name, 
                  u.profile_image, v.id as vendor_id, v.business_name
           FROM users u
           LEFT JOIN vendors v ON u.id = v.user_id
@@ -346,10 +346,10 @@ app.post('/api/auth/login', async (req, res) => {
     const user = users[0];
     console.log('User found in database:', user);
     
-    // Verify password if password_hash exists
-    if (user.password_hash) {
+    // Verify password if password exists
+    if (user.password) {
       try {
-        const isValidPassword = await bcrypt.compare(password, user.password_hash);
+        const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
           return res.status(401).json({
             success: false,
