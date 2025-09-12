@@ -954,6 +954,144 @@ app.get('/api/services', async (req, res) => {
   }
 });
 
+// Create new service
+app.post('/api/services', async (req, res) => {
+  try {
+    const {
+      vendor_id,
+      title,
+      description,
+      category,
+      price,
+      images,
+      featured,
+      is_active
+    } = req.body;
+
+    console.log(`🔧 Creating new service for vendor: ${vendor_id}`);
+
+    // Generate new service ID
+    const serviceId = `SRV-${Date.now()}`;
+
+    const newService = await sql`
+      INSERT INTO services (
+        id, vendor_id, title, description, category, price,
+        images, featured, is_active, created_at, updated_at
+      ) VALUES (
+        ${serviceId}, ${vendor_id}, ${title}, ${description}, ${category}, ${price || null},
+        ${images || []}, ${featured || false}, ${is_active !== false}, NOW(), NOW()
+      )
+      RETURNING *
+    `;
+
+    console.log(`✅ Service created successfully: ${serviceId}`);
+
+    res.json({
+      success: true,
+      service: newService[0],
+      message: 'Service created successfully'
+    });
+  } catch (error) {
+    console.error('Error creating service:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create service',
+      error: error.message
+    });
+  }
+});
+
+// Update existing service
+app.put('/api/services/:serviceId', async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+    const {
+      title,
+      description,
+      category,
+      price,
+      images,
+      featured,
+      is_active
+    } = req.body;
+
+    console.log(`🔧 Updating service: ${serviceId}`);
+
+    const updatedService = await sql`
+      UPDATE services SET
+        title = ${title},
+        description = ${description},
+        category = ${category},
+        price = ${price || null},
+        images = ${images || []},
+        featured = ${featured || false},
+        is_active = ${is_active !== false},
+        updated_at = NOW()
+      WHERE id = ${serviceId}
+      RETURNING *
+    `;
+
+    if (updatedService.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
+
+    console.log(`✅ Service updated successfully: ${serviceId}`);
+
+    res.json({
+      success: true,
+      service: updatedService[0],
+      message: 'Service updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating service:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update service',
+      error: error.message
+    });
+  }
+});
+
+// Delete service
+app.delete('/api/services/:serviceId', async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+
+    console.log(`🗑️ Deleting service: ${serviceId}`);
+
+    const deletedService = await sql`
+      DELETE FROM services
+      WHERE id = ${serviceId}
+      RETURNING *
+    `;
+
+    if (deletedService.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
+
+    console.log(`✅ Service deleted successfully: ${serviceId}`);
+
+    res.json({
+      success: true,
+      message: 'Service deleted successfully',
+      service: deletedService[0]
+    });
+  } catch (error) {
+    console.error('Error deleting service:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete service',
+      error: error.message
+    });
+  }
+});
+
 // Helper function for default service images
 function getDefaultServiceImage(category: string): string {
   const images = {
