@@ -864,7 +864,31 @@ app.get('/api/bookings/:id', async (req, res) => {
 // Services endpoint with real database integration
 app.get('/api/services', async (req, res) => {
   try {
-    // Get services grouped by category from database
+    const { vendorId } = req.query;
+    
+    // If vendorId is provided, return vendor-specific services
+    if (vendorId) {
+      console.log(`🔍 Fetching services for vendor: ${vendorId}`);
+      
+      const services = await sql`
+        SELECT 
+          id, vendor_id, title, description, category, price,
+          images, featured, is_active, created_at, updated_at
+        FROM services 
+        WHERE vendor_id = ${vendorId}
+        ORDER BY featured DESC, created_at DESC
+      `;
+      
+      console.log(`📊 Found ${services.length} services for vendor ${vendorId}`);
+      
+      res.json({
+        success: true,
+        services: services
+      });
+      return;
+    }
+    
+    // Otherwise, return service categories grouped by vendor types (original logic)
     const services = await sql`
       SELECT DISTINCT
         v.category,
@@ -922,7 +946,7 @@ app.get('/api/services', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching services:', error);
-    // Fallback to default services if database error
+    // Fallback to empty services if database error
     res.json({
       success: true,
       services: []
