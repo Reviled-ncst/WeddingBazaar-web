@@ -1,0 +1,1 @@
+export { VendorPromotions } from './VendorPromotions';

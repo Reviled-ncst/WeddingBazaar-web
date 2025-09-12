@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: weddingbazaar-backend
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build:backend
+    startCommand: npm run start:backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: weddingbazaar-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: BCRYPT_ROUNDS
+        value: 12
+      - key: CORS_ORIGINS
+        value: https://weddingbazaarph.web.app,https://weddingbazaarph.firebaseapp.com
+      - key: MAX_FILE_SIZE
+        value: 5242880
+      - key: ALLOWED_FILE_TYPES
+        value: image/jpeg,image/png,image/webp
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      - key: SESSION_MAX_AGE
+        value: 86400000
+      - key: VITE_CLOUDINARY_CLOUD_NAME
+        value: dht64xt1g
+      - key: VITE_CLOUDINARY_UPLOAD_PRESET
+        value: weddingbazaarus
+      - key: CLOUDINARY_API_KEY
+        value: 157394783888831
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: VITE_PAYMONGO_PUBLIC_KEY
+        value: pk_test_your_public_key_here
+      - key: VITE_PAYMONGO_SECRET_KEY
+        sync: false
+
+databases:
+  - name: weddingbazaar-db
+    databaseName: weddingbazaar
+    user: weddingbazaar
+    plan: free

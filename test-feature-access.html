@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature Access Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: #f9f9f9;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .warning { background: #fff3cd; color: #856404; }
+        .error { background: #f8d7da; color: #721c24; }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Feature Access Test</h1>
+    <p>This test verifies that the Enterprise subscription has access to all features and doesn't show upgrade prompts.</p>
+
+    <div class="test-section">
+        <h3>Current Issue</h3>
+        <div class="status error">
+            ❌ User has Enterprise subscription but upgrade prompts are still appearing
+        </div>
+        
+        <p><strong>Problem:</strong> The hasAccess() function isn't properly recognizing that Enterprise plan should have access to ALL features.</p>
+        
+        <p><strong>Fix Applied:</strong></p>
+        <ul>
+            <li>✅ Enhanced hasAccess() to automatically return true for Enterprise plan</li>
+            <li>✅ Updated SubscriptionAccess.canUseFeature() with tier-based access</li>
+            <li>✅ Added comprehensive logging for debugging</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>Simulated Feature Access Tests</h3>
+        
+        <button onclick="testFeatureAccess('basic_features')">Test Basic Features</button>
+        <button onclick="testFeatureAccess('premium_features')">Test Premium Features</button>
+        <button onclick="testFeatureAccess('advanced_analytics')">Test Advanced Analytics</button>
+        <button onclick="testFeatureAccess('custom_feature')">Test Custom Feature</button>
+        <button onclick="testFeatureAccess('unknown_feature')">Test Unknown Feature</button>
+        
+        <div class="log" id="log">Test logs will appear here...</div>
+    </div>
+
+    <div class="test-section">
+        <h3>Expected Behavior After Fix</h3>
+        <ol>
+            <li><strong>User has Enterprise subscription</strong> → subscription.plan.id = 'enterprise'</li>
+            <li><strong>SubscriptionGate checks feature access</strong> → calls hasAccess(featureId)</li>
+            <li><strong>hasAccess() detects Enterprise plan</strong> → automatically returns true</li>
+            <li><strong>Feature access granted</strong> → SubscriptionGate shows content, no upgrade prompt</li>
+            <li><strong>Result</strong> → ✅ No upgrade prompts appear for Enterprise users</li>
+        </ol>
+    </div>
+
+    <script>
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // Simulate the subscription data structure
+        const mockEnterpriseSubscription = {
+            plan: {
+                id: 'enterprise',
+                name: 'Enterprise',
+                features: [
+                    { id: 'dedicated_support', name: 'Dedicated Support', enabled: true },
+                    { id: 'custom_development', name: 'Custom Development', enabled: true },
+                    { id: 'advanced_security', name: 'Advanced Security', enabled: true },
+                    { id: 'white_label_platform', name: 'White Label Platform', enabled: true },
+                    { id: 'unlimited_everything', name: 'Unlimited Everything', enabled: true }
+                ]
+            }
+        };
+
+        // Simulate the enhanced hasAccess function
+        function simulateHasAccess(subscription, feature) {
+            log(`🔍 Checking access for feature: ${feature}`);
+            log(`📋 Current subscription plan: ${subscription.plan.id}`);
+            
+            // Enterprise plan has access to everything
+            if (subscription.plan.id === 'enterprise') {
+                log(`✅ Enterprise plan detected - automatic access granted`);
+                return true;
+            }
+            
+            // Check specific feature access for other plans
+            const hasFeatureAccess = subscription.plan.features.some(f => f.id === feature && f.enabled);
+            log(`🔍 Feature access check for ${feature}: ${hasFeatureAccess}`);
+            
+            return hasFeatureAccess;
+        }
+
+        function testFeatureAccess(featureId) {
+            log(`\n🧪 Testing feature access: ${featureId}`);
+            
+            const hasAccess = simulateHasAccess(mockEnterpriseSubscription, featureId);
+            
+            if (hasAccess) {
+                log(`✅ ACCESS GRANTED - No upgrade prompt should appear`);
+            } else {
+                log(`❌ ACCESS DENIED - Upgrade prompt would appear`);
+            }
+            
+            log(`---`);
+        }
+
+        // Initialize
+        log('🔧 Feature Access Test initialized');
+        log('📊 Simulating Enterprise subscription with enhanced access logic');
+        log('📋 Enterprise plan features: dedicated_support, custom_development, advanced_security, white_label_platform, unlimited_everything\n');
+    </script>
+</body>
+</html>

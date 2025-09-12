@@ -1,0 +1,27 @@
+# Docker Compose for Wedding Bazaar - Local Development with Neon DB
+version: '3.8'
+
+services:
+  wedding-bazaar-api:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - BCRYPT_ROUNDS=12
+      - SESSION_SECRET=${SESSION_SECRET}
+      - CORS_ORIGINS=http://localhost:5173,https://weddingbazaarph.web.app,https://weddingbazaarph.firebaseapp.com
+      - VITE_PAYMONGO_PUBLIC_KEY=${VITE_PAYMONGO_PUBLIC_KEY}
+      - VITE_PAYMONGO_SECRET_KEY=${VITE_PAYMONGO_SECRET_KEY}
+      - CLOUDINARY_CLOUD_NAME=${VITE_CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_UPLOAD_PRESET=${VITE_CLOUDINARY_UPLOAD_PRESET}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

@@ -1,0 +1,1 @@
+export { VendorLanding } from './VendorLanding';

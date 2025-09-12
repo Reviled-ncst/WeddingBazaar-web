@@ -1,0 +1,1 @@
+export { VendorSEO } from './VendorSEO';

@@ -1,0 +1,1 @@
+export { VendorSubscriptionPage } from './VendorSubscription';

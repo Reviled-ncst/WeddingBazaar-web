@@ -1,0 +1,1 @@
+export { VendorAccountSettings } from './VendorAccountSettings';
