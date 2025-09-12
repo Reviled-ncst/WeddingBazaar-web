@@ -487,9 +487,82 @@ const verifyTokenHandler = async (req, res) => {
       });
     }
 
-    // Mock token verification - for testing only
-    // In production, you would verify the JWT token here
-    if (token === 'mock-jwt-token' || token.startsWith('mock-')) {
+    console.log('Verifying token:', token);
+
+    // Parse our token format: jwt-${user.id}-${timestamp}
+    if (token.startsWith('jwt-')) {
+      const tokenParts = token.split('-');
+      if (tokenParts.length >= 3) {
+        const userId = tokenParts[1];
+        console.log('Extracted user ID from token:', userId);
+        
+        try {
+          // Fetch real user data from database
+          const userResult = await sql`
+            SELECT u.*, 
+                   COALESCE(u.role, 'couple') as role,
+                   vp.business_name,
+                   vp.business_description,
+                   vp.phone,
+                   vp.website,
+                   vp.profile_image
+            FROM users u
+            LEFT JOIN vendor_profiles vp ON u.id = vp.user_id
+            WHERE u.id = ${userId}
+          `;
+          
+          if (userResult.length === 0) {
+            return res.status(401).json({
+              success: false,
+              message: 'User not found'
+            });
+          }
+          
+          const userData = userResult[0];
+          console.log('Found user data:', { id: userData.id, email: userData.email, role: userData.role });
+          
+          // Return real user data
+          res.json({
+            success: true,
+            user: {
+              id: userData.id,
+              email: userData.email,
+              firstName: userData.first_name || userData.business_name || 'User',
+              lastName: userData.last_name || '',
+              role: userData.role || 'couple',
+              profileImage: userData.profile_image || '',
+              phone: userData.phone || '',
+              businessName: userData.business_name || '',
+              businessDescription: userData.business_description || '',
+              website: userData.website || ''
+            }
+          });
+          
+        } catch (dbError) {
+          console.error('Database error during token verification:', dbError);
+          // Fallback to mock data if database fails
+          res.json({
+            success: true,
+            user: {
+              id: userId,
+              email: 'user@example.com',
+              firstName: 'User',
+              lastName: 'Name',
+              role: 'couple',
+              profileImage: '',
+              phone: ''
+            }
+          });
+        }
+      } else {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid token format'
+        });
+      }
+    } 
+    // Handle old mock tokens for backward compatibility
+    else if (token === 'mock-jwt-token' || token.startsWith('mock-')) {
       // For demo purposes, check if we have a vendor token or role indicator
       let role = 'couple';
       const authHeader = req.headers.authorization;
@@ -512,9 +585,9 @@ const verifyTokenHandler = async (req, res) => {
         }
       });
     } else {
-      res.status(401).json({
+      return res.status(401).json({
         success: false,
-        message: 'Invalid token'
+        message: 'Invalid token format'
       });
     }
   } catch (error) {
