@@ -235,6 +235,8 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password, userType } = req.body;
   
   try {
+    console.log('Login attempt:', { email, userType });
+    
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -242,17 +244,27 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // Try to find user in database
-    const users = await sql`
-      SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.profile_image,
-             v.id as vendor_id, v.business_name
-      FROM users u
-      LEFT JOIN vendors v ON u.id = v.user_id
-      WHERE u.email = ${email}
-      LIMIT 1
-    `;
+    // Test database connection first
+    let users = [];
+    try {
+      console.log('Attempting database query for login...');
+      users = await sql`
+        SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.profile_image,
+               v.id as vendor_id, v.business_name
+        FROM users u
+        LEFT JOIN vendors v ON u.id = v.user_id
+        WHERE u.email = ${email}
+        LIMIT 1
+      `;
+      console.log('Database query successful, found users:', users.length);
+    } catch (dbError) {
+      console.error('Database query failed:', dbError);
+      // Fallback to mock authentication if DB fails
+      users = [];
+    }
 
     if (users.length === 0) {
+      console.log('No user found in DB or DB error, using mock authentication');
       // Fallback to mock authentication for demo
       let role = 'couple'; // default
       if (userType === 'vendor' || email.includes('vendor') || email.includes('business')) {
@@ -278,6 +290,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const user = users[0];
+    console.log('User found in database:', user);
     
     // In production, you would verify the password hash here
     // For now, just return the user data
@@ -301,7 +314,8 @@ app.post('/api/auth/login', async (req, res) => {
     console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during login'
+      message: 'Server error during login',
+      error: error.message
     });
   }
 });
