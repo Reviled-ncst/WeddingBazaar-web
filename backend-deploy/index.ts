@@ -3,9 +3,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from 'dotenv';
+import { neon } from '@neondatabase/serverless';
 
 // Load environment variables
 config();
+
+// Database connection
+const sql = neon(process.env.DATABASE_URL!);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -742,57 +746,70 @@ app.get('/api/messaging/conversations/:vendorId', async (req, res) => {
   try {
     const { vendorId } = req.params;
     
-    // Mock conversation data
-    const mockConversations = [
-      {
-        id: 'conv-1',
-        vendorId: vendorId,
-        vendorName: 'Elegant Photography Studios',
-        serviceName: 'Wedding Photography Package',
-        userId: 'user-1',
-        userName: 'Maria Santos',
-        userType: 'couple',
-        lastMessage: {
-          id: 'msg-1',
-          content: 'Hi! I\'m interested in your wedding photography services for March 2024.',
-          senderId: 'user-1',
-          senderName: 'Maria Santos',
-          senderType: 'couple',
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          messageType: 'text',
-          isRead: false
-        },
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        updatedAt: new Date(Date.now() - 3600000).toISOString(),
-        unreadCount: 1
-      },
-      {
-        id: 'conv-2',
-        vendorId: vendorId,
-        vendorName: 'Elegant Photography Studios',
-        serviceName: 'Engagement Shoot',
-        userId: 'user-2',
-        userName: 'John & Sarah Cruz',
-        userType: 'couple',
-        lastMessage: {
-          id: 'msg-2',
-          content: 'Thank you for the beautiful engagement photos!',
-          senderId: 'user-2',
-          senderName: 'John & Sarah Cruz',
-          senderType: 'couple',
-          timestamp: new Date(Date.now() - 7200000).toISOString(),
+    // Get conversations from database
+    const conversations = await sql`
+      SELECT DISTINCT 
+        id,
+        participant_id,
+        participant_name,
+        participant_type as participant_role,
+        participant_avatar,
+        creator_id,
+        creator_name,
+        creator_type,
+        last_message,
+        last_message_time,
+        unread_count,
+        is_online,
+        created_at,
+        updated_at
+      FROM conversations 
+      WHERE participant_id = ${vendorId} 
+         OR creator_id = ${vendorId}
+      ORDER BY last_message_time DESC NULLS LAST, created_at DESC
+    `;
+
+    // Transform conversations to expected format
+    const formattedConversations = conversations.map(conv => {
+      const isCreator = conv.creator_id === vendorId;
+      const otherParticipant = isCreator 
+        ? { 
+            id: conv.participant_id, 
+            name: conv.participant_name || 'Client',
+            role: conv.participant_role || 'couple',
+            isOnline: conv.is_online || false,
+            avatar: conv.participant_avatar || '/api/placeholder/40/40'
+          }
+        : { 
+            id: conv.creator_id, 
+            name: conv.creator_name || 'Client',
+            role: conv.creator_type || 'couple',
+            isOnline: conv.is_online || false,
+            avatar: '/api/placeholder/40/40'
+          };
+
+      return {
+        id: conv.id,
+        participants: [otherParticipant],
+        lastMessage: conv.last_message ? {
+          id: 'msg-' + Date.now(),
+          content: conv.last_message,
+          senderId: otherParticipant.id,
+          senderName: otherParticipant.name,
+          senderType: otherParticipant.role,
+          timestamp: conv.last_message_time || conv.updated_at,
           messageType: 'text',
           isRead: true
-        },
-        createdAt: new Date(Date.now() - 172800000).toISOString(),
-        updatedAt: new Date(Date.now() - 7200000).toISOString(),
-        unreadCount: 0
-      }
-    ];
+        } : null,
+        unreadCount: conv.unread_count || 0,
+        createdAt: conv.created_at,
+        updatedAt: conv.updated_at
+      };
+    });
 
     res.json({
       success: true,
-      conversations: mockConversations
+      conversations: formattedConversations
     });
   } catch (error) {
     console.error('Error fetching conversations:', error);
@@ -808,7 +825,20 @@ app.post('/api/messaging/conversations', async (req, res) => {
   try {
     const { conversationId, vendorId, vendorName, serviceName, userId, userName, userType } = req.body;
     
-    // Mock conversation creation
+    // Create new conversation in database
+    const result = await sql`
+      INSERT INTO conversations (
+        id, creator_id, creator_name, creator_type,
+        participant_id, participant_name, participant_type,
+        created_at, updated_at
+      ) VALUES (
+        ${conversationId}, ${userId}, ${userName}, ${userType},
+        ${vendorId}, ${vendorName}, 'vendor',
+        NOW(), NOW()
+      )
+      RETURNING *
+    `;
+
     const newConversation = {
       id: conversationId,
       vendorId,
@@ -818,8 +848,8 @@ app.post('/api/messaging/conversations', async (req, res) => {
       userName,
       userType,
       lastMessage: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: result[0]?.created_at || new Date().toISOString(),
+      updatedAt: result[0]?.updated_at || new Date().toISOString(),
       unreadCount: 0
     };
 
@@ -842,46 +872,32 @@ app.get('/api/messaging/conversations/:conversationId/messages', async (req, res
     const { conversationId } = req.params;
     const { limit = 50, offset = 0 } = req.query;
     
-    // Mock messages data
-    const mockMessages = [
-      {
-        id: 'msg-1',
-        conversationId,
-        content: 'Hi! I\'m interested in your wedding photography services for March 2024.',
-        senderId: 'user-1',
-        senderName: 'Maria Santos',
-        senderType: 'couple',
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        messageType: 'text',
-        isRead: false
-      },
-      {
-        id: 'msg-2',
-        conversationId,
-        content: 'Hello Maria! Thank you for your interest. I\'d be happy to help with your wedding photography. What date in March are you planning?',
-        senderId: 'vendor-1',
-        senderName: 'Elegant Photography Studios',
-        senderType: 'vendor',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        messageType: 'text',
-        isRead: true
-      },
-      {
-        id: 'msg-3',
-        conversationId,
-        content: 'We\'re thinking March 15th, 2024. Could you share your packages and availability?',
-        senderId: 'user-1',
-        senderName: 'Maria Santos',
-        senderType: 'couple',
-        timestamp: new Date(Date.now() - 1800000).toISOString(),
-        messageType: 'text',
-        isRead: false
-      }
-    ];
+    // Get messages from database
+    const messages = await sql`
+      SELECT 
+        id, conversation_id, sender_id, sender_name, sender_role,
+        content, created_at as timestamp, message_type, is_read
+      FROM messages 
+      WHERE conversation_id = ${conversationId}
+      ORDER BY created_at ASC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+
+    const formattedMessages = messages.map(msg => ({
+      id: msg.id,
+      conversationId: msg.conversation_id,
+      content: msg.content,
+      senderId: msg.sender_id,
+      senderName: msg.sender_name,
+      senderType: msg.sender_role,
+      timestamp: msg.timestamp,
+      messageType: msg.message_type || 'text',
+      isRead: msg.is_read || false
+    }));
 
     res.json({
       success: true,
-      messages: mockMessages
+      messages: formattedMessages
     });
   } catch (error) {
     console.error('Error fetching messages:', error);
@@ -898,9 +914,30 @@ app.post('/api/messaging/conversations/:conversationId/messages', async (req, re
     const { conversationId } = req.params;
     const { content, senderId, senderName, senderType, messageType = 'text' } = req.body;
     
-    // Mock message creation
+    const messageId = `msg-${Date.now()}`;
+    
+    // Insert message into database
+    await sql`
+      INSERT INTO messages (
+        id, conversation_id, sender_id, sender_name, sender_role,
+        content, message_type, created_at
+      ) VALUES (
+        ${messageId}, ${conversationId}, ${senderId}, ${senderName}, ${senderType},
+        ${content}, ${messageType}, NOW()
+      )
+    `;
+
+    // Update conversation's last message
+    await sql`
+      UPDATE conversations 
+      SET last_message = ${content}, 
+          last_message_time = NOW(),
+          updated_at = NOW()
+      WHERE id = ${conversationId}
+    `;
+
     const newMessage = {
-      id: `msg-${Date.now()}`,
+      id: messageId,
       conversationId,
       content,
       senderId,
@@ -930,7 +967,23 @@ app.put('/api/messaging/conversations/:conversationId/read', async (req, res) =>
     const { conversationId } = req.params;
     const { userId } = req.body;
     
-    // Mock mark as read
+    // Mark messages as read in database
+    await sql`
+      UPDATE messages 
+      SET is_read = true 
+      WHERE conversation_id = ${conversationId} 
+        AND sender_id != ${userId}
+    `;
+
+    // Update unread count in conversation
+    await sql`
+      UPDATE conversations 
+      SET unread_count = 0,
+          updated_at = NOW()
+      WHERE id = ${conversationId}
+        AND (participant_id = ${userId} OR creator_id = ${userId})
+    `;
+
     res.json({
       success: true,
       message: 'Messages marked as read'
