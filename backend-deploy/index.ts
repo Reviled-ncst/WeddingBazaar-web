@@ -309,6 +309,280 @@ const verifyTokenHandler = async (req, res) => {
 app.get('/api/auth/verify', verifyTokenHandler);
 app.post('/api/auth/verify', verifyTokenHandler);
 
+// Booking endpoints - Mock data for individual user bookings
+app.get('/api/bookings', async (req, res) => {
+  try {
+    const { page = 1, limit = 10, coupleId, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    
+    // Mock booking data
+    const mockBookings = [
+      {
+        id: 1,
+        vendorId: 1,
+        vendorName: 'Elegant Photography Studios',
+        vendorCategory: 'Photography',
+        serviceType: 'Wedding Photography Package',
+        bookingDate: '2025-10-15',
+        eventDate: '2026-03-15',
+        status: 'confirmed',
+        amount: 75000,
+        downPayment: 25000,
+        remainingBalance: 50000,
+        createdAt: '2025-09-01T10:00:00Z',
+        updatedAt: '2025-09-10T15:30:00Z',
+        location: 'Manila Cathedral',
+        notes: 'Pre-wedding shoot included',
+        contactPerson: 'John Cruz',
+        contactPhone: '+63917-123-4567'
+      },
+      {
+        id: 2,
+        vendorId: 2,
+        vendorName: 'Divine Catering Services',
+        vendorCategory: 'Catering',
+        serviceType: 'Full Wedding Reception Catering',
+        bookingDate: '2025-09-15',
+        eventDate: '2026-03-15',
+        status: 'pending',
+        amount: 150000,
+        downPayment: 50000,
+        remainingBalance: 100000,
+        createdAt: '2025-09-15T14:20:00Z',
+        updatedAt: '2025-09-15T14:20:00Z',
+        location: 'Garden Resort Tagaytay',
+        notes: '100 guests, includes setup and cleanup',
+        contactPerson: 'Maria Santos',
+        contactPhone: '+63917-987-6543'
+      },
+      {
+        id: 3,
+        vendorId: 3,
+        vendorName: 'Paradise Garden Venue',
+        vendorCategory: 'Venue',
+        serviceType: 'Wedding Venue Rental',
+        bookingDate: '2025-08-20',
+        eventDate: '2026-03-15',
+        status: 'confirmed',
+        amount: 300000,
+        downPayment: 100000,
+        remainingBalance: 200000,
+        createdAt: '2025-08-20T09:15:00Z',
+        updatedAt: '2025-09-05T11:45:00Z',
+        location: 'Tagaytay City',
+        notes: 'Includes garden ceremony and reception hall',
+        contactPerson: 'Roberto Garcia',
+        contactPhone: '+63917-555-1234'
+      }
+    ];
+
+    const startIndex = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const endIndex = startIndex + parseInt(limit as string);
+    const paginatedBookings = mockBookings.slice(startIndex, endIndex);
+
+    res.json({
+      success: true,
+      bookings: paginatedBookings,
+      pagination: {
+        currentPage: parseInt(page as string),
+        totalPages: Math.ceil(mockBookings.length / parseInt(limit as string)),
+        totalBookings: mockBookings.length,
+        hasNext: endIndex < mockBookings.length,
+        hasPrev: parseInt(page as string) > 1
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching bookings'
+    });
+  }
+});
+
+// Booking statistics endpoint
+app.get('/api/bookings/stats', async (req, res) => {
+  try {
+    const mockStats = {
+      totalBookings: 3,
+      confirmedBookings: 2,
+      pendingBookings: 1,
+      cancelledBookings: 0,
+      totalSpent: 525000,
+      totalPaid: 175000,
+      remainingBalance: 350000,
+      upcomingPayments: 2,
+      monthlyBreakdown: [
+        { month: 'Aug 2025', bookings: 1, amount: 300000 },
+        { month: 'Sep 2025', bookings: 2, amount: 225000 }
+      ],
+      categoryBreakdown: [
+        { category: 'Venue', count: 1, amount: 300000 },
+        { category: 'Catering', count: 1, amount: 150000 },
+        { category: 'Photography', count: 1, amount: 75000 }
+      ]
+    };
+
+    res.json({
+      success: true,
+      stats: mockStats
+    });
+  } catch (error) {
+    console.error('Error fetching booking stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching booking statistics'
+    });
+  }
+});
+
+// Individual booking details endpoint
+app.get('/api/bookings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Mock detailed booking data
+    const mockBooking = {
+      id: parseInt(id),
+      vendorId: 1,
+      vendorName: 'Elegant Photography Studios',
+      vendorCategory: 'Photography',
+      vendorImage: '/api/placeholder/400/300',
+      serviceType: 'Wedding Photography Package',
+      bookingDate: '2025-09-01',
+      eventDate: '2026-03-15',
+      eventTime: '14:00',
+      status: 'confirmed',
+      amount: 75000,
+      downPayment: 25000,
+      remainingBalance: 50000,
+      paymentSchedule: [
+        { dueDate: '2025-09-01', amount: 25000, status: 'paid', description: 'Booking deposit' },
+        { dueDate: '2026-01-15', amount: 25000, status: 'pending', description: 'Mid payment' },
+        { dueDate: '2026-03-01', amount: 25000, status: 'pending', description: 'Final payment' }
+      ],
+      services: [
+        'Full day wedding photography',
+        'Pre-wedding photoshoot (2 hours)',
+        'Digital photo gallery (500+ photos)',
+        'Printed photo album (50 pages)',
+        'USB drive with all photos'
+      ],
+      location: 'Manila Cathedral + Reception Venue',
+      notes: 'Include family portraits during ceremony prep',
+      contactPerson: 'John Cruz',
+      contactPhone: '+63917-123-4567',
+      contactEmail: 'john@elegantphoto.ph',
+      createdAt: '2025-09-01T10:00:00Z',
+      updatedAt: '2025-09-10T15:30:00Z'
+    };
+
+    res.json({
+      success: true,
+      booking: mockBooking
+    });
+  } catch (error) {
+    console.error('Error fetching booking details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching booking details'
+    });
+  }
+});
+
+// Services endpoint with detailed service information
+app.get('/api/services', async (req, res) => {
+  try {
+    const mockServices = [
+      {
+        id: 1,
+        name: 'Wedding Photography',
+        category: 'Photography',
+        description: 'Professional wedding photography services',
+        icon: '📸',
+        providers: [
+          {
+            id: 1,
+            name: 'Elegant Photography Studios',
+            rating: 4.8,
+            reviewCount: 127,
+            priceRange: '₱25,000 - ₱80,000',
+            location: 'Manila',
+            specialties: ['Wedding Photography', 'Engagement Shoots', 'Pre-nup'],
+            yearsExperience: 8,
+            image: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400',
+            gallery: [
+              'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400',
+              'https://images.unsplash.com/photo-1519741497674-611481863552?w=400',
+              'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400'
+            ]
+          }
+        ]
+      },
+      {
+        id: 2,
+        name: 'Wedding Catering',
+        category: 'Catering',
+        description: 'Delicious wedding catering services',
+        icon: '🍽️',
+        providers: [
+          {
+            id: 2,
+            name: 'Divine Catering Services',
+            rating: 4.9,
+            reviewCount: 89,
+            priceRange: '₱800 - ₱1,500 per head',
+            location: 'Quezon City',
+            specialties: ['Filipino Cuisine', 'International Buffet', 'Custom Menus'],
+            yearsExperience: 12,
+            image: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400',
+            gallery: [
+              'https://images.unsplash.com/photo-1555244162-803834f70033?w=400',
+              'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400',
+              'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400'
+            ]
+          }
+        ]
+      },
+      {
+        id: 3,
+        name: 'Wedding Venues',
+        category: 'Venues',
+        description: 'Beautiful wedding venues and locations',
+        icon: '🏰',
+        providers: [
+          {
+            id: 3,
+            name: 'Paradise Garden Venue',
+            rating: 4.9,
+            reviewCount: 156,
+            priceRange: '₱200,000 - ₱500,000',
+            location: 'Tagaytay',
+            specialties: ['Garden Ceremonies', 'Reception Halls', 'Overnight Stays'],
+            yearsExperience: 15,
+            image: 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+            gallery: [
+              'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+              'https://images.unsplash.com/photo-1464207687429-7505649dae38?w=400',
+              'https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=400'
+            ]
+          }
+        ]
+      }
+    ];
+
+    res.json({
+      success: true,
+      services: mockServices
+    });
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching services'
+    });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Wedding Bazaar API server running on port ${PORT}`);
