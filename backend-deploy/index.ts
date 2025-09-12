@@ -285,7 +285,7 @@ app.post('/api/auth/login', async (req, res) => {
       console.log('Attempting database query for login...');
       users = await sql`
         SELECT u.id, u.email, u.password, u.first_name, u.last_name, 
-               COALESCE(u.role, 'couple') as role, u.profile_image,
+               COALESCE(u.user_type, 'couple') as role, u.profile_image,
                v.id as vendor_id, v.business_name
         FROM users u
         LEFT JOIN vendors v ON u.id = v.user_id
@@ -318,28 +318,10 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     if (users.length === 0) {
-      console.log('No user found in DB or DB error, using mock authentication');
-      // Fallback to mock authentication for demo
-      let role = 'couple'; // default
-      if (userType === 'vendor' || email.includes('vendor') || email.includes('business')) {
-        role = 'vendor';
-      } else if (userType === 'admin' || email.includes('admin')) {
-        role = 'admin';
-      }
-
-      return res.json({
-        success: true,
-        message: 'Login successful (demo mode)',
-        user: {
-          id: '1',
-          email: email,
-          firstName: role === 'vendor' ? 'Business' : 'Test',
-          lastName: role === 'vendor' ? 'Owner' : 'User', 
-          role: role,
-          profileImage: '',
-          phone: ''
-        },
-        token: 'mock-jwt-token'
+      console.log('No user found in database');
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
       });
     }
 
@@ -423,9 +405,9 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Create new user in database
     const newUsers = await sql`
-      INSERT INTO users (email, password_hash, first_name, last_name, role, created_at, updated_at)
+      INSERT INTO users (email, password_hash, first_name, last_name, user_type, created_at, updated_at)
       VALUES (${email}, ${hashedPassword}, ${name.split(' ')[0] || name}, ${name.split(' ')[1] || ''}, ${userType}, NOW(), NOW())
-      RETURNING id, email, first_name, last_name, role, profile_image
+      RETURNING id, email, first_name, last_name, user_type, profile_image
     `;
 
     const newUser = newUsers[0];
@@ -438,7 +420,7 @@ app.post('/api/auth/register', async (req, res) => {
         email: newUser.email,
         firstName: newUser.first_name,
         lastName: newUser.last_name,
-        role: newUser.role,
+        role: newUser.user_type,
         profileImage: newUser.profile_image || '',
         phone: ''
       },
@@ -446,20 +428,10 @@ app.post('/api/auth/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    // Fallback to mock registration for demo
-    res.json({
-      success: true,
-      message: 'Registration successful (demo mode)',
-      user: {
-        id: Date.now().toString(),
-        email: email,
-        firstName: name.split(' ')[0] || name,
-        lastName: name.split(' ')[1] || '',
-        role: userType,
-        profileImage: '',
-        phone: ''
-      },
-      token: `mock-jwt-${Date.now()}`
+    res.status(500).json({
+      success: false,
+      message: 'Server error during registration',
+      error: error.message
     });
   }
 });
@@ -513,7 +485,7 @@ const verifyTokenHandler = async (req, res) => {
           // Fetch real user data from database
           const userResult = await sql`
             SELECT u.*, 
-                   COALESCE(u.role, 'couple') as role,
+                   COALESCE(u.user_type, 'couple') as role,
                    vp.business_name,
                    vp.business_description,
                    vp.phone,
@@ -553,18 +525,9 @@ const verifyTokenHandler = async (req, res) => {
           
         } catch (dbError) {
           console.error('Database error during token verification:', dbError);
-          // Fallback to mock data if database fails
-          res.json({
-            success: true,
-            user: {
-              id: userId,
-              email: 'user@example.com',
-              firstName: 'User',
-              lastName: 'Name',
-              role: 'couple',
-              profileImage: '',
-              phone: ''
-            }
+          return res.status(500).json({
+            success: false,
+            message: 'Database error during token verification'
           });
         }
       } else {
@@ -573,30 +536,6 @@ const verifyTokenHandler = async (req, res) => {
           message: 'Invalid token format'
         });
       }
-    } 
-    // Handle old mock tokens for backward compatibility
-    else if (token === 'mock-jwt-token' || token.startsWith('mock-')) {
-      // For demo purposes, check if we have a vendor token or role indicator
-      let role = 'couple';
-      const authHeader = req.headers.authorization;
-      if (authHeader && (authHeader.includes('vendor') || token.includes('vendor'))) {
-        role = 'vendor';
-      } else if (authHeader && (authHeader.includes('admin') || token.includes('admin'))) {
-        role = 'admin';
-      }
-
-      res.json({
-        success: true,
-        user: {
-          id: '1',
-          email: role === 'vendor' ? 'vendor@example.com' : 'test@example.com',
-          firstName: role === 'vendor' ? 'Business' : 'Test',
-          lastName: role === 'vendor' ? 'Owner' : 'User',
-          role: role,
-          profileImage: '',
-          phone: ''
-        }
-      });
     } else {
       return res.status(401).json({
         success: false,
