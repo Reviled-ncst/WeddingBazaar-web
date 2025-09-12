@@ -22,12 +22,22 @@ const corsOrigins = [
 
 app.use(cors({
   origin: corsOrigins,
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Debug middleware for auth requests
+app.use('/api/auth', (req, res, next) => {
+  console.log(`Auth request: ${req.method} ${req.url}`);
+  console.log('Headers:', req.headers.authorization ? 'Auth header present' : 'No auth header');
+  console.log('Body:', req.body ? 'Body present' : 'No body');
+  next();
+});
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
@@ -236,11 +246,21 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Auth verify endpoint - THIS WAS MISSING!
-app.get('/api/auth/verify', async (req, res) => {
+// Auth verify endpoint - Support both GET and POST
+const verifyTokenHandler = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    // Try to get token from Authorization header first
+    let token = req.headers.authorization?.split(' ')[1];
+    
+    // If not in header, try to get from request body (for POST requests)
+    if (!token && req.body && req.body.token) {
+      token = req.body.token;
+    }
+    
+    // If still no token, try from query params (for GET requests)
+    if (!token && req.query && req.query.token) {
+      token = req.query.token;
+    }
     
     if (!token) {
       return res.status(401).json({
@@ -274,7 +294,11 @@ app.get('/api/auth/verify', async (req, res) => {
       message: 'Server error during token verification'
     });
   }
-});
+};
+
+// Support both GET and POST for auth verify
+app.get('/api/auth/verify', verifyTokenHandler);
+app.post('/api/auth/verify', verifyTokenHandler);
 
 // Start server
 app.listen(PORT, () => {
