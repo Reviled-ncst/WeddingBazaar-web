@@ -403,47 +403,219 @@ export const VendorBookings: React.FC = () => {
   };
 
   const loadMockData = () => {
+    // Use realistic data based on actual database analysis
     const mockUIBookings: UIBooking[] = [
       {
-        id: 'booking_001',
-        vendorId: 'vendor_001',
-        coupleId: 'couple_001',
-        coupleName: 'John & Jane Smith',
-        contactEmail: 'john.smith@email.com',
-        contactPhone: '+1-555-0123',
-        serviceType: 'photography',
-        eventDate: '2024-09-15',
-        eventTime: '10:00',
-        eventLocation: 'Riverside Gardens, California',
-        guestCount: 120,
-        specialRequests: 'Include engagement photos and drone shots',
-        status: 'quote_requested',
-        quoteAmount: 2800,
-        totalAmount: 2800,
-        downpaymentAmount: 560,
-        depositAmount: 560, // Alias for compatibility
+        id: '12',
+        vendorId: '2-2025-003',
+        coupleId: 'couple_006',
+        coupleName: 'Chris & Amanda Taylor',
+        contactEmail: 'chris.taylor@email.com',
+        contactPhone: '+1 (555) 678-9012',
+        serviceType: 'Hair & Makeup Artists', // Updated to match database categories
+        eventDate: '2025-11-10',
+        eventTime: '14:00',
+        eventLocation: 'Country Club',
+        guestCount: 75,
+        specialRequests: 'Classical music only',
+        status: 'quote_rejected', // mapping from 'declined' in database
+        quoteAmount: 1200,
+        totalAmount: 1200,
+        downpaymentAmount: 240,
+        depositAmount: 240,
         totalPaid: 0,
-        remainingBalance: 2800,
-        budgetRange: '$2000-$3000',
-        preferredContactMethod: 'email',
-        createdAt: '2024-08-20T10:00:00Z',
-        updatedAt: '2024-08-20T10:00:00Z',
+        remainingBalance: 1200,
+        budgetRange: '$1000-$1500',
+        preferredContactMethod: 'phone',
+        createdAt: '2025-08-30T06:53:17.928Z',
+        updatedAt: '2025-08-30T06:53:17.928Z',
         paymentProgressPercentage: 0,
         paymentCount: 0,
         formatted: {
-          totalAmount: formatPHP(2800),
+          totalAmount: formatPHP(1200),
           totalPaid: formatPHP(0),
-          remainingBalance: formatPHP(2800),
-          downpaymentAmount: formatPHP(560),
+          remainingBalance: formatPHP(1200),
+          downpaymentAmount: formatPHP(240),
         },
-        vendorName: 'Elite Photography Studio' // For PaymentReceipt compatibility
+        vendorName: 'Premium Wedding Services'
+      },
+      {
+        id: '11',
+        vendorId: '2-2025-003',
+        coupleId: 'couple_005',
+        coupleName: 'Ryan & Jennifer White',
+        contactEmail: 'ryan.white@email.com',
+        contactPhone: '+1 (555) 567-8901',
+        serviceType: 'Florist', // Already matches database categories
+        eventDate: '2024-08-20',
+        eventTime: '16:00',
+        eventLocation: 'Historic Mansion',
+        guestCount: 200,
+        specialRequests: 'Centerpieces with baby breath and roses',
+        status: 'completed',
+        quoteAmount: 1800,
+        totalAmount: 1800,
+        downpaymentAmount: 360,
+        depositAmount: 360,
+        totalPaid: 1800,
+        remainingBalance: 0,
+        budgetRange: '$1500-$2000',
+        preferredContactMethod: 'email',
+        createdAt: '2025-08-30T06:53:17.854Z',
+        updatedAt: '2025-08-30T06:53:17.854Z',
+        paymentProgressPercentage: 100,
+        paymentCount: 2,
+        formatted: {
+          totalAmount: formatPHP(1800),
+          totalPaid: formatPHP(1800),
+          remainingBalance: formatPHP(0),
+          downpaymentAmount: formatPHP(360),
+        },
+        vendorName: 'Premium Wedding Services'
+      },
+      {
+        id: '10',
+        vendorId: '2-2025-003',
+        coupleId: 'couple_004',
+        coupleName: 'Alex & Maria Garcia',
+        contactEmail: 'alex.garcia@email.com',
+        contactPhone: '+1 (555) 456-7890',
+        serviceType: 'Wedding Planner', // Already matches database categories
+        eventDate: '2025-12-05',
+        eventTime: '15:00',
+        eventLocation: 'Mountain Lodge',
+        guestCount: 120,
+        specialRequests: 'Outdoor ceremony weather backup plan needed',
+        status: 'paid_in_full',
+        quoteAmount: 2500,
+        totalAmount: 2500,
+        downpaymentAmount: 500,
+        depositAmount: 500,
+        totalPaid: 2500,
+        remainingBalance: 0,
+        budgetRange: '$2000-$3000',
+        preferredContactMethod: 'phone',
+        createdAt: '2025-08-30T06:53:17.780Z',
+        updatedAt: '2025-08-30T06:53:17.780Z',
+        paymentProgressPercentage: 100,
+        paymentCount: 3,
+        formatted: {
+          totalAmount: formatPHP(2500),
+          totalPaid: formatPHP(2500),
+          remainingBalance: formatPHP(0),
+          downpaymentAmount: formatPHP(500),
+        },
+        vendorName: 'Premium Wedding Services'
+      },
+      {
+        id: '9',
+        vendorId: '2-2025-003',
+        coupleId: 'couple_003',
+        coupleName: 'David & Lisa Brown',
+        contactEmail: 'david.brown@email.com',
+        contactPhone: '+1 (555) 345-6789',
+        serviceType: 'Caterer', // Updated to match database categories
+        eventDate: '2025-09-30',
+        eventTime: '18:00',
+        eventLocation: 'Beachfront Resort',
+        guestCount: 80,
+        specialRequests: 'Vegetarian options required',
+        status: 'downpayment_paid', // mapping from 'downpayment' in database
+        quoteAmount: 1200,
+        totalAmount: 1200,
+        downpaymentAmount: 600,
+        depositAmount: 600,
+        totalPaid: 600,
+        remainingBalance: 600,
+        budgetRange: '$1000-$1500',
+        preferredContactMethod: 'email',
+        createdAt: '2025-08-30T06:53:17.706Z',
+        updatedAt: '2025-08-30T06:53:17.706Z',
+        paymentProgressPercentage: 50,
+        paymentCount: 1,
+        formatted: {
+          totalAmount: formatPHP(1200),
+          totalPaid: formatPHP(600),
+          remainingBalance: formatPHP(600),
+          downpaymentAmount: formatPHP(600),
+        },
+        vendorName: 'Premium Wedding Services'
+      },
+      {
+        id: '8',
+        vendorId: '2-2025-003',
+        coupleId: 'couple_002',
+        coupleName: 'Mike & Emma Johnson',
+        contactEmail: 'mike.johnson@email.com',
+        contactPhone: '+1 (555) 234-5678',
+        serviceType: 'Photographer & Videographer', // Updated to match database categories
+        eventDate: '2025-11-20',
+        eventTime: '12:00',
+        eventLocation: 'Garden Venue',
+        guestCount: 150,
+        specialRequests: 'Drone photography for aerial shots',
+        status: 'confirmed', // mapping from 'approved' in database
+        quoteAmount: 1800,
+        totalAmount: 1800,
+        downpaymentAmount: 360,
+        depositAmount: 360,
+        totalPaid: 360,
+        remainingBalance: 1440,
+        budgetRange: '$1500-$2000',
+        preferredContactMethod: 'phone',
+        createdAt: '2025-08-30T06:53:17.632Z',
+        updatedAt: '2025-08-30T06:53:17.632Z',
+        paymentProgressPercentage: 20,
+        paymentCount: 1,
+        formatted: {
+          totalAmount: formatPHP(1800),
+          totalPaid: formatPHP(360),
+          remainingBalance: formatPHP(1440),
+          downpaymentAmount: formatPHP(360),
+        },
+        vendorName: 'Premium Wedding Services'
+      },
+      {
+        id: '7',
+        vendorId: '2-2025-003',
+        coupleId: 'couple_001',
+        coupleName: 'John & Sarah Smith',
+        contactEmail: 'john.smith@email.com',
+        contactPhone: '+1 (555) 123-4567',
+        serviceType: 'DJ/Band', // Already matches database categories
+        eventDate: '2025-10-15',
+        eventTime: '19:00',
+        eventLocation: 'Downtown Hotel',
+        guestCount: 100,
+        specialRequests: 'Mix of modern and classic music',
+        status: 'quote_requested', // mapping from 'request' in database
+        quoteAmount: 2500,
+        totalAmount: 2500,
+        downpaymentAmount: 500,
+        depositAmount: 500,
+        totalPaid: 500,
+        remainingBalance: 2000,
+        budgetRange: '$2000-$3000',
+        preferredContactMethod: 'email',
+        createdAt: '2025-08-30T06:53:17.558Z',
+        updatedAt: '2025-08-30T06:53:17.558Z',
+        paymentProgressPercentage: 20,
+        paymentCount: 1,
+        formatted: {
+          totalAmount: formatPHP(2500),
+          totalPaid: formatPHP(500),
+          remainingBalance: formatPHP(2000),
+          downpaymentAmount: formatPHP(500),
+        },
+        vendorName: 'Premium Wedding Services'
       }
     ];
+    
     setBookings(mockUIBookings);
     setPagination({
       current_page: 1,
       total_pages: 1,
-      total_items: 1,
+      total_items: 6,
       per_page: 10,
       hasNext: false,
       hasPrev: false
@@ -462,15 +634,15 @@ export const VendorBookings: React.FC = () => {
       setStats(uiStats);
     } catch (error) {
       console.error('💥 [VendorBookings] Error loading stats with comprehensive API:', error);
-      console.log('🎭 [VendorBookings] Falling back to mock stats...');
-      // Fallback stats for demo
+      console.log('🎭 [VendorBookings] Falling back to realistic mock stats based on actual data...');
+      // Realistic stats based on actual database analysis (vendor 2-2025-003)
       const mockStats: UIBookingStats = {
-        totalBookings: 42,
-        inquiries: 8,
-        fullyPaidBookings: 6,
-        totalRevenue: 500000,
+        totalBookings: 6, // Actual count from database
+        inquiries: 1, // quote_requested status (mapped from 'request')
+        fullyPaidBookings: 2, // completed + paid_in_full statuses  
+        totalRevenue: 600000, // ₱11,000 USD = ~₱600,000 PHP (updated realistic conversion)
         formatted: {
-          totalRevenue: formatPHP(500000)
+          totalRevenue: formatPHP(600000)
         }
       };
       setStats(mockStats);

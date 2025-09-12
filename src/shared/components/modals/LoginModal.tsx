@@ -70,9 +70,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       
     } catch (err) {
       console.error('LoginModal: Login failed:', err);
-      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+      
+      // Handle specific error types
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (err instanceof Error) {
+        // Check for specific error patterns
+        if (err.message.includes('Invalid email or password')) {
+          errorMessage = 'Invalid email or password. Please check your credentials.';
+        } else if (err.message.includes('User not found')) {
+          errorMessage = 'No account found with this email address.';
+        } else if (err.message.includes('Network')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        } else if (err.message.includes('500')) {
+          errorMessage = 'Server error. Please try again in a moment.';
+        } else if (err.message.includes('<!doctype') || err.message.includes('HTML')) {
+          errorMessage = 'Server configuration error. Please contact support.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
       setIsLoading(false);
       setIsLoginSuccess(false);
+      
+      // Don't close modal on error - let user try again
     }
   };
 
@@ -190,7 +213,28 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {error && (
           <div className="relative p-4 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200/60 rounded-2xl shadow-lg backdrop-blur-sm overflow-hidden">
             <div className="absolute inset-0 bg-white/40 rounded-2xl"></div>
-            <p className="text-red-600 text-sm font-medium relative z-10">{error}</p>
+            <div className="flex items-start space-x-3 relative z-10">
+              <div className="flex-shrink-0">
+                <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex-1">
+                <p className="text-red-600 text-sm font-medium">{error}</p>
+              </div>
+              <button 
+                onClick={() => setError(null)}
+                className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                title="Dismiss error"
+                aria-label="Dismiss error message"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-400 to-rose-400 rounded-t-2xl"></div>
           </div>
         )}

@@ -1,6 +1,10 @@
 import type { Conversation, Message } from '../../pages/shared/messenger/types';
 
-const API_BASE = '/api/messaging';
+const getApiBaseUrl = (): string => {
+  return import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
+};
+
+const API_BASE = `${getApiBaseUrl()}/messaging`;
 
 export interface MessagingApiResponse<T> {
   conversations?: T;
@@ -15,16 +19,30 @@ export class MessagingApiService {
   // Get all conversations for a vendor
   static async getConversations(vendorId: string): Promise<Conversation[]> {
     try {
-      const response = await fetch(`${API_BASE}/conversations/${vendorId}`);
+      const apiUrl = `${getApiBaseUrl()}/messaging/conversations/${vendorId}`;
+      console.log('🔍 Fetching conversations from:', apiUrl);
+      
+      const response = await fetch(apiUrl);
+      
+      console.log('🔍 Conversations response status:', response.status);
+      
+      // Check if response is HTML (error page) instead of JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        console.error('❌ Non-JSON response received:', contentType);
+        throw new Error('Server configuration error. Please contact support.');
+      }
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch conversations: ${response.statusText}`);
+        throw new Error(`Failed to fetch conversations: ${response.status} ${response.statusText}`);
       }
       
       const data: MessagingApiResponse<Conversation[]> = await response.json();
+      console.log('✅ Conversations data received:', data);
+      
       return data.conversations || [];
     } catch (error) {
-      console.error('Error fetching conversations:', error);
+      console.error('❌ Error fetching conversations:', error);
       throw error;
     }
   }
@@ -40,13 +58,25 @@ export class MessagingApiService {
     userType: 'couple' | 'vendor' | 'admin';
   }): Promise<any> {
     try {
-      const response = await fetch(`${API_BASE}/conversations`, {
+      const apiUrl = `${getApiBaseUrl()}/messaging/conversations`;
+      console.log('📤 Creating conversation at:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
       });
+      
+      console.log('📤 Create conversation response status:', response.status);
+      
+      // Check if response is HTML (error page) instead of JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        console.error('❌ Non-JSON response received:', contentType);
+        throw new Error('Server configuration error. Please contact support.');
+      }
       
       if (!response.ok) {
         throw new Error(`Failed to create conversation: ${response.statusText}`);

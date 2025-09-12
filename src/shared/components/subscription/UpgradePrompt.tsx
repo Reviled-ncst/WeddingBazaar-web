@@ -60,13 +60,26 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
         let locationData;
         try {
           const response = await fetch('https://ipapi.co/json/');
-          locationData = await response.json();
+          if (response.ok) {
+            locationData = await response.json();
+          } else {
+            throw new Error(`Primary IP service failed: ${response.status}`);
+          }
         } catch (error) {
           console.log('Primary IP service failed, trying backup...');
-          const response = await fetch('https://ip-api.com/json/');
-          locationData = await response.json();
-          // ip-api.com uses different field names
-          locationData.country_code = locationData.countryCode;
+          try {
+            const response = await fetch('https://ip-api.com/json/');
+            if (response.ok) {
+              locationData = await response.json();
+              // ip-api.com uses different field names
+              locationData.country_code = locationData.countryCode;
+            } else {
+              throw new Error(`Backup IP service failed: ${response.status}`);
+            }
+          } catch (backupError) {
+            console.log('Both IP services failed, using default location');
+            locationData = { country_code: 'US' }; // Default to US
+          }
         }
         
         console.log('Location data received:', locationData);

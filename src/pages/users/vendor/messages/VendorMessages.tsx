@@ -3,19 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MessageSquare, 
   Search, 
-  Users, 
   Phone, 
   Video,
   MoreVertical,
   Star,
-  Clock,
   CheckCheck,
   AlertCircle,
   Plus,
   Send,
   Paperclip,
   Smile,
-  Image,
+  ImageIcon,
   Mic
 } from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
@@ -171,58 +169,59 @@ export const VendorMessages: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
       <VendorHeader />
       
-      <main className="pt-24 pb-12 h-screen overflow-y-auto overscroll-contain">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="pt-20">
+        <div className="max-w-[1600px] mx-auto px-6 py-8">
           {/* Enhanced Header with Better Styling */}
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-10"
+            className="mb-8"
           >
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-3">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-2">
                   Messages
                 </h1>
-                <p className="text-gray-600 text-lg">Communicate with your clients and manage inquiries</p>
+                <p className="text-gray-600">Communicate with your clients and manage inquiries</p>
               </div>
               
               <motion.button 
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center space-x-3 px-8 py-4 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white rounded-2xl hover:from-pink-600 hover:via-rose-600 hover:to-pink-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform"
+                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white rounded-xl hover:from-pink-600 hover:via-rose-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl"
               >
-                <Plus className="w-6 h-6" />
+                <Plus className="w-5 h-5" />
                 <span className="font-semibold">New Message</span>
               </motion.button>
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Chat Interface - Improved Proportions */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-[calc(100vh-200px)]">
             {/* Enhanced Conversations List */}
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="lg:col-span-1"
+              className="lg:col-span-2"
             >
-              <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden max-h-[650px]">
+              <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg overflow-hidden h-full">
                 {/* Enhanced Search and Filter */}
-                <div className="p-8 border-b border-gray-100/50">
-                  <div className="relative mb-6">
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-6 h-6 text-gray-400" />
+                <div className="p-6 border-b border-gray-100/50">
+                  <div className="relative mb-4">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type="text"
                       placeholder="Search conversations..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-12 pr-6 py-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-pink-500/20 focus:border-pink-500 outline-none bg-white/80 backdrop-blur-sm text-lg"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 outline-none bg-white/80 backdrop-blur-sm"
                     />
                   </div>
                   
-                  <div className="flex space-x-3">
+                  <div className="flex space-x-2">
                     {[
                       { key: 'all', label: 'All', icon: MessageSquare },
                       { key: 'unread', label: 'Unread', icon: AlertCircle },
@@ -236,13 +235,13 @@ export const VendorMessages: React.FC = () => {
                           whileTap={{ scale: 0.98 }}
                           onClick={() => setFilter(filterOption.key as any)}
                           className={cn(
-                            "flex items-center space-x-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300",
+                            "flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                             filter === filterOption.key
-                              ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg'
+                              ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md'
                               : 'text-gray-600 hover:text-pink-700 hover:bg-pink-50 bg-white/60'
                           )}
                         >
-                          <Icon className="w-5 h-5" />
+                          <Icon className="w-4 h-4" />
                           <span>{filterOption.label}</span>
                         </motion.button>
                       );
@@ -251,13 +250,7 @@ export const VendorMessages: React.FC = () => {
                 </div>
 
                 {/* Enhanced Conversations */}
-                <div 
-                  className="max-h-[450px] overflow-y-scroll overscroll-contain"
-                  onWheel={(e) => {
-                    // Prevent wheel events from bubbling to parent
-                    e.stopPropagation();
-                  }}
-                >
+                <div className="h-[calc(100%-140px)] overflow-y-auto">
                   {filteredConversations.map((conversation, index) => (
                     <motion.div
                       key={conversation.id}
@@ -348,10 +341,10 @@ export const VendorMessages: React.FC = () => {
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="lg:col-span-2"
+              className="lg:col-span-3"
             >
               {selectedConversation ? (
-                <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl h-[650px] flex flex-col overflow-hidden">
+                <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg h-full flex flex-col overflow-hidden">
                   {/* Enhanced Chat Header */}
                   <div className="p-8 border-b border-gray-100/50 bg-gradient-to-r from-pink-50/50 to-rose-50/50 flex-shrink-0">
                     <div className="flex items-center justify-between">
@@ -528,7 +521,7 @@ export const VendorMessages: React.FC = () => {
                             <Smile className="w-5 h-5 text-gray-500" />
                           </button>
                           <button className="p-3 hover:bg-white/80 rounded-xl transition-colors">
-                            <Image className="w-5 h-5 text-gray-500" />
+                            <ImageIcon className="w-5 h-5 text-gray-500" />
                           </button>
                           <button className="p-3 hover:bg-white/80 rounded-xl transition-colors">
                             <Mic className="w-5 h-5 text-gray-500" />
@@ -569,74 +562,6 @@ export const VendorMessages: React.FC = () => {
               )}
             </motion.div>
           </div>
-
-        {/* Enhanced Quick Stats - Fixed Proportions */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-          >
-            {[
-              {
-                label: 'Total Conversations',
-                value: conversations.length.toString(),
-                change: '+3 this week',
-                icon: MessageSquare,
-                color: 'pink'
-              },
-              {
-                label: 'Unread Messages',
-                value: conversations.reduce((acc, conv) => acc + conv.unreadCount, 0).toString(),
-                change: '2 urgent',
-                icon: AlertCircle,
-                color: 'orange'
-              },
-              {
-                label: 'Response Time',
-                value: '2h avg',
-                change: '15min faster',
-                icon: Clock,
-                color: 'green'
-              },
-              {
-                label: 'Active Clients',
-                value: conversations.filter(conv => conv.participants[0]?.isOnline).length.toString(),
-                change: '+2 this month',
-                icon: Users,
-                color: 'blue'
-              }
-            ].map((stat, index) => {
-              const Icon = stat.icon;
-              return (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6 hover:shadow-xl transition-all duration-300 group h-[160px] flex flex-col justify-between"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className={cn(
-                      "p-3 rounded-xl transition-all duration-300 group-hover:scale-110",
-                      stat.color === 'pink' && 'bg-gradient-to-br from-pink-100 to-pink-200 text-pink-600',
-                      stat.color === 'orange' && 'bg-gradient-to-br from-orange-100 to-orange-200 text-orange-600',
-                      stat.color === 'green' && 'bg-gradient-to-br from-green-100 to-green-200 text-green-600',
-                      stat.color === 'blue' && 'bg-gradient-to-br from-blue-100 to-blue-200 text-blue-600'
-                    )}>
-                      <Icon className="w-6 h-6" />
-                    </div>
-                  </div>
-                  
-                  <div className="flex-1 flex flex-col justify-end">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</h3>
-                    <p className="text-gray-600 text-sm font-medium mb-1 line-clamp-2">{stat.label}</p>
-                    <p className="text-xs text-green-600 font-semibold">{stat.change}</p>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
         </div>
       </main>
     </div>

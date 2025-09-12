@@ -9,6 +9,8 @@ interface User {
   role: 'couple' | 'vendor' | 'admin';
   profileImage?: string;
   phone?: string;
+  businessName?: string;
+  vendorId?: string | null;
 }
 
 interface AuthContextType {
@@ -63,19 +65,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ token })
+            }
           });
 
           if (response.ok) {
             const data = await response.json();
+            console.log('✅ Token verification successful:', data);
             // Only set user if we get valid data back
             if (data.success && data.user) {
               setUser(data.user);
             } else {
+              console.log('❌ Invalid verify response:', data);
               localStorage.removeItem('auth_token');
             }
           } else {
+            console.error('❌ Token verification failed:', response.status, response.statusText);
             localStorage.removeItem('auth_token');
           }
         }
@@ -94,9 +98,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      // TODO: Implement actual login API call
       const apiUrl = import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
       const fullUrl = `${apiUrl}/auth/login`;
+      
+      console.log('🔐 Attempting login to:', fullUrl);
       
       const response = await fetch(fullUrl, {
         method: 'POST',
@@ -106,26 +111,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
 
+      console.log('🔐 Login response status:', response.status);
+      
+      // Check if response is HTML (error page) instead of JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        console.error('❌ Non-JSON response received:', contentType);
+        throw new Error('Server configuration error. Please contact support.');
+      }
+
       if (!response.ok) {
         const error = await response.json();
-        console.error('AuthContext: Login failed with error:', error);
-        throw new Error(error.message || 'Login failed');
+        console.error('❌ Login failed with error:', error);
+        throw new Error(error.message || `Server error (${response.status})`);
       }
 
       const data = await response.json();
+      console.log('✅ Login response data:', data);
       
       // Only store token and user if login was successful
       if (data.success && data.user && data.token) {
         localStorage.setItem('auth_token', data.token);
         setUser(data.user);
+        console.log('✅ Login successful for:', data.user.email);
         return data.user;
       } else {
-        throw new Error('Invalid login response');
+        throw new Error('Invalid login response from server');
       }
       
     } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+      console.error('🔐 Login error:', error);
+      
+      // Handle network errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Network error. Please check your connection and try again.');
+      }
+      
+      // Re-throw with better error messages
+      if (error instanceof Error) {
+        throw error;
+      }
+      
+      throw new Error('An unexpected error occurred during login.');
     } finally {
       setIsLoading(false);
     }
@@ -135,30 +162,65 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      // TODO: Implement actual registration API call
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-      const response = await fetch(`${apiUrl}/auth/register`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
+      const fullUrl = `${apiUrl}/auth/register`;
+      
+      console.log('📝 Attempting registration to:', fullUrl);
+      
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(userData),
+        body: JSON.stringify({
+          email: userData.email,
+          password: userData.password,
+          name: `${userData.firstName} ${userData.lastName}`,
+          userType: userData.role
+        }),
       });
+
+      console.log('📝 Registration response status:', response.status);
+      
+      // Check if response is HTML (error page) instead of JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        console.error('❌ Non-JSON response received:', contentType);
+        throw new Error('Server configuration error. Please contact support.');
+      }
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Registration failed');
+        console.error('❌ Registration failed with error:', error);
+        throw new Error(error.message || `Registration failed (${response.status})`);
       }
 
       const data = await response.json();
+      console.log('✅ Registration response data:', data);
       
       // Store token and user data
-      localStorage.setItem('auth_token', data.token);
-      setUser(data.user);
+      if (data.success && data.user && data.token) {
+        localStorage.setItem('auth_token', data.token);
+        setUser(data.user);
+        console.log('✅ Registration successful for:', data.user.email);
+      } else {
+        throw new Error('Invalid registration response from server');
+      }
       
     } catch (error) {
-      console.error('Registration error:', error);
-      throw error;
+      console.error('📝 Registration error:', error);
+      
+      // Handle network errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Network error. Please check your connection and try again.');
+      }
+      
+      // Re-throw with better error messages
+      if (error instanceof Error) {
+        throw error;
+      }
+      
+      throw new Error('An unexpected error occurred during registration.');
     } finally {
       setIsLoading(false);
     }

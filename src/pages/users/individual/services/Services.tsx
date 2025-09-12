@@ -10,7 +10,8 @@ import {
   X,
   MessageCircle,
   ImageIcon,
-  User
+  User,
+  Brain
 } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { CoupleHeader } from '../landing/CoupleHeader';
@@ -18,6 +19,8 @@ import { useGlobalMessenger } from '../../../../shared/contexts/GlobalMessengerC
 import { servicesApiService } from '../../../../modules/services/services/servicesApiService';
 import type { Service } from '../../../../modules/services/types';
 import { ServiceDetailsModal, type Service as ModuleService } from '../../../../modules/services';
+import { DecisionSupportSystem } from './dss/DecisionSupportSystem';
+import { dataOptimizationService } from './dss/DataOptimizationService';
 
 interface FilterOptions {
   categories: string[];
@@ -113,8 +116,47 @@ export const Services: React.FC = () => {
   const [likedServices, setLikedServices] = useState<Set<string>>(new Set());
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showDSS, setShowDSS] = useState(false);
+  const [connectionSpeed, setConnectionSpeed] = useState<'slow' | 'medium' | 'fast'>('medium');
+  const [optimizationActive, setOptimizationActive] = useState(false);
   
   const { openFloatingChat } = useGlobalMessenger();
+
+  // Monitor connection speed and optimization status
+  useEffect(() => {
+    const checkConnectionSpeed = () => {
+      if ('connection' in navigator) {
+        const connection = (navigator as any).connection;
+        const effectiveType = connection?.effectiveType;
+        
+        switch (effectiveType) {
+          case 'slow-2g':
+          case '2g':
+            setConnectionSpeed('slow');
+            setOptimizationActive(true);
+            break;
+          case '3g':
+            setConnectionSpeed('medium');
+            setOptimizationActive(true);
+            break;
+          case '4g':
+          default:
+            setConnectionSpeed('fast');
+            setOptimizationActive(false);
+            break;
+        }
+      }
+    };
+
+    checkConnectionSpeed();
+    
+    // Listen for connection changes
+    if ('connection' in navigator) {
+      const connection = (navigator as any).connection;
+      connection.addEventListener('change', checkConnectionSpeed);
+      return () => connection.removeEventListener('change', checkConnectionSpeed);
+    }
+  }, []);
 
   const filterOptions: FilterOptions = {
     categories: [
@@ -130,41 +172,58 @@ export const Services: React.FC = () => {
     ratings: [5, 4, 3, 2, 1]
   };
 
-  // Load services from API
+  // Load services from API with optimization for low-speed internet
   useEffect(() => {
     const loadServices = async () => {
       try {
         setLoading(true);
-        console.log('Loading services from API...');
+        console.log('Loading services from API with optimization...');
         
-        const response = await servicesApiService.getServices({
-          limit: 50 // Get a reasonable number of services
-        });
+        // Use optimized loading for better performance on slow connections
+        const optimizedResponse = await dataOptimizationService.loadServicesProgressive(50);
         
-        console.log('Services API response:', response);
-        console.log('Number of services loaded:', response.services?.length || 0);
+        console.log('Optimized services API response:', optimizedResponse);
+        console.log('Number of services loaded:', optimizedResponse.services?.length || 0);
         
-        if (response.services && response.services.length > 0) {
-          console.log('🔍 Debug: Raw services from API:', response.services.length);
-          console.log('🔍 Debug: First service has gallery:', response.services[0]?.gallery);
-          console.log('🔍 Debug: First service full object:', response.services[0]);
-          setServices(response.services);
-          setFilteredServices(response.services);
-          console.log('Services set successfully:', response.services.slice(0, 3)); // Show first 3
+        if (optimizedResponse.services && optimizedResponse.services.length > 0) {
+          console.log('🔍 Debug: Raw services from API:', optimizedResponse.services.length);
+          console.log('🔍 Debug: First service has gallery:', optimizedResponse.services[0]?.gallery);
+          console.log('🔍 Debug: First service full object:', optimizedResponse.services[0]);
+          setServices(optimizedResponse.services);
+          setFilteredServices(optimizedResponse.services);
+          console.log('Services set successfully:', optimizedResponse.services.slice(0, 3)); // Show first 3
+          
+          // Preload critical data in background for better UX
+          dataOptimizationService.preloadCriticalData();
         } else {
           console.warn('No services returned from API - empty or failed response');
-          // Keep existing services if we already have some (avoid overwriting with empty data)
-          if (services.length === 0) {
+          // Fallback to regular API call if optimized loading fails
+          const fallbackResponse = await servicesApiService.getServices({ limit: 50 });
+          if (fallbackResponse.services && fallbackResponse.services.length > 0) {
+            setServices(fallbackResponse.services);
+            setFilteredServices(fallbackResponse.services);
+          } else {
             setServices([]);
             setFilteredServices([]);
           }
         }
       } catch (error) {
-        console.error('Failed to load services:', error);
-        console.error('Error details:', error instanceof Error ? error.message : String(error));
-        // Show error state instead of empty array
-        setServices([]);
-        setFilteredServices([]);
+        console.error('Failed to load services with optimization, trying fallback:', error);
+        try {
+          // Fallback to regular API call
+          const fallbackResponse = await servicesApiService.getServices({ limit: 50 });
+          if (fallbackResponse.services && fallbackResponse.services.length > 0) {
+            setServices(fallbackResponse.services);
+            setFilteredServices(fallbackResponse.services);
+          } else {
+            setServices([]);
+            setFilteredServices([]);
+          }
+        } catch (fallbackError) {
+          console.error('Fallback API call also failed:', fallbackError);
+          setServices([]);
+          setFilteredServices([]);
+        }
       } finally {
         setLoading(false);
       }
@@ -173,60 +232,94 @@ export const Services: React.FC = () => {
     loadServices();
   }, []);
 
-  // Filter and search logic
+  // Filter and search logic with optimization
   useEffect(() => {
-    let filtered = services;
+    const performOptimizedFiltering = async () => {
+      let filtered = services;
 
-    // Search filter
-    if (searchQuery) {
-      filtered = filtered.filter(service =>
-        service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
+      // Use optimized search for text queries
+      if (searchQuery && searchQuery.length > 2) {
+        try {
+          const searchResults = await dataOptimizationService.searchServices(searchQuery, {
+            categories: selectedCategory !== 'all' ? [selectedCategory] : [],
+            location: selectedLocation !== 'all' ? selectedLocation : '',
+            priceRange: selectedPriceRange !== 'all' ? selectedPriceRange : '',
+            minRating: selectedRating
+          });
+          
+          if (searchResults.services) {
+            filtered = searchResults.services;
+          } else {
+            // Fallback to client-side filtering
+            filtered = services.filter(service =>
+              service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              service.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              service.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              service.description.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+          }
+        } catch (error) {
+          console.warn('Optimized search failed, falling back to client-side filtering:', error);
+          // Fallback to client-side search
+          filtered = services.filter(service =>
+            service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            service.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            service.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            service.description.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+        }
+      } else if (searchQuery && searchQuery.length <= 2) {
+        // For short queries, use client-side filtering for better performance
+        filtered = services.filter(service =>
+          service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          service.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          service.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          service.description.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
 
-    // Category filter
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(service => service.category === selectedCategory);
-    }
+      // Apply other filters client-side for better performance
+      if (selectedCategory !== 'all') {
+        filtered = filtered.filter(service => service.category === selectedCategory);
+      }
 
-    // Location filter
-    if (selectedLocation !== 'all') {
-      filtered = filtered.filter(service => service.location === selectedLocation);
-    }
+      if (selectedLocation !== 'all') {
+        filtered = filtered.filter(service => service.location === selectedLocation);
+      }
 
-    // Price range filter
-    if (selectedPriceRange !== 'all') {
-      filtered = filtered.filter(service => service.priceRange === selectedPriceRange);
-    }
+      if (selectedPriceRange !== 'all') {
+        filtered = filtered.filter(service => service.priceRange === selectedPriceRange);
+      }
 
-    // Rating filter
-    if (selectedRating > 0) {
-      filtered = filtered.filter(service => service.rating >= selectedRating);
-    }
+      if (selectedRating > 0) {
+        filtered = filtered.filter(service => service.rating >= selectedRating);
+      }
 
-    // Sort logic
-    switch (sortBy) {
-      case 'rating':
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-      case 'price-low':
-        filtered.sort((a, b) => (a.priceRange?.length || 0) - (b.priceRange?.length || 0));
-        break;
-      case 'price-high':
-        filtered.sort((a, b) => (b.priceRange?.length || 0) - (a.priceRange?.length || 0));
-        break;
-      case 'reviews':
-        filtered.sort((a, b) => b.reviewCount - a.reviewCount);
-        break;
-      default:
-        // relevance - no sorting change
-        break;
-    }
+      // Sort logic
+      switch (sortBy) {
+        case 'rating':
+          filtered.sort((a, b) => b.rating - a.rating);
+          break;
+        case 'price-low':
+          filtered.sort((a, b) => (a.priceRange?.length || 0) - (b.priceRange?.length || 0));
+          break;
+        case 'price-high':
+          filtered.sort((a, b) => (b.priceRange?.length || 0) - (a.priceRange?.length || 0));
+          break;
+        case 'reviews':
+          filtered.sort((a, b) => b.reviewCount - a.reviewCount);
+          break;
+        default:
+          // relevance - no sorting change
+          break;
+      }
 
-    setFilteredServices(filtered);
+      setFilteredServices(filtered);
+    };
+
+    // Debounce the filtering for search queries
+    const timeoutId = setTimeout(performOptimizedFiltering, searchQuery ? 300 : 0);
+    return () => clearTimeout(timeoutId);
   }, [services, searchQuery, selectedCategory, selectedLocation, selectedPriceRange, selectedRating, sortBy]);
 
   const toggleLike = (serviceId: string) => {
@@ -313,6 +406,21 @@ export const Services: React.FC = () => {
     setSelectedService(null);
   };
 
+  const handleOpenDSS = () => {
+    setShowDSS(true);
+  };
+
+  const handleCloseDSS = () => {
+    setShowDSS(false);
+  };
+
+  const handleServiceRecommend = (serviceId: string) => {
+    const service = services.find(s => s.id === serviceId);
+    if (service) {
+      handleViewDetails(service);
+    }
+  };
+
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
@@ -328,11 +436,21 @@ export const Services: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading services...</p>
+        <CoupleHeader />
+        <div className="flex-1 pt-20">
+          <div className="container mx-auto px-4 py-8">
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-600 mb-2">
+                  {optimizationActive ? 'Optimizing data for your connection...' : 'Loading services...'}
+                </p>
+                {optimizationActive && (
+                  <p className="text-sm text-gray-500">
+                    Enhanced loading for {connectionSpeed} connection speed
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -406,6 +524,15 @@ export const Services: React.FC = () => {
               </select>
 
               <div className="flex items-center space-x-2 ml-auto">
+                <button
+                  onClick={handleOpenDSS}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200 shadow-sm"
+                  title="AI Decision Support"
+                  aria-label="Open AI Decision Support System"
+                >
+                  <Brain className="h-4 w-4" />
+                  <span className="hidden sm:inline font-medium">AI Assist</span>
+                </button>
                 <button
                   onClick={() => setViewMode('grid')}
                   className={cn(
@@ -508,6 +635,30 @@ export const Services: React.FC = () => {
               Showing <span className="text-gray-900">{filteredServices.length}</span> of{' '}
               <span className="text-gray-900">{services.length}</span> services
             </p>
+            
+            {/* Connection Speed & Optimization Indicator */}
+            {optimizationActive && (
+              <div className="flex items-center space-x-2 text-sm">
+                <div className={cn(
+                  "flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium",
+                  connectionSpeed === 'slow' ? "bg-red-100 text-red-700" :
+                  connectionSpeed === 'medium' ? "bg-yellow-100 text-yellow-700" :
+                  "bg-green-100 text-green-700"
+                )}>
+                  <div className={cn(
+                    "w-2 h-2 rounded-full",
+                    connectionSpeed === 'slow' ? "bg-red-400" :
+                    connectionSpeed === 'medium' ? "bg-yellow-400" :
+                    "bg-green-400"
+                  )}></div>
+                  <span>
+                    {connectionSpeed === 'slow' ? 'Slow Connection - Optimized Loading' :
+                     connectionSpeed === 'medium' ? 'Medium Speed - Optimized' :
+                     'Fast Connection'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Services Grid/List */}
@@ -666,6 +817,20 @@ export const Services: React.FC = () => {
               handleContactVendor(apiService);
             }}
             onToggleLike={toggleLike}
+          />
+        )}
+
+        {/* Decision Support System (DSS) Modal */}
+        {showDSS && (
+          <DecisionSupportSystem
+            isOpen={showDSS}
+            onClose={handleCloseDSS}
+            services={filteredServices}
+            onServiceRecommend={handleServiceRecommend}
+            budget={50000}
+            location={selectedLocation !== 'all' ? selectedLocation : ''}
+            guestCount={100}
+            priorities={selectedCategory !== 'all' ? [selectedCategory] : []}
           />
         )}
       </div>
