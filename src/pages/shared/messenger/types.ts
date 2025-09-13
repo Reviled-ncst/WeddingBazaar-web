@@ -23,6 +23,14 @@ export interface Conversation {
   unreadCount: number;
   createdAt?: string | Date; // API returns string
   updatedAt?: string | Date; // API returns string
+  serviceInfo?: {
+    id?: string;
+    name?: string;
+    category?: string;
+    price?: string;
+    image?: string;
+    description?: string;
+  };
 }
 
 export interface MessengerProps {

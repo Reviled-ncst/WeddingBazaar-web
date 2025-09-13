@@ -470,6 +470,70 @@ export class BudgetAnalysisService {
 export class VendorAPIService {
   private static baseURL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-backend.onrender.com/api';
 
+  private static authToken: string | null = null;
+
+  // Authentication helper methods
+  private static getAuthToken(): string | null {
+    if (this.authToken) return this.authToken;
+    
+    // Try to get from localStorage
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+    if (token) {
+      this.authToken = token;
+      return token;
+    }
+    
+    return null;
+  }
+
+  private static async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
+    const token = this.getAuthToken();
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> || {}),
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    // Handle 401 Unauthorized - gracefully fallback for public endpoints
+    if (response.status === 401) {
+      console.warn('🔐 Authentication failed, trying without auth for public endpoints');
+      this.authToken = null;
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('token');
+      
+      // Retry without authentication for public endpoints
+      if (url.includes('/services') || url.includes('/vendor-profiles')) {
+        return fetch(url, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            ...(options.headers as Record<string, string> || {}),
+          },
+        });
+      }
+    }
+
+    return response;
+  }
+
+  static validateAuthentication(): boolean {
+    const token = this.getAuthToken();
+    if (!token) {
+      console.warn('🔐 No authentication token available - proceeding with public access');
+      return false;
+    }
+    return true;
+  }
+
   static async getServices(filters?: {
     category?: string;
     location?: string;
@@ -477,18 +541,32 @@ export class VendorAPIService {
     maxPrice?: number;
   }): Promise<Service[]> {
     try {
+      console.log('🔍 Fetching services with filters:', filters);
+      
       const params = new URLSearchParams();
       if (filters?.category) params.set('category', filters.category);
       if (filters?.location) params.set('location', filters.location);
       if (filters?.minRating) params.set('minRating', filters.minRating.toString());
       if (filters?.maxPrice) params.set('maxPrice', filters.maxPrice.toString());
 
-      const response = await fetch(`${this.baseURL}/services?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch services');
+      const url = `${this.baseURL}/services?${params}`;
+      console.log('📡 Services API Request URL:', url);
       
-      return await response.json();
+      const response = await this.makeAuthenticatedRequest(url, {
+        method: 'GET'
+      });
+      
+      if (!response.ok) {
+        console.warn(`⚠️ Services API request failed: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to fetch services: ${response.status}`);
+      }
+      
+      const services = await response.json();
+      console.log(`✅ Fetched ${services.length} services`);
+      return services;
     } catch (error) {
-      console.error('API Error:', error);
+      console.error('❌ Services API Error:', error);
+      console.log('🔄 Falling back to mock data from vendor profiles');
       // Return fallback mock data based on our robust vendor profiles
       return this.getMockServices();
     }
@@ -501,19 +579,36 @@ export class VendorAPIService {
     verified?: boolean;
   }): Promise<Service[]> {
     try {
+      console.log('🔍 Fetching vendor profiles with filters:', filters);
+      
       const params = new URLSearchParams();
       if (filters?.business_type) params.set('business_type', filters.business_type);
       if (filters?.location) params.set('location', filters.location);
       if (filters?.minRating) params.set('minRating', filters.minRating.toString());
       if (filters?.verified !== undefined) params.set('verified', filters.verified.toString());
 
-      const response = await fetch(`${this.baseURL}/vendor-profiles?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch vendor profiles');
+      const url = `${this.baseURL}/vendor-profiles?${params}`;
+      console.log('📡 API Request URL:', url);
+      
+      const response = await this.makeAuthenticatedRequest(url, {
+        method: 'GET'
+      });
+      
+      if (!response.ok) {
+        console.warn(`⚠️ API request failed: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to fetch vendor profiles: ${response.status}`);
+      }
       
       const vendorProfiles = await response.json();
-      return this.transformVendorProfilesToServices(vendorProfiles);
+      console.log(`✅ Fetched ${vendorProfiles.length} vendor profiles`);
+      
+      const transformedServices = this.transformVendorProfilesToServices(vendorProfiles);
+      console.log(`🔄 Transformed ${transformedServices.length} services for DSS`);
+      
+      return transformedServices;
     } catch (error) {
-      console.error('Vendor Profile API Error:', error);
+      console.error('❌ Vendor Profile API Error:', error);
+      console.log('🔄 Falling back to mock data for DSS');
       return this.getMockServices();
     }
   }
@@ -540,7 +635,7 @@ export class VendorAPIService {
         email: profile.contact_email || `info@${profile.business_name.toLowerCase().replace(/\s+/g, '')}.com`,
         website: profile.website_url || `https://${profile.business_name.toLowerCase().replace(/\s+/g, '')}.com`
       },
-      gallery: profile.portfolio_images || [],
+      gallery: this.filterValidImageUrls(profile.portfolio_images || []),
       verificationStatus: profile.verification_status === 'verified' ? 'verified' : 'unverified',
       yearsInBusiness: profile.years_in_business || 5,
       responseTimeHours: profile.response_time_hours || 24,
@@ -626,6 +721,27 @@ export class VendorAPIService {
     return specialties;
   }
 
+  private static filterValidImageUrls(imageUrls: any[]): string[] {
+    if (!Array.isArray(imageUrls)) return [];
+    
+    return imageUrls
+      .filter((img: any) => img && typeof img === 'string' && img.length > 0)
+      .filter((img: string) => {
+        // Filter out known problematic URLs
+        if (img.includes('via.placeholder.com')) return false;
+        if (img.includes('placeholder')) return false;
+        
+        // Ensure it's a valid HTTP/HTTPS URL
+        try {
+          const url = new URL(img);
+          return url.protocol === 'http:' || url.protocol === 'https:';
+        } catch {
+          return false;
+        }
+      })
+      .slice(0, 6); // Limit to 6 images for performance
+  }
+
   private static getMockServices(): Service[] {
     return [
       {
@@ -694,64 +810,196 @@ export class VendorAPIService {
     ];
   }
 
-  static async bookService(serviceId: string, bookingData: any): Promise<boolean> {
+  static async bookService(serviceId: string, bookingData: any): Promise<{ success: boolean; message: string; requiresAuth?: boolean }> {
     try {
-      const response = await fetch(`${this.baseURL}/bookings`, {
+      console.log('📅 Booking service:', serviceId, bookingData);
+      
+      // Check authentication first
+      if (!this.validateAuthentication()) {
+        return {
+          success: false,
+          message: 'Authentication required to book services. Please log in.',
+          requiresAuth: true
+        };
+      }
+      
+      const response = await this.makeAuthenticatedRequest(`${this.baseURL}/bookings`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({
           serviceId,
+          vendorId: bookingData.vendorId,
+          eventDate: bookingData.eventDate,
+          eventLocation: bookingData.eventLocation,
+          guestCount: bookingData.guestCount,
+          message: bookingData.message || 'Booking request from Wedding Bazaar DSS',
+          budget: bookingData.budget,
           ...bookingData
         })
       });
 
-      return response.ok;
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Booking successful:', result);
+        return {
+          success: true,
+          message: 'Booking request sent successfully! The vendor will contact you soon.'
+        };
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ Booking failed:', errorData);
+        return {
+          success: false,
+          message: errorData.message || 'Failed to send booking request. Please try again.'
+        };
+      }
     } catch (error) {
-      console.error('Booking Error:', error);
-      return false;
+      console.error('❌ Booking Error:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Authentication failed')) {
+          return {
+            success: false,
+            message: 'Your session has expired. Please log in again to book services.',
+            requiresAuth: true
+          };
+        }
+        return {
+          success: false,
+          message: error.message || 'Network error. Please check your connection and try again.'
+        };
+      }
+      
+      return {
+        success: false,
+        message: 'An unexpected error occurred. Please try again.'
+      };
     }
   }
 
-  static async saveRecommendation(serviceId: string): Promise<boolean> {
+  static async saveRecommendation(serviceId: string): Promise<{ success: boolean; message: string; requiresAuth?: boolean }> {
     try {
-      const response = await fetch(`${this.baseURL}/user/favorites`, {
+      console.log('💾 Saving recommendation:', serviceId);
+      
+      // Check authentication first
+      if (!this.validateAuthentication()) {
+        return {
+          success: false,
+          message: 'Authentication required to save recommendations. Please log in.',
+          requiresAuth: true
+        };
+      }
+      
+      const response = await this.makeAuthenticatedRequest(`${this.baseURL}/user/favorites`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ serviceId })
-      });
-
-      return response.ok;
-    } catch (error) {
-      console.error('Save Error:', error);
-      return false;
-    }
-  }
-
-  static async contactVendor(serviceId: string, message: string): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseURL}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
+        body: JSON.stringify({ 
           serviceId,
-          message,
-          type: 'inquiry'
+          type: 'service',
+          source: 'dss_recommendation'
         })
       });
 
-      return response.ok;
+      if (response.ok) {
+        console.log('✅ Recommendation saved successfully');
+        return {
+          success: true,
+          message: 'Service saved to your favorites!'
+        };
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ Save recommendation failed:', errorData);
+        return {
+          success: false,
+          message: errorData.message || 'Failed to save recommendation. Please try again.'
+        };
+      }
     } catch (error) {
-      console.error('Contact Error:', error);
-      return false;
+      console.error('❌ Save Error:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Authentication failed')) {
+          return {
+            success: false,
+            message: 'Your session has expired. Please log in again to save recommendations.',
+            requiresAuth: true
+          };
+        }
+        return {
+          success: false,
+          message: error.message || 'Network error. Please check your connection and try again.'
+        };
+      }
+      
+      return {
+        success: false,
+        message: 'An unexpected error occurred. Please try again.'
+      };
+    }
+  }
+
+  static async contactVendor(serviceId: string, message: string, contactData?: any): Promise<{ success: boolean; message: string; requiresAuth?: boolean }> {
+    try {
+      console.log('💬 Contacting vendor:', serviceId, message);
+      
+      // Check authentication first
+      if (!this.validateAuthentication()) {
+        return {
+          success: false,
+          message: 'Authentication required to contact vendors. Please log in.',
+          requiresAuth: true
+        };
+      }
+      
+      const response = await this.makeAuthenticatedRequest(`${this.baseURL}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({
+          serviceId,
+          vendorId: contactData?.vendorId,
+          subject: contactData?.subject || 'Inquiry from Wedding Bazaar DSS',
+          message: message || 'I am interested in your services for my wedding.',
+          type: 'inquiry',
+          source: 'dss_contact',
+          eventDate: contactData?.eventDate,
+          budget: contactData?.budget,
+          ...contactData
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Message sent successfully:', result);
+        return {
+          success: true,
+          message: 'Your message has been sent! The vendor will contact you soon.'
+        };
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ Contact vendor failed:', errorData);
+        return {
+          success: false,
+          message: errorData.message || 'Failed to send message. Please try again.'
+        };
+      }
+    } catch (error) {
+      console.error('❌ Contact Error:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Authentication failed')) {
+          return {
+            success: false,
+            message: 'Your session has expired. Please log in again to contact vendors.',
+            requiresAuth: true
+          };
+        }
+        return {
+          success: false,
+          message: error.message || 'Network error. Please check your connection and try again.'
+        };
+      }
+      
+      return {
+        success: false,
+        message: 'An unexpected error occurred. Please try again.'
+      };
     }
   }
 }

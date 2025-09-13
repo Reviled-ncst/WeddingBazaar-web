@@ -57,35 +57,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const checkAuthStatus = async () => {
       try {
         const token = localStorage.getItem('auth_token');
-        if (token) {
-          // Validate token with backend
-          const apiUrl = import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
-          const response = await fetch(`${apiUrl}/auth/verify`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          });
+        if (!token) {
+          // No token found, user is not authenticated - this is normal for public pages
+          setIsLoading(false);
+          return;
+        }
+        
+        // Only verify token if one exists
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
+        const response = await fetch(`${apiUrl}/auth/verify`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-          if (response.ok) {
-            const data = await response.json();
-            console.log('✅ Token verification successful:', data);
-            // Only set user if we get valid data back
-            if (data.success && data.user) {
-              setUser(data.user);
-            } else {
-              console.log('❌ Invalid verify response:', data);
-              localStorage.removeItem('auth_token');
-            }
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Token verification successful:', data);
+          // Only set user if we get valid data back
+          if (data.success && data.user) {
+            setUser(data.user);
           } else {
-            console.error('❌ Token verification failed:', response.status, response.statusText);
+            console.log('❌ Invalid verify response:', data);
             localStorage.removeItem('auth_token');
           }
+        } else if (response.status === 401) {
+          // Token is invalid/expired - remove it silently (this is normal)
+          console.log('🔄 Token expired or invalid, removing...');
+          localStorage.removeItem('auth_token');
+        } else {
+          // Other errors (500, etc.)
+          console.error('❌ Token verification failed:', response.status, response.statusText);
+          localStorage.removeItem('auth_token');
         }
       } catch (error) {
-        console.error('Error checking auth status:', error);
-        localStorage.removeItem('auth_token');
+        // Network errors, API unavailable, etc. - don't remove token immediately
+        console.log('🌐 Auth verification failed (network/server issue):', error);
+        // We keep the token in case it's just a temporary network issue
+        // The token will be verified again when the user tries to access protected content
       } finally {
         setIsLoading(false);
       }

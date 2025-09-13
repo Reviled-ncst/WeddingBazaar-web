@@ -43,16 +43,16 @@ export const VendorMessages: React.FC = () => {
     loadMessages,
     sendMessage,
     markAsRead
-  } = useMessagingData(vendorId);
-
-  // Filter conversations based on search and filter
-  const filteredConversations = conversations.filter(conv => {
-    const matchesSearch = conv.participants[0]?.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filter === 'all' || 
-                         (filter === 'unread' && conv.unreadCount > 0) ||
-                         (filter === 'starred' && false); // No starred logic yet
-    return matchesSearch && matchesFilter;
-  });
+  } = useMessagingData(vendorId);    // Filter conversations based on search and filter
+    const filteredConversations = conversations.filter(conv => {
+      // For vendor view, the customer name is in participants[0] (this is the person talking TO the vendor)
+      const customerName = conv.participants[0]?.name || '';
+      const matchesSearch = customerName.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesFilter = filter === 'all' || 
+                           (filter === 'unread' && conv.unreadCount > 0) ||
+                           (filter === 'starred' && false); // No starred logic yet
+      return matchesSearch && matchesFilter;
+    });
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -297,9 +297,15 @@ export const VendorMessages: React.FC = () => {
                           </div>
                           
                           <p className="text-gray-600 truncate mb-3 text-base">
-                            {conversation.lastMessage?.senderName === 'You' ? 'You: ' : ''}
-                            {conversation.lastMessage?.content}
+                            {conversation.lastMessage ? conversation.lastMessage.content : 'No messages yet'}
                           </p>
+                          
+                          {conversation.serviceInfo && (
+                            <div className="flex items-center space-x-2 text-sm text-pink-600 bg-pink-50 rounded-lg px-3 py-1 mb-2">
+                              <span className="font-medium">Service:</span>
+                              <span>{conversation.serviceInfo.name}</span>
+                            </div>
+                          )}
                           
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
@@ -402,10 +408,6 @@ export const VendorMessages: React.FC = () => {
                     <div 
                       ref={messagesContainerRef}
                       className="flex-1 p-6 overflow-y-scroll overscroll-contain max-h-[400px] bg-gradient-to-b from-white/20 to-white/40"
-                      style={{ 
-                        scrollBehavior: 'smooth',
-                        WebkitOverflowScrolling: 'touch'
-                      }}
                       onWheel={(e) => {
                         // Prevent wheel events from bubbling to parent
                         e.stopPropagation();
@@ -492,7 +494,11 @@ export const VendorMessages: React.FC = () => {
                     {/* Enhanced Message Input - Fixed Position */}
                     <div className="flex-shrink-0 p-6 border-t border-gray-100/50 bg-white/50 backdrop-blur-sm">
                       <div className="flex items-center space-x-4">
-                        <button className="p-3 hover:bg-white/80 rounded-xl transition-colors flex-shrink-0">
+                        <button 
+                          className="p-3 hover:bg-white/80 rounded-xl transition-colors flex-shrink-0"
+                          title="Attach file"
+                          aria-label="Attach file"
+                        >
                           <Paperclip className="w-5 h-5 text-gray-500" />
                         </button>
                         
@@ -508,22 +514,34 @@ export const VendorMessages: React.FC = () => {
                           {isTyping && (
                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                               <div className="flex space-x-1">
-                                <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                                <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                                <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce"></div>
+                                <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce [animation-delay:150ms]"></div>
+                                <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce [animation-delay:300ms]"></div>
                               </div>
                             </div>
                           )}
                         </div>
                         
                         <div className="flex items-center space-x-2 flex-shrink-0">
-                          <button className="p-3 hover:bg-white/80 rounded-xl transition-colors">
+                          <button 
+                            className="p-3 hover:bg-white/80 rounded-xl transition-colors"
+                            title="Add emoji"
+                            aria-label="Add emoji"
+                          >
                             <Smile className="w-5 h-5 text-gray-500" />
                           </button>
-                          <button className="p-3 hover:bg-white/80 rounded-xl transition-colors">
+                          <button 
+                            className="p-3 hover:bg-white/80 rounded-xl transition-colors"
+                            title="Send image"
+                            aria-label="Send image"
+                          >
                             <ImageIcon className="w-5 h-5 text-gray-500" />
                           </button>
-                          <button className="p-3 hover:bg-white/80 rounded-xl transition-colors">
+                          <button 
+                            className="p-3 hover:bg-white/80 rounded-xl transition-colors"
+                            title="Voice message"
+                            aria-label="Voice message"
+                          >
                             <Mic className="w-5 h-5 text-gray-500" />
                           </button>
                           <motion.button
