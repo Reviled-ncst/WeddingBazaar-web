@@ -14,7 +14,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Brain,
   X,
@@ -270,71 +270,45 @@ export const DecisionSupportSystemOrchestrator: React.FC<DSSProps> = ({
 
         {/* Tab Content - Micro Frontend Components */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto p-3 sm:p-6">
-            <AnimatePresence mode="wait">
-              {activeTab === 'recommendations' && (
-                <motion.div
-                  key="recommendations"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <RecommendationsTab 
-                    {...tabProps} 
-                    onServiceRecommend={onServiceRecommend}
-                  />
-                </motion.div>
-              )}
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 relative">
+            {/* Keep all components mounted to preserve state - use CSS positioning */}
+            <div className={cn(
+              "w-full h-full transition-opacity duration-200 ease-in-out",
+              activeTab === 'recommendations' ? 'opacity-100 relative z-10' : 'opacity-0 absolute inset-0 z-0 pointer-events-none'
+            )}>
+              <RecommendationsTab 
+                {...tabProps} 
+                onServiceRecommend={onServiceRecommend}
+              />
+            </div>
 
-              {activeTab === 'packages' && (
-                <motion.div
-                  key="packages"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <PackagesTab {...tabProps} />
-                </motion.div>
-              )}
+            <div className={cn(
+              "w-full h-full transition-opacity duration-200 ease-in-out",
+              activeTab === 'packages' ? 'opacity-100 relative z-10' : 'opacity-0 absolute inset-0 z-0 pointer-events-none'
+            )}>
+              <PackagesTab {...tabProps} />
+            </div>
 
-              {activeTab === 'insights' && (
-                <motion.div
-                  key="insights"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <InsightsTab {...tabProps} />
-                </motion.div>
-              )}
+            <div className={cn(
+              "w-full h-full transition-opacity duration-200 ease-in-out",
+              activeTab === 'insights' ? 'opacity-100 relative z-10' : 'opacity-0 absolute inset-0 z-0 pointer-events-none'
+            )}>
+              <InsightsTab {...tabProps} />
+            </div>
 
-              {activeTab === 'budget' && (
-                <motion.div
-                  key="budget"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <BudgetTab {...tabProps} />
-                </motion.div>
-              )}
+            <div className={cn(
+              "w-full h-full transition-opacity duration-200 ease-in-out",
+              activeTab === 'budget' ? 'opacity-100 relative z-10' : 'opacity-0 absolute inset-0 z-0 pointer-events-none'
+            )}>
+              <BudgetTab {...tabProps} />
+            </div>
 
-              {activeTab === 'comparison' && (
-                <motion.div
-                  key="comparison"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <ComparisonTab {...tabProps} />
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <div className={cn(
+              "w-full h-full transition-opacity duration-200 ease-in-out",
+              activeTab === 'comparison' ? 'opacity-100 relative z-10' : 'opacity-0 absolute inset-0 z-0 pointer-events-none'
+            )}>
+              <ComparisonTab {...tabProps} />
+            </div>
           </div>
         </div>
       </motion.div>

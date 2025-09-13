@@ -46,7 +46,7 @@ class BookingApiService {
       if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
       if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder);
 
-      const response = await fetch(`${this.baseUrl}?${queryParams.toString()}`);
+      const response = await fetch(`${this.baseUrl}/bookings?${queryParams.toString()}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -63,7 +63,7 @@ class BookingApiService {
   // Get specific booking by ID
   async getBookingById(id: string): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/${id}`);
+      const response = await fetch(`${this.baseUrl}/bookings/${id}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -82,7 +82,7 @@ class BookingApiService {
     try {
       console.log('🔄 [BookingApiService] Creating booking request:', request);
       
-      const response = await fetch(`${this.baseUrl}/request`, {
+      const response = await fetch(`${this.baseUrl}/bookings/request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +113,7 @@ class BookingApiService {
       if (coupleId) queryParams.append('coupleId', coupleId);
       if (vendorId) queryParams.append('vendorId', vendorId);
 
-      const response = await fetch(`${this.baseUrl}/stats?${queryParams.toString()}`);
+      const response = await fetch(`${this.baseUrl}/bookings/stats?${queryParams.toString()}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -130,7 +130,7 @@ class BookingApiService {
   // Get booking timeline/history
   async getBookingTimeline(bookingId: string): Promise<BookingTimelineEntry[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/${bookingId}/timeline`);
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/timeline`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -151,7 +151,7 @@ class BookingApiService {
     vendorResponse?: string
   ): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/${bookingId}/status`, {
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -181,7 +181,7 @@ class BookingApiService {
     }
   ): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/${bookingId}/pricing`, {
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/pricing`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -204,7 +204,7 @@ class BookingApiService {
   // Cancel booking
   async cancelBooking(bookingId: string, reason?: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/${bookingId}`, {
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
