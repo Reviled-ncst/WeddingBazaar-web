@@ -733,10 +733,11 @@ const verifyTokenHandler = async (req, res) => {
     }
 
     if (!token) {
-      console.log('❌ No token provided in request');
-      return res.status(401).json({
+      console.log('⚠️  No token provided - returning unauthenticated state for public access');
+      return res.status(200).json({
         success: false,
-        message: 'No token provided'
+        authenticated: false,
+        message: 'No token provided - public access'
       });
     }
 
@@ -749,8 +750,9 @@ const verifyTokenHandler = async (req, res) => {
     
     if (!tokenValidation.valid) {
       console.log('❌ Token validation failed:', tokenValidation.error);
-      return res.status(401).json({
+      return res.status(200).json({
         success: false,
+        authenticated: false,
         message: tokenValidation.error || 'Invalid token'
       });
     }
@@ -783,8 +785,9 @@ const verifyTokenHandler = async (req, res) => {
       if (userResult.length === 0) {
         // User no longer exists, invalidate token
         invalidateToken(token);
-        return res.status(401).json({
+        return res.status(200).json({
           success: false,
+          authenticated: false,
           message: 'User account no longer exists'
         });
       }
@@ -795,6 +798,7 @@ const verifyTokenHandler = async (req, res) => {
       // Return current user data
       res.json({
         success: true,
+        authenticated: true,
         user: {
           id: userData.id,
           email: userData.email,
@@ -815,6 +819,7 @@ const verifyTokenHandler = async (req, res) => {
       console.log('Using token data as fallback for user info');
       res.json({
         success: true,
+        authenticated: true,
         user: {
           id: tokenValidation.user.id,
           email: tokenValidation.user.email,
@@ -828,8 +833,9 @@ const verifyTokenHandler = async (req, res) => {
     }
   } catch (error) {
     console.error('Error verifying token:', error);
-    res.status(500).json({
+    res.status(200).json({
       success: false,
+      authenticated: false,
       message: 'Server error during token verification'
     });
   }
