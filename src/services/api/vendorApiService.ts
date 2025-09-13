@@ -31,21 +31,47 @@ export interface VendorProfile {
   business_name: string;
   business_type: string;
   business_description?: string;
+  location?: string;
+  service_areas?: string[] | string;
+  contact_phone?: string;
+  contact_email?: string;
+  contact_website?: string;
+  social_media?: {
+    instagram?: string;
+    facebook?: string;
+    youtube?: string;
+    tiktok?: string;
+  };
+  portfolio_images?: string[];
+  pricing?: {
+    starting_price?: number;
+    price_range?: string;
+    packages?: Array<{
+      name: string;
+      price: number;
+      description: string;
+    }>;
+  };
+  specialties?: string[];
+  equipment?: string[];
+  rating?: number;
+  review_count?: number;
+  years_experience?: number;
+  verified?: boolean;
+  created_at: string;
+  awards?: string[];
+  certifications?: string[];
+  // Legacy fields for compatibility
   years_in_business?: number;
   portfolio_url?: string;
   website_url?: string;
-  social_media?: any;
-  service_areas?: any;
   featured_image_url?: string;
-  portfolio_images?: string[];
-  created_at: string;
-  updated_at: string;
-  // From users table join
+  updated_at?: string;
   email?: string;
   first_name?: string;
   last_name?: string;
-  profile_image?: string; // Keep for backwards compatibility
-  profile_image_public_id?: string; // Cloudinary public ID for deletion
+  profile_image?: string;
+  profile_image_public_id?: string;
 }
 
 interface DashboardData {
@@ -129,7 +155,9 @@ class VendorApiService {
   async getProfile(vendorId: string): Promise<VendorProfile> {
     try {
       console.log('Attempting to fetch profile from API for vendor:', vendorId);
-      const response = await fetch(`${this.baseUrl}/vendors/${vendorId}/profile`);
+      
+      // Use the new user_id based endpoint
+      const response = await fetch(`${this.baseUrl}/vendors/user/${vendorId}/profile`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -138,9 +166,9 @@ class VendorApiService {
       const result = await response.json();
       console.log('API response:', result);
       
-      // Backend returns { success: true, data: profile }
-      if (result.success && result.data) {
-        return result.data;
+      // Backend returns { success: true, profile: profileData }
+      if (result.success && result.profile) {
+        return result.profile;
       } else {
         throw new Error('Invalid API response format');
       }
@@ -173,9 +201,9 @@ class VendorApiService {
       const result = await response.json();
       console.log('Update API response:', result);
       
-      // Backend returns { success: true, data: profile }
-      if (result.success && result.data) {
-        return result.data;
+      // Backend returns { success: true, profile: profileData }
+      if (result.success && result.profile) {
+        return result.profile;
       } else {
         throw new Error('Invalid API response format');
       }

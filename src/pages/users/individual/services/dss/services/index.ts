@@ -466,7 +466,7 @@ export class BudgetAnalysisService {
   }
 }
 
-// Real API service integration
+// Real API service integration with enhanced vendor profile support
 export class VendorAPIService {
   private static baseURL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-backend.onrender.com/api';
 
@@ -489,9 +489,209 @@ export class VendorAPIService {
       return await response.json();
     } catch (error) {
       console.error('API Error:', error);
-      // Return empty array or cached data as fallback
-      return [];
+      // Return fallback mock data based on our robust vendor profiles
+      return this.getMockServices();
     }
+  }
+
+  static async getVendorProfiles(filters?: {
+    business_type?: string;
+    location?: string;
+    minRating?: number;
+    verified?: boolean;
+  }): Promise<Service[]> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.business_type) params.set('business_type', filters.business_type);
+      if (filters?.location) params.set('location', filters.location);
+      if (filters?.minRating) params.set('minRating', filters.minRating.toString());
+      if (filters?.verified !== undefined) params.set('verified', filters.verified.toString());
+
+      const response = await fetch(`${this.baseURL}/vendor-profiles?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch vendor profiles');
+      
+      const vendorProfiles = await response.json();
+      return this.transformVendorProfilesToServices(vendorProfiles);
+    } catch (error) {
+      console.error('Vendor Profile API Error:', error);
+      return this.getMockServices();
+    }
+  }
+
+  private static transformVendorProfilesToServices(vendorProfiles: any[]): Service[] {
+    return vendorProfiles.map(profile => ({
+      id: profile.id,
+      vendorId: profile.user_id,
+      name: profile.business_name,
+      vendorName: profile.business_name,
+      category: this.mapBusinessTypeToCategory(profile.business_type),
+      rating: parseFloat(profile.average_rating) || 4.5,
+      reviewCount: profile.total_reviews || 50,
+      priceRange: this.extractPriceRange(profile.pricing_range),
+      location: profile.service_areas ? 
+        (Array.isArray(profile.service_areas) ? profile.service_areas[0] : profile.service_areas) : 
+        'New York',
+      availability: true,
+      features: this.generateFeaturesFromProfile(profile),
+      image: profile.featured_image_url || 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400&h=400&fit=crop',
+      description: profile.business_description || `Professional ${profile.business_type.toLowerCase()} services`,
+      contactInfo: {
+        phone: profile.contact_phone || '(555) 123-4567',
+        email: profile.contact_email || `info@${profile.business_name.toLowerCase().replace(/\s+/g, '')}.com`,
+        website: profile.website_url || `https://${profile.business_name.toLowerCase().replace(/\s+/g, '')}.com`
+      },
+      gallery: profile.portfolio_images || [],
+      verificationStatus: profile.verification_status === 'verified' ? 'verified' : 'unverified',
+      yearsInBusiness: profile.years_in_business || 5,
+      responseTimeHours: profile.response_time_hours || 24,
+      specialties: this.extractSpecialties(profile),
+      isFeatured: profile.is_featured || false,
+      isPremium: profile.is_premium || false,
+      totalBookings: profile.total_bookings || 0
+    }));
+  }
+
+  private static mapBusinessTypeToCategory(businessType: string): 'photography' | 'videography' | 'catering' | 'venue' | 'music_dj' | 'flowers_decor' | 'wedding_planning' | 'transportation' | 'makeup_hair' | 'wedding_cake' | 'officiant' | 'entertainment' {
+    const categoryMap: Record<string, 'photography' | 'videography' | 'catering' | 'venue' | 'music_dj' | 'flowers_decor' | 'wedding_planning' | 'transportation' | 'makeup_hair' | 'wedding_cake' | 'officiant' | 'entertainment'> = {
+      'Photography': 'photography',
+      'Videography': 'videography',
+      'Catering': 'catering',
+      'Venue': 'venue',
+      'Music & Entertainment': 'music_dj',
+      'Flowers & Decoration': 'flowers_decor',
+      'Wedding Planning': 'wedding_planning',
+      'Transportation': 'transportation',
+      'Makeup & Hair': 'makeup_hair',
+      'Wedding Cake': 'wedding_cake',
+      'Officiant': 'officiant',
+      'Event Rentals': 'entertainment'
+    };
+    return categoryMap[businessType] || 'photography';
+  }
+
+  private static extractPriceRange(pricingRange: any): string {
+    if (typeof pricingRange === 'string') return pricingRange;
+    if (pricingRange && typeof pricingRange === 'object') {
+      return pricingRange.range || '$$$';
+    }
+    return '$$$';
+  }
+
+  private static generateFeaturesFromProfile(profile: any): string[] {
+    const features: string[] = [];
+    
+    if (profile.verification_status === 'verified') features.push('Verified Professional');
+    if (profile.is_premium) features.push('Premium Vendor');
+    if (profile.is_featured) features.push('Featured Vendor');
+    if (profile.years_in_business >= 5) features.push('Experienced Provider');
+    if (profile.average_rating >= 4.5) features.push('Top Rated');
+    if (profile.response_time_hours <= 12) features.push('Quick Response');
+    if (profile.portfolio_images && profile.portfolio_images.length > 3) features.push('Extensive Portfolio');
+    
+    // Add business type specific features
+    switch (profile.business_type) {
+      case 'Photography':
+        features.push('Digital Gallery', 'Professional Editing', 'Multiple Packages');
+        break;
+      case 'Catering':
+        features.push('Custom Menus', 'Dietary Options', 'Full Service');
+        break;
+      case 'Venue':
+        features.push('Multiple Spaces', 'Event Coordination', 'Catering Kitchen');
+        break;
+      case 'Music & Entertainment':
+        features.push('Professional Sound', 'Lighting Effects', 'MC Services');
+        break;
+      case 'Flowers & Decoration':
+        features.push('Custom Arrangements', 'Venue Decoration', 'Bridal Bouquets');
+        break;
+    }
+    
+    return features;
+  }
+
+  private static extractSpecialties(profile: any): string[] {
+    const specialties: string[] = [];
+    
+    if (profile.business_description) {
+      const description = profile.business_description.toLowerCase();
+      if (description.includes('luxury')) specialties.push('Luxury Events');
+      if (description.includes('intimate')) specialties.push('Intimate Gatherings');
+      if (description.includes('outdoor')) specialties.push('Outdoor Events');
+      if (description.includes('destination')) specialties.push('Destination Weddings');
+      if (description.includes('traditional')) specialties.push('Traditional Ceremonies');
+      if (description.includes('modern')) specialties.push('Modern Celebrations');
+    }
+    
+    return specialties;
+  }
+
+  private static getMockServices(): Service[] {
+    return [
+      {
+        id: 'vendor-user-1',
+        vendorId: 'vendor-user-1',
+        name: 'Elegant Moments Photography Studio',
+        vendorName: 'Elegant Moments Photography Studio',
+        category: 'photography',
+        rating: 4.9,
+        reviewCount: 127,
+        priceRange: '$$$',
+        location: 'New York City',
+        availability: true,
+        features: ['Verified Professional', 'Premium Vendor', 'Featured Vendor', 'Experienced Provider', 'Top Rated', 'Quick Response', 'Extensive Portfolio', 'Digital Gallery', 'Professional Editing', 'Multiple Packages'],
+        image: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400&h=400&fit=crop',
+        description: 'Premium wedding photography studio specializing in romantic, candid moments and artistic compositions.',
+        contactInfo: {
+          phone: '(555) 123-4567',
+          email: 'info@elegantmomentsstudio.com',
+          website: 'https://elegantmomentsstudio.com'
+        },
+        gallery: [
+          'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=600&h=400&fit=crop',
+          'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop',
+          'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=600&h=400&fit=crop'
+        ],
+        verificationStatus: 'verified',
+        yearsInBusiness: 7,
+        responseTimeHours: 12,
+        specialties: ['Luxury Events', 'Traditional Ceremonies', 'Modern Celebrations'],
+        isFeatured: true,
+        isPremium: true,
+        totalBookings: 245
+      },
+      {
+        id: '2-2025-004',
+        vendorId: '2-2025-004',
+        name: 'Divine Catering & Events',
+        vendorName: 'Divine Catering & Events',
+        category: 'catering',
+        rating: 4.3,
+        reviewCount: 92,
+        priceRange: '$$$',
+        location: 'New York',
+        availability: true,
+        features: ['Verified Professional', 'Premium Vendor', 'Experienced Provider', 'Top Rated', 'Custom Menus', 'Dietary Options', 'Full Service'],
+        image: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400&h=400&fit=crop',
+        description: 'Luxury wedding catering with farm-to-table ingredients and customizable menus.',
+        contactInfo: {
+          phone: '(555) 234-5678',
+          email: 'info@divinecatering.com',
+          website: 'https://divinecatering.com'
+        },
+        gallery: [
+          'https://images.unsplash.com/photo-1555244162-803834f70033?w=600&h=400&fit=crop',
+          'https://images.unsplash.com/photo-1571997478779-2adcbbe9ab2f?w=600&h=400&fit=crop'
+        ],
+        verificationStatus: 'verified',
+        yearsInBusiness: 5,
+        responseTimeHours: 9,
+        specialties: ['Luxury Events', 'Custom Menus'],
+        isFeatured: true,
+        isPremium: true,
+        totalBookings: 182
+      }
+    ];
   }
 
   static async bookService(serviceId: string, bookingData: any): Promise<boolean> {

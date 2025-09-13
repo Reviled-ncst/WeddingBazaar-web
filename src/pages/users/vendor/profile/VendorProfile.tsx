@@ -31,8 +31,8 @@ export const VendorProfile: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Use real API data with the authenticated vendor's ID
-  // For now, we'll use a hardcoded ID that matches your database
-  const vendorId = '0fd4bb67-6dfa-44b5-89cb-5b0f0e815718'; // This should come from user.vendorId or similar
+  // Using an existing vendor profile ID that matches the database structure
+  const vendorId = 'vendor-user-1'; // Elegant Moments Photography Studio profile (real data with string user ID)
   const { 
     profile, 
     loading, 
@@ -51,10 +51,15 @@ export const VendorProfile: React.FC = () => {
         business_name: profile.business_name || '',
         business_type: profile.business_type || '',
         business_description: profile.business_description || '',
-        years_in_business: profile.years_in_business || 0,
-        website_url: profile.website_url || '',
+        years_in_business: profile.years_experience || profile.years_in_business || 0,
+        website_url: profile.contact_website || profile.website_url || '',
         social_media: profile.social_media || {},
-        service_areas: profile.service_areas || []
+        service_areas: profile.service_areas || [],
+        location: profile.location || '',
+        contact_phone: profile.contact_phone || '',
+        contact_email: profile.contact_email || '',
+        specialties: profile.specialties || [],
+        equipment: profile.equipment || []
       });
     }
   }, [profile]);
@@ -533,13 +538,13 @@ export const VendorProfile: React.FC = () => {
                           {isEditing ? (
                             <input
                               type="text"
-                              value={editForm.service_areas || ''}
-                              onChange={(e) => setEditForm({...editForm, service_areas: e.target.value})}
+                              value={Array.isArray(editForm.service_areas) ? editForm.service_areas.join(', ') : editForm.service_areas || ''}
+                              onChange={(e) => setEditForm({...editForm, service_areas: e.target.value.split(', ').filter(area => area.trim())})}
                               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
                               placeholder="Service areas (comma separated)"
                             />
                           ) : (
-                            <p className="text-gray-900">{profile.service_areas}</p>
+                            <p className="text-gray-900">{Array.isArray(profile.service_areas) ? profile.service_areas.join(', ') : profile.service_areas}</p>
                           )}
                         </div>
 
@@ -574,12 +579,12 @@ export const VendorProfile: React.FC = () => {
                             />
                           ) : (
                             <a 
-                              href={profile.website_url || '#'} 
+                              href={profile.contact_website || profile.website_url || '#'} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="text-pink-600 hover:text-pink-700 transition-colors"
                             >
-                              {profile.website_url}
+                              {profile.contact_website || profile.website_url || 'No website'}
                             </a>
                           )}
                         </div>
@@ -600,7 +605,7 @@ export const VendorProfile: React.FC = () => {
                               placeholder="Years of experience"
                             />
                           ) : (
-                            <p className="text-gray-900">{profile.years_in_business} years</p>
+                            <p className="text-gray-900">{profile.years_experience || profile.years_in_business || 0} years</p>
                           )}
                         </div>
 
