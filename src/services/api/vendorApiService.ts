@@ -296,7 +296,7 @@ class VendorApiService {
       console.error('Error uploading profile image:', error);
       
       // For development, return a mock successful response with timestamp for cache busting
-      const mockImageUrl = `https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&vendor=${vendorId}&t=${Date.now()}`;
+      const mockImageUrl = `https://picsum.photos/400/300?random=${vendorId}&t=${Date.now()}`;
       return { url: mockImageUrl };
     }
   }
@@ -398,9 +398,9 @@ class VendorApiService {
         facebook: 'https://facebook.com/elegantmomentsphotography'
       },
       service_areas: ['San Francisco', 'Bay Area', 'Napa Valley'],
-      featured_image_url: 'https://res.cloudinary.com/dht64xt1g/image/upload/v1757498706/grjglfnfbfmdpf8oftw6.jpg',
+      featured_image_url: 'https://picsum.photos/600/400?random=101',
       portfolio_images: [
-        'https://res.cloudinary.com/dht64xt1g/image/upload/v1757498706/grjglfnfbfmdpf8oftw6.jpg',
+        'https://picsum.photos/600/400?random=101',
         'https://picsum.photos/600/400?random=102',
         'https://picsum.photos/600/400?random=103'
       ],
@@ -409,7 +409,7 @@ class VendorApiService {
       email: 'info@elegantmoments.com',
       first_name: 'Sarah',
       last_name: 'Johnson',
-      profile_image: 'https://res.cloudinary.com/dht64xt1g/image/upload/v1757498706/grjglfnfbfmdpf8oftw6.jpg' // Backwards compatibility
+      profile_image: 'https://picsum.photos/400/300?random=100' // Backwards compatibility
     };
   }
 
@@ -431,7 +431,7 @@ class VendorApiService {
           first_name: 'Sarah',
           last_name: 'Johnson',
           email: 'sarah@example.com',
-          profile_image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400'
+          profile_image: 'https://picsum.photos/400/300?random=200'
         },
         {
           id: '2',
