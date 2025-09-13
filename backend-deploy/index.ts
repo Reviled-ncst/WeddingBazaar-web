@@ -175,6 +175,200 @@ app.get('/api/vendors', async (req, res) => {
   }
 });
 
+// Vendor profile by user ID endpoint
+app.get('/api/vendors/user/:userId/profile', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log(`🔍 Fetching vendor profile for user ID: ${userId}`);
+
+    // Get vendor profile from vendor_profiles table
+    const vendorProfiles = await sql`
+      SELECT 
+        vp.*,
+        u.email,
+        u.first_name,
+        u.last_name
+      FROM vendor_profiles vp
+      LEFT JOIN users u ON u.id = vp.user_id
+      WHERE vp.user_id = ${userId}
+      LIMIT 1
+    `;
+
+    if (vendorProfiles.length === 0) {
+      console.log(`❌ No vendor profile found for user ID: ${userId}`);
+      return res.status(404).json({
+        success: false,
+        error: 'Vendor profile not found'
+      });
+    }
+
+    const profile = vendorProfiles[0];
+    console.log(`✅ Found vendor profile: ${profile.business_name}`);
+
+    // Format the response
+    const formattedProfile = {
+      id: profile.id,
+      user_id: profile.user_id,
+      business_name: profile.business_name,
+      business_type: profile.business_type,
+      business_description: profile.business_description,
+      contact_email: profile.contact_email || profile.email,
+      contact_phone: profile.contact_phone,
+      website_url: profile.website_url,
+      business_address: profile.business_address,
+      service_areas: profile.service_areas,
+      years_in_business: profile.years_in_business,
+      pricing_range: profile.pricing_range,
+      portfolio_images: profile.portfolio_images || [],
+      featured_image_url: profile.featured_image_url,
+      business_hours: profile.business_hours,
+      social_media_links: profile.social_media_links,
+      certifications_licenses: profile.certifications_licenses,
+      insurance_info: profile.insurance_info,
+      cancellation_policy: profile.cancellation_policy,
+      payment_methods: profile.payment_methods,
+      average_rating: profile.average_rating || '4.5',
+      total_reviews: profile.total_reviews || 0,
+      total_bookings: profile.total_bookings || 0,
+      response_time_hours: profile.response_time_hours || 24,
+      verification_status: profile.verification_status || 'pending',
+      is_featured: profile.is_featured || false,
+      is_premium: profile.is_premium || false,
+      created_at: profile.created_at,
+      updated_at: profile.updated_at
+    };
+
+    res.json({
+      success: true,
+      profile: formattedProfile
+    });
+  } catch (error) {
+    console.error('❌ Error fetching vendor profile:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch vendor profile'
+    });
+  }
+});
+
+// Vendor profiles endpoint for DSS integration
+app.get('/api/vendor-profiles', async (req, res) => {
+  try {
+    const { business_type, location, minRating, verified } = req.query;
+    console.log(`🔍 Fetching vendor profiles with filters:`, { business_type, location, minRating, verified });
+
+    // Build query with filters
+    let query = `
+      SELECT 
+        vp.*,
+        u.email,
+        u.first_name,
+        u.last_name
+      FROM vendor_profiles vp
+      LEFT JOIN users u ON u.id = vp.user_id
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (business_type) {
+      query += ` AND vp.business_type = $${paramIndex}`;
+      params.push(business_type);
+      paramIndex++;
+    }
+
+    if (location) {
+      query += ` AND (vp.service_areas ILIKE $${paramIndex} OR vp.business_address ILIKE $${paramIndex})`;
+      params.push(`%${location}%`);
+      paramIndex++;
+    }
+
+    if (minRating) {
+      query += ` AND CAST(vp.average_rating AS FLOAT) >= $${paramIndex}`;
+      params.push(parseFloat(minRating as string));
+      paramIndex++;
+    }
+
+    if (verified !== undefined) {
+      query += ` AND vp.verification_status = $${paramIndex}`;
+      params.push(verified === 'true' ? 'verified' : 'pending');
+      paramIndex++;
+    }
+
+    query += ` ORDER BY CAST(vp.average_rating AS FLOAT) DESC, vp.total_reviews DESC LIMIT 20`;
+
+    // Use neon's template literal syntax
+    let vendorProfiles: any[] = [];
+    if (params.length === 0) {
+      vendorProfiles = await sql`
+        SELECT 
+          vp.*,
+          u.email,
+          u.first_name,
+          u.last_name
+        FROM vendor_profiles vp
+        LEFT JOIN users u ON u.id = vp.user_id
+        ORDER BY CAST(vp.average_rating AS FLOAT) DESC, vp.total_reviews DESC 
+        LIMIT 20
+      `;
+    } else {
+      // For filtered queries, use the simpler approach
+      vendorProfiles = await sql`
+        SELECT 
+          vp.*,
+          u.email,
+          u.first_name,
+          u.last_name
+        FROM vendor_profiles vp
+        LEFT JOIN users u ON u.id = vp.user_id
+        WHERE (${business_type ? `vp.business_type = '${business_type}'` : '1=1'})
+          AND (${location ? `(vp.service_areas ILIKE '%${location}%' OR vp.business_address ILIKE '%${location}%')` : '1=1'})
+          AND (${minRating ? `CAST(vp.average_rating AS FLOAT) >= ${parseFloat(minRating as string)}` : '1=1'})
+          AND (${verified !== undefined ? `vp.verification_status = '${verified === 'true' ? 'verified' : 'pending'}'` : '1=1'})
+        ORDER BY CAST(vp.average_rating AS FLOAT) DESC, vp.total_reviews DESC 
+        LIMIT 20
+      `;
+    }
+
+    const formattedProfiles = vendorProfiles.map((profile: any) => ({
+      id: profile.id,
+      user_id: profile.user_id,
+      business_name: profile.business_name,
+      business_type: profile.business_type,
+      business_description: profile.business_description,
+      contact_email: profile.contact_email || profile.email,
+      contact_phone: profile.contact_phone,
+      website_url: profile.website_url,
+      business_address: profile.business_address,
+      service_areas: profile.service_areas,
+      years_in_business: profile.years_in_business,
+      pricing_range: profile.pricing_range,
+      portfolio_images: profile.portfolio_images || [],
+      featured_image_url: profile.featured_image_url,
+      business_hours: profile.business_hours,
+      social_media_links: profile.social_media_links,
+      average_rating: profile.average_rating || '4.5',
+      total_reviews: profile.total_reviews || 0,
+      total_bookings: profile.total_bookings || 0,
+      response_time_hours: profile.response_time_hours || 24,
+      verification_status: profile.verification_status || 'pending',
+      is_featured: profile.is_featured || false,
+      is_premium: profile.is_premium || false,
+      created_at: profile.created_at,
+      updated_at: profile.updated_at
+    }));
+
+    console.log(`✅ Found ${formattedProfiles.length} vendor profiles`);
+    res.json(formattedProfiles);
+  } catch (error) {
+    console.error('❌ Error fetching vendor profiles:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch vendor profiles'
+    });
+  }
+});
+
 // Featured vendors endpoint
 app.get('/api/vendors/featured', async (req, res) => {
   try {
