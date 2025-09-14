@@ -3,7 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-control-geocoder';
 import './VendorMap.css';
-import { MapPin, Navigation, Search, Phone, Globe, Star } from 'lucide-react';
+import { MapPin, Navigation, Search } from 'lucide-react';
 
 // Fix for default markers in Leaflet with Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -95,7 +95,7 @@ export const VendorMap: React.FC<VendorMapProps> = ({
   vendors,
   center = [14.5995, 120.9842], // Default to Manila, Philippines
   zoom = 11,
-  height = '400px',
+  height: mapHeight = '400px',
   onVendorSelect,
   selectedVendorId,
   showUserLocation = true,
@@ -476,6 +476,7 @@ export const VendorMap: React.FC<VendorMapProps> = ({
       <div 
         ref={mapRef} 
         className="w-full rounded-lg overflow-hidden shadow-lg border border-gray-200 vendor-map-container"
+        style={{ height: mapHeight }}
       />
       
       {/* Map Controls */}
