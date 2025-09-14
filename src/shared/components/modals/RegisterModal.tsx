@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock, User, Heart, Phone, Building, CheckCircle, AlertCircle, Sparkles, Shield, Star, Camera, Users } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Heart, Phone, Building, CheckCircle, AlertCircle, Sparkles, Shield, Star, Camera, Users, MapPin, Loader2, Map } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from './Modal';
 import { TermsOfServiceModal } from './TermsOfServiceModal';
 import { PrivacyPolicyModal } from './PrivacyPolicyModal';
+import BusinessLocationMap from '../map/BusinessLocationMap';
 import { cn } from '../../../utils/cn';
 import { useAuth } from '../../contexts/AuthContext';
+import { getCurrentLocationWithAddress } from '../../../utils/geolocation';
 
 interface RegisterModalProps {
   isOpen: boolean;
@@ -28,6 +30,9 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   const [isSuccess, setIsSuccess] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showLocationMap, setShowLocationMap] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -35,8 +40,15 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     phone: '',
     password: '',
     confirmPassword: '',
-    businessName: '',
-    businessCategory: '',
+    // Enhanced vendor fields to match database structure
+    business_name: '',
+    business_type: '',
+    business_description: '',
+    years_in_business: 0,
+    website_url: '',
+    location: '',
+    specialties: [] as string[],
+    service_areas: [] as string[],
     agreeToTerms: false,
     receiveUpdates: false
   });
@@ -118,8 +130,9 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     if (!formData.agreeToTerms) errors.agreeToTerms = 'You must agree to the terms and conditions';
     
     if (userType === 'vendor') {
-      if (!formData.businessName.trim()) errors.businessName = 'Business name is required';
-      if (!formData.businessCategory) errors.businessCategory = 'Business category is required';
+      if (!formData.business_name.trim()) errors.business_name = 'Business name is required';
+      if (!formData.business_type) errors.business_type = 'Business category is required';
+      if (!formData.location.trim()) errors.location = 'Business location is required';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -138,8 +151,14 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         role: userType,
         phone: formData.phone,
         ...(userType === 'vendor' && {
-          businessName: formData.businessName,
-          businessCategory: formData.businessCategory
+          business_name: formData.business_name,
+          business_type: formData.business_type,
+          business_description: formData.business_description,
+          years_in_business: formData.years_in_business,
+          website_url: formData.website_url,
+          location: formData.location,
+          specialties: formData.specialties,
+          service_areas: formData.service_areas
         })
       };
 
@@ -161,8 +180,14 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
           phone: '',
           password: '',
           confirmPassword: '',
-          businessName: '',
-          businessCategory: '',
+          business_name: '',
+          business_type: '',
+          business_description: '',
+          years_in_business: 0,
+          website_url: '',
+          location: '',
+          specialties: [],
+          service_areas: [],
           agreeToTerms: false,
           receiveUpdates: false
         });
@@ -187,7 +212,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
     const newValue = type === 'checkbox' ? checked : value;
@@ -228,15 +253,87 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         return rest;
       });
     }
+
+    // Clear location error when user starts typing in location field
+    if (name === 'location' && locationError) {
+      setLocationError(null);
+    }
   };
 
   const vendorCategories = [
-    'Photography', 'Videography', 'Catering', 'Venue', 'Florals', 
-    'Entertainment', 'Transportation', 'Planning', 'Makeup', 'Dress'
+    'Photography',
+    'Videography', 
+    'Wedding Planning',
+    'Catering',
+    'Venue',
+    'Florist',
+    'DJ/Band',
+    'Music',
+    'Hair & Makeup Artists',
+    'Transportation',
+    'Decoration',
+    'Officiant'
   ];
 
+  // Geolocation functionality for business location
+  const getCurrentLocation = async () => {
+    setIsGettingLocation(true);
+    setLocationError(null);
+
+    try {
+      const result = await getCurrentLocationWithAddress();
+      
+      // Update the location field
+      setFormData(prev => ({
+        ...prev,
+        location: result.address
+      }));
+      
+      // Clear any previous location validation errors
+      if (validationErrors.location) {
+        setValidationErrors(prev => {
+          const { location, ...rest } = prev;
+          return rest;
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error getting location:', error);
+      setLocationError(error instanceof Error ? error.message : 'Unable to get your location. Please enter manually.');
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
+
+  // Handle location selection from map
+  const handleLocationSelect = (location: { address: string; coordinates: { lat: number; lng: number } }) => {
+    setFormData(prev => ({
+      ...prev,
+      location: location.address
+    }));
+    
+    // Clear any previous location validation errors
+    if (validationErrors.location) {
+      setValidationErrors(prev => {
+        const { location: _, ...rest } = prev;
+        return rest;
+      });
+    }
+    
+    // Clear location error
+    setLocationError(null);
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="lg">
+    <>
+      <style>
+        {`
+          [data-width="${passwordStrength}"] {
+            width: ${passwordStrength}%;
+          }
+        `}
+      </style>
+      <Modal isOpen={isOpen} onClose={onClose} maxWidth="lg">
       {/* Success Overlay */}
       {isSuccess && (
         <div className="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-3xl z-50 flex items-center justify-center">
@@ -536,67 +633,221 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
 
         {/* Vendor-specific fields */}
         {userType === 'vendor' && (
-          <div className="grid grid-cols-2 gap-4 p-4 bg-gradient-to-r from-rose-50 to-pink-50 rounded-lg border border-rose-200">
-            <div className="col-span-2 flex items-center mb-2">
-              <Building className="h-5 w-5 text-rose-500 mr-2" />
-              <h4 className="font-medium text-gray-900">Business Information</h4>
+          <div className="space-y-6 p-6 bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50 rounded-2xl border border-rose-200 shadow-sm">
+            <div className="flex items-center mb-6">
+              <Building className="h-6 w-6 text-rose-500 mr-3" />
+              <h4 className="text-lg font-semibold text-gray-900">Business Information</h4>
             </div>
+            
+            {/* Business Name & Category */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="business_name" className="block text-sm font-medium text-gray-700 mb-2">
+                  Business Name *
+                </label>
+                <input
+                  type="text"
+                  id="business_name"
+                  name="business_name"
+                  value={formData.business_name}
+                  onChange={handleInputChange}
+                  placeholder="Your business name"
+                  className={cn(
+                    "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
+                    validationErrors.business_name 
+                      ? "border-red-300 focus:border-red-500" 
+                      : "border-gray-300 focus:border-rose-500"
+                  )}
+                  required
+                />
+                {validationErrors.business_name && (
+                  <div className="flex items-center mt-1 text-red-600 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {validationErrors.business_name}
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label htmlFor="business_type" className="block text-sm font-medium text-gray-700 mb-2">
+                  Business Category *
+                </label>
+                <select
+                  id="business_type"
+                  name="business_type"
+                  value={formData.business_type}
+                  onChange={handleInputChange}
+                  className={cn(
+                    "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
+                    validationErrors.business_type 
+                      ? "border-red-300 focus:border-red-500" 
+                      : "border-gray-300 focus:border-rose-500"
+                  )}
+                  required
+                >
+                  <option value="">Select category</option>
+                  {vendorCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+                {validationErrors.business_type && (
+                  <div className="flex items-center mt-1 text-red-600 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {validationErrors.business_type}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Location & Years in Business */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
+                  Business Location *
+                </label>
+                <div className="space-y-3">
+                  {/* Location Input */}
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    placeholder="Enter your business location..."
+                    className={cn(
+                      "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
+                      validationErrors.location 
+                        ? "border-red-300 focus:border-red-500" 
+                        : "border-gray-300 focus:border-rose-500"
+                    )}
+                    required
+                  />
+                  
+                  {/* Location Action Buttons */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={getCurrentLocation}
+                      disabled={isGettingLocation}
+                      className={cn(
+                        "px-3 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors",
+                        "flex items-center justify-center gap-2 text-sm font-medium",
+                        "disabled:opacity-50 disabled:cursor-not-allowed",
+                        isGettingLocation && "animate-pulse"
+                      )}
+                    >
+                      {isGettingLocation ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Finding...
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="h-4 w-4" />
+                          Use GPS
+                        </>
+                      )}
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        console.log('Map button clicked!');
+                        setShowLocationMap(true);
+                      }}
+                      className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                    >
+                      <Map className="h-4 w-4" />
+                      Select on Map
+                    </button>
+                  </div>
+                  
+                  {/* Helper text */}
+                  <div className="text-xs text-gray-500 text-center">
+                    Use GPS for your current location or select manually on the map
+                  </div>
+                </div>
+                
+                {/* Status Messages */}
+                {validationErrors.location && (
+                  <div className="flex items-center mt-2 text-red-600 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {validationErrors.location}
+                  </div>
+                )}
+                {locationError && (
+                  <div className="flex items-center mt-2 text-amber-600 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {locationError}
+                  </div>
+                )}
+                {formData.location && !validationErrors.location && !locationError && (
+                  <div className="flex items-center mt-2 text-green-600 text-sm">
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Location set successfully
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label htmlFor="years_in_business" className="block text-sm font-medium text-gray-700 mb-2">
+                  Years in Business
+                </label>
+                <input
+                  type="number"
+                  id="years_in_business"
+                  name="years_in_business"
+                  value={formData.years_in_business}
+                  onChange={handleInputChange}
+                  placeholder="0"
+                  min="0"
+                  max="50"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-colors"
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  How many years have you been in the wedding industry?
+                </div>
+              </div>
+            </div>
+
+            {/* Business Description */}
             <div>
-              <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-2">
-                Business Name *
+              <label htmlFor="business_description" className="block text-sm font-medium text-gray-700 mb-2">
+                Business Description
+              </label>
+              <textarea
+                id="business_description"
+                name="business_description"
+                value={formData.business_description}
+                onChange={handleInputChange}
+                placeholder="Brief description of your services and specialties..."
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-colors resize-none"
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                Help couples understand what makes your services special
+              </div>
+            </div>
+
+            {/* Website URL */}
+            <div>
+              <label htmlFor="website_url" className="block text-sm font-medium text-gray-700 mb-2">
+                Website URL
               </label>
               <input
-                type="text"
-                id="businessName"
-                name="businessName"
-                value={formData.businessName}
+                type="url"
+                id="website_url"
+                name="website_url"
+                value={formData.website_url}
                 onChange={handleInputChange}
-                placeholder="Your business name"
-                className={cn(
-                  "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
-                  validationErrors.businessName 
-                    ? "border-red-300 focus:border-red-500" 
-                    : "border-gray-300 focus:border-rose-500"
-                )}
-                required
+                placeholder="https://yourwebsite.com"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-colors"
               />
-              {validationErrors.businessName && (
-                <div className="flex items-center mt-1 text-red-600 text-sm">
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  {validationErrors.businessName}
-                </div>
-              )}
-            </div>
-            <div>
-              <label htmlFor="businessCategory" className="block text-sm font-medium text-gray-700 mb-2">
-                Category *
-              </label>
-              <select
-                id="businessCategory"
-                name="businessCategory"
-                value={formData.businessCategory}
-                onChange={handleInputChange}
-                className={cn(
-                  "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
-                  validationErrors.businessCategory 
-                    ? "border-red-300 focus:border-red-500" 
-                    : "border-gray-300 focus:border-rose-500"
-                )}
-                required
-              >
-                <option value="">Select category</option>
-                {vendorCategories.map((category) => (
-                  <option key={category} value={category.toLowerCase()}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-              {validationErrors.businessCategory && (
-                <div className="flex items-center mt-1 text-red-600 text-sm">
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  {validationErrors.businessCategory}
-                </div>
-              )}
+              <div className="text-xs text-gray-500 mt-1">
+                Optional: Link to your business website or portfolio
+              </div>
             </div>
           </div>
         )}
@@ -659,7 +910,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                       getPasswordStrengthColor(passwordStrength),
                       passwordStrength > 0 && "animate-pulse"
                     )}
-                    style={{ width: `${passwordStrength}%` }}
+                    data-width={passwordStrength}
                   ></div>
                 </div>
                 {/* Password Requirements */}
@@ -857,6 +1108,15 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         isOpen={showPrivacyModal}
         onClose={() => setShowPrivacyModal(false)}
       />
+
+      {/* Business Location Map Modal */}
+      <BusinessLocationMap
+        isOpen={showLocationMap}
+        onClose={() => setShowLocationMap(false)}
+        onLocationSelect={handleLocationSelect}
+        title="Select Your Business Location"
+      />
     </Modal>
+    </>
   );
 };

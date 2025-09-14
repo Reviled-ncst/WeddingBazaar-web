@@ -4,3 +4,4 @@ export { BookingCard } from './BookingCard';
 export { BookingDetailsModal } from './BookingDetailsModal';
 export { VendorImage } from './VendorImage';
 export { ServiceImage } from './ServiceImage';
+export { EnhancedEventLocationMap } from './EnhancedEventLocationMap';

@@ -378,31 +378,31 @@ app.get('/api/vendors/featured', async (req, res) => {
       featuredVendors = await sql`
         SELECT 
           v.id, v.business_name as name, 
-          COALESCE(v.category, 'Wedding Services') as category, 
+          COALESCE(v.business_type, 'Wedding Services') as category, 
           v.location, v.rating, v.review_count, v.starting_price,
           v.price_range, v.description, v.portfolio_images,
-          v.contact_phone, v.contact_website, v.verified,
-          EXTRACT(YEAR FROM AGE(NOW(), v.created_at)) as years_experience
+          v.contact_phone, v.website_url as contact_website, v.verified,
+          v.years_experience
         FROM vendors v
         WHERE v.verified = true 
-          AND v.rating >= 4.5 
+          AND v.rating >= 4.0 
           AND v.review_count >= 10
         ORDER BY v.rating DESC, v.review_count DESC
         LIMIT 6
       `;
     } catch (dbError) {
-      console.log('Category column not found, using fallback query for featured vendors');
+      console.log('Fallback query for featured vendors:', dbError.message);
       featuredVendors = await sql`
         SELECT 
           v.id, v.business_name as name, 
-          'Wedding Services' as category,
+          COALESCE(v.business_type, 'Wedding Services') as category,
           v.location, v.rating, v.review_count, v.starting_price,
           v.price_range, v.description, v.portfolio_images,
-          v.contact_phone, v.contact_website, v.verified,
-          EXTRACT(YEAR FROM AGE(NOW(), v.created_at)) as years_experience
+          v.contact_phone, v.website_url as contact_website, v.verified,
+          v.years_experience
         FROM vendors v
         WHERE v.verified = true 
-          AND v.rating >= 4.5 
+          AND v.rating >= 4.0 
           AND v.review_count >= 10
         ORDER BY v.rating DESC, v.review_count DESC
         LIMIT 6
@@ -420,7 +420,9 @@ app.get('/api/vendors/featured', async (req, res) => {
       description: vendor.description,
       image: vendor.portfolio_images?.[0] || 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400',
       specialties: vendor.category ? [vendor.category] : [],
-      yearsExperience: vendor.years_experience || 1
+      yearsExperience: vendor.years_experience || 1,
+      website: vendor.contact_website,
+      phone: vendor.contact_phone
     }));
 
     res.json({

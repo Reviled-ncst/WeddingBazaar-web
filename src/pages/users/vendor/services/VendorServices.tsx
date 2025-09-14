@@ -93,7 +93,7 @@ export const VendorServices: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
 
   // Get API base URL
-  const apiUrl = import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
 
   // Get current vendor ID (in a real app, this would come from auth context)
   const vendorId = '2-2025-003';

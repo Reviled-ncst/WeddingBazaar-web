@@ -221,7 +221,7 @@ export const ServiceDetailsModal: React.FC<ServiceDetailsModalProps> = ({
     
     setLoadingReviews(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
       const response = await fetch(`${apiUrl}/reviews/service/${service.id}`);
       if (response.ok) {
         const reviewsData = await response.json();

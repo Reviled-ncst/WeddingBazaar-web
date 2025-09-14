@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
         // Only verify token if one exists
-        const apiUrl = import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
         const response = await fetch(`${apiUrl}/auth/verify`, {
           method: 'POST',
           headers: {
@@ -109,7 +109,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
       const fullUrl = `${apiUrl}/auth/login`;
       
       console.log('🔐 Attempting login to:', fullUrl);
@@ -173,7 +173,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
       const fullUrl = `${apiUrl}/auth/register`;
       
       console.log('📝 Attempting registration to:', fullUrl);

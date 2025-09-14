@@ -1,7 +1,7 @@
 import type { Conversation, Message } from '../../pages/shared/messenger/types';
 
 const getApiBaseUrl = (): string => {
-  return import.meta.env.VITE_API_URL || 'https://wedding-bazaar-backend.onrender.com/api';
+  return import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
 };
 
 const API_BASE = `${getApiBaseUrl()}/messaging`;

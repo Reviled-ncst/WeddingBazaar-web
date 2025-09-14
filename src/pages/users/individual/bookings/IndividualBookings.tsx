@@ -1,29 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { CoupleHeader } from '../landing/CoupleHeader';
 
-// Import Leaflet CSS for proper map styling
-import 'leaflet/dist/leaflet.css';
-
-// Import and configure Leaflet marker icons
-import L from 'leaflet';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-
-// Configure default marker icons
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-});
-
 // Import modular components
 import {
   BookingStatsCards,
   BookingFilters,
   BookingCard,
-  BookingDetailsModal
+  BookingDetailsModal,
+  EnhancedEventLocationMap
 } from './components';
 
 // Import payment components
@@ -35,12 +19,6 @@ import { useAuth } from '../../../../shared/contexts/AuthContext';
 
 // Import comprehensive booking API service
 import { bookingApiService } from '../../../../services/api/bookingApiService';
-
-// Import Leaflet for maps
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-
-// Import enhanced geocoding utilities
-import { geocodeLocation, validateCoordinates } from '../../../../utils/geocoding';
 
 // Import custom hooks
 import { useBookingPreferences } from './hooks';
@@ -247,9 +225,35 @@ export const IndividualBookings: React.FC = () => {
       gallery: serviceInfo.gallery.slice(0, 3) // Show first 3 for debugging
     });
 
-    // Use the new geocoding utility for accurate location mapping
+    // Simple geocoding for Philippine locations
+    const getCoordinatesFromLocation = (location: string): { lat: number; lng: number } | null => {
+      // Default coordinates for common Philippine wedding venues
+      const locationMap: Record<string, { lat: number; lng: number }> = {
+        'heritage spring homes': { lat: 14.2306, lng: 120.9856 }, // Silang, Cavite
+        'manila': { lat: 14.5995, lng: 120.9842 },
+        'quezon city': { lat: 14.6760, lng: 121.0437 },
+        'makati': { lat: 14.5547, lng: 121.0244 },
+        'taguig': { lat: 14.5176, lng: 121.0509 },
+        'pasig': { lat: 14.5764, lng: 121.0851 },
+        'cebu': { lat: 10.3157, lng: 123.8854 },
+        'davao': { lat: 7.1907, lng: 125.4553 },
+        'baguio': { lat: 16.4023, lng: 120.5960 }
+      };
+      
+      const lowercaseLocation = location.toLowerCase();
+      for (const [key, coords] of Object.entries(locationMap)) {
+        if (lowercaseLocation.includes(key)) {
+          return coords;
+        }
+      }
+      
+      // Default to Manila if no match found
+      return { lat: 14.5995, lng: 120.9842 };
+    };
+
+    // Use the geocoding utility for accurate location mapping
     const eventLocation = booking.event_location || booking.eventLocation || '';
-    const eventCoordinates = validateCoordinates(geocodeLocation(eventLocation));
+    const eventCoordinates = getCoordinatesFromLocation(eventLocation) || undefined;
 
     const enhanced: EnhancedBooking = {
       ...baseBooking,
@@ -652,50 +656,6 @@ export const IndividualBookings: React.FC = () => {
     window.print();
   };
 
-  // Map Modal Component
-  const MapModal = () => {
-    if (!showMapModal || !selectedLocation) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Event Location</h3>
-            <button
-              onClick={() => setShowMapModal(false)}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-              title="Close map modal"
-              aria-label="Close map modal"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="p-4">
-            <h4 className="font-medium text-gray-900 mb-4">{selectedLocation.name}</h4>
-            <div className="h-96 rounded-lg overflow-hidden">
-              <MapContainer
-                center={[selectedLocation.coordinates.lat, selectedLocation.coordinates.lng]}
-                zoom={15}
-                style={{ height: '100%', width: '100%' }}
-                className="rounded-lg"
-              >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                />
-                <Marker position={[selectedLocation.coordinates.lat, selectedLocation.coordinates.lng]}>
-                  <Popup>{selectedLocation.name}</Popup>
-                </Marker>
-              </MapContainer>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   // Show loading state like Services page
   if (loading && bookings.length === 0) {
     return (
@@ -961,81 +921,19 @@ export const IndividualBookings: React.FC = () => {
         loading={paymentModal.loading}
       />
 
-      {/* Location Map Modal */}
+      {/* Enhanced Location Map Modal */}
       {showMapModal && selectedLocation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900">Event Location</h3>
-                <p className="text-gray-600 mt-1">{selectedLocation.name}</p>
-              </div>
-              <button
-                onClick={() => setShowMapModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                title="Close map"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            {/* Map Container */}
-            <div className="h-96">
-              <MapContainer
-                center={[selectedLocation.coordinates.lat, selectedLocation.coordinates.lng]}
-                zoom={15}
-                className="w-full h-full"
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <Marker position={[selectedLocation.coordinates.lat, selectedLocation.coordinates.lng]}>
-                  <Popup>
-                    <div className="text-center">
-                      <h4 className="font-semibold">{selectedLocation.name}</h4>
-                      <p className="text-sm text-gray-600 mt-1">Event Venue</p>
-                    </div>
-                  </Popup>
-                </Marker>
-              </MapContainer>
-            </div>
-            
-            {/* Map Footer */}
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  {selectedLocation.coordinates.lat.toFixed(6)}, {selectedLocation.coordinates.lng.toFixed(6)}
-                </p>
-                <div className="flex space-x-3">
-                  <a
-                    href={`https://www.google.com/maps?q=${selectedLocation.coordinates.lat},${selectedLocation.coordinates.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 text-blue-600 hover:text-blue-700 transition-colors text-sm"
-                  >
-                    Open in Google Maps
-                  </a>
-                  <a
-                    href={`https://maps.apple.com/?q=${selectedLocation.coordinates.lat},${selectedLocation.coordinates.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 text-gray-600 hover:text-gray-700 transition-colors text-sm"
-                  >
-                    Open in Apple Maps
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <EnhancedEventLocationMap
+          location={{
+            name: selectedLocation.name,
+            coordinates: selectedLocation.coordinates,
+            eventType: 'Wedding Event',
+            venue: selectedLocation.name
+          }}
+          onClose={() => setShowMapModal(false)}
+          showModal={showMapModal}
+        />
       )}
-
-      {/* Map Modal */}
-      <MapModal />
     </div>
   );
 };
