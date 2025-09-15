@@ -37,7 +37,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   const [otpStep, setOtpStep] = useState<'send' | 'verify'>('send');
   const [otpCodes, setOtpCodes] = useState({ email: '', sms: '' });
   const [otpLoading, setOtpLoading] = useState({ email: false, sms: false });
-  const [otpSent, setOtpSent] = useState({ email: false, sms: false });
   const [otpVerified, setOtpVerified] = useState({ email: false, sms: false });
   const [otpErrors, setOtpErrors] = useState({ email: '', sms: '' });
   const [developmentOTPs, setDevelopmentOTPs] = useState({ email: '', sms: '' }); // For development mode
@@ -121,7 +120,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       setOtpStep('send');
       setOtpCodes({ email: '', sms: '' });
       setOtpLoading({ email: false, sms: false });
-      setOtpSent({ email: false, sms: false });
       setOtpVerified({ email: false, sms: false });
       setOtpErrors({ email: '', sms: '' });
       setDevelopmentOTPs({ email: '', sms: '' });
@@ -220,7 +218,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       
       const emailResult = await emailResponse.json();
       if (emailResult.success) {
-        setOtpSent(prev => ({ ...prev, email: true }));
         console.log('📧 Email OTP:', emailResult.otpCode); // For development
         // Store development OTP for easy access
         if (emailResult.otpCode) {
@@ -243,7 +240,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         
         const smsResult = await smsResponse.json();
         if (smsResult.success) {
-          setOtpSent(prev => ({ ...prev, sms: true }));
           console.log('📱 SMS OTP:', smsResult.otpCode); // For development
           // Store development OTP for easy access
           if (smsResult.otpCode) {
@@ -253,7 +249,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
           setOtpErrors(prev => ({ ...prev, sms: smsResult.message }));
         }
       } else {
-        setOtpSent(prev => ({ ...prev, sms: true })); // Skip SMS if no phone
+        // Skip SMS if no phone - no need to track sent state
       }
       
       setOtpStep('verify');
