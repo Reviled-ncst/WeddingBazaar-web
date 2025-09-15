@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Registration</title>
+</head>
+<body>
+    <h1>Test Registration</h1>
+    <button onclick="testRegistration()">Test Registration</button>
+    <div id="result"></div>
+
+    <script>
+        async function testRegistration() {
+            const registrationData = {
+                firstName: "Test",
+                lastName: "User", 
+                email: "test.user.frontend@example.com",
+                password: "test123",
+                role: "couple",
+                phone: "+63 9XX XXX XXXX"
+            };
+
+            console.log('Testing registration with data:', registrationData);
+            document.getElementById('result').innerHTML = 'Testing...';
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(registrationData),
+                });
+
+                console.log('Response status:', response.status);
+                const responseData = await response.json();
+                console.log('Response data:', responseData);
+                
+                if (response.ok) {
+                    document.getElementById('result').innerHTML = `
+                        <div style="color: green;">
+                            <h3>Success!</h3>
+                            <p>User created: ${responseData.user.id}</p>
+                            <p>Email: ${responseData.user.email}</p>
+                            <p>Token: ${responseData.token.substring(0, 50)}...</p>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('result').innerHTML = `
+                        <div style="color: red;">
+                            <h3>Error!</h3>
+                            <p>Status: ${response.status}</p>
+                            <p>Message: ${responseData.message || responseData.error}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                document.getElementById('result').innerHTML = `
+                    <div style="color: red;">
+                        <h3>Network Error!</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Mail, Lock, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from './Modal';
@@ -29,8 +29,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  // Clear error when modal opens or closes
+  useEffect(() => {
+    if (isOpen) {
+      setError(null);
+    }
+  }, [isOpen]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
     setIsLoading(true);
     setError(null);
 
@@ -69,25 +78,48 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setIsLoginSuccess(false);
       
     } catch (err) {
-      console.error('LoginModal: Login failed:', err);
-      
-      // Handle specific error types
-      let errorMessage = 'Login failed. Please try again.';
+      // User-friendly error handling
+      let errorMessage = 'Something went wrong. Please try again.';
       
       if (err instanceof Error) {
-        // Check for specific error patterns
-        if (err.message.includes('Invalid email or password')) {
-          errorMessage = 'Invalid email or password. Please check your credentials.';
-        } else if (err.message.includes('User not found')) {
-          errorMessage = 'No account found with this email address.';
-        } else if (err.message.includes('Network')) {
-          errorMessage = 'Network error. Please check your connection and try again.';
-        } else if (err.message.includes('500')) {
-          errorMessage = 'Server error. Please try again in a moment.';
-        } else if (err.message.includes('<!doctype') || err.message.includes('HTML')) {
-          errorMessage = 'Server configuration error. Please contact support.';
-        } else {
-          errorMessage = err.message;
+        const message = err.message.toLowerCase();
+        
+        // Login credential issues
+        if (message.includes('invalid email or password') || message.includes('invalid credentials') || message.includes('401')) {
+          errorMessage = 'Incorrect email or password. Please try again.';
+        } 
+        // Email verification needed
+        else if (message.includes('verify your email') || message.includes('email not verified') || message.includes('account not verified')) {
+          errorMessage = 'Please check your email and click the verification link before signing in.';
+        }
+        // Account issues
+        else if (message.includes('user not found') || message.includes('account not found')) {
+          errorMessage = "We couldn't find an account with that email. Please check your email or create a new account.";
+        }
+        else if (message.includes('account suspended') || message.includes('account disabled')) {
+          errorMessage = 'Your account has been temporarily suspended. Please contact us for help.';
+        }
+        else if (message.includes('account locked') || message.includes('too many attempts')) {
+          errorMessage = 'Too many failed attempts. Please wait a few minutes and try again.';
+        }
+        // Connection problems
+        else if (message.includes('network') || message.includes('fetch failed') || message.includes('timeout') || err instanceof TypeError) {
+          errorMessage = 'Connection problem. Please check your internet and try again.';
+        }
+        else if (message.includes('offline')) {
+          errorMessage = 'No internet connection. Please check your connection and try again.';
+        }
+        // Server problems
+        else if (message.includes('500') || message.includes('502') || message.includes('503') || message.includes('504') || message.includes('server')) {
+          errorMessage = 'Our servers are having issues. Please try again in a few minutes.';
+        }
+        // Maintenance
+        else if (message.includes('maintenance') || message.includes('unavailable')) {
+          errorMessage = 'We are updating our system. Please try again in a few minutes.';
+        }
+        // Generic fallback
+        else {
+          errorMessage = 'Something went wrong. Please try again or contact us if this keeps happening.';
         }
       }
       
@@ -101,10 +133,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
+    
+    // Clear error when user starts typing
+    if (error) {
+      setError(null);
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+
+    // Clear error on input change
+    if (error) {
+      setError(null);
+    }
   };
 
 
@@ -177,7 +220,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         </div>
       )}
 
-      <Modal isOpen={isOpen} onClose={onClose} maxWidth="md">
+      <Modal isOpen={isOpen} onClose={onClose} maxWidth="md" preventBackdropClose={!!error}>
       {/* Enhanced header with glassmorphism */}
       <div className="text-center mb-8 relative">
         {/* Decorative background elements */}
@@ -208,7 +251,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-24 h-px bg-gradient-to-r from-transparent via-rose-300/50 to-transparent"></div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         {/* Enhanced Error Message */}
         {error && (
           <div className="relative p-4 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200/60 rounded-2xl shadow-lg backdrop-blur-sm overflow-hidden">

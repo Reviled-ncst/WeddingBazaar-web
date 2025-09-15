@@ -30,6 +30,12 @@ interface RegisterData {
   lastName: string;
   role: 'couple' | 'vendor';
   phone?: string;
+  // Vendor-specific fields
+  business_name?: string;
+  business_type?: string;
+  location?: string;
+  receiveUpdates?: boolean;
+  [key: string]: any; // Allow additional fields
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -64,8 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
         // Only verify token if one exists
-        const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
-        const response = await fetch(`${apiUrl}/auth/verify`, {
+        const response = await fetch('/api/auth/verify', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -107,10 +112,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string): Promise<User> => {
     try {
-      setIsLoading(true);
+      // Don't set loading here - let the component handle its own loading state
+      // setIsLoading(true);
       
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
-      const fullUrl = `${apiUrl}/auth/login`;
+      // Use relative URL to leverage Vite proxy
+      const fullUrl = '/api/auth/login';
       
       console.log('🔐 Attempting login to:', fullUrl);
       
@@ -128,13 +134,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const contentType = response.headers.get('content-type');
       if (!contentType?.includes('application/json')) {
         console.error('❌ Non-JSON response received:', contentType);
-        throw new Error('Server configuration error. Please contact support.');
+        throw new Error('Server configuration error. Please contact support if this persists.');
       }
 
       if (!response.ok) {
         const error = await response.json();
         console.error('❌ Login failed with error:', error);
-        throw new Error(error.message || `Server error (${response.status})`);
+        console.error('❌ Response status:', response.status, response.statusText);
+        
+        // User-friendly error messages based on status code
+        let errorMessage = error.message || error.error || 'Something went wrong';
+        
+        switch (response.status) {
+          case 400:
+            errorMessage = 'Please check your email format and try again.';
+            break;
+          case 401:
+            errorMessage = error.message || 'Incorrect email or password';
+            break;
+          case 403:
+            errorMessage = 'Your account access is restricted. Please contact us for help.';
+            break;
+          case 404:
+            errorMessage = 'Service not available. Please try again later.';
+            break;
+          case 429:
+            errorMessage = 'Too many attempts. Please wait a few minutes and try again.';
+            break;
+          case 500:
+            errorMessage = 'Our servers are having issues. Please try again in a few minutes.';
+            break;
+          case 502:
+          case 503:
+            errorMessage = 'We are updating our system. Please try again in a few minutes.';
+            break;
+          case 504:
+            errorMessage = 'Connection is slow. Please check your internet and try again.';
+            break;
+          default:
+            // Keep original message if it's user-friendly, otherwise use generic
+            if (error.message && !error.message.includes('server') && !error.message.includes('status')) {
+              errorMessage = error.message;
+            } else {
+              errorMessage = 'Something went wrong. Please try again.';
+            }
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -153,19 +199,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('🔐 Login error:', error);
       
-      // Handle network errors
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Network error. Please check your connection and try again.');
+      // Simple, user-friendly error handling
+      if (error instanceof TypeError) {
+        // Network/connection issues
+        throw new Error('Connection problem. Please check your internet and try again.');
       }
       
-      // Re-throw with better error messages
+      // Re-throw the error as-is (it should already be user-friendly from above)
       if (error instanceof Error) {
         throw error;
       }
       
-      throw new Error('An unexpected error occurred during login.');
+      // Handle unknown error types
+      throw new Error('Something went wrong. Please try again.');
     } finally {
-      setIsLoading(false);
+      // Don't set loading false here - let the component handle it
+      // setIsLoading(false);
     }
   };
 
@@ -173,8 +222,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
-      const fullUrl = `${apiUrl}/auth/register`;
+      // Use relative URL to leverage Vite proxy
+      const fullUrl = '/api/auth/register';
       
       console.log('📝 Attempting registration to:', fullUrl);
       
@@ -183,12 +232,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: userData.email,
-          password: userData.password,
-          name: `${userData.firstName} ${userData.lastName}`,
-          userType: userData.role
-        }),
+        body: JSON.stringify(userData),
       });
 
       console.log('📝 Registration response status:', response.status);

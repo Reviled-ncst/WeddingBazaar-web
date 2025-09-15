@@ -631,7 +631,8 @@ export const Services: React.FC = () => {
     // Fetch detailed services for this category
     try {
       setModalLoading(true);
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
+      // Use relative URLs for local development (Vite proxy) or production URL for deployment
+      const apiUrl = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api');
       
       let transformedServices: ServiceDetails[] = [];
       
@@ -836,7 +837,8 @@ export const Services: React.FC = () => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
+        // Use relative URLs for local development (Vite proxy) or production URL for deployment
+        const apiUrl = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api');
         console.log('🔍 Fetching services from:', apiUrl);
         
         // Try multiple endpoints to get service data

@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock, User, Heart, Phone, Building, CheckCircle, AlertCircle, Sparkles, Shield, Star, Camera, Users, MapPin, Loader2, Map } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  Eye, EyeOff, Mail, Lock, User, Heart, Phone, Building, CheckCircle, 
+  MapPin, Zap, Tag, PartyPopper
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from './Modal';
 import { TermsOfServiceModal } from './TermsOfServiceModal';
 import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 import BusinessLocationMap from '../map/BusinessLocationMap';
+import LocationSearch from '../location/LocationSearch';
 import { cn } from '../../../utils/cn';
 import { useAuth } from '../../contexts/AuthContext';
-import { getCurrentLocationWithAddress } from '../../../utils/geolocation';
 
 interface RegisterModalProps {
   isOpen: boolean;
@@ -20,190 +23,340 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   onClose, 
   onSwitchToLogin 
 }) => {
+  // Core state
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [userType, setUserType] = useState<'couple' | 'vendor'>('couple');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
-  const [passwordStrength, setPasswordStrength] = useState(0);
   const [isSuccess, setIsSuccess] = useState(false);
+  
+  // OTP Verification state
+  const [showOTPVerification, setShowOTPVerification] = useState(false);
+  const [otpStep, setOtpStep] = useState<'send' | 'verify'>('send');
+  const [otpCodes, setOtpCodes] = useState({ email: '', sms: '' });
+  const [otpLoading, setOtpLoading] = useState({ email: false, sms: false });
+  const [otpSent, setOtpSent] = useState({ email: false, sms: false });
+  const [otpVerified, setOtpVerified] = useState({ email: false, sms: false });
+  const [otpErrors, setOtpErrors] = useState({ email: '', sms: '' });
+  const [developmentOTPs, setDevelopmentOTPs] = useState({ email: '', sms: '' }); // For development mode
+  const [registrationData, setRegistrationData] = useState<any>(null);
+  
+  // Modal states
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showLocationMap, setShowLocationMap] = useState(false);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
+  
+  // Enhanced UI states
+  const [fadeIn, setFadeIn] = useState(false);
+
+  // Initialize animations
+  useEffect(() => {
+    if (isOpen) {
+      setFadeIn(true);
+    }
+  }, [isOpen]);
+
+  // Form data with essential fields only
   const [formData, setFormData] = useState({
+    // Basic Info
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     password: '',
     confirmPassword: '',
-    // Enhanced vendor fields to match database structure
+    
+    // Vendor Business Info (only if vendor)
     business_name: '',
     business_type: '',
-    business_description: '',
-    years_in_business: 0,
-    website_url: '',
     location: '',
-    specialties: [] as string[],
-    service_areas: [] as string[],
+    
+    // Preferences
     agreeToTerms: false,
-    receiveUpdates: false
+    receiveUpdates: false,
   });
 
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  // Password strength calculation
-  const calculatePasswordStrength = (password: string) => {
-    let strength = 0;
-    if (password.length >= 8) strength += 25;
-    if (/[A-Z]/.test(password)) strength += 25;
-    if (/[0-9]/.test(password)) strength += 25;
-    if (/[^A-Za-z0-9]/.test(password)) strength += 25;
-    return strength;
-  };
+  // Essential vendor categories
+  const vendorCategories = [
+    { value: 'Photography', label: 'Photography' },
+    { value: 'Videography', label: 'Videography' },
+    { value: 'Wedding Planning', label: 'Wedding Planning' },
+    { value: 'Catering', label: 'Catering' },
+    { value: 'Venue', label: 'Venue' },
+    { value: 'Music/DJ', label: 'Music/DJ' },
+    { value: 'Flowers', label: 'Flowers' },
+    { value: 'Transportation', label: 'Transportation' },
+    { value: 'Beauty', label: 'Beauty & Makeup' },
+    { value: 'Other', label: 'Other Services' }
+  ];
 
-  const getPasswordStrengthColor = (strength: number) => {
-    if (strength <= 25) return 'bg-red-500';
-    if (strength <= 50) return 'bg-yellow-500';
-    if (strength <= 75) return 'bg-blue-500';
-    return 'bg-green-500';
-  };
-
-  const getPasswordStrengthText = (strength: number) => {
-    if (strength <= 25) return 'Weak';
-    if (strength <= 50) return 'Fair';
-    if (strength <= 75) return 'Good';
-    return 'Strong';
-  };
-
-  // Real-time validation
-  const validateField = (name: string, value: string) => {
-    const errors: {[key: string]: string} = {};
-    
-    switch (name) {
-      case 'email':
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          errors.email = 'Please enter a valid email address';
-        }
-        break;
-      case 'phone':
-        if (!/^\+?[\d\s-()]+$/.test(value) && value.length > 0) {
-          errors.phone = 'Please enter a valid phone number';
-        }
-        break;
-      case 'password':
-        if (value.length < 8) {
-          errors.password = 'Password must be at least 8 characters';
-        }
-        break;
-      case 'confirmPassword':
-        if (value !== formData.password) {
-          errors.confirmPassword = 'Passwords do not match';
-        }
-        break;
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: '',
+        business_name: '',
+        business_type: '',
+        location: '',
+        agreeToTerms: false,
+        receiveUpdates: false,
+      });
+      setValidationErrors({});
+      setError(null);
+      setIsSuccess(false);
+      setUserType('couple');
+      
+      // Reset OTP state
+      setShowOTPVerification(false);
+      setOtpStep('send');
+      setOtpCodes({ email: '', sms: '' });
+      setOtpLoading({ email: false, sms: false });
+      setOtpSent({ email: false, sms: false });
+      setOtpVerified({ email: false, sms: false });
+      setOtpErrors({ email: '', sms: '' });
+      setDevelopmentOTPs({ email: '', sms: '' });
+      setRegistrationData(null);
     }
-    
-    setValidationErrors(prev => ({ ...prev, ...errors }));
-    return Object.keys(errors).length === 0;
-  };
+  }, [isOpen]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    setValidationErrors({});
-
-    // Comprehensive validation
+  // Validation function
+  const validateForm = () => {
     const errors: {[key: string]: string} = {};
     
     if (!formData.firstName.trim()) errors.firstName = 'First name is required';
     if (!formData.lastName.trim()) errors.lastName = 'Last name is required';
     if (!formData.email.trim()) errors.email = 'Email is required';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errors.email = 'Valid email is required';
-    if (!formData.phone.trim()) errors.phone = 'Phone number is required';
-    if (formData.password.length < 8) errors.password = 'Password must be at least 8 characters';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Email is invalid';
+    if (!formData.password) errors.password = 'Password is required';
+    else if (formData.password.length < 6) errors.password = 'Password must be at least 6 characters';
     if (formData.password !== formData.confirmPassword) errors.confirmPassword = 'Passwords do not match';
-    if (!formData.agreeToTerms) errors.agreeToTerms = 'You must agree to the terms and conditions';
     
     if (userType === 'vendor') {
       if (!formData.business_name.trim()) errors.business_name = 'Business name is required';
       if (!formData.business_type) errors.business_type = 'Business category is required';
       if (!formData.location.trim()) errors.location = 'Business location is required';
     }
+    
+    if (!formData.agreeToTerms) errors.agreeToTerms = 'You must agree to the terms';
+    
+    return errors;
+  };
 
+  // Helper function to update form data and clear errors
+  const updateFormData = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear validation errors for this field
+    if (validationErrors[field]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+    
+    // Clear general error if any
+    if (error) {
+      setError(null);
+    }
+  };
+
+  // Handle form submission - now leads to OTP verification
+  const handleSubmit = async () => {
+    const errors = validateForm();
+    setValidationErrors(errors);
+    
     if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors);
-      setIsLoading(false);
       return;
     }
+    
+    // Save registration data for later use
+    const regData = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      password: formData.password,
+      role: userType,
+      ...(userType === 'vendor' && {
+        business_name: formData.business_name,
+        business_type: formData.business_type,
+        location: formData.location,
+      }),
+      receiveUpdates: formData.receiveUpdates,
+    };
+    
+    setRegistrationData(regData);
+    setShowOTPVerification(true);
+  };
 
+  // Send OTP codes to email and phone
+  const handleSendOTP = async () => {
+    if (!registrationData) return;
+    
+    setOtpLoading({ email: true, sms: true });
+    setOtpErrors({ email: '', sms: '' });
+    
     try {
-      // Prepare registration data
-      const registrationData = {
-        email: formData.email,
-        password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        role: userType,
-        phone: formData.phone,
-        ...(userType === 'vendor' && {
-          business_name: formData.business_name,
-          business_type: formData.business_type,
-          business_description: formData.business_description,
-          years_in_business: formData.years_in_business,
-          website_url: formData.website_url,
-          location: formData.location,
-          specialties: formData.specialties,
-          service_areas: formData.service_areas
+      // Send email OTP
+      const emailResponse = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: registrationData.email,
+          type: 'email'
         })
-      };
-
-      // Attempt registration
-      await register(registrationData);
+      });
       
-      // Show success animation
-      setIsSuccess(true);
+      const emailResult = await emailResponse.json();
+      if (emailResult.success) {
+        setOtpSent(prev => ({ ...prev, email: true }));
+        console.log('📧 Email OTP:', emailResult.otpCode); // For development
+        // Store development OTP for easy access
+        if (emailResult.otpCode) {
+          setDevelopmentOTPs(prev => ({ ...prev, email: emailResult.otpCode }));
+        }
+      } else {
+        setOtpErrors(prev => ({ ...prev, email: emailResult.message }));
+      }
       
-      // Wait for animation then navigate
-      setTimeout(() => {
-        onClose();
-        
-        // Reset form
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          phone: '',
-          password: '',
-          confirmPassword: '',
-          business_name: '',
-          business_type: '',
-          business_description: '',
-          years_in_business: 0,
-          website_url: '',
-          location: '',
-          specialties: [],
-          service_areas: [],
-          agreeToTerms: false,
-          receiveUpdates: false
+      // Send SMS OTP (if phone number provided)
+      if (registrationData.phone) {
+        const smsResponse = await fetch('/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identifier: registrationData.phone,
+            type: 'sms'
+          })
         });
         
-        // Route user to appropriate landing page based on their role
-        switch (userType) {
-          case 'couple':
-            navigate('/individual');
-            break;
-          case 'vendor':
-            navigate('/vendor');
-            break;
-          default:
-            navigate('/');
+        const smsResult = await smsResponse.json();
+        if (smsResult.success) {
+          setOtpSent(prev => ({ ...prev, sms: true }));
+          console.log('📱 SMS OTP:', smsResult.otpCode); // For development
+          // Store development OTP for easy access
+          if (smsResult.otpCode) {
+            setDevelopmentOTPs(prev => ({ ...prev, sms: smsResult.otpCode }));
+          }
+        } else {
+          setOtpErrors(prev => ({ ...prev, sms: smsResult.message }));
         }
-      }, 2000);
+      } else {
+        setOtpSent(prev => ({ ...prev, sms: true })); // Skip SMS if no phone
+      }
+      
+      setOtpStep('verify');
+      
+    } catch (error) {
+      console.error('OTP send error:', error);
+      setOtpErrors({ 
+        email: 'Failed to send email OTP', 
+        sms: 'Failed to send SMS OTP' 
+      });
+    } finally {
+      setOtpLoading({ email: false, sms: false });
+    }
+  };
+
+  // Verify OTP codes
+  const handleVerifyOTP = async () => {
+    if (!registrationData) return;
+    
+    setIsLoading(true);
+    setOtpErrors({ email: '', sms: '' });
+    setError(null);
+    
+    try {
+      let emailVerified = false;
+      let smsVerified = false;
+      let verificationErrors: string[] = [];
+      
+      // Verify email OTP
+      if (otpCodes.email) {
+        const emailResponse = await fetch('/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identifier: registrationData.email,
+            code: otpCodes.email,
+            type: 'email'
+          })
+        });
+        
+        const emailResult = await emailResponse.json();
+        if (emailResult.success) {
+          emailVerified = true;
+          setOtpVerified(prev => ({ ...prev, email: true }));
+        } else {
+          const errorMsg = emailResult.message || 'Email verification failed';
+          setOtpErrors(prev => ({ ...prev, email: errorMsg }));
+          verificationErrors.push(`Email: ${errorMsg}`);
+        }
+      } else {
+        setOtpErrors(prev => ({ ...prev, email: 'Please enter email verification code' }));
+        verificationErrors.push('Email verification code is required');
+      }
+      
+      // Verify SMS OTP (if phone provided)
+      if (registrationData.phone) {
+        if (otpCodes.sms) {
+          const smsResponse = await fetch('/api/auth/verify-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              identifier: registrationData.phone,
+              code: otpCodes.sms,
+              type: 'sms'
+            })
+          });
+          
+          const smsResult = await smsResponse.json();
+          if (smsResult.success) {
+            smsVerified = true;
+            setOtpVerified(prev => ({ ...prev, sms: true }));
+          } else {
+            const errorMsg = smsResult.message || 'SMS verification failed';
+            setOtpErrors(prev => ({ ...prev, sms: errorMsg }));
+            verificationErrors.push(`SMS: ${errorMsg}`);
+          }
+        } else {
+          setOtpErrors(prev => ({ ...prev, sms: 'Please enter SMS verification code' }));
+          verificationErrors.push('SMS verification code is required');
+        }
+      } else {
+        smsVerified = true; // Skip SMS verification if no phone
+      }
+      
+      // If both verifications passed, proceed with registration
+      if (emailVerified && smsVerified) {
+        console.log('✅ All OTP verifications passed, creating account...');
+        await register(registrationData);
+        setIsSuccess(true);
+        
+        // Redirect after success
+        setTimeout(() => {
+          setIsSuccess(false);
+          setShowOTPVerification(false);
+          onClose();
+          navigate(userType === 'vendor' ? '/vendor' : '/individual');
+        }, 2000);
+      } else {
+        // Set general error message for failed verifications
+        if (verificationErrors.length > 0) {
+          setError(`Verification failed: ${verificationErrors.join(', ')}`);
+        }
+      }
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
@@ -212,911 +365,761 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
-    const checked = (e.target as HTMLInputElement).checked;
-    const newValue = type === 'checkbox' ? checked : value;
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: newValue
-    }));
-
-    // Real-time validation
-    if (typeof newValue === 'string') {
-      validateField(name, newValue);
-      
-      // Calculate password strength
-      if (name === 'password') {
-        setPasswordStrength(calculatePasswordStrength(newValue));
-      }
-      
-      // Check confirm password match
-      if (name === 'confirmPassword' || (name === 'password' && formData.confirmPassword)) {
-        const passwordToCheck = name === 'password' ? newValue : formData.password;
-        const confirmPasswordToCheck = name === 'confirmPassword' ? newValue : formData.confirmPassword;
-        if (confirmPasswordToCheck && passwordToCheck !== confirmPasswordToCheck) {
-          setValidationErrors(prev => ({ ...prev, confirmPassword: 'Passwords do not match' }));
-        } else {
-          setValidationErrors(prev => {
-            const { confirmPassword, ...rest } = prev;
-            return rest;
-          });
-        }
-      }
-    }
-
-    // Clear specific validation errors when user starts typing
-    if (validationErrors[name]) {
-      setValidationErrors(prev => {
-        const { [name]: removed, ...rest } = prev;
-        return rest;
-      });
-    }
-
-    // Clear location error when user starts typing in location field
-    if (name === 'location' && locationError) {
-      setLocationError(null);
-    }
-  };
-
-  const vendorCategories = [
-    'Photography',
-    'Videography', 
-    'Wedding Planning',
-    'Catering',
-    'Venue',
-    'Florist',
-    'DJ/Band',
-    'Music',
-    'Hair & Makeup Artists',
-    'Transportation',
-    'Decoration',
-    'Officiant'
-  ];
-
-  // Geolocation functionality for business location
-  const getCurrentLocation = async () => {
-    setIsGettingLocation(true);
-    setLocationError(null);
-
-    try {
-      const result = await getCurrentLocationWithAddress();
-      
-      // Update the location field
-      setFormData(prev => ({
-        ...prev,
-        location: result.address
-      }));
-      
-      // Clear any previous location validation errors
-      if (validationErrors.location) {
-        setValidationErrors(prev => {
-          const { location, ...rest } = prev;
-          return rest;
-        });
-      }
-      
-    } catch (error) {
-      console.error('Error getting location:', error);
-      setLocationError(error instanceof Error ? error.message : 'Unable to get your location. Please enter manually.');
-    } finally {
-      setIsGettingLocation(false);
-    }
-  };
-
-  // Handle location selection from map
-  const handleLocationSelect = (location: { address: string; coordinates: { lat: number; lng: number } }) => {
-    setFormData(prev => ({
-      ...prev,
-      location: location.address
-    }));
-    
-    // Clear any previous location validation errors
-    if (validationErrors.location) {
-      setValidationErrors(prev => {
-        const { location: _, ...rest } = prev;
-        return rest;
-      });
-    }
-    
-    // Clear location error
-    setLocationError(null);
-  };
-
   return (
     <>
-      <style>
-        {`
-          [data-width="${passwordStrength}"] {
-            width: ${passwordStrength}%;
-          }
-        `}
-      </style>
-      <Modal isOpen={isOpen} onClose={onClose} maxWidth="lg">
-      {/* Success Overlay */}
-      {isSuccess && (
-        <div className="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-3xl z-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="mb-6 relative">
-              <div className="w-24 h-24 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto relative overflow-hidden">
-                <CheckCircle className="h-12 w-12 text-white animate-bounce" />
-                <div className="absolute inset-0 bg-white/20 rounded-full animate-ping"></div>
-              </div>
-              <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center animate-spin">
-                <Sparkles className="h-4 w-4 text-white" />
-              </div>
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Wedding Bazaar!</h3>
-            <p className="text-gray-600 mb-4">
-              Your account has been created successfully. Redirecting you to your {userType} dashboard...
-            </p>
-            <div className="flex items-center justify-center space-x-2">
-              <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce [animation-delay:0ms]"></div>
-              <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce [animation-delay:150ms]"></div>
-              <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce [animation-delay:300ms]"></div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Enhanced header with glassmorphism */}
-      <div className="text-center mb-8 relative">
-        {/* Decorative background elements */}
-        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-4 w-32 h-32 bg-gradient-to-br from-rose-200/30 to-pink-200/30 rounded-full blur-3xl"></div>
-        <div className="absolute top-4 right-4 w-16 h-16 bg-gradient-to-br from-pink-300/20 to-purple-300/20 rounded-full blur-2xl"></div>
-        <div className="absolute top-4 left-4 w-20 h-20 bg-gradient-to-br from-rose-300/20 to-pink-300/20 rounded-full blur-2xl"></div>
-        
-        <div className="flex justify-center mb-6 relative z-10">
-          <div className="relative p-4 bg-gradient-to-br from-rose-500 via-pink-500 to-rose-600 rounded-3xl shadow-2xl shadow-rose-500/25 group overflow-hidden">
-            {/* Glassmorphism layers */}
-            <div className="absolute inset-0 bg-white/20 rounded-3xl"></div>
-            <div className="absolute inset-px bg-gradient-to-br from-white/20 to-transparent rounded-3xl"></div>
-            
-            {/* Animated heart */}
-            <Heart className="h-10 w-10 text-white relative z-10 group-hover:scale-110 transition-transform duration-300" />
-            
-            {/* Subtle shine effect */}
-            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 skew-x-12"></div>
-          </div>
-        </div>
-        
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 bg-clip-text text-transparent mb-2 relative z-10">
-          Join Wedding Bazaar
-        </h2>
-        <p className="text-gray-600 text-lg relative z-10">Create your account and start planning your dream wedding</p>
-        
-        {/* Decorative line */}
-        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-24 h-px bg-gradient-to-r from-transparent via-rose-300/50 to-transparent"></div>
-      </div>
-
-      {/* Enhanced User Type Selection */}
-      <div className="mb-8">
-        <div className="text-center mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Choose Your Account Type</h3>
-          <p className="text-sm text-gray-600">Select the option that best describes you</p>
-        </div>
-        <div className="grid grid-cols-2 gap-6">
-          <button
-            type="button"
-            onClick={() => setUserType('couple')}
-            className={cn(
-              "relative p-8 border-2 rounded-3xl transition-all duration-500 group overflow-hidden transform hover:scale-105",
-              userType === 'couple' 
-                ? "border-rose-500 bg-gradient-to-br from-rose-50 via-pink-50 to-rose-100 text-rose-700 shadow-2xl shadow-rose-500/30 scale-105" 
-                : "border-gray-200 hover:border-rose-300 bg-white/80 backdrop-blur-sm hover:shadow-xl hover:shadow-rose-500/10"
-            )}
-          >
-            {/* Background effects */}
-            <div className="absolute inset-0 bg-gradient-to-br from-rose-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl"></div>
-            <div className="absolute top-2 right-2 w-4 h-4 bg-gradient-to-br from-rose-400 to-pink-400 rounded-full opacity-20 group-hover:opacity-40 transition-opacity duration-300"></div>
-            <div className="absolute bottom-2 left-2 w-3 h-3 bg-gradient-to-br from-pink-400 to-rose-400 rounded-full opacity-15 group-hover:opacity-30 transition-opacity duration-300"></div>
-            
-            {/* Content */}
-            <div className="relative z-10 text-center">
-              <div className="relative mb-4">
-                <div className={cn(
-                  "w-16 h-16 mx-auto rounded-2xl flex items-center justify-center transition-all duration-300",
-                  userType === 'couple' 
-                    ? "bg-gradient-to-br from-rose-500 to-pink-500 shadow-lg" 
-                    : "bg-gradient-to-br from-gray-400 to-gray-500 group-hover:from-rose-400 group-hover:to-pink-400"
-                )}>
-                  <Heart className="h-8 w-8 text-white" />
-                </div>
-                {userType === 'couple' && (
-                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse">
-                    <Star className="h-3 w-3 text-yellow-800" />
-                  </div>
-                )}
-              </div>
-              <div className="font-bold text-xl mb-2">I'm a Couple</div>
-              <div className="text-sm text-gray-600 mb-3">Planning my dream wedding</div>
-              <div className="flex items-center justify-center space-x-2 text-xs text-gray-500">
-                <Users className="h-4 w-4" />
-                <span>Find vendors & plan together</span>
-              </div>
-            </div>
-            
-            {/* Selection indicator */}
-            {userType === 'couple' && (
-              <div className="absolute top-3 left-3 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                <CheckCircle className="h-4 w-4 text-white" />
-              </div>
-            )}
-          </button>
+      <Modal isOpen={isOpen} onClose={onClose} maxWidth="xl" preventBackdropClose={!!error || Object.keys(validationErrors).length > 0}>
+        <div className={cn("relative overflow-hidden px-6 py-6", fadeIn && "animate-in fade-in duration-500")}>
           
-          <button
-            type="button"
-            onClick={() => setUserType('vendor')}
-            className={cn(
-              "relative p-8 border-2 rounded-3xl transition-all duration-500 group overflow-hidden transform hover:scale-105",
-              userType === 'vendor' 
-                ? "border-indigo-500 bg-gradient-to-br from-indigo-50 via-blue-50 to-indigo-100 text-indigo-700 shadow-2xl shadow-indigo-500/30 scale-105" 
-                : "border-gray-200 hover:border-indigo-300 bg-white/80 backdrop-blur-sm hover:shadow-xl hover:shadow-indigo-500/10"
-            )}
-          >
-            {/* Background effects */}
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl"></div>
-            <div className="absolute top-2 right-2 w-4 h-4 bg-gradient-to-br from-indigo-400 to-blue-400 rounded-full opacity-20 group-hover:opacity-40 transition-opacity duration-300"></div>
-            <div className="absolute bottom-2 left-2 w-3 h-3 bg-gradient-to-br from-blue-400 to-indigo-400 rounded-full opacity-15 group-hover:opacity-30 transition-opacity duration-300"></div>
-            
-            {/* Content */}
-            <div className="relative z-10 text-center">
-              <div className="relative mb-4">
-                <div className={cn(
-                  "w-16 h-16 mx-auto rounded-2xl flex items-center justify-center transition-all duration-300",
-                  userType === 'vendor' 
-                    ? "bg-gradient-to-br from-indigo-500 to-blue-500 shadow-lg" 
-                    : "bg-gradient-to-br from-gray-400 to-gray-500 group-hover:from-indigo-400 group-hover:to-blue-400"
-                )}>
-                  <Building className="h-8 w-8 text-white" />
-                </div>
-                {userType === 'vendor' && (
-                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse">
-                    <Star className="h-3 w-3 text-yellow-800" />
-                  </div>
-                )}
-              </div>
-              <div className="font-bold text-xl mb-2">I'm a Vendor</div>
-              <div className="text-sm text-gray-600 mb-3">Offering wedding services</div>
-              <div className="flex items-center justify-center space-x-2 text-xs text-gray-500">
-                <Camera className="h-4 w-4" />
-                <span>Showcase & grow your business</span>
-              </div>
-            </div>
-            
-            {/* Selection indicator */}
-            {userType === 'vendor' && (
-              <div className="absolute top-3 left-3 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                <CheckCircle className="h-4 w-4 text-white" />
-              </div>
-            )}
-          </button>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Error Message */}
-        {error && (
-          <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-              <p className="text-red-700 font-medium">{error}</p>
-            </div>
+          {/* Enhanced Background decoration */}
+          <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden">
+            <div className="absolute -top-4 -right-4 w-32 h-32 bg-gradient-to-br from-rose-400 via-pink-400 to-purple-500 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-tr from-indigo-400 via-purple-400 to-pink-400 rounded-full blur-2xl animate-pulse delay-1000"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-br from-rose-300 to-pink-300 rounded-full blur-xl opacity-50"></div>
           </div>
-        )}
 
-        {/* Name Fields */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-              First Name *
-            </label>
-            <div className="relative">
-              <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                id="firstName"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleInputChange}
-                placeholder="First name"
-                className={cn(
-                  "w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
-                  validationErrors.firstName 
-                    ? "border-red-300 focus:border-red-500" 
-                    : "border-gray-300 focus:border-rose-500"
-                )}
-                required
-              />
-              {validationErrors.firstName && (
-                <div className="flex items-center mt-1 text-red-600 text-sm">
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  {validationErrors.firstName}
-                </div>
-              )}
-            </div>
-          </div>
-          <div>
-            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-              Last Name *
-            </label>
-            <input
-              type="text"
-              id="lastName"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleInputChange}
-              placeholder="Last name"
-              className={cn(
-                "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
-                validationErrors.lastName 
-                  ? "border-red-300 focus:border-red-500" 
-                  : "border-gray-300 focus:border-rose-500"
-              )}
-              required
-            />
-            {validationErrors.lastName && (
-              <div className="flex items-center mt-1 text-red-600 text-sm">
-                <AlertCircle className="h-4 w-4 mr-1" />
-                {validationErrors.lastName}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Contact Fields */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address *
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="Enter your email"
-                autoComplete="email"
-                className={cn(
-                  "w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
-                  validationErrors.email 
-                    ? "border-red-300 focus:border-red-500" 
-                    : "border-gray-300 focus:border-rose-500"
-                )}
-                required
-              />
-              {!validationErrors.email && formData.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
-                <CheckCircle className="absolute right-3 top-3 h-5 w-5 text-green-500" />
-              )}
-              {validationErrors.email && (
-                <div className="flex items-center mt-1 text-red-600 text-sm">
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  {validationErrors.email}
-                </div>
-              )}
-            </div>
-          </div>
-          <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-              Phone Number *
-            </label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                placeholder="Phone number"
-                className={cn(
-                  "w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
-                  validationErrors.phone 
-                    ? "border-red-300 focus:border-red-500" 
-                    : "border-gray-300 focus:border-rose-500"
-                )}
-                required
-              />
-              {validationErrors.phone && (
-                <div className="flex items-center mt-1 text-red-600 text-sm">
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  {validationErrors.phone}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Vendor-specific fields */}
-        {userType === 'vendor' && (
-          <div className="space-y-6 p-6 bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50 rounded-2xl border border-rose-200 shadow-sm">
-            <div className="flex items-center mb-6">
-              <Building className="h-6 w-6 text-rose-500 mr-3" />
-              <h4 className="text-lg font-semibold text-gray-900">Business Information</h4>
-            </div>
-            
-            {/* Business Name & Category */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="business_name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Business Name *
-                </label>
-                <input
-                  type="text"
-                  id="business_name"
-                  name="business_name"
-                  value={formData.business_name}
-                  onChange={handleInputChange}
-                  placeholder="Your business name"
-                  className={cn(
-                    "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
-                    validationErrors.business_name 
-                      ? "border-red-300 focus:border-red-500" 
-                      : "border-gray-300 focus:border-rose-500"
-                  )}
-                  required
-                />
-                {validationErrors.business_name && (
-                  <div className="flex items-center mt-1 text-red-600 text-sm">
-                    <AlertCircle className="h-4 w-4 mr-1" />
-                    {validationErrors.business_name}
+          {/* Success Overlay with enhanced animations */}
+          {isSuccess && (
+            <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-green-50/90 to-emerald-50/95 backdrop-blur-xl rounded-2xl z-50 flex items-center justify-center animate-in fade-in duration-700">
+              <div className="text-center relative z-10 animate-in slide-in-from-bottom duration-1000">
+                <div className="mb-6 relative">
+                  <div className="relative w-20 h-20 bg-gradient-to-br from-green-400 via-emerald-500 to-green-600 rounded-full flex items-center justify-center mx-auto shadow-2xl animate-bounce">
+                    <CheckCircle className="h-10 w-10 text-white drop-shadow-lg" />
                   </div>
-                )}
-              </div>
-              
-              <div>
-                <label htmlFor="business_type" className="block text-sm font-medium text-gray-700 mb-2">
-                  Business Category *
-                </label>
-                <select
-                  id="business_type"
-                  name="business_type"
-                  value={formData.business_type}
-                  onChange={handleInputChange}
-                  className={cn(
-                    "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
-                    validationErrors.business_type 
-                      ? "border-red-300 focus:border-red-500" 
-                      : "border-gray-300 focus:border-rose-500"
-                  )}
-                  required
-                >
-                  <option value="">Select category</option>
-                  {vendorCategories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-                {validationErrors.business_type && (
-                  <div className="flex items-center mt-1 text-red-600 text-sm">
-                    <AlertCircle className="h-4 w-4 mr-1" />
-                    {validationErrors.business_type}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Location & Years in Business */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
-                  Business Location *
-                </label>
-                <div className="space-y-3">
-                  {/* Location Input */}
-                  <input
-                    type="text"
-                    id="location"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    placeholder="Enter your business location..."
-                    className={cn(
-                      "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
-                      validationErrors.location 
-                        ? "border-red-300 focus:border-red-500" 
-                        : "border-gray-300 focus:border-rose-500"
-                    )}
-                    required
-                  />
-                  
-                  {/* Location Action Buttons */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={getCurrentLocation}
-                      disabled={isGettingLocation}
-                      className={cn(
-                        "px-3 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors",
-                        "flex items-center justify-center gap-2 text-sm font-medium",
-                        "disabled:opacity-50 disabled:cursor-not-allowed",
-                        isGettingLocation && "animate-pulse"
-                      )}
-                    >
-                      {isGettingLocation ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Finding...
-                        </>
-                      ) : (
-                        <>
-                          <MapPin className="h-4 w-4" />
-                          Use GPS
-                        </>
-                      )}
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => {
-                        console.log('Map button clicked!');
-                        setShowLocationMap(true);
-                      }}
-                      className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
-                    >
-                      <Map className="h-4 w-4" />
-                      Select on Map
-                    </button>
-                  </div>
-                  
-                  {/* Helper text */}
-                  <div className="text-xs text-gray-500 text-center">
-                    Use GPS for your current location or select manually on the map
-                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-400/30 to-emerald-500/30 rounded-full animate-ping"></div>
                 </div>
                 
-                {/* Status Messages */}
-                {validationErrors.location && (
-                  <div className="flex items-center mt-2 text-red-600 text-sm">
-                    <AlertCircle className="h-4 w-4 mr-1" />
-                    {validationErrors.location}
+                <div className="space-y-4">
+                  <h3 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                    Welcome to Wedding Bazaar! 🎉
+                  </h3>
+                  <p className="text-gray-600 text-base max-w-md mx-auto leading-relaxed">
+                    Your {userType} account has been created successfully! Get ready to make your wedding dreams come true.
+                  </p>
+                  
+                  <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 text-white rounded-2xl font-semibold text-sm shadow-xl animate-pulse">
+                    <Zap className="h-5 w-5 mr-2 animate-spin" />
+                    Taking you to your dashboard...
                   </div>
-                )}
-                {locationError && (
-                  <div className="flex items-center mt-2 text-amber-600 text-sm">
-                    <AlertCircle className="h-4 w-4 mr-1" />
-                    {locationError}
-                  </div>
-                )}
-                {formData.location && !validationErrors.location && !locationError && (
-                  <div className="flex items-center mt-2 text-green-600 text-sm">
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Location set successfully
-                  </div>
-                )}
+                </div>
               </div>
+            </div>
+          )}
+
+          {/* Single Page Registration Form */}
+          <div className="relative">
+            {/* Enhanced Background Glass Effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-rose-50/40 to-purple-50/30 rounded-2xl backdrop-blur-md border border-white/50 shadow-2xl -m-3"></div>
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent rounded-2xl -m-2"></div>
+            
+            {/* Enhanced Header */}
+            <div className="relative text-center mb-8 pt-2">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-rose-500 via-pink-500 to-purple-600 rounded-2xl shadow-xl mb-4 rotate-3 hover:rotate-0 transition-transform duration-500">
+                <PartyPopper className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-rose-600 to-purple-600 bg-clip-text text-transparent mb-3">
+                Join Wedding Bazaar
+              </h2>
+              <p className="text-gray-600 text-base max-w-md mx-auto leading-relaxed">
+                Create your account and start planning your perfect wedding with the best vendors
+              </p>
+            </div>
+
+            {/* Main Form Content */}
+            <div className="relative max-w-5xl mx-auto space-y-8">
               
-              <div>
-                <label htmlFor="years_in_business" className="block text-sm font-medium text-gray-700 mb-2">
-                  Years in Business
-                </label>
-                <input
-                  type="number"
-                  id="years_in_business"
-                  name="years_in_business"
-                  value={formData.years_in_business}
-                  onChange={handleInputChange}
-                  placeholder="0"
-                  min="0"
-                  max="50"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-colors"
-                />
-                <div className="text-xs text-gray-500 mt-1">
-                  How many years have you been in the wedding industry?
+              {/* OTP Verification View */}
+              {showOTPVerification ? (
+                <div className="space-y-6">
+                  {/* OTP Header */}
+                  <div className="text-center space-y-3">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl shadow-xl mb-4">
+                      <Mail className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      Verify Your Account
+                    </h3>
+                    <p className="text-gray-600 max-w-md mx-auto">
+                      We've sent verification codes to your email{registrationData?.phone && ' and phone'}. 
+                      Enter the codes below to complete your registration.
+                    </p>
+                  </div>
+
+                  {otpStep === 'send' ? (
+                    /* Send OTP Step */
+                    <div className="space-y-6">
+                      <div className="text-center space-y-4">
+                        <p className="text-gray-700 font-medium">
+                          📧 Email: {registrationData?.email}
+                        </p>
+                        {registrationData?.phone && (
+                          <p className="text-gray-700 font-medium">
+                            📱 Phone: {registrationData.phone}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <button
+                        onClick={handleSendOTP}
+                        disabled={otpLoading.email || otpLoading.sms}
+                        className="w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 text-white rounded-2xl px-8 py-4 font-semibold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {(otpLoading.email || otpLoading.sms) ? (
+                          <div className="flex items-center justify-center space-x-2">
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span>Sending Verification Codes...</span>
+                          </div>
+                        ) : (
+                          'Send Verification Codes'
+                        )}
+                      </button>
+
+                      {(otpErrors.email || otpErrors.sms) && (
+                        <div className="space-y-2">
+                          {otpErrors.email && (
+                            <p className="text-red-500 text-sm">📧 Email: {otpErrors.email}</p>
+                          )}
+                          {otpErrors.sms && (
+                            <p className="text-red-500 text-sm">📱 SMS: {otpErrors.sms}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Verify OTP Step */
+                    <div className="space-y-6">
+                      {/* Email OTP */}
+                      <div className="space-y-3">
+                        <label className="block text-sm font-semibold text-gray-700">
+                          📧 Email Verification Code
+                        </label>
+                        
+                        {/* Development OTP Helper */}
+                        {import.meta.env.DEV && developmentOTPs.email && (
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+                            <p className="text-yellow-800 text-sm font-medium">
+                              🔧 Development Mode: Your email OTP is <span className="font-mono font-bold">{developmentOTPs.email}</span>
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setOtpCodes(prev => ({ ...prev, email: developmentOTPs.email }))}
+                              className="text-yellow-600 hover:text-yellow-800 text-xs underline mt-1"
+                            >
+                              Click to auto-fill
+                            </button>
+                          </div>
+                        )}
+                        
+                        <input
+                          type="text"
+                          value={otpCodes.email}
+                          onChange={(e) => setOtpCodes(prev => ({ ...prev, email: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                          placeholder="Enter 6-digit code from email"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-xl font-mono tracking-widest"
+                          maxLength={6}
+                        />
+                        {otpErrors.email && (
+                          <p className="text-red-500 text-sm">{otpErrors.email}</p>
+                        )}
+                        {otpVerified.email && (
+                          <p className="text-green-500 text-sm flex items-center">
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Email verified!
+                          </p>
+                        )}
+                      </div>
+
+                      {/* SMS OTP (if phone provided) */}
+                      {registrationData?.phone && (
+                        <div className="space-y-3">
+                          <label className="block text-sm font-semibold text-gray-700">
+                            📱 SMS Verification Code
+                          </label>
+                          
+                          {/* Development OTP Helper */}
+                          {import.meta.env.DEV && developmentOTPs.sms && (
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+                              <p className="text-yellow-800 text-sm font-medium">
+                                🔧 Development Mode: Your SMS OTP is <span className="font-mono font-bold">{developmentOTPs.sms}</span>
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => setOtpCodes(prev => ({ ...prev, sms: developmentOTPs.sms }))}
+                                className="text-yellow-600 hover:text-yellow-800 text-xs underline mt-1"
+                              >
+                                Click to auto-fill
+                              </button>
+                            </div>
+                          )}
+                          
+                          <input
+                            type="text"
+                            value={otpCodes.sms}
+                            onChange={(e) => setOtpCodes(prev => ({ ...prev, sms: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                            placeholder="Enter 6-digit code from SMS"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-xl font-mono tracking-widest"
+                            maxLength={6}
+                          />
+                          {otpErrors.sms && (
+                            <p className="text-red-500 text-sm">{otpErrors.sms}</p>
+                          )}
+                          {otpVerified.sms && (
+                            <p className="text-green-500 text-sm flex items-center">
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Phone verified!
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Verify Button */}
+                      <div className="flex flex-col space-y-4">
+                        {/* Development Helper Button */}
+                        {import.meta.env.DEV && (developmentOTPs.email || developmentOTPs.sms) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOtpCodes({
+                                email: developmentOTPs.email || '',
+                                sms: developmentOTPs.sms || ''
+                              });
+                            }}
+                            className="w-full bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 text-yellow-900 rounded-2xl px-8 py-3 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                          >
+                            🔧 Auto-fill Development OTPs
+                          </button>
+                        )}
+                        
+                        <button
+                          onClick={handleVerifyOTP}
+                          disabled={isLoading || !otpCodes.email || (registrationData?.phone && !otpCodes.sms)}
+                          className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 text-white rounded-2xl px-8 py-4 font-semibold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isLoading ? (
+                            <div className="flex items-center justify-center space-x-2">
+                              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              <span>Creating Account...</span>
+                            </div>
+                          ) : (
+                            'Verify & Create Account'
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => setOtpStep('send')}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          ← Resend verification codes
+                        </button>
+                      </div>
+
+                      {error && (
+                        <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+                          <p className="text-red-600 text-sm">{error}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Back to Registration */}
+                  <div className="text-center">
+                    <button
+                      onClick={() => setShowOTPVerification(false)}
+                      className="text-gray-500 hover:text-gray-700 text-sm font-medium"
+                    >
+                      ← Back to registration form
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Business Description */}
-            <div>
-              <label htmlFor="business_description" className="block text-sm font-medium text-gray-700 mb-2">
-                Business Description
-              </label>
-              <textarea
-                id="business_description"
-                name="business_description"
-                value={formData.business_description}
-                onChange={handleInputChange}
-                placeholder="Brief description of your services and specialties..."
-                rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-colors resize-none"
-              />
-              <div className="text-xs text-gray-500 mt-1">
-                Help couples understand what makes your services special
-              </div>
-            </div>
-
-            {/* Website URL */}
-            <div>
-              <label htmlFor="website_url" className="block text-sm font-medium text-gray-700 mb-2">
-                Website URL
-              </label>
-              <input
-                type="url"
-                id="website_url"
-                name="website_url"
-                value={formData.website_url}
-                onChange={handleInputChange}
-                placeholder="https://yourwebsite.com"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-colors"
-              />
-              <div className="text-xs text-gray-500 mt-1">
-                Optional: Link to your business website or portfolio
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Password Fields */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password *
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="Create password"
-                autoComplete="new-password"
-                className={cn(
-                  "w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
-                  validationErrors.password 
-                    ? "border-red-300 focus:border-red-500" 
-                    : "border-gray-300 focus:border-rose-500"
-                )}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
-              </button>
-            </div>
-            {/* Enhanced Password Strength Indicator */}
-            {formData.password && (
-              <div className="mt-3 p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-200">
-                <div className="flex justify-between text-xs text-gray-600 mb-2">
-                  <span className="font-medium">Password Strength</span>
-                  <span className={cn(
-                    "font-bold px-2 py-1 rounded-full text-xs",
-                    passwordStrength <= 25 && "text-red-700 bg-red-100",
-                    passwordStrength > 25 && passwordStrength <= 50 && "text-yellow-700 bg-yellow-100",
-                    passwordStrength > 50 && passwordStrength <= 75 && "text-blue-700 bg-blue-100",
-                    passwordStrength > 75 && "text-green-700 bg-green-100"
-                  )}>
-                    {getPasswordStrengthText(passwordStrength)}
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden">
-                  <div 
+              ) : (
+                /* Regular Registration Form */
+                <>
+              
+              {/* Enhanced User Type Selection */}
+              <div className="space-y-4">
+                <label className="block text-lg font-bold text-gray-800 text-center">I am a:</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <button
+                    type="button"
+                    onClick={() => setUserType('couple')}
                     className={cn(
-                      "h-2 rounded-full transition-all duration-500 transform",
-                      getPasswordStrengthColor(passwordStrength),
-                      passwordStrength > 0 && "animate-pulse"
+                      "group p-6 rounded-2xl border-3 transition-all duration-500 text-left transform hover:scale-105 hover:shadow-2xl",
+                      userType === 'couple'
+                        ? "border-rose-500 bg-gradient-to-br from-rose-50 via-pink-50 to-rose-100 text-rose-800 shadow-xl scale-105"
+                        : "border-gray-200 bg-gradient-to-br from-white to-gray-50 hover:border-rose-300 hover:shadow-lg"
                     )}
-                    data-width={passwordStrength}
-                  ></div>
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className={cn(
+                        "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:rotate-12",
+                        userType === 'couple' 
+                          ? "bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-lg" 
+                          : "bg-gradient-to-br from-gray-100 to-gray-200 text-gray-500 group-hover:from-rose-100 group-hover:to-pink-100 group-hover:text-rose-500"
+                      )}>
+                        <Heart className="h-7 w-7" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-bold text-lg">Planning My Wedding</div>
+                        <div className="text-sm opacity-75 mt-1">Find amazing vendors and plan your dream wedding</div>
+                      </div>
+                    </div>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setUserType('vendor')}
+                    className={cn(
+                      "group p-6 rounded-2xl border-3 transition-all duration-500 text-left transform hover:scale-105 hover:shadow-2xl",
+                      userType === 'vendor'
+                        ? "border-purple-500 bg-gradient-to-br from-purple-50 via-indigo-50 to-purple-100 text-purple-800 shadow-xl scale-105"
+                        : "border-gray-200 bg-gradient-to-br from-white to-gray-50 hover:border-purple-300 hover:shadow-lg"
+                    )}
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className={cn(
+                        "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:rotate-12",
+                        userType === 'vendor' 
+                          ? "bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg" 
+                          : "bg-gradient-to-br from-gray-100 to-gray-200 text-gray-500 group-hover:from-purple-100 group-hover:to-indigo-100 group-hover:text-purple-500"
+                      )}>
+                        <Building className="h-7 w-7" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-bold text-lg">Wedding Vendor</div>
+                        <div className="text-sm opacity-75 mt-1">Offer your services to happy couples</div>
+                      </div>
+                    </div>
+                  </button>
                 </div>
-                {/* Password Requirements */}
-                <div className="space-y-1">
-                  <div className="flex items-center text-xs">
-                    <CheckCircle className={cn("h-3 w-3 mr-1", formData.password.length >= 8 ? "text-green-500" : "text-gray-300")} />
-                    <span className={formData.password.length >= 8 ? "text-green-700" : "text-gray-500"}>At least 8 characters</span>
+              </div>
+
+              {/* Enhanced Basic Information */}
+              <div className="bg-gradient-to-br from-white/80 to-gray-50/60 p-6 rounded-2xl border border-white/50 shadow-lg">
+                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                  <User className="h-6 w-6 mr-3 text-rose-500" />
+                  Personal Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center">
+                      <span className="w-2 h-2 bg-rose-500 rounded-full mr-2"></span>
+                      First Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.firstName}
+                      onChange={(e) => updateFormData('firstName', e.target.value)}
+                      className={cn(
+                        "w-full px-4 py-4 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg",
+                        "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
+                        validationErrors.firstName
+                          ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
+                          : "border-gray-200 focus:border-rose-400 focus:shadow-2xl focus:shadow-rose-500/20 focus:ring-4 focus:ring-rose-100"
+                      )}
+                      placeholder="Enter your first name"
+                    />
+                    {validationErrors.firstName && (
+                      <p className="text-red-500 text-sm mt-2 flex items-center">
+                        <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                        {validationErrors.firstName}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center text-xs">
-                    <CheckCircle className={cn("h-3 w-3 mr-1", /[A-Z]/.test(formData.password) ? "text-green-500" : "text-gray-300")} />
-                    <span className={/[A-Z]/.test(formData.password) ? "text-green-700" : "text-gray-500"}>One uppercase letter</span>
+
+                  <div className="space-y-3">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center">
+                      <span className="w-2 h-2 bg-rose-500 rounded-full mr-2"></span>
+                      Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.lastName}
+                      onChange={(e) => updateFormData('lastName', e.target.value)}
+                      className={cn(
+                        "w-full px-4 py-4 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg",
+                        "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
+                        validationErrors.lastName
+                          ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
+                          : "border-gray-200 focus:border-rose-400 focus:shadow-2xl focus:shadow-rose-500/20 focus:ring-4 focus:ring-rose-100"
+                      )}
+                      placeholder="Enter your last name"
+                    />
+                    {validationErrors.lastName && (
+                      <p className="text-red-500 text-sm mt-2 flex items-center">
+                        <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                        {validationErrors.lastName}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center text-xs">
-                    <CheckCircle className={cn("h-3 w-3 mr-1", /[0-9]/.test(formData.password) ? "text-green-500" : "text-gray-300")} />
-                    <span className={/[0-9]/.test(formData.password) ? "text-green-700" : "text-gray-500"}>One number</span>
+
+                  <div className="space-y-3">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center">
+                      <Mail className="w-4 h-4 mr-2 text-rose-500" />
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => updateFormData('email', e.target.value)}
+                      className={cn(
+                        "w-full px-4 py-4 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg",
+                        "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
+                        validationErrors.email
+                          ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
+                          : "border-gray-200 focus:border-rose-400 focus:shadow-2xl focus:shadow-rose-500/20 focus:ring-4 focus:ring-rose-100"
+                      )}
+                      placeholder="your.email@example.com"
+                    />
+                    {validationErrors.email && (
+                      <p className="text-red-500 text-sm mt-2 flex items-center">
+                        <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                        {validationErrors.email}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center text-xs">
-                    <CheckCircle className={cn("h-3 w-3 mr-1", /[^A-Za-z0-9]/.test(formData.password) ? "text-green-500" : "text-gray-300")} />
-                    <span className={/[^A-Za-z0-9]/.test(formData.password) ? "text-green-700" : "text-gray-500"}>One special character</span>
+
+                  <div className="space-y-3">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center">
+                      <Phone className="w-4 h-4 mr-2 text-gray-500" />
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => updateFormData('phone', e.target.value)}
+                      className="w-full px-4 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-rose-400 focus:shadow-2xl focus:shadow-rose-500/20 focus:ring-4 focus:ring-rose-100 transition-all duration-300 bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl text-lg"
+                      placeholder="+1 (555) 123-4567"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center">
+                      <Lock className="w-4 h-4 mr-2 text-rose-500" />
+                      Password *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={(e) => updateFormData('password', e.target.value)}
+                        className={cn(
+                          "w-full px-4 py-4 pr-14 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg",
+                          "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
+                          validationErrors.password
+                            ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
+                            : "border-gray-200 focus:border-rose-400 focus:shadow-2xl focus:shadow-rose-500/20 focus:ring-4 focus:ring-rose-100"
+                        )}
+                        placeholder="Create a strong password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-lg hover:bg-gray-100"
+                      >
+                        {showPassword ? <EyeOff className="h-6 w-6" /> : <Eye className="h-6 w-6" />}
+                      </button>
+                    </div>
+                    {validationErrors.password && (
+                      <p className="text-red-500 text-sm mt-2 flex items-center">
+                        <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                        {validationErrors.password}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center">
+                      <Lock className="w-4 h-4 mr-2 text-rose-500" />
+                      Confirm Password *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={formData.confirmPassword}
+                        onChange={(e) => updateFormData('confirmPassword', e.target.value)}
+                        className={cn(
+                          "w-full px-4 py-4 pr-14 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg",
+                          "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
+                          validationErrors.confirmPassword
+                            ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
+                            : "border-gray-200 focus:border-rose-400 focus:shadow-2xl focus:shadow-rose-500/20 focus:ring-4 focus:ring-rose-100"
+                        )}
+                        placeholder="Confirm your password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-lg hover:bg-gray-100"
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-6 w-6" /> : <Eye className="h-6 w-6" />}
+                      </button>
+                    </div>
+                    {validationErrors.confirmPassword && (
+                      <p className="text-red-500 text-sm mt-2 flex items-center">
+                        <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                        {validationErrors.confirmPassword}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
-            )}
-            {validationErrors.password && (
-              <div className="flex items-center mt-1 text-red-600 text-sm">
-                <AlertCircle className="h-4 w-4 mr-1" />
-                {validationErrors.password}
+
+              {/* Enhanced Vendor-specific fields */}
+              {userType === 'vendor' && (
+                <div className="bg-gradient-to-br from-purple-50/80 to-indigo-50/60 p-6 rounded-2xl border border-purple-200/50 shadow-lg animate-in slide-in-from-bottom duration-500">
+                  <h3 className="text-xl font-bold text-purple-800 mb-6 flex items-center">
+                    <Building className="h-6 w-6 mr-3 text-purple-500" />
+                    Business Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <label className="block text-sm font-bold text-gray-700 flex items-center">
+                        <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                        Business Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.business_name}
+                        onChange={(e) => updateFormData('business_name', e.target.value)}
+                        className={cn(
+                          "w-full px-4 py-4 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg",
+                          "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
+                          validationErrors.business_name
+                            ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
+                            : "border-gray-200 focus:border-purple-400 focus:shadow-2xl focus:shadow-purple-500/20 focus:ring-4 focus:ring-purple-100"
+                        )}
+                        placeholder="Your Amazing Business Name"
+                      />
+                      {validationErrors.business_name && (
+                        <p className="text-red-500 text-sm mt-2 flex items-center">
+                          <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                          {validationErrors.business_name}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="block text-sm font-bold text-gray-700 flex items-center">
+                        <Tag className="w-4 h-4 mr-2 text-purple-500" />
+                        Business Category *
+                      </label>
+                      <select
+                        value={formData.business_type}
+                        onChange={(e) => updateFormData('business_type', e.target.value)}
+                        title="Select your business category"
+                        className={cn(
+                          "w-full px-4 py-4 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg cursor-pointer",
+                          "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
+                          validationErrors.business_type
+                            ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
+                            : "border-gray-200 focus:border-purple-400 focus:shadow-2xl focus:shadow-purple-500/20 focus:ring-4 focus:ring-purple-100"
+                        )}
+                      >
+                        <option value="">Choose your specialty...</option>
+                        {vendorCategories.map((category) => (
+                          <option key={category.value} value={category.value}>
+                            {category.label}
+                          </option>
+                        ))}
+                      </select>
+                      {validationErrors.business_type && (
+                        <p className="text-red-500 text-sm mt-2 flex items-center">
+                          <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                          {validationErrors.business_type}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-3 md:col-span-2">
+                      <label className="block text-sm font-bold text-gray-700 flex items-center">
+                        <MapPin className="w-4 h-4 mr-2 text-purple-500" />
+                        Business Location *
+                      </label>
+                      <div className="relative">
+                        <LocationSearch
+                          value={formData.location}
+                          onChange={(location: string) => {
+                            setFormData(prev => ({ ...prev, location }));
+                            if (validationErrors.location) {
+                              setValidationErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.location;
+                                return newErrors;
+                              });
+                            }
+                          }}
+                          placeholder="Where is your business located?"
+                          className={cn(
+                            "w-full text-lg",
+                            validationErrors.location
+                              ? "border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                              : "border-gray-200 focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
+                          )}
+                          error={validationErrors.location}
+                        />
+                      </div>
+                      {validationErrors.location && (
+                        <p className="text-red-500 text-sm mt-2 flex items-center">
+                          <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                          {validationErrors.location}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Enhanced Terms & Conditions */}
+              <div className="bg-gradient-to-br from-gray-50/80 to-slate-50/60 p-6 rounded-2xl border border-gray-200/50 shadow-lg space-y-5">
+                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                  <span className="w-6 h-6 bg-gradient-to-br from-rose-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
+                    <span className="text-white text-sm">✓</span>
+                  </span>
+                  Agreement & Preferences
+                </h3>
+                
+                <div className="flex items-start space-x-4 p-4 bg-white/60 rounded-xl border border-gray-100">
+                  <input
+                    type="checkbox"
+                    id="agreeToTerms"
+                    checked={formData.agreeToTerms}
+                    onChange={(e) => updateFormData('agreeToTerms', e.target.checked)}
+                    className="mt-1 h-5 w-5 text-rose-600 border-2 border-gray-300 rounded-lg focus:ring-rose-500 focus:ring-4"
+                  />
+                  <label htmlFor="agreeToTerms" className="text-sm text-gray-700 leading-relaxed">
+                    I agree to the{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsModal(true)}
+                      className="text-rose-600 hover:text-rose-700 font-bold underline decoration-2 underline-offset-2 transition-colors"
+                    >
+                      Terms of Service
+                    </button>{' '}
+                    and{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowPrivacyModal(true)}
+                      className="text-rose-600 hover:text-rose-700 font-bold underline decoration-2 underline-offset-2 transition-colors"
+                    >
+                      Privacy Policy
+                    </button>
+                    {!formData.agreeToTerms && (
+                      <span className="block text-red-500 text-xs mt-1 font-medium">
+                        * Required to create your account
+                      </span>
+                    )}
+                  </label>
+                </div>
+                
+                <div className="flex items-start space-x-4 p-4 bg-gradient-to-br from-blue-50/60 to-indigo-50/40 rounded-xl border border-blue-100">
+                  <input
+                    type="checkbox"
+                    id="receiveUpdates"
+                    checked={formData.receiveUpdates}
+                    onChange={(e) => setFormData(prev => ({ ...prev, receiveUpdates: e.target.checked }))}
+                    className="mt-1 h-5 w-5 text-blue-600 border-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:ring-4"
+                  />
+                  <label htmlFor="receiveUpdates" className="text-sm text-gray-700 leading-relaxed">
+                    <span className="font-medium">Stay in the loop!</span> 
+                    <br />
+                    Receive updates about new features, wedding planning tips, and exclusive vendor offers
+                  </label>
+                </div>
               </div>
-            )}
-          </div>
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-              Confirm Password *
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                placeholder="Confirm password"
-                className={cn(
-                  "w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 transition-colors",
-                  validationErrors.confirmPassword 
-                    ? "border-red-300 focus:border-red-500" 
-                    : "border-gray-300 focus:border-rose-500"
-                )}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
-              </button>
-              {!validationErrors.confirmPassword && formData.confirmPassword && formData.password === formData.confirmPassword && (
-                <CheckCircle className="absolute right-10 top-3 h-5 w-5 text-green-500" />
+
+              {/* Enhanced Submit Button */}
+              <div className="flex flex-col items-center space-y-6 pt-4">
+                <button
+                  onClick={handleSubmit}
+                  disabled={isLoading || !formData.agreeToTerms}
+                  className={cn(
+                    "group relative w-full max-w-lg flex items-center justify-center px-8 py-5 rounded-2xl font-bold text-lg transition-all duration-500 shadow-2xl transform",
+                    "bg-gradient-to-r from-rose-600 via-pink-600 to-purple-600 text-white",
+                    "hover:from-rose-700 hover:via-pink-700 hover:to-purple-700",
+                    "hover:shadow-3xl hover:scale-105 hover:-translate-y-1",
+                    "focus:outline-none focus:ring-4 focus:ring-rose-300",
+                    "disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-2xl disabled:hover:scale-100 disabled:hover:translate-y-0",
+                    !formData.agreeToTerms && "animate-pulse"
+                  )}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  {isLoading ? (
+                    <>
+                      <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin mr-3"></div>
+                      Creating Your Account...
+                    </>
+                  ) : (
+                    <>
+                      <PartyPopper className="h-6 w-6 mr-3 group-hover:rotate-12 transition-transform duration-300" />
+                      Create My {userType === 'vendor' ? 'Business' : 'Wedding'} Account
+                    </>
+                  )}
+                </button>
+
+                <div className="text-center space-y-3">
+                  <p className="text-gray-500 text-sm">
+                    Already have an account?{' '}
+                    <button
+                      onClick={onSwitchToLogin}
+                      className="text-rose-600 hover:text-rose-700 font-bold transition-colors underline decoration-2 underline-offset-2"
+                    >
+                      Sign in here
+                    </button>
+                  </p>
+                  
+                  <div className="flex items-center justify-center space-x-2 text-xs text-gray-400">
+                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                    <span>Secure Registration</span>
+                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                    <span>SSL Protected</span>
+                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Enhanced Error Display */}
+              {error && (
+                <div className="max-w-lg mx-auto p-5 bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-200 rounded-2xl shadow-lg animate-in slide-in-from-bottom duration-300">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-sm font-bold">!</span>
+                    </div>
+                    <div>
+                      <h4 className="text-red-800 font-bold text-sm">Registration Error</h4>
+                      <p className="text-red-600 text-sm mt-1">{error}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+                </>
               )}
             </div>
-            {validationErrors.confirmPassword && (
-              <div className="flex items-center mt-1 text-red-600 text-sm">
-                <AlertCircle className="h-4 w-4 mr-1" />
-                {validationErrors.confirmPassword}
-              </div>
-            )}
           </div>
         </div>
+      </Modal>
 
-        {/* Checkboxes */}
-        <div className="space-y-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200">
-          <div className="flex items-center">
-            <Shield className="h-5 w-5 text-gray-400 mr-2" />
-            <h4 className="font-medium text-gray-900">Terms & Preferences</h4>
-          </div>
-          
-          <label className="flex items-start group cursor-pointer">
-            <input
-              type="checkbox"
-              name="agreeToTerms"
-              checked={formData.agreeToTerms}
-              onChange={handleInputChange}
-              className={cn(
-                "h-4 w-4 text-rose-600 border-gray-300 rounded focus:ring-rose-500 mt-1",
-                validationErrors.agreeToTerms && "border-red-500"
-              )}
-              required
-            />
-            <span className="ml-3 text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-              I agree to the{' '}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowTermsModal(true);
-                }}
-                className="text-rose-600 hover:text-rose-700 font-medium underline hover:no-underline transition-all duration-200"
-              >
-                Terms of Service
-              </button>
-              {' '}and{' '}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowPrivacyModal(true);
-                }}
-                className="text-rose-600 hover:text-rose-700 font-medium underline hover:no-underline transition-all duration-200"
-              >
-                Privacy Policy
-              </button>
-              <span className="text-red-500 ml-1">*</span>
-            </span>
-          </label>
-          {validationErrors.agreeToTerms && (
-            <div className="flex items-center text-red-600 text-sm ml-7">
-              <AlertCircle className="h-4 w-4 mr-1" />
-              {validationErrors.agreeToTerms}
-            </div>
-          )}
-          
-          <label className="flex items-start group cursor-pointer">
-            <input
-              type="checkbox"
-              name="receiveUpdates"
-              checked={formData.receiveUpdates}
-              onChange={handleInputChange}
-              className="h-4 w-4 text-rose-600 border-gray-300 rounded focus:ring-rose-500 mt-1"
-            />
-            <span className="ml-3 text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-              I'd like to receive updates about new features, wedding tips, and special offers
-              <span className="text-gray-500 block text-xs mt-1">You can unsubscribe at any time</span>
-            </span>
-          </label>
-        </div>
-
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={isLoading || !formData.agreeToTerms}
-          className={cn(
-            "w-full py-4 bg-gradient-to-r from-rose-600 to-pink-600 text-white font-bold rounded-xl text-lg relative overflow-hidden group transition-all duration-300",
-            "hover:from-rose-700 hover:to-pink-700 hover:shadow-xl hover:shadow-rose-500/25",
-            "focus:ring-2 focus:ring-rose-500 focus:ring-offset-2",
-            "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none",
-            !formData.agreeToTerms && "opacity-50 cursor-not-allowed"
-          )}
-        >
-          <div className="absolute inset-0 bg-white/10 rounded-xl"></div>
-          <div className="relative z-10 flex items-center justify-center">
-            {isLoading ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                <span>Creating Your Account...</span>
-              </>
-            ) : (
-              <>
-                <Heart className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
-                <span>Join Wedding Bazaar</span>
-              </>
-            )}
-          </div>
-          {!isLoading && (
-            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 skew-x-12"></div>
-          )}
-        </button>
-      </form>
-
-      {/* Switch to Login */}
-      <div className="mt-6 text-center">
-        <p className="text-gray-600">
-          Already have an account?{' '}
-          <button
-            onClick={onSwitchToLogin}
-            className="text-rose-600 hover:text-rose-700 font-medium transition-colors duration-200 hover:underline"
-          >
-            Sign in here
-          </button>
-        </p>
-      </div>
-
-      {/* Policy Modals */}
+      {/* Terms of Service Modal */}
       <TermsOfServiceModal
         isOpen={showTermsModal}
         onClose={() => setShowTermsModal(false)}
       />
-      
+
+      {/* Privacy Policy Modal */}
       <PrivacyPolicyModal
         isOpen={showPrivacyModal}
         onClose={() => setShowPrivacyModal(false)}
       />
 
       {/* Business Location Map Modal */}
-      <BusinessLocationMap
-        isOpen={showLocationMap}
-        onClose={() => setShowLocationMap(false)}
-        onLocationSelect={handleLocationSelect}
-        title="Select Your Business Location"
-      />
-    </Modal>
+      {showLocationMap && (
+        <BusinessLocationMap
+          isOpen={showLocationMap}
+          onClose={() => setShowLocationMap(false)}
+          onLocationSelect={(location: { address: string; coordinates: { lat: number; lng: number; } }) => {
+            setFormData(prev => ({ ...prev, location: location.address }));
+            setShowLocationMap(false);
+          }}
+        />
+      )}
     </>
   );
 };

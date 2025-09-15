@@ -8,6 +8,7 @@ interface ModalProps {
   children: React.ReactNode;
   title?: string;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl';
+  preventBackdropClose?: boolean;
 }
 
 export const Modal: React.FC<ModalProps> = ({ 
@@ -15,7 +16,8 @@ export const Modal: React.FC<ModalProps> = ({
   onClose, 
   children, 
   title, 
-  maxWidth = 'md' 
+  maxWidth = 'md',
+  preventBackdropClose = false
 }) => {
   if (!isOpen) return null;
 
@@ -31,7 +33,7 @@ export const Modal: React.FC<ModalProps> = ({
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={onClose}
+        onClick={preventBackdropClose ? undefined : onClose}
       ></div>
       
       {/* Modal */}
@@ -49,6 +51,7 @@ export const Modal: React.FC<ModalProps> = ({
               <button
                 onClick={onClose}
                 className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close modal"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -61,6 +64,7 @@ export const Modal: React.FC<ModalProps> = ({
               <button
                 onClick={onClose}
                 className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close modal"
               >
                 <X className="h-5 w-5" />
               </button>

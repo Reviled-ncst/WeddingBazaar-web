@@ -468,7 +468,7 @@ export class BudgetAnalysisService {
 
 // Real API service integration with enhanced vendor profile support
 export class VendorAPIService {
-  private static baseURL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-backend.onrender.com/api';
+  private static baseURL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
 
   private static authToken: string | null = null;
 

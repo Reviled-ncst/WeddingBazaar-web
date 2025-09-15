@@ -601,3 +601,206 @@ export const getPhilippineLocationDetails = async (latitude: number, longitude: 
 export const formatCoordinates = (latitude: number, longitude: number): string => {
   return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
 };
+
+/**
+ * Philippine Location Search and Autocomplete
+ * Provides search functionality for Philippine cities, provinces, and municipalities
+ */
+
+export interface PhilippineLocation {
+  id: string;
+  name: string;
+  type: 'city' | 'municipality' | 'province' | 'region';
+  province?: string;
+  region?: string;
+  fullName: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
+}
+
+// Comprehensive Philippine locations database
+export const PHILIPPINE_LOCATIONS: PhilippineLocation[] = [
+  // NCR (National Capital Region)
+  { id: 'ncr-manila', name: 'Manila', type: 'city', province: 'Metro Manila', region: 'NCR', fullName: 'Manila, Metro Manila', coordinates: { latitude: 14.5995, longitude: 120.9842 } },
+  { id: 'ncr-quezon', name: 'Quezon City', type: 'city', province: 'Metro Manila', region: 'NCR', fullName: 'Quezon City, Metro Manila', coordinates: { latitude: 14.6760, longitude: 121.0437 } },
+  { id: 'ncr-makati', name: 'Makati', type: 'city', province: 'Metro Manila', region: 'NCR', fullName: 'Makati City, Metro Manila', coordinates: { latitude: 14.5547, longitude: 121.0244 } },
+  { id: 'ncr-pasig', name: 'Pasig', type: 'city', province: 'Metro Manila', region: 'NCR', fullName: 'Pasig City, Metro Manila', coordinates: { latitude: 14.5764, longitude: 121.0851 } },
+  { id: 'ncr-taguig', name: 'Taguig', type: 'city', province: 'Metro Manila', region: 'NCR', fullName: 'Taguig City, Metro Manila', coordinates: { latitude: 14.5176, longitude: 121.0509 } },
+  { id: 'ncr-paranaque', name: 'Parañaque', type: 'city', province: 'Metro Manila', region: 'NCR', fullName: 'Parañaque City, Metro Manila', coordinates: { latitude: 14.4793, longitude: 121.0198 } },
+  { id: 'ncr-muntinlupa', name: 'Muntinlupa', type: 'city', province: 'Metro Manila', region: 'NCR', fullName: 'Muntinlupa City, Metro Manila', coordinates: { latitude: 14.3832, longitude: 121.0409 } },
+  { id: 'ncr-marikina', name: 'Marikina', type: 'city', province: 'Metro Manila', region: 'NCR', fullName: 'Marikina City, Metro Manila', coordinates: { latitude: 14.6507, longitude: 121.1029 } },
+  { id: 'ncr-mandaluyong', name: 'Mandaluyong', type: 'city', province: 'Metro Manila', region: 'NCR', fullName: 'Mandaluyong City, Metro Manila', coordinates: { latitude: 14.5794, longitude: 121.0359 } },
+  { id: 'ncr-pasay', name: 'Pasay', type: 'city', province: 'Metro Manila', region: 'NCR', fullName: 'Pasay City, Metro Manila', coordinates: { latitude: 14.5378, longitude: 120.9896 } },
+  
+  // CALABARZON (Most relevant for wedding venues)
+  { id: 'cavite-tagaytay', name: 'Tagaytay', type: 'city', province: 'Cavite', region: 'CALABARZON', fullName: 'Tagaytay City, Cavite', coordinates: { latitude: 14.1153, longitude: 120.9621 } },
+  { id: 'cavite-dasmarinas', name: 'Dasmariñas', type: 'city', province: 'Cavite', region: 'CALABARZON', fullName: 'Dasmariñas City, Cavite', coordinates: { latitude: 14.3294, longitude: 120.9367 } },
+  { id: 'cavite-bacoor', name: 'Bacoor', type: 'city', province: 'Cavite', region: 'CALABARZON', fullName: 'Bacoor City, Cavite', coordinates: { latitude: 14.4304, longitude: 120.9490 } },
+  { id: 'cavite-imus', name: 'Imus', type: 'city', province: 'Cavite', region: 'CALABARZON', fullName: 'Imus City, Cavite', coordinates: { latitude: 14.4297, longitude: 120.9370 } },
+  { id: 'cavite-general-trias', name: 'General Trias', type: 'city', province: 'Cavite', region: 'CALABARZON', fullName: 'General Trias City, Cavite', coordinates: { latitude: 14.3858, longitude: 120.8808 } },
+  { id: 'cavite-kawit', name: 'Kawit', type: 'municipality', province: 'Cavite', region: 'CALABARZON', fullName: 'Kawit, Cavite', coordinates: { latitude: 14.4487, longitude: 120.9045 } },
+  { id: 'cavite-silang', name: 'Silang', type: 'municipality', province: 'Cavite', region: 'CALABARZON', fullName: 'Silang, Cavite', coordinates: { latitude: 14.2306, longitude: 120.9728 } },
+  
+  { id: 'laguna-santa-rosa', name: 'Santa Rosa', type: 'city', province: 'Laguna', region: 'CALABARZON', fullName: 'Santa Rosa City, Laguna', coordinates: { latitude: 14.3124, longitude: 121.1114 } },
+  { id: 'laguna-binan', name: 'Biñan', type: 'city', province: 'Laguna', region: 'CALABARZON', fullName: 'Biñan City, Laguna', coordinates: { latitude: 14.3369, longitude: 121.0864 } },
+  { id: 'laguna-san-pedro', name: 'San Pedro', type: 'city', province: 'Laguna', region: 'CALABARZON', fullName: 'San Pedro City, Laguna', coordinates: { latitude: 14.3553, longitude: 121.0444 } },
+  { id: 'laguna-calamba', name: 'Calamba', type: 'city', province: 'Laguna', region: 'CALABARZON', fullName: 'Calamba City, Laguna', coordinates: { latitude: 14.2118, longitude: 121.1653 } },
+  { id: 'laguna-los-banos', name: 'Los Baños', type: 'municipality', province: 'Laguna', region: 'CALABARZON', fullName: 'Los Baños, Laguna', coordinates: { latitude: 14.1691, longitude: 121.2198 } },
+  
+  { id: 'batangas-batangas-city', name: 'Batangas City', type: 'city', province: 'Batangas', region: 'CALABARZON', fullName: 'Batangas City, Batangas', coordinates: { latitude: 13.7565, longitude: 121.0583 } },
+  { id: 'batangas-lipa', name: 'Lipa', type: 'city', province: 'Batangas', region: 'CALABARZON', fullName: 'Lipa City, Batangas', coordinates: { latitude: 13.9411, longitude: 121.1648 } },
+  { id: 'batangas-tanauan', name: 'Tanauan', type: 'city', province: 'Batangas', region: 'CALABARZON', fullName: 'Tanauan City, Batangas', coordinates: { latitude: 14.0865, longitude: 121.1489 } },
+  { id: 'batangas-nasugbu', name: 'Nasugbu', type: 'municipality', province: 'Batangas', region: 'CALABARZON', fullName: 'Nasugbu, Batangas', coordinates: { latitude: 14.0787, longitude: 120.6363 } },
+  
+  { id: 'rizal-antipolo', name: 'Antipolo', type: 'city', province: 'Rizal', region: 'CALABARZON', fullName: 'Antipolo City, Rizal', coordinates: { latitude: 14.5873, longitude: 121.1759 } },
+  { id: 'rizal-cainta', name: 'Cainta', type: 'municipality', province: 'Rizal', region: 'CALABARZON', fullName: 'Cainta, Rizal', coordinates: { latitude: 14.5789, longitude: 121.1228 } },
+  { id: 'rizal-taytay', name: 'Taytay', type: 'municipality', province: 'Rizal', region: 'CALABARZON', fullName: 'Taytay, Rizal', coordinates: { latitude: 14.5574, longitude: 121.1324 } },
+  
+  { id: 'quezon-lucena', name: 'Lucena', type: 'city', province: 'Quezon', region: 'CALABARZON', fullName: 'Lucena City, Quezon', coordinates: { latitude: 13.9374, longitude: 121.6170 } },
+  
+  // Central Luzon
+  { id: 'bulacan-malolos', name: 'Malolos', type: 'city', province: 'Bulacan', region: 'Central Luzon', fullName: 'Malolos City, Bulacan', coordinates: { latitude: 14.8433, longitude: 120.8113 } },
+  { id: 'bulacan-san-jose-del-monte', name: 'San Jose del Monte', type: 'city', province: 'Bulacan', region: 'Central Luzon', fullName: 'San Jose del Monte City, Bulacan', coordinates: { latitude: 14.8136, longitude: 121.0453 } },
+  { id: 'bulacan-meycauayan', name: 'Meycauayan', type: 'city', province: 'Bulacan', region: 'Central Luzon', fullName: 'Meycauayan City, Bulacan', coordinates: { latitude: 14.7352, longitude: 120.9533 } },
+  
+  { id: 'pampanga-angeles', name: 'Angeles', type: 'city', province: 'Pampanga', region: 'Central Luzon', fullName: 'Angeles City, Pampanga', coordinates: { latitude: 15.1450, longitude: 120.5950 } },
+  { id: 'pampanga-san-fernando', name: 'San Fernando', type: 'city', province: 'Pampanga', region: 'Central Luzon', fullName: 'San Fernando City, Pampanga', coordinates: { latitude: 15.0255, longitude: 120.6897 } },
+  
+  // Cebu
+  { id: 'cebu-cebu-city', name: 'Cebu City', type: 'city', province: 'Cebu', region: 'Central Visayas', fullName: 'Cebu City, Cebu', coordinates: { latitude: 10.3157, longitude: 123.8854 } },
+  { id: 'cebu-mandaue', name: 'Mandaue', type: 'city', province: 'Cebu', region: 'Central Visayas', fullName: 'Mandaue City, Cebu', coordinates: { latitude: 10.3237, longitude: 123.9227 } },
+  { id: 'cebu-lapu-lapu', name: 'Lapu-Lapu', type: 'city', province: 'Cebu', region: 'Central Visayas', fullName: 'Lapu-Lapu City, Cebu', coordinates: { latitude: 10.3103, longitude: 124.0069 } },
+  
+  // Davao
+  { id: 'davao-davao-city', name: 'Davao City', type: 'city', province: 'Davao del Sur', region: 'Davao Region', fullName: 'Davao City, Davao del Sur', coordinates: { latitude: 7.1907, longitude: 125.4553 } },
+  
+  // Baguio
+  { id: 'benguet-baguio', name: 'Baguio', type: 'city', province: 'Benguet', region: 'CAR', fullName: 'Baguio City, Benguet', coordinates: { latitude: 16.4023, longitude: 120.5960 } },
+  
+  // Iloilo
+  { id: 'iloilo-iloilo-city', name: 'Iloilo City', type: 'city', province: 'Iloilo', region: 'Western Visayas', fullName: 'Iloilo City, Iloilo', coordinates: { latitude: 10.7202, longitude: 122.5621 } },
+  
+  // Bacolod
+  { id: 'negros-occidental-bacolod', name: 'Bacolod', type: 'city', province: 'Negros Occidental', region: 'Western Visayas', fullName: 'Bacolod City, Negros Occidental', coordinates: { latitude: 10.6760, longitude: 122.9540 } },
+  
+  // Popular provinces
+  { id: 'cavite', name: 'Cavite', type: 'province', region: 'CALABARZON', fullName: 'Cavite Province', coordinates: { latitude: 14.2456, longitude: 120.8782 } },
+  { id: 'laguna', name: 'Laguna', type: 'province', region: 'CALABARZON', fullName: 'Laguna Province', coordinates: { latitude: 14.2691, longitude: 121.3470 } },
+  { id: 'batangas', name: 'Batangas', type: 'province', region: 'CALABARZON', fullName: 'Batangas Province', coordinates: { latitude: 13.9568, longitude: 121.1073 } },
+  { id: 'rizal', name: 'Rizal', type: 'province', region: 'CALABARZON', fullName: 'Rizal Province', coordinates: { latitude: 14.6037, longitude: 121.3084 } },
+  { id: 'bulacan', name: 'Bulacan', type: 'province', region: 'Central Luzon', fullName: 'Bulacan Province', coordinates: { latitude: 14.7942, longitude: 120.8794 } },
+  { id: 'pampanga', name: 'Pampanga', type: 'province', region: 'Central Luzon', fullName: 'Pampanga Province', coordinates: { latitude: 15.0794, longitude: 120.6200 } },
+  { id: 'cebu', name: 'Cebu', type: 'province', region: 'Central Visayas', fullName: 'Cebu Province', coordinates: { latitude: 10.3157, longitude: 123.8854 } }
+];
+
+/**
+ * Search Philippine locations by query
+ * Supports fuzzy matching and multiple search strategies
+ */
+export const searchPhilippineLocations = (query: string, limit: number = 10): PhilippineLocation[] => {
+  if (!query || query.length < 2) {
+    return [];
+  }
+
+  const searchQuery = query.toLowerCase().trim();
+  const results: Array<PhilippineLocation & { score: number }> = [];
+
+  PHILIPPINE_LOCATIONS.forEach(location => {
+    let score = 0;
+    const name = location.name.toLowerCase();
+    const fullName = location.fullName.toLowerCase();
+    const province = location.province?.toLowerCase() || '';
+
+    // Exact match gets highest score
+    if (name === searchQuery) {
+      score = 100;
+    }
+    // Starts with query gets high score
+    else if (name.startsWith(searchQuery)) {
+      score = 90;
+    }
+    // Contains query gets medium score
+    else if (name.includes(searchQuery)) {
+      score = 70;
+    }
+    // Full name contains query gets lower score
+    else if (fullName.includes(searchQuery)) {
+      score = 50;
+    }
+    // Province matches gets low score
+    else if (province.includes(searchQuery)) {
+      score = 30;
+    }
+
+    // Boost score for cities over municipalities
+    if (location.type === 'city' && score > 0) {
+      score += 10;
+    }
+
+    // Boost score for popular wedding destinations
+    const popularDestinations = ['tagaytay', 'baguio', 'cebu', 'boracay', 'palawan', 'batangas', 'laguna'];
+    if (popularDestinations.some(dest => name.includes(dest)) && score > 0) {
+      score += 15;
+    }
+
+    if (score > 0) {
+      results.push({ ...location, score });
+    }
+  });
+
+  // Sort by score (descending) and return top results
+  return results
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(({ score, ...location }) => location);
+};
+
+/**
+ * Get location by ID
+ */
+export const getLocationById = (id: string): PhilippineLocation | null => {
+  return PHILIPPINE_LOCATIONS.find(location => location.id === id) || null;
+};
+
+/**
+ * Get popular wedding destinations
+ */
+export const getPopularWeddingDestinations = (): PhilippineLocation[] => {
+  const popularIds = [
+    'cavite-tagaytay',
+    'benguet-baguio', 
+    'batangas-nasugbu',
+    'laguna-los-banos',
+    'cebu-cebu-city',
+    'ncr-manila',
+    'ncr-makati',
+    'cavite-silang'
+  ];
+
+  return popularIds
+    .map(id => getLocationById(id))
+    .filter(location => location !== null) as PhilippineLocation[];
+};
+
+/**
+ * Get locations by province
+ */
+export const getLocationsByProvince = (province: string): PhilippineLocation[] => {
+  return PHILIPPINE_LOCATIONS.filter(location => 
+    location.province?.toLowerCase() === province.toLowerCase()
+  );
+};
+
+/**
+ * Get coordinates for a location
+ */
+export const getLocationCoordinates = (locationName: string): { latitude: number; longitude: number } | null => {
+  const location = PHILIPPINE_LOCATIONS.find(loc => 
+    loc.name.toLowerCase() === locationName.toLowerCase() ||
+    loc.fullName.toLowerCase() === locationName.toLowerCase()
+  );
+  
+  return location?.coordinates || null;
+};
