@@ -80,7 +80,8 @@ class DataOptimizationService {
   private async measureConnectionSpeed() {
     const startTime = Date.now();
     try {
-      await fetch('/api/ping', { 
+      const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+      await fetch(`${apiBaseUrl}/ping`, { 
         method: 'HEAD',
         cache: 'no-cache'
       });

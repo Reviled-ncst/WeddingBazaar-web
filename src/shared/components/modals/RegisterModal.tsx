@@ -205,9 +205,11 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     setOtpLoading({ email: true, sms: true });
     setOtpErrors({ email: '', sms: '' });
     
+    const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+    
     try {
       // Send email OTP
-      const emailResponse = await fetch('/api/auth/send-otp', {
+      const emailResponse = await fetch(`${apiBaseUrl}/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -229,7 +231,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       
       // Send SMS OTP (if phone number provided)
       if (registrationData.phone) {
-        const smsResponse = await fetch('/api/auth/send-otp', {
+        const smsResponse = await fetch(`${apiBaseUrl}/auth/send-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -273,6 +275,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     setOtpErrors({ email: '', sms: '' });
     setError(null);
     
+    const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+    
     try {
       let emailVerified = false;
       let smsVerified = false;
@@ -280,7 +284,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       
       // Verify email OTP
       if (otpCodes.email) {
-        const emailResponse = await fetch('/api/auth/verify-otp', {
+        const emailResponse = await fetch(`${apiBaseUrl}/auth/verify-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -307,7 +311,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       // Verify SMS OTP (if phone provided)
       if (registrationData.phone) {
         if (otpCodes.sms) {
-          const smsResponse = await fetch('/api/auth/verify-otp', {
+          const smsResponse = await fetch(`${apiBaseUrl}/auth/verify-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

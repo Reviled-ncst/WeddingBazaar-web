@@ -70,7 +70,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
         // Only verify token if one exists
-        const response = await fetch('/api/auth/verify', {
+        const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+        const response = await fetch(`${apiBaseUrl}/auth/verify`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -115,8 +116,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Don't set loading here - let the component handle its own loading state
       // setIsLoading(true);
       
-      // Use relative URL to leverage Vite proxy
-      const fullUrl = '/api/auth/login';
+      // Use environment-specific API URL
+      const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+      const fullUrl = `${apiBaseUrl}/auth/login`;
       
       console.log('🔐 Attempting login to:', fullUrl);
       
@@ -186,6 +188,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const data = await response.json();
       console.log('✅ Login response data:', data);
       
+      // DEBUG: Check each condition separately
+      console.log('🔍 DEBUG - Checking login response conditions:');
+      console.log('  data.success:', data.success, typeof data.success);
+      console.log('  data.user:', !!data.user, typeof data.user);
+      console.log('  data.token:', !!data.token, typeof data.token);
+      console.log('  All conditions met:', !!(data.success && data.user && data.token));
+      
       // Only store token and user if login was successful
       if (data.success && data.user && data.token) {
         localStorage.setItem('auth_token', data.token);
@@ -193,6 +202,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('✅ Login successful for:', data.user.email);
         return data.user;
       } else {
+        console.error('❌ Login response validation failed');
+        console.error('  Expected: success=true, user=object, token=string');
+        console.error('  Received:', {
+          success: data.success,
+          user: data.user,
+          token: data.token
+        });
         throw new Error('Invalid login response from server');
       }
       
@@ -222,8 +238,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      // Use relative URL to leverage Vite proxy
-      const fullUrl = '/api/auth/register';
+      // Use environment-specific API URL
+      const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+      const fullUrl = `${apiBaseUrl}/auth/register`;
       
       console.log('📝 Attempting registration to:', fullUrl);
       

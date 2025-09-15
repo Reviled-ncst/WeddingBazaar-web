@@ -57,7 +57,8 @@ class ServicesApiService {
 
   async createConversationWithVendor(vendorName: string, serviceName: string): Promise<boolean> {
     try {
-      const response = await fetch('/api/conversations', {
+      const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+      const response = await fetch(`${apiBaseUrl}/conversations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

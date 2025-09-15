@@ -3,12 +3,15 @@ import { Menu, X, Heart, Search, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '../../../utils/cn';
 import { LoginModal, RegisterModal } from '../modals';
+import { useAuth } from '../../contexts/AuthContext';
 
 export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('couples');
+  
+  const { isAuthenticated } = useAuth();
 
   const navigation = [
     { name: 'Home', href: '#couples', isSection: true },
@@ -16,6 +19,14 @@ export const Header: React.FC = () => {
     { name: 'Vendors', href: '#vendors', isSection: true },
     { name: 'Testimonials', href: '#planning', isSection: true },
   ];
+
+  // Auto-close modals when user logs in
+  useEffect(() => {
+    if (isAuthenticated) {
+      setIsLoginModalOpen(false);
+      setIsRegisterModalOpen(false);
+    }
+  }, [isAuthenticated]);
 
   // Scroll spy functionality
   useEffect(() => {
