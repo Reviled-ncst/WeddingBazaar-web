@@ -660,8 +660,10 @@ app.post('/api/auth/register', async (req, res) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Generate unique user ID
-    const userId = `${userType}-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    // Generate unique user ID (max 20 characters)
+    const timestamp = Date.now().toString().slice(-8); // Last 8 digits
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const userId = `${userType[0]}-${timestamp}-${random}`; // e.g., "c-45678901-123"
 
     // Create new user in database with explicit ID
     const newUsers = await sql`
