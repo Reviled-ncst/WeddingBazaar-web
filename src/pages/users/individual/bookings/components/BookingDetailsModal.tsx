@@ -24,6 +24,7 @@ import type { PaymentReceipt } from '../../payment/types/payment.types';
 import { ReceiptView } from '../../payment/components/ReceiptView';
 import { VendorImage } from './VendorImage';
 import { ServiceImage } from './ServiceImage';
+import { BookingWorkflow } from '../../../../../shared/components/booking/BookingWorkflow';
 
 // Import Leaflet for maps
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -89,6 +90,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [showReceiptView, setShowReceiptView] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<PaymentReceipt | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'workflow' | 'payments'>('details');
 
   useEffect(() => {
     if (isOpen && booking) {
@@ -279,6 +281,49 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </span>
             )}
           </div>
+
+          {/* Tab Navigation */}
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8">
+              <button
+                onClick={() => setActiveTab('details')}
+                className={cn(
+                  "py-2 px-1 border-b-2 font-medium text-sm",
+                  activeTab === 'details'
+                    ? "border-pink-500 text-pink-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                )}
+              >
+                Event Details
+              </button>
+              <button
+                onClick={() => setActiveTab('workflow')}
+                className={cn(
+                  "py-2 px-1 border-b-2 font-medium text-sm",
+                  activeTab === 'workflow'
+                    ? "border-pink-500 text-pink-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                )}
+              >
+                Booking Progress
+              </button>
+              <button
+                onClick={() => setActiveTab('payments')}
+                className={cn(
+                  "py-2 px-1 border-b-2 font-medium text-sm",
+                  activeTab === 'payments'
+                    ? "border-pink-500 text-pink-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                )}
+              >
+                Payments & Receipts
+              </button>
+            </nav>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'details' && (
+            <div className="space-y-6">
 
           {/* Enhanced Event Information */}
           <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl p-6 border border-pink-200">
@@ -606,6 +651,146 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             <div className="bg-purple-50 rounded-xl p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Venue Details</h3>
               <p className="text-gray-700">{booking.venueDetails}</p>
+            </div>
+          )}
+            </div>
+          )}
+
+          {/* Workflow Tab */}
+          {activeTab === 'workflow' && (
+            <div>
+              <BookingWorkflow 
+                booking={booking}
+                onUpdate={() => {
+                  // Refresh booking data if needed
+                  window.location.reload();
+                }}
+              />
+            </div>
+          )}
+
+          {/* Payments Tab */}
+          {activeTab === 'payments' && (
+            <div className="space-y-6">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-emerald-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-emerald-500" />
+                  Payment Information
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {booking.totalAmount && (
+                    <div className="bg-white p-4 rounded-lg border border-gray-200">
+                      <p className="text-sm text-gray-600 mb-1">Total Amount</p>
+                      <p className="text-xl font-bold text-gray-900">{booking.formatted?.totalAmount}</p>
+                    </div>
+                  )}
+                  
+                  <div className="bg-white p-4 rounded-lg border border-gray-200">
+                    <p className="text-sm text-gray-600 mb-1">Amount Paid</p>
+                    <p className="text-xl font-bold text-green-600">{booking.formatted?.totalPaid || '₱0'}</p>
+                  </div>
+                  
+                  {booking.remainingBalance && booking.remainingBalance > 0 && (
+                    <div className="bg-white p-4 rounded-lg border border-gray-200">
+                      <p className="text-sm text-gray-600 mb-1">Remaining Balance</p>
+                      <p className="text-xl font-bold text-orange-600">{booking.formatted?.remainingBalance}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Payment Progress Bar */}
+                {booking.paymentProgressPercentage !== undefined && (
+                  <div className="mt-6">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">Payment Progress</span>
+                      <span className="text-sm font-medium text-gray-900">{booking.paymentProgressPercentage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div 
+                        className="bg-gradient-to-r from-green-400 to-emerald-500 h-3 rounded-full transition-all duration-300"
+                        style={{ width: `${booking.paymentProgressPercentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Actions */}
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Available Payment Actions</h4>
+                <div className="flex flex-wrap gap-3">
+                  {paymentActions.map((action) => (
+                    <button
+                      key={action.type}
+                      onClick={() => onPayment?.(booking, action.type)}
+                      className={cn(
+                        "px-6 py-3 rounded-xl transition-colors flex items-center gap-2 font-medium",
+                        action.variant === 'primary' 
+                          ? "bg-pink-500 text-white hover:bg-pink-600" 
+                          : "bg-blue-500 text-white hover:bg-blue-600"
+                      )}
+                    >
+                      <CreditCard className="w-5 h-5" />
+                      {action.label}
+                      <span className="text-sm opacity-90">
+                        (₱{action.amount.toLocaleString()})
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Receipts Section */}
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Receipt className="w-5 h-5 text-gray-600" />
+                    Payment Receipts
+                  </h4>
+                  <button
+                    onClick={loadReceipts}
+                    disabled={loadingReceipts}
+                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-2"
+                  >
+                    {loadingReceipts ? (
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
+                    Load Receipts
+                  </button>
+                </div>
+                
+                {receipts.length > 0 ? (
+                  <div className="space-y-3">
+                    {receipts.map((receipt) => (
+                      <div key={receipt.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Receipt className="w-5 h-5 text-green-600" />
+                          <div>
+                            <p className="font-medium text-gray-900">Receipt #{receipt.receiptNumber}</p>
+                            <p className="text-sm text-gray-600">
+                              {receipt.paymentType} - {receipt.formatted.amount}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedReceipt(receipt);
+                            setShowReceiptView(true);
+                          }}
+                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                        >
+                          View
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-8">No payment receipts available</p>
+                )}
+              </div>
             </div>
           )}
         </div>

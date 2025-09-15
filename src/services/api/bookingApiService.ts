@@ -144,19 +144,23 @@ class BookingApiService {
     }
   }
 
-  // Update booking status (for vendors)
-  async updateBookingStatus(
+  // Send quote (for vendors)
+  async sendQuote(
     bookingId: string, 
-    status: BookingStatus, 
-    vendorResponse?: string
+    quote: {
+      quoted_price: number;
+      description?: string;
+      delivery_timeline?: string;
+      terms?: string;
+    }
   ): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/status`, {
-        method: 'PUT',
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/send-quote`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status, vendor_response: vendorResponse }),
+        body: JSON.stringify(quote),
       });
 
       if (!response.ok) {
@@ -166,7 +170,150 @@ class BookingApiService {
       const apiResponse: ApiSuccess<Booking> = await response.json();
       return apiResponse.data;
     } catch (error) {
-      console.error('Error updating booking status:', error);
+      console.error('Error sending quote:', error);
+      throw error;
+    }
+  }
+
+  // Accept quote (for couples)
+  async acceptQuote(bookingId: string): Promise<Booking> {
+    try {
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/accept-quote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const apiResponse: ApiSuccess<Booking> = await response.json();
+      return apiResponse.data;
+    } catch (error) {
+      console.error('Error accepting quote:', error);
+      throw error;
+    }
+  }
+
+  // Reject quote (for couples)
+  async rejectQuote(bookingId: string, reason?: string): Promise<Booking> {
+    try {
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/reject-quote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const apiResponse: ApiSuccess<Booking> = await response.json();
+      return apiResponse.data;
+    } catch (error) {
+      console.error('Error rejecting quote:', error);
+      throw error;
+    }
+  }
+
+  // Process payment
+  async processPayment(
+    bookingId: string,
+    payment: {
+      amount: number;
+      payment_method: string;
+      stripe_payment_intent_id?: string;
+    }
+  ): Promise<Booking> {
+    try {
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payment),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const apiResponse: ApiSuccess<Booking> = await response.json();
+      return apiResponse.data;
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      throw error;
+    }
+  }
+
+  // Confirm booking (for vendors after payment)
+  async confirmBooking(bookingId: string): Promise<Booking> {
+    try {
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/confirm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const apiResponse: ApiSuccess<Booking> = await response.json();
+      return apiResponse.data;
+    } catch (error) {
+      console.error('Error confirming booking:', error);
+      throw error;
+    }
+  }
+
+  // Mark as delivered (for vendors)
+  async markDelivered(bookingId: string, deliveryNotes?: string): Promise<Booking> {
+    try {
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/mark-delivered`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ delivery_notes: deliveryNotes }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const apiResponse: ApiSuccess<Booking> = await response.json();
+      return apiResponse.data;
+    } catch (error) {
+      console.error('Error marking as delivered:', error);
+      throw error;
+    }
+  }
+
+  // Confirm completion (for couples)
+  async confirmCompletion(bookingId: string, rating?: number, review?: string): Promise<Booking> {
+    try {
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/confirm-completion`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ rating, review }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const apiResponse: ApiSuccess<Booking> = await response.json();
+      return apiResponse.data;
+    } catch (error) {
+      console.error('Error confirming completion:', error);
       throw error;
     }
   }

@@ -30,6 +30,7 @@ import EventMap from '../../../../shared/components/EventMap';
 import PaymentReceipt from '../../../../shared/components/PaymentReceipt';
 import { cn } from '../../../../utils/cn';
 import { formatPHP, calculateDownpayment } from '../../../../utils/currency';
+import { BookingWorkflow } from '../../../../shared/components/booking/BookingWorkflow';
 
 // Import comprehensive booking API and types
 import { bookingApiService } from '../../../../services/api/bookingApiService';
@@ -319,6 +320,7 @@ export const VendorBookings: React.FC = () => {
   const [showMapModal, setShowMapModal] = useState(false);
   const [showStatusHistory, setShowStatusHistory] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'workflow' | 'actions'>('details');
   
   // Payment and receipt data
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -1408,10 +1410,50 @@ ${quoteData.excludes ? `Excludes: ${quoteData.excludes}` : ''}`;
                     ×
                   </button>
                 </div>
+                
+                {/* Tab Navigation */}
+                <div className="mt-4 border-b border-gray-200">
+                  <nav className="flex space-x-8">
+                    <button
+                      onClick={() => setActiveTab('details')}
+                      className={cn(
+                        "py-2 px-1 border-b-2 font-medium text-sm",
+                        activeTab === 'details'
+                          ? "border-rose-500 text-rose-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      )}
+                    >
+                      Event Details
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('workflow')}
+                      className={cn(
+                        "py-2 px-1 border-b-2 font-medium text-sm",
+                        activeTab === 'workflow'
+                          ? "border-rose-500 text-rose-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      )}
+                    >
+                      Booking Progress
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('actions')}
+                      className={cn(
+                        "py-2 px-1 border-b-2 font-medium text-sm",
+                        activeTab === 'actions'
+                          ? "border-rose-500 text-rose-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      )}
+                    >
+                      Vendor Actions
+                    </button>
+                  </nav>
+                </div>
               </div>
 
-              {/* Content */}
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+              {/* Tab Content */}
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                {activeTab === 'details' && (
                 <div className="space-y-6">
                   {/* Client Info */}
                   <div>
@@ -1465,6 +1507,145 @@ ${quoteData.excludes ? `Excludes: ${quoteData.excludes}` : ''}`;
                     </div>
                   )}
                 </div>
+                )}
+
+                {/* Workflow Tab */}
+                {activeTab === 'workflow' && (
+                  <BookingWorkflow 
+                    booking={selectedBooking}
+                    onUpdate={() => {
+                      // Refresh booking data
+                      loadBookings();
+                      loadStats();
+                    }}
+                  />
+                )}
+
+                {/* Actions Tab */}
+                {activeTab === 'actions' && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Quote Actions */}
+                      <div className="bg-blue-50 rounded-xl p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <FileText className="w-5 h-5 text-blue-500" />
+                          Quote Management
+                        </h3>
+                        <div className="space-y-3">
+                          <button
+                            onClick={() => setShowQuoteModal(true)}
+                            className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition-all duration-200 flex items-center justify-center space-x-2"
+                          >
+                            <FileText className="h-5 w-5" />
+                            <span>Send Quote</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Payment Actions */}
+                      <div className="bg-green-50 rounded-xl p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <CreditCard className="w-5 h-5 text-green-500" />
+                          Payment Actions
+                        </h3>
+                        <div className="space-y-3">
+                          <button
+                            onClick={() => setShowPaymentModal(true)}
+                            className="w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium transition-all duration-200 flex items-center justify-center space-x-2"
+                          >
+                            <CreditCard className="h-5 w-5" />
+                            <span>Process Payment</span>
+                          </button>
+                          <button
+                            onClick={() => setShowReceiptModal(true)}
+                            className="w-full px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors flex items-center justify-center space-x-2"
+                          >
+                            <Receipt className="h-4 w-4" />
+                            <span>View Receipts</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Status Management */}
+                      <div className="bg-purple-50 rounded-xl p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <Clock className="w-5 h-5 text-purple-500" />
+                          Status Management
+                        </h3>
+                        <div className="space-y-3">
+                          <button
+                            onClick={() => setShowUpdateModal(true)}
+                            className="w-full px-4 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-medium transition-all duration-200 flex items-center justify-center space-x-2"
+                          >
+                            <Edit3 className="h-5 w-5" />
+                            <span>Update Status</span>
+                          </button>
+                          <button
+                            onClick={() => setShowStatusHistory(true)}
+                            className="w-full px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors flex items-center justify-center space-x-2"
+                          >
+                            <History className="h-4 w-4" />
+                            <span>Status History</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Communication */}
+                      <div className="bg-pink-50 rounded-xl p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <MessageSquare className="w-5 h-5 text-pink-500" />
+                          Communication
+                        </h3>
+                        <div className="space-y-3">
+                          <button className="w-full px-4 py-3 bg-pink-500 hover:bg-pink-600 text-white rounded-xl font-medium transition-all duration-200 flex items-center justify-center space-x-2">
+                            <MessageSquare className="h-5 w-5" />
+                            <span>Message Client</span>
+                          </button>
+                          <div className="flex space-x-2">
+                            {selectedBooking.contactPhone && (
+                              <button className="flex-1 px-3 py-2 bg-pink-100 text-pink-700 rounded-lg hover:bg-pink-200 transition-colors flex items-center justify-center space-x-2">
+                                <Phone className="h-4 w-4" />
+                                <span>Call</span>
+                              </button>
+                            )}
+                            <button className="flex-1 px-3 py-2 bg-pink-100 text-pink-700 rounded-lg hover:bg-pink-200 transition-colors flex items-center justify-center space-x-2">
+                              <Mail className="h-4 w-4" />
+                              <span>Email</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Status Update Buttons */}
+                    <div className="bg-gray-50 rounded-xl p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Status Updates</h3>
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          onClick={() => handleStatusUpdate(selectedBooking.id, 'confirmed')}
+                          className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          <span>Confirm</span>
+                        </button>
+                        <button
+                          onClick={() => handleStatusUpdate(selectedBooking.id, 'in_progress')}
+                          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+                        >
+                          <Clock className="h-4 w-4" />
+                          <span>In Progress</span>
+                        </button>
+                        <button
+                          onClick={() => handleStatusUpdate(selectedBooking.id, 'completed')}
+                          className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          <span>Complete</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
