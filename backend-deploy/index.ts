@@ -660,10 +660,13 @@ app.post('/api/auth/register', async (req, res) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Create new user in database
+    // Generate unique user ID
+    const userId = `${userType}-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+
+    // Create new user in database with explicit ID
     const newUsers = await sql`
-      INSERT INTO users (email, password, first_name, last_name, user_type, created_at, updated_at)
-      VALUES (${email}, ${hashedPassword}, ${name.split(' ')[0] || name}, ${name.split(' ')[1] || ''}, ${userType}, NOW(), NOW())
+      INSERT INTO users (id, email, password, first_name, last_name, user_type, created_at, updated_at)
+      VALUES (${userId}, ${email}, ${hashedPassword}, ${name.split(' ')[0] || name}, ${name.split(' ')[1] || ''}, ${userType}, NOW(), NOW())
       RETURNING id, email, first_name, last_name, user_type, profile_image
     `;
 
