@@ -369,59 +369,38 @@ app.get('/api/vendor-profiles', async (req, res) => {
   }
 });
 
-// Featured vendors endpoint
+// Featured vendors endpoint - Fixed to match actual database schema
 app.get('/api/vendors/featured', async (req, res) => {
   try {
-    // Get featured vendors from database with fallback for missing category column
-    let featuredVendors = [];
-    try {
-      featuredVendors = await sql`
-        SELECT 
-          v.id, v.business_name as name, 
-          COALESCE(v.business_type, 'Wedding Services') as category, 
-          v.location, v.rating, v.review_count, v.starting_price,
-          v.price_range, v.description, v.portfolio_images,
-          v.contact_phone, v.website_url as contact_website, v.verified,
-          v.years_experience
-        FROM vendors v
-        WHERE v.verified = true 
-          AND v.rating >= 4.0 
-          AND v.review_count >= 10
-        ORDER BY v.rating DESC, v.review_count DESC
-        LIMIT 6
-      `;
-    } catch (dbError) {
-      console.log('Fallback query for featured vendors:', dbError.message);
-      featuredVendors = await sql`
-        SELECT 
-          v.id, v.business_name as name, 
-          COALESCE(v.business_type, 'Wedding Services') as category,
-          v.location, v.rating, v.review_count, v.starting_price,
-          v.price_range, v.description, v.portfolio_images,
-          v.contact_phone, v.website_url as contact_website, v.verified,
-          v.years_experience
-        FROM vendors v
-        WHERE v.verified = true 
-          AND v.rating >= 4.0 
-          AND v.review_count >= 10
-        ORDER BY v.rating DESC, v.review_count DESC
-        LIMIT 6
-      `;
-    }
+    console.log('🔍 Fetching featured vendors...');
+    
+    // Get featured vendors using actual database column names
+    const featuredVendors = await sql`
+      SELECT 
+        id, business_name, business_type, location, rating, review_count,
+        description, contact_phone, website_url, verified
+      FROM vendors 
+      WHERE verified = true
+      ORDER BY CAST(rating AS FLOAT) DESC, review_count DESC
+      LIMIT 6
+    `;
 
+    console.log(`✅ Found ${featuredVendors.length} featured vendors`);
+
+    // Format vendors to match frontend expectations
     const formattedVendors = featuredVendors.map(vendor => ({
       id: vendor.id,
-      name: vendor.name,
-      category: vendor.category,
+      name: vendor.business_name,        // Frontend expects 'name'
+      category: vendor.business_type,    // Frontend expects 'category'  
       location: vendor.location,
-      rating: parseFloat(vendor.rating || 0),
-      reviewCount: vendor.review_count || 0,
-      priceRange: vendor.price_range || 'Contact for pricing',
-      description: vendor.description,
-      image: vendor.portfolio_images?.[0] || 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400',
-      specialties: vendor.category ? [vendor.category] : [],
-      yearsExperience: vendor.years_experience || 1,
-      website: vendor.contact_website,
+      rating: parseFloat(vendor.rating || '4.5'),  // Convert string to number
+      reviewCount: parseInt(vendor.review_count || '0'),
+      priceRange: 'Contact for pricing',
+      description: vendor.description || 'Professional wedding services',
+      image: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400',
+      specialties: vendor.business_type ? [vendor.business_type] : ['Wedding Services'],
+      yearsExperience: 3, // Default experience
+      website: vendor.website_url,
       phone: vendor.contact_phone
     }));
 
@@ -430,7 +409,7 @@ app.get('/api/vendors/featured', async (req, res) => {
       vendors: formattedVendors
     });
   } catch (error) {
-    console.error('Error fetching featured vendors:', error);
+    console.error('❌ Error fetching featured vendors:', error);
     // Fallback to empty array if database error
     res.json({
       success: true,
