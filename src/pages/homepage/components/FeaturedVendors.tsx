@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Heart, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface FeaturedVendor {
   id: string;
@@ -173,6 +174,7 @@ export const FeaturedVendors: React.FC = () => {
   const [vendors, setVendors] = useState<FeaturedVendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchFeaturedVendors = async () => {
@@ -536,7 +538,7 @@ export const FeaturedVendors: React.FC = () => {
         {/* Enhanced View All Vendors Button */}
         <div className="text-center mt-16">
           <button 
-            onClick={() => window.location.href = '/individual/services'}
+            onClick={() => navigate('/individual/services')}
             className="px-12 py-4 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 text-white font-bold rounded-full text-lg hover:from-gray-800 hover:via-gray-700 hover:to-gray-800 transform hover:scale-105 transition-all duration-300 shadow-2xl hover:shadow-gray-500/25 border border-white/20 group relative overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-white/5 rounded-full"></div>

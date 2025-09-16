@@ -70,8 +70,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
         // Only verify token if one exists
-        const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
-        const response = await fetch(`${apiBaseUrl}/auth/verify`, {
+        const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${apiBaseUrl}/api/auth/verify`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -83,7 +83,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const data = await response.json();
           console.log('✅ Token verification successful:', data);
           // Only set user if we get valid data back
-          if (data.success && data.user) {
+          if (data.success && data.authenticated && data.user) {
             setUser(data.user);
           } else {
             console.log('❌ Invalid verify response:', data);
@@ -117,8 +117,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // setIsLoading(true);
       
       // Use environment-specific API URL
-      const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
-      const fullUrl = `${apiBaseUrl}/auth/login`;
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const fullUrl = `${apiBaseUrl}/api/auth/login`;
       
       console.log('🔐 Attempting login to:', fullUrl);
       
@@ -239,8 +239,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       
       // Use environment-specific API URL
-      const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
-      const fullUrl = `${apiBaseUrl}/auth/register`;
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const fullUrl = `${apiBaseUrl}/api/auth/register`;
       
       console.log('📝 Attempting registration to:', fullUrl);
       
