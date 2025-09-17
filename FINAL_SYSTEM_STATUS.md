@@ -66,13 +66,13 @@ VITE_PAYMONGO_SECRET_KEY=sk_test_[REDACTED]
 
 # API Configuration  
 VITE_API_URL=http://localhost:3001
-DATABASE_URL=postgresql://neondb_owner:npg_... (Connected)
+DATABASE_URL=postgresql://neondb_owner:npg_[REDACTED] (Connected)
 ```
 
 **Production Keys Ready**:
 ```env
 # Live Keys (for production deployment)
-VITE_PAYMONGO_PUBLIC_KEY_LIVE=pk_live_xaUkU97FxXX1od1Dg63NVWoR
+VITE_PAYMONGO_PUBLIC_KEY_LIVE=pk_live_[REDACTED]
 VITE_PAYMONGO_SECRET_KEY_LIVE=sk_live_[REDACTED]
 ```
 
