@@ -5,15 +5,13 @@ import {
   CheckCircle, 
   Clock, 
   FileText, 
-  AlertCircle,
-  ArrowRight,
   User,
   Building,
   Calendar,
   Mail,
   Phone
 } from 'lucide-react';
-import { bookingInteractionService, type BookingInteraction, type QuoteDetails } from '../../services/bookingInteractionService';
+import { bookingInteractionService, type BookingInteraction } from '../../services/bookingInteractionService';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Booking } from '../../types/comprehensive-booking.types';
 
@@ -22,12 +20,9 @@ interface BookingWorkflowProps {
   onUpdate: () => void;
 }
 
-export const BookingWorkflow: React.FC<BookingWorkflowProps> = ({ booking, onUpdate }) => {
+export const BookingWorkflow: React.FC<BookingWorkflowProps> = ({ booking }) => {
   const { user } = useAuth();
   const [interactions, setInteractions] = useState<BookingInteraction[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [showQuoteModal, setShowQuoteModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'timeline' | 'actions' | 'details'>('timeline');
 
   const userType = user?.role === 'vendor' ? 'vendor' : 'couple';
@@ -198,7 +193,7 @@ export const BookingWorkflow: React.FC<BookingWorkflowProps> = ({ booking, onUpd
               <div className="mt-8">
                 <h4 className="font-semibold text-gray-900 mb-4">Recent Activity</h4>
                 <div className="space-y-3">
-                  {interactions.slice(-5).reverse().map((interaction, index) => {
+                  {interactions.slice(-5).reverse().map((interaction) => {
                     const Icon = getActionIcon(interaction.actionType);
                     return (
                       <div key={interaction.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
@@ -261,12 +256,21 @@ export const BookingWorkflow: React.FC<BookingWorkflowProps> = ({ booking, onUpd
                     <p className="text-sm text-blue-700 mb-4">
                       Make your downpayment to secure this booking.
                     </p>
+                    {/* TODO: Re-implement payment modal functionality
                     <button 
                       onClick={() => setShowPaymentModal(true)}
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
                     >
                       <DollarSign className="w-4 h-4" />
                       <span>Make Payment</span>
+                    </button>
+                    */}
+                    <button 
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                      disabled
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      <span>Make Payment (Coming Soon)</span>
                     </button>
                   </div>
                 )}
@@ -294,12 +298,21 @@ export const BookingWorkflow: React.FC<BookingWorkflowProps> = ({ booking, onUpd
                     <p className="text-sm text-yellow-700 mb-4">
                       A couple has requested a quote for your services.
                     </p>
+                    {/* TODO: Re-implement quote modal functionality
                     <button 
                       onClick={() => setShowQuoteModal(true)}
                       className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors flex items-center space-x-2"
                     >
                       <FileText className="w-4 h-4" />
                       <span>Send Quote</span>
+                    </button>
+                    */}
+                    <button 
+                      className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors flex items-center space-x-2"
+                      disabled
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>Send Quote (Coming Soon)</span>
                     </button>
                   </div>
                 )}
@@ -404,25 +417,25 @@ export const BookingWorkflow: React.FC<BookingWorkflowProps> = ({ booking, onUpd
                       {isCouple ? booking.vendor_name : booking.contact_person}
                     </span>
                   </div>
-                  {(isCouple ? booking.vendor_email : booking.contact_email) && (
+                  {booking.contact_email && (
                     <div className="flex justify-between">
                       <span className="text-gray-600 flex items-center">
                         <Mail className="w-3 h-3 mr-1" />
                         Email:
                       </span>
                       <span className="font-medium">
-                        {isCouple ? booking.vendor_email : booking.contact_email}
+                        {booking.contact_email}
                       </span>
                     </div>
                   )}
-                  {(isCouple ? booking.vendor_phone : booking.contact_phone) && (
+                  {booking.contact_phone && (
                     <div className="flex justify-between">
                       <span className="text-gray-600 flex items-center">
                         <Phone className="w-3 h-3 mr-1" />
                         Phone:
                       </span>
                       <span className="font-medium">
-                        {isCouple ? booking.vendor_phone : booking.contact_phone}
+                        {booking.contact_phone}
                       </span>
                     </div>
                   )}

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Methods Test - Wedding Bazaar</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .payment-method {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .payment-method:hover {
+            border-color: #3b82f6;
+            background: #f8fafc;
+        }
+        .method-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .method-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .test-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .test-button:hover {
+            background: #2563eb;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #047857;
+        }
+        .error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #dc2626;
+        }
+        .loading {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+        }
+        h1 {
+            color: #1f2937;
+            margin-bottom: 30px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+        }
+        .stat-card {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3b82f6;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Wedding Bazaar Payment Methods Test</h1>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalTests">0</div>
+                <div class="stat-label">Total Tests</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="successTests">0</div>
+                <div class="stat-label">Successful</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="failedTests">0</div>
+                <div class="stat-label">Failed</div>
+            </div>
+        </div>
+
+        <div class="payment-method">
+            <div class="method-info">
+                <div class="method-icon" style="background: #e5e7eb;">💳</div>
+                <div>
+                    <div style="font-weight: 600;">Credit/Debit Card</div>
+                    <div style="font-size: 12px; color: #6b7280;">Visa, Mastercard, JCB, and other cards</div>
+                </div>
+            </div>
+            <button class="test-button" onclick="testPaymentMethod('card')">Test Card</button>
+            <div class="result" id="card-result"></div>
+        </div>
+
+        <div class="payment-method">
+            <div class="method-info">
+                <div class="method-icon" style="background: #dbeafe; color: #2563eb;">📱</div>
+                <div>
+                    <div style="font-weight: 600;">GCash</div>
+                    <div style="font-size: 12px; color: #6b7280;">Pay instantly with your GCash wallet</div>
+                </div>
+            </div>
+            <button class="test-button" onclick="testPaymentMethod('gcash')">Test GCash</button>
+            <div class="result" id="gcash-result"></div>
+        </div>
+
+        <div class="payment-method">
+            <div class="method-info">
+                <div class="method-icon" style="background: #d1fae5; color: #059669;">💳</div>
+                <div>
+                    <div style="font-weight: 600;">Maya</div>
+                    <div style="font-size: 12px; color: #6b7280;">Pay securely with your Maya account</div>
+                </div>
+            </div>
+            <button class="test-button" onclick="testPaymentMethod('paymaya')">Test Maya</button>
+            <div class="result" id="paymaya-result"></div>
+        </div>
+
+        <div class="payment-method">
+            <div class="method-info">
+                <div class="method-icon" style="background: #dcfce7; color: #16a34a;">⚡</div>
+                <div>
+                    <div style="font-weight: 600;">GrabPay</div>
+                    <div style="font-size: 12px; color: #6b7280;">Quick payment with your GrabPay wallet</div>
+                </div>
+            </div>
+            <button class="test-button" onclick="testPaymentMethod('grab_pay')">Test GrabPay</button>
+            <div class="result" id="grab_pay-result"></div>
+        </div>
+
+        <div class="payment-method">
+            <div class="method-info">
+                <div class="method-icon" style="background: #dbeafe; color: #3b82f6;">🏦</div>
+                <div>
+                    <div style="font-weight: 600;">Bank Transfer</div>
+                    <div style="font-size: 12px; color: #6b7280;">Direct bank transfer for larger payments</div>
+                </div>
+            </div>
+            <button class="test-button" onclick="testPaymentMethod('bank_transfer')">Test Bank Transfer</button>
+            <div class="result" id="bank_transfer-result"></div>
+        </div>
+
+        <div style="margin-top: 30px; text-align: center;">
+            <button class="test-button" style="background: #059669; padding: 12px 24px; font-size: 16px;" onclick="testAllMethods()">
+                🚀 Test All Payment Methods
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let stats = { total: 0, success: 0, failed: 0 };
+
+        function updateStats() {
+            document.getElementById('totalTests').textContent = stats.total;
+            document.getElementById('successTests').textContent = stats.success;
+            document.getElementById('failedTests').textContent = stats.failed;
+        }
+
+        function showResult(method, type, message) {
+            const resultElement = document.getElementById(`${method}-result`);
+            resultElement.className = `result ${type}`;
+            resultElement.textContent = message;
+            resultElement.style.display = 'block';
+
+            stats.total++;
+            if (type === 'success') stats.success++;
+            if (type === 'error') stats.failed++;
+            updateStats();
+        }
+
+        async function testPaymentMethod(method) {
+            const resultElement = document.getElementById(`${method}-result`);
+            showResult(method, 'loading', '⏳ Testing...');
+
+            try {
+                let endpoint = '';
+                let payload = {
+                    bookingId: `test-booking-${method}-${Date.now()}`,
+                    amount: Math.floor(Math.random() * 5000) + 1000, // Random amount between 1000-6000
+                    paymentType: Math.random() > 0.5 ? 'downpayment' : 'full_payment'
+                };
+
+                switch (method) {
+                    case 'card':
+                        endpoint = '/api/payment/card/create';
+                        payload.cardDetails = {
+                            number: '4343434343434345',
+                            expiry: '12/25',
+                            cvc: '123',
+                            name: 'Test Customer'
+                        };
+                        break;
+                    case 'gcash':
+                    case 'paymaya':
+                        endpoint = '/api/payment/process';
+                        payload.paymentMethod = method;
+                        break;
+                    case 'grab_pay':
+                        endpoint = '/api/payment/grabpay/create';
+                        break;
+                    case 'bank_transfer':
+                        endpoint = '/api/payment/bank-transfer/create';
+                        break;
+                }
+
+                const response = await fetch(`http://localhost:3001${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    let successMessage = `✅ ${method.toUpperCase()} - ₱${payload.amount.toLocaleString()}`;
+                    
+                    if (result.paymentId) {
+                        successMessage += ` | ID: ${result.paymentId}`;
+                    }
+                    if (result.transferInstructions) {
+                        successMessage += ` | Bank: ${result.transferInstructions.bankName}`;
+                    }
+                    if (result.checkoutUrl) {
+                        successMessage += ` | Checkout Available`;
+                    }
+
+                    showResult(method, 'success', successMessage);
+                } else {
+                    showResult(method, 'error', `❌ ${result.error || 'Test failed'}`);
+                }
+
+            } catch (error) {
+                showResult(method, 'error', `❌ Network error: ${error.message}`);
+            }
+        }
+
+        async function testAllMethods() {
+            const methods = ['card', 'gcash', 'paymaya', 'grab_pay', 'bank_transfer'];
+            
+            for (const method of methods) {
+                await testPaymentMethod(method);
+                // Add small delay between tests
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            // Show summary
+            setTimeout(() => {
+                alert(`🎉 Testing Complete!\n\nTotal Tests: ${stats.total}\nSuccessful: ${stats.success}\nFailed: ${stats.failed}\n\nSuccess Rate: ${Math.round((stats.success / stats.total) * 100)}%`);
+            }, 1000);
+        }
+
+        // Initialize stats display
+        updateStats();
+    </script>
+</body>
+</html>

@@ -38,7 +38,7 @@ export const ModularPaymentModal: React.FC<PaymentModalProps> = ({
       const methods = paymongoService.getAvailablePaymentMethods(amount.amount, amount.currency);
       
       // Add icons to methods
-      const methodsWithIcons: PaymentMethod[] = methods.map(method => ({
+      const methodsWithIcons: PaymentMethod[] = methods.map((method: any) => ({
         ...method,
         icon: React.createElement('div') // Icons will be handled by individual components
       }));

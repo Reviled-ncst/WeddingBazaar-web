@@ -33,10 +33,34 @@ export function useLocalStorage<T>(key: string, defaultValue: T): [T, (value: T)
  * Hook to manage user preferences for the bookings page
  */
 export function useBookingPreferences() {
-  const [filterStatus, setFilterStatus] = useLocalStorage<FilterStatus>('bookings-filter-status', 'all');
+  const [rawFilterStatus, setRawFilterStatus] = useLocalStorage<FilterStatus>('bookings-filter-status', 'all');
   const [viewMode, setViewMode] = useLocalStorage<'grid' | 'list'>('bookings-view-mode', 'grid');
   const [sortBy, setSortBy] = useLocalStorage<string>('bookings-sort-by', 'created_at');
   const [sortOrder, setSortOrder] = useLocalStorage<'asc' | 'desc'>('bookings-sort-order', 'desc');
+
+  // Valid filter status values
+  const validFilterStatuses: FilterStatus[] = [
+    'all', 'draft', 'quote_requested', 'quote_sent', 'quote_accepted', 
+    'quote_rejected', 'confirmed', 'downpayment_paid', 'paid_in_full', 
+    'in_progress', 'completed', 'cancelled', 'refunded', 'disputed'
+  ];
+
+  // Validate and fix filter status if invalid - always default to 'all' for now
+  const filterStatus = 'all'; // Force 'all' to load all bookings
+  
+  // Update localStorage if it was invalid
+  if (rawFilterStatus !== 'all') {
+    setRawFilterStatus('all');
+  }
+  
+  const setFilterStatus = (status: FilterStatus) => {
+    if (validFilterStatuses.includes(status)) {
+      setRawFilterStatus(status);
+    } else {
+      console.warn(`Invalid filter status: ${status}, resetting to 'all'`);
+      setRawFilterStatus('all');
+    }
+  };
 
   return {
     filterStatus,

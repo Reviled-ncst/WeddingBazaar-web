@@ -15,11 +15,23 @@ import {
   QrCode
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
-import { paymongoService } from '../../services/paymongoService';
+import { paymongoService } from '../services/payment/paymongoService';
 import { paymentWebhookHandler } from '../../services/paymentWebhookHandler';
 import QRCodeDisplay from './payment/QRCodeDisplay';
-import type { PayMongoPaymentIntent, PayMongoSource } from '../../services/paymongoService';
 import type { PaymentWebhookData } from '../../services/paymentWebhookHandler';
+
+// Local type definitions for payment state
+interface PayMongoPaymentIntent {
+  id: string;
+  type: string;
+  attributes: any;
+}
+
+interface PayMongoSource {
+  id: string;
+  checkout_url?: string;
+  status: string;
+}
 
 export interface PayMongoPaymentModalProps {
   isOpen: boolean;
@@ -41,7 +53,7 @@ export interface PayMongoPaymentModalProps {
 
 interface PaymentMethod {
   id: string;
-  type: 'card' | 'gcash' | 'paymaya' | 'grab_pay';
+  type: 'card' | 'gcash' | 'paymaya' | 'grab_pay' | 'bank_transfer';
   name: string;
   icon: React.ReactNode;
   description: string;
@@ -65,10 +77,17 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
     currency,
     paymentType,
     hasSuccessCallback: !!onPaymentSuccess,
+    bookingId: booking?.id,
+    vendorName: booking?.vendorName
+  });
+  
+  console.log('💳 PayMongoPaymentModal state check:', {
+    isModalOpen: isOpen,
+    willRender: isOpen ? 'YES' : 'NO'
   });
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [paymentStep, setPaymentStep] = useState<'select' | 'card_form' | 'processing' | 'qr_code' | 'redirect' | 'success' | 'error'>('select');
+  const [paymentStep, setPaymentStep] = useState<'select' | 'card_form' | 'processing' | 'qr_code' | 'redirect' | 'bank_transfer_instructions' | 'success' | 'error'>('select');
   const [paymentIntent, setPaymentIntent] = useState<PayMongoPaymentIntent | null>(null);
   const [source, setSource] = useState<PayMongoSource | null>(null);
   const [redirectUrl, setRedirectUrl] = useState<string>('');
@@ -84,6 +103,64 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
   });
   const [cardType, setCardType] = useState<'visa' | 'mastercard' | 'amex' | 'unknown'>('unknown');
   const [successCallbackCalled, setSuccessCallbackCalled] = useState(false);
+
+  // Progress tracking state
+  const [currentProgress, setCurrentProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
+  const [showProgress, setShowProgress] = useState(false);
+
+  // Define payment flow steps for progress tracking
+  const paymentSteps = [
+    { step: 1, title: 'Payment Method', description: 'Choose your preferred payment option' },
+    { step: 2, title: 'Payment Details', description: 'Enter payment information' },
+    { step: 3, title: 'Processing', description: 'Securely processing your payment' },
+    { step: 4, title: 'Confirmation', description: 'Payment completed successfully' }
+  ];
+
+  // Update progress based on payment step
+  useEffect(() => {
+    console.log('🔄 Payment step changed to:', paymentStep);
+    switch (paymentStep) {
+      case 'select':
+        setCurrentProgress(1);
+        setProgressMessage('Choose your payment method');
+        setShowProgress(true);
+        console.log('📍 Progress: Step 1 - Payment Method Selection');
+        break;
+      case 'card_form':
+      case 'redirect':
+        setCurrentProgress(2);
+        setProgressMessage('Enter your payment details');
+        setShowProgress(true);
+        console.log('📍 Progress: Step 2 - Payment Details');
+        break;
+      case 'processing':
+        setCurrentProgress(3);
+        setProgressMessage('Processing your payment securely...');
+        setShowProgress(true);
+        console.log('📍 Progress: Step 3 - Processing Payment');
+        break;
+      case 'qr_code':
+        setCurrentProgress(3);
+        setProgressMessage('Scan QR code to complete payment');
+        setShowProgress(true);
+        console.log('📍 Progress: Step 3 - QR Code Payment');
+        break;
+      case 'success':
+        setCurrentProgress(4);
+        setProgressMessage('Payment completed successfully!');
+        setShowProgress(true);
+        console.log('📍 Progress: Step 4 - Payment Success');
+        break;
+      case 'error':
+        setShowProgress(false);
+        console.log('📍 Progress: Hidden due to error');
+        break;
+      default:
+        setShowProgress(false);
+        console.log('📍 Progress: Hidden (unknown step)');
+    }
+  }, [paymentStep]);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -193,11 +270,11 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
   }, [isOpen]);
 
   // Customer details - In production, get from auth context
-  const customerInfo = {
-    name: 'Wedding Customer', // In production: get from user profile
-    email: 'customer@weddingbazaar.com', // In production: get from authenticated user
-    phone: '+639171234567' // In production: get from user profile or input
-  };
+  // const customerInfo = {
+  //   name: 'Wedding Customer', // In production: get from user profile
+  //   email: 'customer@weddingbazaar.com', // In production: get from authenticated user
+  //   phone: '+639171234567' // In production: get from user profile or input
+  // };
 
   // Format amount with proper currency
   const formatAmount = (amt: number) => {
@@ -276,76 +353,39 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
     setPaymentStep('processing');
 
     try {
-      console.log('💳 Processing real card payment with PayMongo...');
+      console.log('💳 Processing card payment via backend...');
       
-      const amountInCentavos = getAmountInPHPCentavos();
-      const description = `${paymentType === 'downpayment' ? 'Downpayment' : 'Payment'} for ${booking.serviceType} - ${booking.vendorName}`;
-      
-      // Create Payment Intent for card payments
-      const intent = await paymongoService.createPaymentIntent({
-        amount: amountInCentavos,
-        currency: 'PHP',
-        description,
-        metadata: {
-          booking_id: booking.id,
-          booking_reference: booking.bookingReference || '',
-          payment_type: paymentType,
-          vendor_name: booking.vendorName,
-          service_type: booking.serviceType,
-          original_currency: currency,
-          original_amount: amount.toString(),
-          display_amount: formatAmount(amount),
-        },
-      });
-
-      setPaymentIntent(intent);
-      console.log('✅ Payment intent created:', intent.id);
-
-      // For now, simulate card payment completion since PayMongo card payments 
-      // require additional client-side JavaScript SDK integration for secure processing
-      
-      // In a real implementation, you would use PayMongo.js to:
-      // 1. Create payment method using PayMongo SDK with card details  
-      // 2. Attach payment method to payment intent
-      // 3. Confirm payment intent
-      // 4. Handle 3D Secure authentication if required
-      
-      console.log('💳 Simulating card payment completion for demo purposes...');
-      
-      // Simulate processing delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Create simulated payment result
-      const simulatedPaymentResult = {
-        id: `pay_sim_${Date.now()}`,
-        type: 'payment',
-        attributes: {
-          amount: amountInCentavos,
-          currency: 'PHP',
-          description,
-          status: 'succeeded',
-          payment_intent_id: intent.id,
-          payment_method: 'card',
-          created_at: Math.floor(Date.now() / 1000),
-        },
-        metadata: {
-          booking_id: booking.id,
-          payment_type: paymentType,
-          method: 'card_simulation'
-        }
+      // Prepare card details for backend
+      const cardDetails = {
+        number: cardForm.number.replace(/\s/g, ''), // Remove spaces
+        expiry: cardForm.expiry,
+        cvc: cardForm.cvc,
+        name: cardForm.name
       };
+      
+      // Use the specific card payment method that calls our backend
+      const paymentResult = await paymongoService.createCardPayment(
+        booking.id,
+        amount,
+        paymentType,
+        cardDetails
+      );
 
-      console.log('✅ Simulated card payment completed successfully');
+      if (!paymentResult.success) {
+        throw new Error(paymentResult.error || 'Card payment failed');
+      }
+
+      console.log('✅ Card payment processed successfully:', paymentResult);
       setPaymentStep('success');
       
       onPaymentSuccess({
-        payment: simulatedPaymentResult,
-        paymentIntent: intent,
+        payment: paymentResult,
+        paymentIntent: paymentResult.paymentIntent,
         amount: amount,
         currency: currency,
         method: 'card',
         status: 'succeeded',
-        transactionId: simulatedPaymentResult.id,
+        transactionId: paymentResult.paymentId || `card_${Date.now()}`,
         formattedAmount: formatAmount(amount)
       });
 
@@ -402,8 +442,16 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
       id: 'grab_pay',
       type: 'grab_pay',
       name: 'GrabPay',
-      icon: <Building className="h-6 w-6 text-green-500" />,
+      icon: <Zap className="h-6 w-6 text-green-500" />,
       description: 'Quick payment with your GrabPay wallet',
+      available: true,
+    },
+    {
+      id: 'bank_transfer',
+      type: 'bank_transfer',
+      name: 'Bank Transfer',
+      icon: <Building className="h-6 w-6 text-blue-500" />,
+      description: 'Direct bank transfer for larger payments',
       available: true,
     },
   ];
@@ -416,7 +464,9 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
 
     setLoading(true);
     setPaymentStep('processing');
-    setErrorMessage('');      try {
+    setErrorMessage('');
+    
+    try {
         console.log(`💳 Processing ${formatAmount(amount)} payment via ${selectedMethod}`);
         console.log(`🔄 Currency: ${currency}, Amount: ${amount}`);
         
@@ -432,7 +482,8 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
           throw new Error('Payment amount exceeds maximum limit');
         }
         
-        const description = `${paymentType === 'downpayment' ? 'Downpayment' : 'Payment'} for ${booking.serviceType} - ${booking.vendorName}`;        // Base URLs for redirect (ensure they're valid URLs)
+        // const description = `${paymentType === 'downpayment' ? 'Downpayment' : 'Payment'} for ${booking.serviceType} - ${booking.vendorName}`;        
+        // Base URLs for redirect (ensure they're valid URLs)
         const baseUrl = window.location.origin;
         const successUrl = `${baseUrl}/individual/bookings?payment=success&booking=${booking.id}`;
         const failedUrl = `${baseUrl}/individual/bookings?payment=failed&booking=${booking.id}`;
@@ -440,183 +491,102 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
         console.log(`🔗 Redirect URLs - Success: ${successUrl}, Failed: ${failedUrl}`);
 
       if (selectedMethod === 'card') {
-        // Create Payment Intent for card payments - real implementation
-        const intent = await paymongoService.createPaymentIntent({
-          amount: amountInCentavos,
-          currency: 'PHP',
-          description,
-          statement_descriptor: 'Wedding Bazaar',
-          metadata: {
-            booking_id: booking.id,
-            booking_reference: booking.bookingReference || '',
-            payment_type: paymentType,
-            vendor_name: booking.vendorName,
-            service_type: booking.serviceType,
-            original_currency: currency,
-            original_amount: amount.toString(),
-            display_amount: formatAmount(amount),
-          },
-        });
-
-        setPaymentIntent(intent);
-        
-        // Real implementation: Direct user to card form for secure processing
-        // In production, this would integrate with PayMongo's JavaScript SDK
+        // For card payments, show card form first
         setPaymentStep('card_form');
         setLoading(false);
         return;
 
-      } else {
-        // Create Source for e-wallet payments
-        console.log(`🔄 Creating ${selectedMethod} source for amount: ${amountInCentavos} centavos`);
+      } else if (selectedMethod === 'bank_transfer') {
+        // Handle bank transfer
+        console.log('🏦 Creating bank transfer payment...');
         
-        // Validate billing information for PayMongo
-        const billingInfo = {
-          name: customerInfo.name.trim(),
-          email: customerInfo.email.trim().toLowerCase(),
-          phone: customerInfo.phone.trim()
-        };
+        const result = await paymongoService.createBankTransferPayment(
+          booking.id,
+          amount,
+          paymentType
+        );
         
-        // Ensure email is valid
-        if (!billingInfo.email.includes('@') || !billingInfo.email.includes('.')) {
-          throw new Error('Invalid email format for billing');
-        }
-        
-        const sourceData = await paymongoService.createSource({
-          type: selectedMethod as 'gcash' | 'paymaya' | 'grab_pay',
-          amount: amountInCentavos,
-          currency: 'PHP',
-          description,
-          redirect: {
-            success: successUrl,
-            failed: failedUrl,
-          },
-          billing: {
-            name: billingInfo.name,
-            email: billingInfo.email,
-            phone: billingInfo.phone,
-          },
-          metadata: {
-            booking_id: booking.id,
-            booking_reference: booking.bookingReference || '',
-            payment_type: paymentType,
-            vendor_name: booking.vendorName,
-            service_type: booking.serviceType,
-          },
-        });
-
-        // Real e-wallet implementation: Create source and set up status monitoring
-        console.log(`✅ Source created successfully:`, sourceData.id);
-        setSource(sourceData);
-
-        // For e-wallet payments, check multiple possible redirect URL locations
-        let checkoutUrl = null;
-        
-        // PayMongo may return the checkout URL in different locations
-        if (sourceData.attributes.redirect?.checkout_url) {
-          checkoutUrl = sourceData.attributes.redirect.checkout_url;
-        } else if (sourceData.attributes.checkout_url) {
-          checkoutUrl = sourceData.attributes.checkout_url;
-        }
-        
-        if (checkoutUrl) {
-          setRedirectUrl(checkoutUrl);
-          console.log(`🔗 Checkout URL found:`, checkoutUrl);
+        if (result.success && result.transferInstructions) {
+          // Show bank transfer instructions
+          setPaymentStep('bank_transfer_instructions');
+          setLoading(false);
+          
+          // Call success handler with transfer instructions
+          onPaymentSuccess({
+            success: true,
+            paymentMethod: selectedMethod,
+            transferInstructions: result.transferInstructions,
+            paymentId: result.paymentId
+          });
+          
+          return;
         } else {
-          console.log(`📱 No checkout URL provided, will show manual instructions`);
+          throw new Error(result.error || 'Failed to create bank transfer');
+        }
+
+      } else if (['gcash', 'paymaya', 'grab_pay'].includes(selectedMethod)) {
+        // Handle e-wallet payments
+        let result: any = null;
+        
+        if (selectedMethod === 'grab_pay') {
+          console.log('🚗 Creating GrabPay payment...');
+          result = await paymongoService.createGrabPayPayment(
+            booking.id,
+            amount,
+            paymentType
+          );
+        } else if (selectedMethod === 'gcash') {
+          console.log('� Creating GCash payment...');
+          result = await paymongoService.createGCashPayment(
+            booking.id,
+            amount,
+            paymentType
+          );
+        } else if (selectedMethod === 'paymaya') {
+          console.log('💳 Creating PayMaya payment...');
+          result = await paymongoService.createPayMayaPayment(
+            booking.id,
+            amount,
+            paymentType
+          );
         }
         
-        // Set up real-time payment monitoring with improved polling
-        setPaymentStep('redirect');
-        setLoading(false);
-        
-        // Start continuous polling for payment status with better parameters
-        const startPaymentPolling = () => {
-          console.log('🔄 Starting enhanced payment polling...');
+        if (result && result.success && result.checkoutUrl) {
+          setSource({
+            id: result.sourceId || 'temp-source',
+            checkout_url: result.checkoutUrl,
+            status: 'pending'
+          });
           
-          const pollPaymentStatus = async () => {
-            try {
-              console.log(`🔄 Polling payment status for source:`, sourceData.id);
-              
-              // Use the improved polling method
-              const result = await paymongoService.pollPaymentStatus(sourceData.id, {
-                maxAttempts: 60, // Poll for 3 minutes
-                intervalMs: 3000, // Every 3 seconds
-                timeoutMs: 180000 // 3 minutes timeout
-              });
-              
-              if (result.status === 'paid' && result.payment) {
-                console.log('🎉 Real payment confirmed via enhanced polling!', result.payment);
-                
-                const paymentData = {
-                  source_id: sourceData.id,
-                  payment_id: result.payment.id,
-                  amount: result.payment.attributes.amount,
-                  currency: result.payment.attributes.currency,
-                  status: 'succeeded',
-                  payment_method: selectedMethod,
-                  original_currency: currency,
-                  original_amount: amount,
-                  display_amount: formatAmount(amount),
-                  transaction_id: result.payment.id,
-                  external_reference: result.payment.attributes.external_reference_number,
-                };
-                
-                if (!successCallbackCalled) {
-                  setSuccessCallbackCalled(true);
-                  onPaymentSuccess(paymentData);
-                  console.log('✅ Success callback called for real e-wallet payment');
-                }
-                
-                setPaymentStep('success');
-                setLoading(false);
-                return;
-              }
-              
-              if (result.status === 'failed') {
-                console.log('❌ Payment failed via enhanced polling');
-                setErrorMessage('Payment failed. Please try again.');
-                setPaymentStep('error');
-                setLoading(false);
-                onPaymentError('Payment failed');
-                return;
-              }
-              
-              // If pending, the polling has timed out
-              console.log('⏰ Payment polling completed without confirmation');
-              setErrorMessage('Payment confirmation timeout. Please check your payment status manually or try again.');
-              setPaymentStep('error');
-              setLoading(false);
-              onPaymentError('Payment confirmation timeout');
-              
-            } catch (error) {
-              console.error('Error in enhanced payment polling:', error);
-              setErrorMessage('Unable to confirm payment status. Please contact support.');
-              setPaymentStep('error');
-              setLoading(false);
-              onPaymentError('Payment status check failed');
-            }
-          };
+          setRedirectUrl(result.checkoutUrl);
+          setPaymentStep('redirect');
           
-          // Start polling after a short delay
-          setTimeout(pollPaymentStatus, 2000);
-        };
-        
-        // Start the enhanced polling process
-        startPaymentPolling();
+          // Redirect to payment page
+          console.log(`🔗 Redirecting to ${selectedMethod} payment page: ${result.checkoutUrl}`);
+          window.location.href = result.checkoutUrl;
+          
+          return;
+        } else {
+          throw new Error((result && result.error) || `Failed to create ${selectedMethod} payment`);
+        }
+      } else {
+        throw new Error(`Payment method ${selectedMethod} is not supported yet`);
       }
 
     } catch (error: any) {
-      console.error('Payment processing error:', error);
-      setErrorMessage(error.message || 'Payment processing failed');
+      console.error('� Payment processing error:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Payment processing failed';
+      setErrorMessage(errorMessage);
       setPaymentStep('error');
-      onPaymentError(error.message || 'Payment processing failed');
-    } finally {
       setLoading(false);
+      
+      // Call error handler
+      onPaymentError(errorMessage);
     }
   };
 
-  if (!isOpen) return null;
+  console.log('💳 PayMongoPaymentModal: Render called with isOpen:', isOpen);
 
   return (
     <AnimatePresence>
@@ -639,50 +609,128 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.85, y: 40 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[95vh] overflow-hidden z-10"
+              className="relative bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden z-10"
             >
-              {/* Header */}
-              <div className="bg-gradient-to-br from-blue-500 via-purple-600 to-pink-600 p-8 text-white relative overflow-hidden">
+              {/* Header - Matching Subscription Modal Design */}
+              <div className="bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 p-10 text-white relative overflow-hidden">
                 <button
                   onClick={handleClose}
                   disabled={loading || paymentStep === 'processing'}
-                  className="absolute top-6 right-6 p-2 hover:bg-white/20 rounded-full transition-all duration-200 z-20 backdrop-blur-sm disabled:opacity-50"
+                  className="absolute top-6 right-6 p-3 hover:bg-white/20 rounded-full transition-all duration-200 z-20 backdrop-blur-sm disabled:opacity-50"
                   aria-label="Close payment modal"
                   title="Close payment modal"
                 >
                   <X className="h-6 w-6" />
                 </button>
                 
-                <div className="relative z-10">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                      <CreditCard className="h-8 w-8" />
+                <div className="relative z-10 max-w-2xl">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-sm">
+                      <CreditCard className="h-12 w-12" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold">Secure Payment</h2>
-                      <p className="text-blue-100">Complete your subscription upgrade</p>
+                      <h2 className="text-4xl font-bold mb-2">Secure Payment</h2>
+                      <p className="text-xl text-pink-100">Complete your {paymentType === 'downpayment' ? 'deposit' : 'balance'} payment</p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-4 text-blue-100 text-sm">
+                  <div className="flex items-center gap-6 text-pink-100">
                     <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4" />
-                      <span>256-bit SSL</span>
+                      <Zap className="h-5 w-5" />
+                      <span>Instant Processing</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4" />
-                      <span>Instant Processing</span>
+                      <Shield className="h-5 w-5" />
+                      <span>256-bit SSL Secure</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5" />
+                      <span>Verified Payment</span>
                     </div>
                   </div>
                 </div>
                 
-                {/* Animated background elements */}
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full animate-pulse" />
-                <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white/5 rounded-full" />
+                {/* Animated background elements - Matching subscription modal */}
+                <div className="absolute -top-20 -right-20 w-60 h-60 bg-white/10 rounded-full animate-pulse" />
+                <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-white/5 rounded-full" />
+                <div className="absolute top-1/2 right-1/4 w-32 h-32 bg-white/5 rounded-full animate-bounce [animation-duration:3s]" />
               </div>
 
               {/* Content */}
               <div className="p-8 overflow-y-auto max-h-[calc(95vh-200px)]">
+                {/* Progress Tracker */}
+                {showProgress && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white rounded-2xl p-6 mb-8 border border-gray-200 shadow-sm"
+                  >
+                    {console.log('🎯 Rendering progress tracker:', { currentProgress, progressMessage, showProgress })}
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-blue-500" />
+                        Payment Progress
+                      </h3>
+                      <span className="text-sm text-gray-500">
+                        Step {currentProgress} of {paymentSteps.length}
+                      </span>
+                    </div>
+                    
+                    {/* Progress Bar */}
+                    <div className="relative mb-6">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(currentProgress / paymentSteps.length) * 100}%` }}
+                          transition={{ duration: 0.5, ease: "easeOut" }}
+                          className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Progress Steps */}
+                    <div className="flex justify-between items-center mb-4">
+                      {paymentSteps.map((step, index) => (
+                        <div key={step.step} className="flex flex-col items-center flex-1">
+                          <div className={cn(
+                            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300",
+                            currentProgress >= step.step
+                              ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
+                              : "bg-gray-200 text-gray-500"
+                          )}>
+                            {currentProgress > step.step ? (
+                              <CheckCircle className="h-5 w-5" />
+                            ) : (
+                              step.step
+                            )}
+                          </div>
+                          <div className="text-xs text-center mt-2 max-w-20">
+                            <div className={cn(
+                              "font-medium",
+                              currentProgress >= step.step ? "text-gray-900" : "text-gray-500"
+                            )}>
+                              {step.title}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Current Progress Message */}
+                    {progressMessage && (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl"
+                      >
+                        <p className="text-sm font-medium text-gray-700">
+                          {progressMessage}
+                        </p>
+                      </motion.div>
+                    )}
+                  </motion.div>
+                )}
+
                 {/* Payment Summary */}
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
@@ -1194,11 +1242,7 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                                   console.log('🔄 Checking payment status immediately for source:', source.id);
                                   
                                   // Use improved polling with single attempt for immediate check
-                                  const result = await paymongoService.pollPaymentStatus(source.id, {
-                                    maxAttempts: 1,
-                                    intervalMs: 1000,
-                                    timeoutMs: 5000
-                                  });
+                                  const result = await paymongoService.pollPaymentStatus(source.id);
                                   
                                   if (result.status === 'paid' && result.payment) {
                                     console.log('🎉 Real payment confirmed immediately via enhanced polling!');

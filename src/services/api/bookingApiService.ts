@@ -348,25 +348,120 @@ class BookingApiService {
     }
   }
 
-  // Cancel booking
-  async cancelBooking(bookingId: string, reason?: string): Promise<boolean> {
+  // Get workflow status for a booking
+  async getWorkflowStatus(bookingId: string): Promise<{
+    currentStage: string;
+    completedStages: string[];
+    nextActions: string[];
+    canCancel: boolean;
+    canModify: boolean;
+    timeline: Array<{
+      stage: string;
+      completed: boolean;
+      timestamp?: string;
+      description: string;
+    }>;
+  }> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}`, {
-        method: 'DELETE',
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/workflow-status`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const apiResponse = await response.json();
+      return apiResponse.workflowStatus;
+    } catch (error) {
+      console.error('Error fetching workflow status:', error);
+      throw error;
+    }
+  }
+
+  // Request quote modification (for couples)
+  async requestQuoteModification(
+    bookingId: string, 
+    modificationDetails: {
+      requestedChanges: string;
+      newRequirements?: string;
+      budgetAdjustment?: number;
+    }
+  ): Promise<Booking> {
+    try {
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/request-quote-modification`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify(modificationDetails),
       });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const apiResponse: ApiSuccess<{ cancelled: boolean }> = await response.json();
-      return apiResponse.data.cancelled;
+      const apiResponse: ApiSuccess<Booking> = await response.json();
+      return apiResponse.data;
+    } catch (error) {
+      console.error('Error requesting quote modification:', error);
+      throw error;
+    }
+  }
+
+  // Cancel booking (for couples or vendors)
+  async cancelBooking(
+    bookingId: string,
+    reason: string,
+    cancelledBy: 'couple' | 'vendor'
+  ): Promise<Booking> {
+    try {
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason, cancelledBy }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const apiResponse: ApiSuccess<Booking> = await response.json();
+      return apiResponse.data;
     } catch (error) {
       console.error('Error cancelling booking:', error);
+      throw error;
+    }
+  }
+
+  // Send progress update (for vendors)
+  async sendProgressUpdate(
+    bookingId: string,
+    update: {
+      title: string;
+      message: string;
+      progress?: number;
+      images?: string[];
+      estimatedCompletion?: string;
+    }
+  ): Promise<Booking> {
+    try {
+      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/progress-update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(update),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const apiResponse: ApiSuccess<Booking> = await response.json();
+      return apiResponse.data;
+    } catch (error) {
+      console.error('Error sending progress update:', error);
       throw error;
     }
   }
@@ -382,10 +477,32 @@ class BookingApiService {
       sortOrder?: string;
     }
   ): Promise<BookingsListResponse> {
-    return this.getAllBookings({
-      ...params,
-      coupleId
-    });
+    try {
+      const queryParams = new URLSearchParams();
+      
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.status?.length) queryParams.append('status', params.status.join(','));
+      if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+      if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+
+      const url = `${this.baseUrl}/bookings/couple/${coupleId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      console.log('📋 [BookingApiService] Fetching couple bookings from:', url);
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('📋 [BookingApiService] Couple bookings response:', data);
+      
+      return data;
+    } catch (error) {
+      console.error('❌ [BookingApiService] Error fetching couple bookings:', error);
+      throw error;
+    }
   }
 
   // Get bookings for a specific vendor

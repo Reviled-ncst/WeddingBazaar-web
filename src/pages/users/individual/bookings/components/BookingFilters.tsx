@@ -26,13 +26,19 @@ export const BookingFilters: React.FC<BookingFiltersProps> = ({
 }) => {
   const filterOptions = [
     { value: 'all', label: 'All Bookings' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'inquiry', label: 'Inquiry' },
+    { value: 'draft', label: 'Draft' },
+    { value: 'quote_requested', label: 'Quote Requested' },
+    { value: 'quote_sent', label: 'Quote Received' },
+    { value: 'quote_accepted', label: 'Quote Accepted' },
+    { value: 'quote_rejected', label: 'Quote Declined' },
     { value: 'confirmed', label: 'Confirmed' },
     { value: 'downpayment_paid', label: 'Downpayment Paid' },
-    { value: 'completed', label: 'Completed' },
     { value: 'paid_in_full', label: 'Fully Paid' },
-    { value: 'cancelled', label: 'Cancelled' }
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'refunded', label: 'Refunded' },
+    { value: 'disputed', label: 'Disputed' }
   ];
 
   return (

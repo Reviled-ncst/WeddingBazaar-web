@@ -29,7 +29,6 @@ import { cn } from '../../../../utils/cn';
 
 // Import types - now using comprehensive types with UI extensions
 import { 
-  mapToUIBooking,
   mapFilterStatusToStatuses
 } from './types/booking.types';
 import type { 
@@ -40,6 +39,8 @@ import type {
 import type { PaymentType } from '../payment/types/payment.types';
 
 export const IndividualBookings: React.FC = () => {
+  console.log('🔍 [IndividualBookings] Component starting to render');
+  
   // Get authenticated user for real user ID
   const { user } = useAuth();
   
@@ -103,6 +104,8 @@ export const IndividualBookings: React.FC = () => {
   const userCoupleId = user?.id || '1-2025-001'; // Real user ID for new bookings
   const legacyCoupleId = 'current-user-id'; // Legacy ID for existing bookings
 
+  console.log('🔍 [IndividualBookings] User IDs:', { userCoupleId, legacyCoupleId, user });
+
   // Debounced search effect
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -111,6 +114,117 @@ export const IndividualBookings: React.FC = () => {
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Load bookings data
+  const loadBookings = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('📊 [Bookings] Loading bookings for user:', userCoupleId);
+      console.log('📊 [Bookings] Filter status:', filterStatus, 'mapped:', mapFilterStatusToStatuses(filterStatus));
+      
+      // Try to load real bookings first using getCoupleBookings
+      try {
+        const response = await bookingApiService.getCoupleBookings(userCoupleId, {
+          page: currentPage,
+          limit: 10,
+          status: filterStatus === 'all' ? undefined : mapFilterStatusToStatuses(filterStatus),
+          sortBy: 'created_at',
+          sortOrder: 'desc'
+        });
+
+        console.log('📊 [Bookings] API response:', response);
+
+        if (response.bookings && response.bookings.length > 0) {
+          const enhancedBookings = response.bookings.map((booking: any) => ({
+            id: booking.id,
+            bookingReference: booking.booking_reference || `WB-${booking.id}`,
+            vendorId: booking.vendor_id,
+            vendorName: booking.vendor_name || 'Unknown Vendor',
+            coupleId: booking.couple_id,
+            serviceType: booking.service_type || 'other',
+            serviceName: booking.service_name || 'Service',
+            eventDate: booking.event_date,
+            eventTime: booking.event_time,
+            eventLocation: booking.event_location,
+            status: booking.status,
+            totalAmount: booking.total_amount,
+            downpaymentAmount: booking.downpayment_amount,
+            remainingBalance: booking.remaining_balance,
+            totalPaid: booking.total_paid || 0,
+            paymentProgressPercentage: booking.total_amount > 0 ? ((booking.total_paid || 0) / booking.total_amount) * 100 : 0,
+            specialRequests: booking.special_requests,
+            createdAt: booking.created_at,
+            updatedAt: booking.updated_at
+          }));
+          
+          setBookings(enhancedBookings);
+          
+          console.log('📊 [Bookings] Enhanced bookings loaded:', enhancedBookings);
+        } else {
+          console.warn('📊 [Bookings] API returned no data, trying legacy user ID');
+          
+          // Try legacy user ID for existing bookings
+          const legacyResponse = await bookingApiService.getCoupleBookings(legacyCoupleId, {
+            page: currentPage,
+            limit: 10,
+            status: filterStatus === 'all' ? undefined : mapFilterStatusToStatuses(filterStatus),
+            sortBy: 'created_at',
+            sortOrder: 'desc'
+          });
+
+          if (legacyResponse.bookings && legacyResponse.bookings.length > 0) {
+            const enhancedBookings = legacyResponse.bookings.map((booking: any) => ({
+              id: booking.id,
+              bookingReference: booking.booking_reference || `WB-${booking.id}`,
+              vendorId: booking.vendor_id,
+              vendorName: booking.vendor_name || 'Unknown Vendor',
+              coupleId: booking.couple_id,
+              serviceType: booking.service_type || 'other',
+              serviceName: booking.service_name || 'Service',
+              eventDate: booking.event_date,
+              eventTime: booking.event_time,
+              eventLocation: booking.event_location,
+              status: booking.status,
+              totalAmount: booking.total_amount,
+              downpaymentAmount: booking.downpayment_amount,
+              remainingBalance: booking.remaining_balance,
+              totalPaid: booking.total_paid || 0,
+              paymentProgressPercentage: booking.total_amount > 0 ? ((booking.total_paid || 0) / booking.total_amount) * 100 : 0,
+              specialRequests: booking.special_requests,
+              createdAt: booking.created_at,
+              updatedAt: booking.updated_at
+            }));
+            
+            setBookings(enhancedBookings);
+            
+            console.log('📊 [Bookings] Legacy bookings loaded:', enhancedBookings);
+          } else {
+            // No real bookings found, show empty state
+            setBookings([]);
+            console.log('📊 [Bookings] No bookings found for either user ID');
+          }
+        }
+      } catch (apiError) {
+        console.warn('📊 [Bookings] API error, no bookings available:', apiError);
+        setBookings([]);
+      }
+      
+    } catch (error) {
+      console.error('📊 [Bookings] Error loading bookings:', error);
+      setError('Failed to load bookings. Please try again later.');
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [userCoupleId, legacyCoupleId, currentPage, filterStatus]);
+
+  // Load data on mount and when dependencies change
+  useEffect(() => {
+    console.log('🔍 [IndividualBookings] useEffect triggered, calling loadBookings');
+    loadBookings();
+  }, [loadBookings]);
 
   // Helper function for payment modal - simple handlers  
   const handlePayDeposit = (booking: EnhancedBooking) => {
@@ -477,10 +591,10 @@ export const IndividualBookings: React.FC = () => {
         booking={selectedBooking}
         isOpen={showQuoteDetails}
         onClose={() => setShowQuoteDetails(false)}
-        onAcceptQuote={(booking) => {
+        onAcceptQuote={(_booking) => {
           setShowQuoteDetails(false);
         }}
-        onRejectQuote={(booking) => {
+        onRejectQuote={(_booking) => {
           setShowQuoteDetails(false);
         }}
         onRequestModification={(_booking) => {

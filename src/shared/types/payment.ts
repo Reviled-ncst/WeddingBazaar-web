@@ -75,6 +75,19 @@ export interface PaymentResult {
   source?: PayMongoSource;
   error?: string;
   reference?: string;
+  paymentId?: string;
+  checkoutUrl?: string;
+  sourceId?: string;
+  requiresAction?: boolean;
+  clientSecret?: string;
+  transferInstructions?: {
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    referenceNumber: string;
+    amount: number;
+    instructions: string[];
+  };
 }
 
 export interface PaymentModalProps {

@@ -48,6 +48,8 @@ import { VendorSubscriptionPage } from '../pages/users/vendor/subscription';
 // Auth Context
 import { AuthProvider } from '../shared/contexts/AuthContext';
 import { SubscriptionProvider } from '../shared/contexts/SubscriptionContext';
+
+// Global Messenger
 import { GlobalMessengerProvider } from '../shared/contexts/GlobalMessengerContext';
 import { GlobalFloatingChat } from '../shared/components/messaging/GlobalFloatingChat';
 import { GlobalFloatingChatButton } from '../shared/components/messaging/GlobalFloatingChatButton';

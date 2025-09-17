@@ -755,6 +755,39 @@ class BookingInteractionService {
       }
     ];
   }
+
+  /**
+   * Create a booking interaction record
+   * @private - Internal method for creating interaction records
+   */
+  private async createInteraction(bookingId: string, interactionData: {
+    actionType: string;
+    message: string;
+    actorType: 'couple' | 'vendor' | 'admin';
+    metadata?: Record<string, any>;
+  }): Promise<BookingInteraction> {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/bookings/${bookingId}/interactions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify(interactionData)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create interaction');
+      }
+
+      const result = await response.json();
+      return result.interaction;
+    } catch (error) {
+      console.error('Error creating interaction:', error);
+      throw error;
+    }
+  }
 }
 
 export const bookingInteractionService = new BookingInteractionService();

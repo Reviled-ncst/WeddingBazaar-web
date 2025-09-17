@@ -91,6 +91,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [selectedReceipt, setSelectedReceipt] = useState<PaymentReceipt | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'workflow' | 'payments'>('details');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && booking) {
@@ -103,15 +104,39 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     if (!booking) return;
     
     setLoadingReceipts(true);
+    setError(null);
     try {
       const data = await paymentService.getPaymentReceipts(booking.id);
-      setReceipts(data);
+      setReceipts(data || []);
     } catch (error) {
       console.error("Error fetching receipts:", error);
+      setError("Failed to load payment receipts. Please try again.");
       setReceipts([]);
     } finally {
       setLoadingReceipts(false);
     }
+  };
+
+  const formatCurrency = (amount: number | null | undefined) => {
+    if (!amount) return '₱0';
+    return `₱${amount.toLocaleString()}`;
+  };
+
+  const calculateDaysUntilEvent = (eventDate: string) => {
+    const today = new Date();
+    const event = new Date(eventDate);
+    const diffTime = event.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const getFormattedEventDate = (eventDate: string) => {
+    return new Date(eventDate).toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
   };
 
   const handleViewReceipt = (receipt: PaymentReceipt) => {
@@ -145,6 +170,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     } catch (error) {
       console.error('Error emailing receipt:', error);
     }
+  };
+
+  const loadReceipts = async () => {
+    if (!booking) return;
+    await fetchReceipts();
   };
 
   if (!isOpen || !booking) return null;
@@ -339,12 +369,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   <div>
                     <p className="text-sm text-gray-700">Event Date</p>
                     <p className="font-semibold text-lg text-gray-900">
-                      {booking.formattedEventDate || new Date(booking.eventDate).toLocaleDateString('en-US', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}
+                      {booking.formattedEventDate || getFormattedEventDate(booking.eventDate)}
                     </p>
                   </div>
                 </div>
@@ -361,19 +386,19 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   </div>
                 )}
                 
-                {booking.daysUntilEvent !== undefined && booking.daysUntilEvent > 0 && (
+                {(booking.daysUntilEvent !== undefined && booking.daysUntilEvent > 0) || calculateDaysUntilEvent(booking.eventDate) > 0 ? (
                   <div className="bg-pink-100 border border-pink-300 rounded-lg p-3">
                     <div className="flex items-center gap-2">
                       <AlertCircle className="w-5 h-5 text-rose-600" />
                       <div>
                         <p className="text-sm text-rose-700 font-medium">Countdown</p>
                         <p className="text-lg font-bold text-rose-800">
-                          {booking.daysUntilEvent} day{booking.daysUntilEvent !== 1 ? 's' : ''} until event
+                          {booking.daysUntilEvent || calculateDaysUntilEvent(booking.eventDate)} day{(booking.daysUntilEvent || calculateDaysUntilEvent(booking.eventDate)) !== 1 ? 's' : ''} until event
                         </p>
                       </div>
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
               
               <div className="space-y-4">
@@ -434,19 +459,19 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Business Name</p>
-                  <p className="font-semibold text-lg">{booking.vendorBusinessName || booking.vendorName}</p>
+                  <p className="font-semibold text-lg">{booking.vendorBusinessName || booking.vendorName || 'Vendor Name Not Available'}</p>
                 </div>
                 
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Service Category</p>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
-                    {booking.vendorCategory || booking.serviceType}
+                    {booking.vendorCategory || booking.serviceType || 'General Service'}
                   </span>
                 </div>
                 
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Service Offered</p>
-                  <p className="font-medium">{booking.serviceName}</p>
+                  <p className="font-medium">{booking.serviceName || 'Service details not available'}</p>
                 </div>
               </div>
               
@@ -502,7 +527,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700">Total Amount</span>
                   <span className="text-xl font-bold text-gray-900">
-                    {booking.formatted?.totalAmount || `₱${booking.totalAmount.toLocaleString()}`}
+                    {booking.formatted?.totalAmount || formatCurrency(booking.totalAmount)}
                   </span>
                 </div>
                 
@@ -510,7 +535,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   <div className="flex justify-between items-center">
                     <span className="text-gray-700">Downpayment Required</span>
                     <span className="font-semibold text-blue-600">
-                      {booking.formatted?.downpaymentAmount || `₱${booking.downpaymentAmount.toLocaleString()}`}
+                      {booking.formatted?.downpaymentAmount || formatCurrency(booking.downpaymentAmount)}
                     </span>
                   </div>
                 )}
@@ -519,7 +544,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   <div className="flex justify-between items-center">
                     <span className="text-gray-700">Amount Paid</span>
                     <span className="font-semibold text-green-600">
-                      {booking.formatted?.totalPaid || `₱${booking.totalPaid.toLocaleString()}`}
+                      {booking.formatted?.totalPaid || formatCurrency(booking.totalPaid)}
                     </span>
                   </div>
                 )}
@@ -528,7 +553,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   <div className="flex justify-between items-center">
                     <span className="text-gray-700">Remaining Balance</span>
                     <span className="font-semibold text-red-600">
-                      {booking.formatted?.remainingBalance || `₱${booking.remainingBalance.toLocaleString()}`}
+                      {booking.formatted?.remainingBalance || formatCurrency(booking.remainingBalance)}
                     </span>
                   </div>
                 )}
@@ -660,7 +685,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           {activeTab === 'workflow' && (
             <div>
               <BookingWorkflow 
-                booking={booking}
+                booking={booking as any} // Type cast for compatibility
                 onUpdate={() => {
                   // Refresh booking data if needed
                   window.location.reload();
@@ -688,7 +713,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   
                   <div className="bg-white p-4 rounded-lg border border-gray-200">
                     <p className="text-sm text-gray-600 mb-1">Amount Paid</p>
-                    <p className="text-xl font-bold text-green-600">{booking.formatted?.totalPaid || '₱0'}</p>
+                    <p className="text-xl font-bold text-green-600">{booking.formatted?.totalPaid || formatCurrency(booking.totalPaid)}</p>
                   </div>
                   
                   {booking.remainingBalance && booking.remainingBalance > 0 && (
@@ -708,8 +733,14 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-3">
                       <div 
-                        className="bg-gradient-to-r from-green-400 to-emerald-500 h-3 rounded-full transition-all duration-300"
-                        style={{ width: `${booking.paymentProgressPercentage}%` }}
+                        className={cn(
+                          "bg-gradient-to-r from-green-400 to-emerald-500 h-3 rounded-full transition-all duration-300",
+                          booking.paymentProgressPercentage >= 100 ? "w-full" :
+                          booking.paymentProgressPercentage >= 75 ? "w-3/4" :
+                          booking.paymentProgressPercentage >= 50 ? "w-1/2" :
+                          booking.paymentProgressPercentage >= 25 ? "w-1/4" :
+                          booking.paymentProgressPercentage > 0 ? "w-1/12" : "w-0"
+                        )}
                       ></div>
                     </div>
                   </div>
@@ -734,7 +765,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                       <CreditCard className="w-5 h-5" />
                       {action.label}
                       <span className="text-sm opacity-90">
-                        (₱{action.amount.toLocaleString()})
+                        ({formatCurrency(action.amount)})
                       </span>
                     </button>
                   ))}
@@ -762,6 +793,18 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   </button>
                 </div>
                 
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-700 text-sm">{error}</p>
+                    <button
+                      onClick={() => setError(null)}
+                      className="text-red-600 text-xs underline mt-1"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+                
                 {receipts.length > 0 ? (
                   <div className="space-y-3">
                     {receipts.map((receipt) => (
@@ -771,7 +814,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                           <div>
                             <p className="font-medium text-gray-900">Receipt #{receipt.receiptNumber}</p>
                             <p className="text-sm text-gray-600">
-                              {receipt.paymentType} - {receipt.formatted.amount}
+                              {receipt.paymentType} - {formatCurrency(receipt.amount)}
                             </p>
                           </div>
                         </div>
