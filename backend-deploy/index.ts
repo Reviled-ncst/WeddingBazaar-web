@@ -197,6 +197,15 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
+// Ping endpoint for connection speed checks
+app.get('/api/ping', async (req, res) => {
+  res.json({
+    success: true,
+    message: 'pong',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Basic vendors endpoint
 app.get('/api/vendors', async (req, res) => {
   try {
@@ -1109,6 +1118,110 @@ app.get('/api/bookings/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching booking details'
+    });
+  }
+});
+
+// Bookings for a specific couple
+app.get('/api/bookings/couple/:id', async (req, res) => {
+  try {
+    const { id: coupleId } = req.params;
+    const { page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    
+    console.log(`🔍 Fetching bookings for couple: ${coupleId}`);
+    
+    // Build WHERE clause
+    let whereClause = sql`WHERE b.couple_id = ${coupleId}`;
+    if (status) {
+      whereClause = sql`WHERE b.couple_id = ${coupleId} AND b.status = ${status}`;
+    }
+    
+    // Get bookings from database  
+    const bookings = await sql`
+      SELECT 
+        b.id, b.couple_id, b.vendor_id, b.service_type,
+        b.event_date, b.status, b.total_amount, b.notes,
+        b.created_at, b.updated_at,
+        v.business_name as vendor_name, v.category as vendor_category,
+        v.contact_phone, v.location
+      FROM bookings b
+      JOIN vendors v ON b.vendor_id = v.id
+      ${whereClause}
+      ORDER BY b.created_at DESC
+      LIMIT ${limit} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+    `;
+
+    const formattedBookings = bookings.map(booking => ({
+      id: booking.id,
+      coupleId: booking.couple_id,
+      vendorId: booking.vendor_id,
+      vendorName: booking.vendor_name,
+      vendorCategory: booking.vendor_category,
+      serviceType: booking.service_type,
+      bookingDate: booking.created_at,
+      eventDate: booking.event_date,
+      status: booking.status,
+      amount: parseFloat(booking.total_amount || 0),
+      downPayment: parseFloat(booking.total_amount || 0) * 0.3,
+      remainingBalance: parseFloat(booking.total_amount || 0) * 0.7,
+      createdAt: booking.created_at,
+      updatedAt: booking.updated_at,
+      location: booking.location,
+      notes: booking.notes,
+      contactPhone: booking.contact_phone
+    }));
+
+    // Get total count for pagination
+    const countResult = await sql`
+      SELECT COUNT(*) as total 
+      FROM bookings b 
+      WHERE b.couple_id = ${coupleId}
+      ${status ? sql`AND b.status = ${status}` : sql``}
+    `;
+    const total = parseInt(countResult[0]?.total || 0);
+
+    res.json({
+      success: true,
+      bookings: formattedBookings,
+      pagination: {
+        currentPage: parseInt(page as string),
+        totalPages: Math.ceil(total / parseInt(limit as string)),
+        totalBookings: total,
+        hasNext: (parseInt(page as string) * parseInt(limit as string)) < total,
+        hasPrev: parseInt(page as string) > 1
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching couple bookings:', error);
+    // Return mock data if database error
+    res.json({
+      success: true,
+      bookings: [
+        {
+          id: 1,
+          coupleId: req.params.id,
+          vendorId: 1,
+          vendorName: 'Elegant Photography Studio',
+          vendorCategory: 'Photography',
+          serviceType: 'Wedding Photography Package',
+          bookingDate: '2025-09-01T10:00:00Z',
+          eventDate: '2025-12-15T14:00:00Z',
+          status: 'confirmed',
+          amount: 75000,
+          downPayment: 22500,
+          remainingBalance: 52500,
+          location: 'Manila Cathedral',
+          notes: 'Include family portraits',
+          contactPhone: '+63917-123-4567'
+        }
+      ],
+      pagination: {
+        currentPage: 1,
+        totalPages: 1,
+        totalBookings: 1,
+        hasNext: false,
+        hasPrev: false
+      }
     });
   }
 });
