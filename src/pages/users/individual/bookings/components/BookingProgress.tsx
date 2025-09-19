@@ -176,7 +176,7 @@ export const BookingProgress: React.FC<BookingProgressProps> = ({
     <div className={cn("bg-white rounded-xl p-6 shadow-sm border", className)}>
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900">Booking Progress</h3>
-        <span className="text-sm text-gray-500">#{bookingId.slice(-8)}</span>
+        <span className="text-sm text-gray-500">#{String(bookingId).slice(-8)}</span>
       </div>
       
       <div className="space-y-1 mb-6">

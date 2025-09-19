@@ -30,7 +30,7 @@ export const BookingActions: React.FC<BookingActionsProps> = ({
       
       switch (action) {
         case 'accept-quote':
-          response = await fetch(`${import.meta.env.VITE_API_URL}/api/bookings/${booking.id}/accept-quote`, {
+          response = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${booking.id}/accept-quote`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: data?.message || 'Quote accepted' })
@@ -38,7 +38,7 @@ export const BookingActions: React.FC<BookingActionsProps> = ({
           break;
           
         case 'reject-quote':
-          response = await fetch(`${import.meta.env.VITE_API_URL}/api/bookings/${booking.id}/reject-quote`, {
+          response = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${booking.id}/reject-quote`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reason: data?.reason || 'Quote rejected' })
@@ -46,7 +46,7 @@ export const BookingActions: React.FC<BookingActionsProps> = ({
           break;
           
         case 'send-quote':
-          response = await fetch(`${import.meta.env.VITE_API_URL}/api/bookings/${booking.id}/send-quote`, {
+          response = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${booking.id}/send-quote`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -60,7 +60,7 @@ export const BookingActions: React.FC<BookingActionsProps> = ({
           break;
           
         case 'payment':
-          response = await fetch(`${import.meta.env.VITE_API_URL}/api/bookings/${booking.id}/payment`, {
+          response = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${booking.id}/payment`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -73,7 +73,7 @@ export const BookingActions: React.FC<BookingActionsProps> = ({
           break;
           
         case 'confirm':
-          response = await fetch(`${import.meta.env.VITE_API_URL}/api/bookings/${booking.id}/confirm`, {
+          response = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${booking.id}/confirm`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: 'Booking confirmed' })

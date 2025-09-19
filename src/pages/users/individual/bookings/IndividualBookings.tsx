@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { CoupleHeader } from '../landing/CoupleHeader';
 
 // Import modular components
@@ -13,6 +13,10 @@ import {
 import { PayMongoPaymentModal } from '../../../../shared/components/PayMongoPaymentModal';
 
 // Import auth context to get the real user ID
+import { useAuth } from '../../../../shared/contexts/AuthContext';
+
+// Import booking API service
+import { bookingApiService } from '../../../../services/api/bookingApiService';
 
 // Import custom hooks
 import { useBookingPreferences } from './hooks';
@@ -26,11 +30,28 @@ import type {
 import type { PaymentType } from '../payment/types/payment.types';
 
 export const IndividualBookings: React.FC = () => {
+  console.log('🔥 [PRODUCTION DEBUG] IndividualBookings component mounted/re-rendered - VERSION 2.0');
+  console.log('🔥 [PRODUCTION DEBUG] Current URL:', window.location.href);
+  console.log('🔥 [PRODUCTION DEBUG] Environment:', import.meta.env.MODE);
+  console.log('🔥 [PRODUCTION DEBUG] API URL:', import.meta.env.VITE_API_URL);
+  console.log('🔥 [PRODUCTION DEBUG] FORCED VERSION - Should use test endpoint!');
+  
   // User preferences from localStorage
   const { 
     filterStatus,
     viewMode
   } = useBookingPreferences();
+  
+  // Auth context to get user information
+  const { user } = useAuth();
+  
+  console.log('🔥 [PRODUCTION DEBUG] useAuth result - user:', user);
+  console.log('🔥 [PRODUCTION DEBUG] useAuth result - user.id:', user?.id);
+  console.log('🔥 [PRODUCTION DEBUG] useAuth result - user.role:', user?.role);
+  
+  // Loading and error states
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Enhanced booking type with better vendor info and location data
   interface EnhancedBooking extends Omit<Booking, 'vendorPhone' | 'vendorEmail'> {
@@ -72,6 +93,82 @@ export const IndividualBookings: React.FC = () => {
     paymentType: 'downpayment' as PaymentType,
     loading: false
   });
+  // Load bookings function
+  const loadBookings = useCallback(async () => {
+    if (!user?.id) {
+      console.log('⚠️ [IndividualBookings] No user ID available, skipping loadBookings');
+      return;
+    }
+
+    console.log('📋 [IndividualBookings] Loading bookings for user:', user.id);
+    
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Call the booking API service
+      const response = await bookingApiService.getCoupleBookings(user.id, {
+        page: 1,
+        limit: 50,
+        sortBy: 'eventDate',
+        sortOrder: 'asc'
+      });
+
+      console.log('� [IndividualBookings] API response:', response);
+
+      if (response.bookings && response.bookings.length > 0) {
+        // Map backend response to frontend types
+        const enhancedBookings: EnhancedBooking[] = response.bookings.map((booking: any) => ({
+          // Core booking properties
+          id: booking.id.toString(),
+          vendorId: booking.vendorId.toString(),
+          coupleId: booking.coupleId,
+          serviceType: booking.serviceType as any,
+          serviceName: booking.serviceType || 'Wedding Service',
+          eventDate: booking.eventDate,
+          eventTime: '14:00',
+          eventLocation: booking.location || '',
+          status: booking.status as any,
+          totalAmount: booking.amount || 0,
+          downpaymentAmount: booking.downPayment || 0,
+          remainingBalance: booking.remainingBalance || 0,
+          vendorName: booking.vendorName,
+          vendorPhone: booking.contactPhone,
+          vendorEmail: null,
+          specialRequests: booking.notes,
+          createdAt: booking.createdAt || booking.bookingDate,
+          updatedAt: booking.updatedAt || booking.bookingDate,
+          // Enhanced properties for UI
+          vendorBusinessName: booking.vendorName,
+          vendorCategory: booking.vendorCategory || 'Wedding Service',
+          serviceImage: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400',
+          serviceGallery: ['https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400'],
+          eventCoordinates: { lat: 14.5995, lng: 120.9842 },
+          formattedEventDate: new Date(booking.eventDate).toLocaleDateString(),
+          formattedEventTime: '14:00',
+          daysUntilEvent: Math.ceil((new Date(booking.eventDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+        }));
+
+        setBookings(enhancedBookings);
+        console.log('✅ [IndividualBookings] Bookings loaded successfully:', enhancedBookings);
+      } else {
+        console.log('⚠️ [IndividualBookings] No bookings found');
+        setBookings([]);
+      }
+    } catch (error) {
+      console.error('❌ [IndividualBookings] Error loading bookings:', error);
+      setError('Failed to load bookings. Please try again.');
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  // Load bookings on component mount and when user changes
+  useEffect(() => {
+    console.log('🔍 [IndividualBookings] useEffect triggered, calling loadBookings');
+    loadBookings();
+  }, [loadBookings]);
 
   // Debounced search effect
   useEffect(() => {
@@ -86,6 +183,13 @@ export const IndividualBookings: React.FC = () => {
   const handlePayDeposit = (booking: EnhancedBooking) => {
     console.log('💳 [PayDeposit] Button clicked for booking:', booking.id);
     console.log('💳 [PayDeposit] Booking status:', booking.status);
+    console.log('💳 [PayDeposit] Full booking object:', booking);
+    console.log('💳 [PayDeposit] Booking data:', {
+      totalAmount: booking.totalAmount,
+      downpaymentAmount: booking.downpaymentAmount,
+      amount: (booking as any).amount,
+      downPayment: (booking as any).downPayment
+    });
     
     setPaymentModal({
       isOpen: true,
@@ -93,11 +197,19 @@ export const IndividualBookings: React.FC = () => {
       paymentType: 'downpayment',
       loading: false
     });
+    
+    // Additional debug after setting modal
+    console.log('💳 [PayDeposit] Modal state set with booking:', booking.id);
   };
 
   const handlePayBalance = (booking: EnhancedBooking) => {
     console.log('💰 [PayBalance] Button clicked for booking:', booking.id);
     console.log('💰 [PayBalance] Booking status:', booking.status);
+    console.log('💰 [PayBalance] Booking data:', {
+      totalAmount: booking.totalAmount,
+      remainingBalance: booking.remainingBalance,
+      amount: (booking as any).amount
+    });
     
     setPaymentModal({
       isOpen: true,
@@ -348,7 +460,7 @@ export const IndividualBookings: React.FC = () => {
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">Your Bookings</h2>
                     <p className="text-gray-600">
-                      {filteredAndSortedBookings.length} booking{filteredAndSortedBookings.length !== 1 ? 's' : ''} found
+                      {loading ? 'Loading...' : `${filteredAndSortedBookings.length} booking${filteredAndSortedBookings.length !== 1 ? 's' : ''} found`}
                     </p>
                   </div>
                 </div>
@@ -356,7 +468,33 @@ export const IndividualBookings: React.FC = () => {
             </div>
 
             {/* Content Area */}
-            {filteredAndSortedBookings.length === 0 ? (
+            {error ? (
+              <div className="p-16 text-center">
+                <div className="w-20 h-20 bg-gradient-to-r from-red-100 to-rose-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                  <svg className="h-10 w-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">Error Loading Bookings</h3>
+                <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">{error}</p>
+                <button
+                  onClick={loadBookings}
+                  className="px-8 py-4 bg-gradient-to-r from-pink-600 to-rose-600 text-white rounded-2xl hover:from-pink-700 hover:to-rose-700 transition-all duration-200 font-semibold text-lg shadow-lg"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : loading ? (
+              <div className="p-16 text-center">
+                <div className="w-20 h-20 bg-gradient-to-r from-pink-100 to-rose-100 rounded-3xl flex items-center justify-center mx-auto mb-6 animate-pulse">
+                  <svg className="h-10 w-10 text-pink-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">Loading Your Bookings</h3>
+                <p className="text-gray-600 text-lg">Please wait while we fetch your booking information...</p>
+              </div>
+            ) : filteredAndSortedBookings.length === 0 ? (
               <div className="p-16 text-center">
                 <div className="w-20 h-20 bg-gradient-to-r from-pink-100 to-rose-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
                   <svg className="h-10 w-10 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -429,10 +567,71 @@ export const IndividualBookings: React.FC = () => {
           eventDate: ''
         }}
         paymentType={paymentModal.paymentType}
-        amount={paymentModal.paymentType === 'downpayment' 
-          ? (paymentModal.booking as any)?.downpaymentAmount || 0 
-          : (paymentModal.booking as any)?.remainingBalance || 0
-        }
+        amount={(() => {
+          const booking = paymentModal.booking as any;
+          console.log('💳 [AMOUNT CALCULATION] Full booking object:', booking);
+          console.log('💳 [AMOUNT CALCULATION] Available fields:', Object.keys(booking || {}));
+          
+          if (paymentModal.paymentType === 'downpayment') {
+            // More robust amount calculation with explicit number conversion
+            let amount = 0;
+            
+            // Try downpaymentAmount first (mapped from backend downPayment)
+            if (booking?.downpaymentAmount && Number(booking.downpaymentAmount) > 0) {
+              amount = Number(booking.downpaymentAmount);
+              console.log('💳 Using downpaymentAmount:', amount);
+            }
+            // Fallback to raw downPayment field
+            else if (booking?.downPayment && Number(booking.downPayment) > 0) {
+              amount = Number(booking.downPayment);
+              console.log('💳 Using downPayment fallback:', amount);
+            }
+            // Calculate 30% from totalAmount
+            else if (booking?.totalAmount && Number(booking.totalAmount) > 0) {
+              amount = Number(booking.totalAmount) * 0.3;
+              console.log('💳 Calculated from totalAmount (30%):', amount);
+            }
+            // Calculate 30% from amount (backend total)
+            else if (booking?.amount && Number(booking.amount) > 0) {
+              amount = Number(booking.amount) * 0.3;
+              console.log('💳 Calculated from amount (30%):', amount);
+            }
+            
+            console.log('💳 PayDeposit amount calculation result:', { 
+              downpaymentAmount: booking?.downpaymentAmount,
+              downPayment: booking?.downPayment, 
+              totalAmount: booking?.totalAmount,
+              amount: booking?.amount,
+              finalAmount: amount,
+              type: typeof amount,
+              isValid: amount > 0
+            });
+            
+            return Math.round(amount);
+          } else {
+            // Balance payment calculation
+            let amount = 0;
+            
+            if (booking?.remainingBalance && Number(booking.remainingBalance) > 0) {
+              amount = Number(booking.remainingBalance);
+            } else if (booking?.totalAmount && Number(booking.totalAmount) > 0) {
+              amount = Number(booking.totalAmount) * 0.7;
+            } else if (booking?.amount && Number(booking.amount) > 0) {
+              amount = Number(booking.amount) * 0.7;
+            }
+            
+            console.log('💰 PayBalance amount calculation result:', { 
+              remainingBalance: booking?.remainingBalance,
+              totalAmount: booking?.totalAmount,
+              amount: booking?.amount,
+              finalAmount: amount,
+              type: typeof amount,
+              isValid: amount > 0
+            });
+            
+            return Math.round(amount);
+          }
+        })()}
         currency="PHP"
         currencySymbol="₱"
         onPaymentSuccess={handlePayMongoPaymentSuccess}

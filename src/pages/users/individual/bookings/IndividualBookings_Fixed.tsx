@@ -125,22 +125,23 @@ export const IndividualBookings: React.FC = () => {
             id: booking.id,
             bookingReference: booking.booking_reference || `WB-${booking.id}`,
             vendorId: booking.vendor_id,
-            vendorName: booking.vendor_name || 'Unknown Vendor',
-            coupleId: booking.couple_id,
-            serviceType: booking.service_type || 'other',
-            serviceName: booking.service_name || 'Service',
-            eventDate: booking.event_date,
-            eventTime: booking.event_time,
-            eventLocation: booking.event_location,
+            vendorName: booking.vendor_name || booking.vendorName || 'Unknown Vendor',
+            coupleId: booking.couple_id || booking.coupleId,
+            serviceType: booking.service_type || booking.serviceType || 'other',
+            serviceName: booking.service_name || booking.serviceName || 'Service',
+            eventDate: booking.event_date || booking.eventDate,
+            eventTime: booking.event_time || booking.eventTime,
+            eventLocation: booking.event_location || booking.eventLocation,
             status: booking.status,
-            totalAmount: booking.total_amount,
-            downpaymentAmount: booking.downpayment_amount,
-            remainingBalance: booking.remaining_balance,
+            // Fixed: Use backend field names (amount, downPayment, remainingBalance)
+            totalAmount: booking.amount || booking.total_amount || 0,
+            downpaymentAmount: booking.downPayment || booking.downpayment_amount || 0,
+            remainingBalance: booking.remainingBalance || booking.remaining_balance || 0,
             totalPaid: booking.total_paid || 0,
-            paymentProgressPercentage: booking.total_amount > 0 ? ((booking.total_paid || 0) / booking.total_amount) * 100 : 0,
-            specialRequests: booking.special_requests,
-            createdAt: booking.created_at,
-            updatedAt: booking.updated_at
+            paymentProgressPercentage: (booking.amount || booking.total_amount) > 0 ? ((booking.total_paid || 0) / (booking.amount || booking.total_amount)) * 100 : 0,
+            specialRequests: booking.special_requests || booking.notes,
+            createdAt: booking.created_at || booking.createdAt,
+            updatedAt: booking.updated_at || booking.updatedAt
           }));
           
           setBookings(enhancedBookings);
@@ -163,22 +164,23 @@ export const IndividualBookings: React.FC = () => {
               id: booking.id,
               bookingReference: booking.booking_reference || `WB-${booking.id}`,
               vendorId: booking.vendor_id,
-              vendorName: booking.vendor_name || 'Unknown Vendor',
-              coupleId: booking.couple_id,
-              serviceType: booking.service_type || 'other',
-              serviceName: booking.service_name || 'Service',
-              eventDate: booking.event_date,
-              eventTime: booking.event_time,
-              eventLocation: booking.event_location,
+              vendorName: booking.vendor_name || booking.vendorName || 'Unknown Vendor',
+              coupleId: booking.couple_id || booking.coupleId,
+              serviceType: booking.service_type || booking.serviceType || 'other',
+              serviceName: booking.service_name || booking.serviceName || 'Service',
+              eventDate: booking.event_date || booking.eventDate,
+              eventTime: booking.event_time || booking.eventTime,
+              eventLocation: booking.event_location || booking.eventLocation,
               status: booking.status,
-              totalAmount: booking.total_amount,
-              downpaymentAmount: booking.downpayment_amount,
-              remainingBalance: booking.remaining_balance,
+              // Fixed: Use backend field names (amount, downPayment, remainingBalance)
+              totalAmount: booking.amount || booking.total_amount || 0,
+              downpaymentAmount: booking.downPayment || booking.downpayment_amount || 0,
+              remainingBalance: booking.remainingBalance || booking.remaining_balance || 0,
               totalPaid: booking.total_paid || 0,
-              paymentProgressPercentage: booking.total_amount > 0 ? ((booking.total_paid || 0) / booking.total_amount) * 100 : 0,
-              specialRequests: booking.special_requests,
-              createdAt: booking.created_at,
-              updatedAt: booking.updated_at
+              paymentProgressPercentage: (booking.amount || booking.total_amount) > 0 ? ((booking.total_paid || 0) / (booking.amount || booking.total_amount)) * 100 : 0,
+              specialRequests: booking.special_requests || booking.notes,
+              createdAt: booking.created_at || booking.createdAt,
+              updatedAt: booking.updated_at || booking.updatedAt
             }));
             
             setBookings(enhancedBookings);
@@ -554,10 +556,71 @@ export const IndividualBookings: React.FC = () => {
           eventDate: ''
         }}
         paymentType={paymentModal.paymentType}
-        amount={paymentModal.paymentType === 'downpayment' 
-          ? (paymentModal.booking as any)?.downpaymentAmount || 0 
-          : (paymentModal.booking as any)?.remainingBalance || 0
-        }
+        amount={(() => {
+          const booking = paymentModal.booking as any;
+          console.log('💳 [AMOUNT CALCULATION] Full booking object:', booking);
+          console.log('💳 [AMOUNT CALCULATION] Available fields:', Object.keys(booking || {}));
+          
+          if (paymentModal.paymentType === 'downpayment') {
+            // More robust amount calculation with explicit number conversion
+            let amount = 0;
+            
+            // Try downpaymentAmount first (mapped from backend downPayment)
+            if (booking?.downpaymentAmount && Number(booking.downpaymentAmount) > 0) {
+              amount = Number(booking.downpaymentAmount);
+              console.log('💳 Using downpaymentAmount:', amount);
+            }
+            // Fallback to raw downPayment field
+            else if (booking?.downPayment && Number(booking.downPayment) > 0) {
+              amount = Number(booking.downPayment);
+              console.log('💳 Using downPayment fallback:', amount);
+            }
+            // Calculate 30% from totalAmount
+            else if (booking?.totalAmount && Number(booking.totalAmount) > 0) {
+              amount = Number(booking.totalAmount) * 0.3;
+              console.log('💳 Calculated from totalAmount (30%):', amount);
+            }
+            // Calculate 30% from amount (backend total)
+            else if (booking?.amount && Number(booking.amount) > 0) {
+              amount = Number(booking.amount) * 0.3;
+              console.log('💳 Calculated from amount (30%):', amount);
+            }
+            
+            console.log('💳 PayDeposit amount calculation result:', { 
+              downpaymentAmount: booking?.downpaymentAmount,
+              downPayment: booking?.downPayment, 
+              totalAmount: booking?.totalAmount,
+              amount: booking?.amount,
+              finalAmount: amount,
+              type: typeof amount,
+              isValid: amount > 0
+            });
+            
+            return Math.round(amount);
+          } else {
+            // Balance payment calculation
+            let amount = 0;
+            
+            if (booking?.remainingBalance && Number(booking.remainingBalance) > 0) {
+              amount = Number(booking.remainingBalance);
+            } else if (booking?.totalAmount && Number(booking.totalAmount) > 0) {
+              amount = Number(booking.totalAmount) * 0.7;
+            } else if (booking?.amount && Number(booking.amount) > 0) {
+              amount = Number(booking.amount) * 0.7;
+            }
+            
+            console.log('💰 PayBalance amount calculation result:', { 
+              remainingBalance: booking?.remainingBalance,
+              totalAmount: booking?.totalAmount,
+              amount: booking?.amount,
+              finalAmount: amount,
+              type: typeof amount,
+              isValid: amount > 0
+            });
+            
+            return Math.round(amount);
+          }
+        })()}
         currency="PHP"
         currencySymbol="₱"
         onPaymentSuccess={handlePayMongoPaymentSuccess}

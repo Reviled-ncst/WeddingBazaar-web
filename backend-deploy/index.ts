@@ -2890,8 +2890,8 @@ app.get('/api/vendor/analytics', requireAuth, requireRole('vendor'), async (req:
         COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed_bookings,
         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_bookings,
         COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_bookings,
-        COALESCE(SUM(CASE WHEN status = 'confirmed' THEN amount END), 0) as total_revenue
-      FROM bookings 
+        COALESCE(SUM(CASE WHEN status IN ('completed', 'paid_in_full') THEN CAST(total_amount AS DECIMAL) END), 0) as total_revenue
+      FROM bookings
       WHERE vendor_id = ${vendorId}
     `;
     
@@ -3025,597 +3025,6 @@ app.delete('/api/services/:id', requireAuth, requireRole('vendor'), async (req: 
   }
 });
 
-// ===== REVIEW SYSTEM ENDPOINTS =====
-
-// Get reviews for vendor
-app.get('/api/vendors/:id/reviews', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { page = 1, limit = 10 } = req.query;
-    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
-    
-    const reviews = await sql`
-      SELECT 
-        r.id, r.rating, r.comment, r.created_at,
-        u.first_name, u.last_name, u.email
-      FROM reviews r
-      JOIN users u ON r.user_id = u.id
-      WHERE r.vendor_id = ${id}
-      ORDER BY r.created_at DESC
-      LIMIT ${parseInt(limit as string)} OFFSET ${offset}
-    `;
-    
-    const totalCount = await sql`SELECT COUNT(*) as count FROM reviews WHERE vendor_id = ${id}`;
-    const avgRating = await sql`SELECT AVG(rating) as avg_rating FROM reviews WHERE vendor_id = ${id}`;
-    
-    res.json({
-      success: true,
-      reviews,
-      totalReviews: parseInt(totalCount[0].count),
-      averageRating: parseFloat(avgRating[0].avg_rating || 0),
-      pagination: {
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
-        total: parseInt(totalCount[0].count),
-        pages: Math.ceil(parseInt(totalCount[0].count) / parseInt(limit as string))
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching reviews:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching reviews'
-    });
-  }
-});
-
-// Create review
-app.post('/api/reviews', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const userId = req.user?.id;
-    const { vendorId, bookingId, rating, comment } = req.body;
-    
-    // Check if user has completed booking with this vendor
-    const booking = await sql`
-      SELECT id FROM bookings 
-      WHERE id = ${bookingId} AND user_id = ${userId} AND vendor_id = ${vendorId}
-        AND status = 'completed'
-    `;
-    
-    if (booking.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'You can only review vendors after completing a booking'
-      });
-    }
-    
-    // Check if review already exists
-    const existingReview = await sql`
-      SELECT id FROM reviews 
-      WHERE user_id = ${userId} AND vendor_id = ${vendorId} AND booking_id = ${bookingId}
-    `;
-    
-    if (existingReview.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'You have already reviewed this booking'
-      });
-    }
-    
-    const review = await sql`
-      INSERT INTO reviews (user_id, vendor_id, booking_id, rating, comment)
-      VALUES (${userId}, ${vendorId}, ${bookingId}, ${rating}, ${comment})
-      RETURNING *
-    `;
-    
-    // Update vendor rating
-    await updateVendorRating(vendorId);
-    
-    res.json({
-      success: true,
-      review: review[0],
-      message: 'Review submitted successfully'
-    });
-  } catch (error) {
-    console.error('Error creating review:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error submitting review'
-    });
-  }
-});
-
-// ===== USER MANAGEMENT ENDPOINTS =====
-
-// Update user profile
-app.put('/api/users/profile', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const userId = req.user?.id;
-    const { first_name, last_name, phone, address, wedding_date, partner_name, budget_range } = req.body;
-    
-    const user = await sql`
-      UPDATE users 
-      SET first_name = ${first_name}, last_name = ${last_name}, phone = ${phone}, 
-          address = ${address}, wedding_date = ${wedding_date}, partner_name = ${partner_name},
-          budget_range = ${budget_range}
-      WHERE id = ${userId}
-      RETURNING id, email, first_name, last_name, phone, address, wedding_date, partner_name, budget_range
-    `;
-    
-    res.json({
-      success: true,
-      user: user[0],
-      message: 'Profile updated successfully'
-    });
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating profile'
-    });
-  }
-});
-
-// Get user profile
-app.get('/api/users/profile', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const userId = req.user?.id;
-    
-    const user = await sql`
-      SELECT id, email, first_name, last_name, phone, address, wedding_date, 
-             partner_name, budget_range, user_type, created_at
-      FROM users 
-      WHERE id = ${userId}
-    `;
-    
-    if (user.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-    
-    res.json({
-      success: true,
-      user: user[0]
-    });
-  } catch (error) {
-    console.error('Error fetching user profile:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching profile'
-    });
-  }
-});
-
-// ===== FILE UPLOAD ENDPOINTS =====
-
-// Mock file upload (replace with actual cloud storage)
-app.post('/api/upload', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    // TODO: Implement actual file upload to cloud storage (S3, Cloudinary, etc.)
-    
-    const mockFileUrl = `https://example.com/uploads/${Date.now()}_${Math.random()}.jpg`;
-    
-    res.json({
-      success: true,
-      url: mockFileUrl,
-      message: 'File uploaded successfully'
-    });
-  } catch (error) {
-    console.error('Error uploading file:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error uploading file'
-    });
-  }
-});
-
-// ===== SEARCH ENDPOINTS =====
-
-// Advanced vendor search
-app.get('/api/search/vendors', async (req, res) => {
-  try {
-    const { 
-      q = '', 
-      category = '', 
-      location = '', 
-      minRating = 0, 
-      maxPrice = 999999,
-      sortBy = 'rating',
-      page = 1, 
-      limit = 20 
-    } = req.query;
-    
-    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
-    
-    // Build query conditions dynamically
-    let vendors;
-    let totalCount;
-    
-    if (q && category && location) {
-      // All search parameters
-      vendors = await sql`
-        SELECT 
-          v.id, v.business_name as name, v.category, v.rating, v.review_count,
-          v.price_range, v.location, v.description, v.portfolio_images,
-          v.contact_email, v.contact_phone, v.website
-        FROM vendors v
-        WHERE v.verified = true
-          AND (v.business_name ILIKE ${'%' + q + '%'} OR v.description ILIKE ${'%' + q + '%'})
-          AND v.category = ${category}
-          AND v.location ILIKE ${'%' + location + '%'}
-          AND v.rating >= ${minRating}
-        ORDER BY ${sortBy === 'rating' ? sql`v.rating DESC` : 
-                 sortBy === 'price' ? sql`v.price_range ASC` : 
-                 sql`v.created_at DESC`}
-        LIMIT ${parseInt(limit as string)} OFFSET ${offset}
-      `;
-      
-      totalCount = await sql`
-        SELECT COUNT(*) as count 
-        FROM vendors v 
-        WHERE v.verified = true
-          AND (v.business_name ILIKE ${'%' + q + '%'} OR v.description ILIKE ${'%' + q + '%'})
-          AND v.category = ${category}
-          AND v.location ILIKE ${'%' + location + '%'}
-          AND v.rating >= ${minRating}
-      `;
-    } else if (q && category) {
-      // Search text and category
-      vendors = await sql`
-        SELECT 
-          v.id, v.business_name as name, v.category, v.rating, v.review_count,
-          v.price_range, v.location, v.description, v.portfolio_images,
-          v.contact_email, v.contact_phone, v.website
-        FROM vendors v
-        WHERE v.verified = true
-          AND (v.business_name ILIKE ${'%' + q + '%'} OR v.description ILIKE ${'%' + q + '%'})
-          AND v.category = ${category}
-          AND v.rating >= ${minRating}
-        ORDER BY ${sortBy === 'rating' ? sql`v.rating DESC` : 
-                 sortBy === 'price' ? sql`v.price_range ASC` : 
-                 sql`v.created_at DESC`}
-        LIMIT ${parseInt(limit as string)} OFFSET ${offset}
-      `;
-      
-      totalCount = await sql`
-        SELECT COUNT(*) as count 
-        FROM vendors v 
-        WHERE v.verified = true
-          AND (v.business_name ILIKE ${'%' + q + '%'} OR v.description ILIKE ${'%' + q + '%'})
-          AND v.category = ${category}
-          AND v.rating >= ${minRating}
-      `;
-    } else if (q) {
-      // Search text only
-      vendors = await sql`
-        SELECT 
-          v.id, v.business_name as name, v.category, v.rating, v.review_count,
-          v.price_range, v.location, v.description, v.portfolio_images,
-          v.contact_email, v.contact_phone, v.website
-        FROM vendors v
-        WHERE v.verified = true
-          AND (v.business_name ILIKE ${'%' + q + '%'} OR v.description ILIKE ${'%' + q + '%'})
-          AND v.rating >= ${minRating}
-        ORDER BY ${sortBy === 'rating' ? sql`v.rating DESC` : 
-                 sortBy === 'price' ? sql`v.price_range ASC` : 
-                 sql`v.created_at DESC`}
-        LIMIT ${parseInt(limit as string)} OFFSET ${offset}
-      `;
-      
-      totalCount = await sql`
-        SELECT COUNT(*) as count 
-        FROM vendors v 
-        WHERE v.verified = true
-          AND (v.business_name ILIKE ${'%' + q + '%'} OR v.description ILIKE ${'%' + q + '%'})
-          AND v.rating >= ${minRating}
-      `;
-    } else if (category) {
-      // Category only
-      vendors = await sql`
-        SELECT 
-          v.id, v.business_name as name, v.category, v.rating, v.review_count,
-          v.price_range, v.location, v.description, v.portfolio_images,
-          v.contact_email, v.contact_phone, v.website
-        FROM vendors v
-        WHERE v.verified = true
-          AND v.category = ${category}
-          AND v.rating >= ${minRating}
-        ORDER BY ${sortBy === 'rating' ? sql`v.rating DESC` : 
-                 sortBy === 'price' ? sql`v.price_range ASC` : 
-                 sql`v.created_at DESC`}
-        LIMIT ${parseInt(limit as string)} OFFSET ${offset}
-      `;
-      
-      totalCount = await sql`
-        SELECT COUNT(*) as count 
-        FROM vendors v 
-        WHERE v.verified = true
-          AND v.category = ${category}
-          AND v.rating >= ${minRating}
-      `;
-    } else {
-      // No specific filters
-      vendors = await sql`
-        SELECT 
-          v.id, v.business_name as name, v.category, v.rating, v.review_count,
-          v.price_range, v.location, v.description, v.portfolio_images,
-          v.contact_email, v.contact_phone, v.website
-        FROM vendors v
-        WHERE v.verified = true
-          AND v.rating >= ${minRating}
-        ORDER BY ${sortBy === 'rating' ? sql`v.rating DESC` : 
-                 sortBy === 'price' ? sql`v.price_range ASC` : 
-                 sql`v.created_at DESC`}
-        LIMIT ${parseInt(limit as string)} OFFSET ${offset}
-      `;
-      
-      totalCount = await sql`
-        SELECT COUNT(*) as count 
-        FROM vendors v 
-        WHERE v.verified = true
-          AND v.rating >= ${minRating}
-      `;
-    }
-    
-    res.json({
-      success: true,
-      vendors,
-      pagination: {
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
-        total: parseInt(totalCount[0].count),
-        pages: Math.ceil(parseInt(totalCount[0].count) / parseInt(limit as string))
-      }
-    });
-  } catch (error) {
-    console.error('Error searching vendors:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error searching vendors'
-    });
-  }
-});
-
-// ===== NOTIFICATION ENDPOINTS =====
-
-// Get user notifications
-app.get('/api/notifications', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const userId = req.user?.id;
-    const { page = 1, limit = 20, unreadOnly = false } = req.query;
-    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
-    
-    // Mock notifications (implement actual notifications table)
-    const mockNotifications = [
-      {
-        id: 1,
-        title: 'Booking Confirmed',
-        message: 'Your booking with Elegant Photography has been confirmed',
-        type: 'booking',
-        read_at: null,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 2,
-        title: 'New Message',
-        message: 'You have a new message from John at Perfect Catering',
-        type: 'message',
-        read_at: null,
-        created_at: new Date(Date.now() - 86400000).toISOString()
-      }
-    ];
-    
-    res.json({
-      success: true,
-      notifications: mockNotifications,
-      unreadCount: 2
-    });
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching notifications'
-    });
-  }
-});
-
-// Mark notification as read
-app.patch('/api/notifications/:id/read', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user?.id;
-    
-    // TODO: Implement actual notification update
-    
-    res.json({
-      success: true,
-      message: 'Notification marked as read'
-    });
-  } catch (error) {
-    console.error('Error marking notification as read:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating notification'
-    });
-  }
-});
-
-// ===== SUBSCRIPTION ENDPOINTS =====
-
-// Get subscription status
-app.get('/api/subscription/status', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const userId = req.user?.id;
-    
-    // Mock subscription data
-    const mockSubscription = {
-      isActive: false,
-      plan: 'free',
-      expiresAt: null,
-      features: ['Basic profile', 'Limited bookings', 'Standard support']
-    };
-    
-    res.json({
-      success: true,
-      subscription: mockSubscription
-    });
-  } catch (error) {
-    console.error('Error fetching subscription status:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching subscription status'
-    });
-  }
-});
-
-// ===== REPORTS ENDPOINTS =====
-
-// Admin platform reports
-app.get('/api/admin/reports', requireAuth, requireRole('admin'), async (req: AuthenticatedRequest, res) => {
-  try {
-    const { type = 'overview', startDate, endDate } = req.query;
-    
-    const report = {
-      type,
-      generatedAt: new Date().toISOString(),
-      data: {}
-    };
-    
-    if (type === 'overview') {
-      const stats = await sql`
-        SELECT 
-          (SELECT COUNT(*) FROM users WHERE user_type = 'individual') as total_users,
-          (SELECT COUNT(*) FROM vendors WHERE verified = true) as total_vendors,
-          (SELECT COUNT(*) FROM bookings) as total_bookings,
-          (SELECT SUM(amount) FROM bookings WHERE status = 'confirmed') as total_revenue
-      `;
-      report.data = stats[0];
-    }
-    
-    res.json({
-      success: true,
-      report
-    });
-  } catch (error) {
-    console.error('Error generating report:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error generating report'
-    });
-  }
-});
-
-// Helper function to update vendor rating
-async function updateVendorRating(vendorId: string) {
-  try {
-    const result = await sql`
-      SELECT AVG(rating) as avg_rating, COUNT(*) as review_count
-      FROM reviews 
-      WHERE vendor_id = ${vendorId}
-    `;
-    
-    await sql`
-      UPDATE vendors 
-      SET rating = ${parseFloat(result[0].avg_rating || 0)}, 
-          review_count = ${parseInt(result[0].review_count || 0)}
-      WHERE id = ${vendorId}
-    `;
-  } catch (error) {
-    console.error('Error updating vendor rating:', error);
-  }
-}
-
-// ===== ADDITIONAL VENDOR ENDPOINTS =====
-
-// Get all vendors (public)
-app.get('/api/vendors/all', async (req, res) => {
-  try {
-    const { page = 1, limit = 20, category = '' } = req.query;
-    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
-    
-    let vendors;
-    if (category) {
-      vendors = await sql`
-        SELECT 
-          v.id, v.business_name as name, v.category, v.rating, v.review_count,
-          v.price_range, v.location, v.description, v.portfolio_images,
-          v.contact_email, v.contact_phone, v.website
-        FROM vendors v
-        WHERE v.verified = true AND v.category = ${category}
-        ORDER BY v.rating DESC, v.review_count DESC
-        LIMIT ${parseInt(limit as string)} OFFSET ${offset}
-      `;
-    } else {
-      vendors = await sql`
-        SELECT 
-          v.id, v.business_name as name, v.category, v.rating, v.review_count,
-          v.price_range, v.location, v.description, v.portfolio_images,
-          v.contact_email, v.contact_phone, v.website
-        FROM vendors v
-        WHERE v.verified = true
-        ORDER BY v.rating DESC, v.review_count DESC
-        LIMIT ${parseInt(limit as string)} OFFSET ${offset}
-      `;
-    }
-    
-    const totalCount = category 
-      ? await sql`SELECT COUNT(*) as count FROM vendors WHERE verified = true AND category = ${category}`
-      : await sql`SELECT COUNT(*) as count FROM vendors WHERE verified = true`;
-    
-    res.json({
-      success: true,
-      vendors,
-      pagination: {
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
-        total: parseInt(totalCount[0].count),
-        pages: Math.ceil(parseInt(totalCount[0].count) / parseInt(limit as string))
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching all vendors:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching vendors'
-    });
-  }
-});
-
-// Get vendor by ID (public)
-app.get('/api/vendors/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const vendor = await sql`
-      SELECT 
-        v.*, u.email, u.first_name, u.last_name
-      FROM vendors v
-      LEFT JOIN users u ON v.user_id = u.id
-      WHERE v.id = ${id} AND v.verified = true
-    `;
-    
-    if (vendor.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor not found'
-      });
-    }
-    
-    res.json({
-      success: true,
-      vendor: vendor[0]
-    });
-  } catch (error) {
-    console.error('Error fetching vendor:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching vendor'
-    });
-  }
-});
-
 // ===== BOOKING STATUS UPDATE ENDPOINTS =====
 
 // Update booking status (vendor only)
@@ -3659,163 +3068,205 @@ app.patch('/api/bookings/:id/status', requireAuth, async (req: AuthenticatedRequ
   }
 });
 
-// ===== SERVICE CATEGORIES ENDPOINT =====
-
-// Get service categories
-app.get('/api/services/categories', async (req, res) => {
+// Vendor bookings endpoint - Real database integration
+app.get('/api/vendors/:vendorId/bookings', async (req, res) => {
   try {
-    const categories = await sql`
-      SELECT 
-        category,
-        COUNT(*) as vendor_count,
-        AVG(rating) as avg_rating
+    const { vendorId } = req.params;
+    const { page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    
+    console.log(`🔍 [VendorBookings] Fetching bookings for vendor: ${vendorId}`);
+    console.log(`🔍 [VendorBookings] Query params:`, { page, limit, status, sortBy, sortOrder });
+    
+    // Validate vendor exists
+    const vendorCheck = await sql`
+      SELECT id, business_name, business_type 
       FROM vendors 
-      WHERE verified = true AND category IS NOT NULL
-      GROUP BY category
-      ORDER BY vendor_count DESC
+      WHERE id = ${vendorId} OR user_id = ${vendorId}
+      LIMIT 1
     `;
     
-    const formattedCategories = categories.map(cat => ({
-      name: cat.category,
-      vendorCount: parseInt(cat.vendor_count),
-      averageRating: parseFloat(cat.avg_rating || 0).toFixed(1),
-      slug: cat.category.toLowerCase().replace(/\s+/g, '-')
+    if (vendorCheck.length === 0) {
+      console.log(`❌ [VendorBookings] Vendor not found: ${vendorId}`);
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not found'
+      });
+    }
+    
+    const vendor = vendorCheck[0];
+    console.log(`✅ [VendorBookings] Found vendor: ${vendor.business_name}`);
+    
+    // Build query based on parameters
+    let bookingsQuery = `
+      SELECT 
+        id, vendor_id, vendor_name, couple_id, couple_name,
+        service_type, event_date, event_time, event_location,
+        guest_count, special_requests, status, total_amount,
+        deposit_amount, budget_range, preferred_contact_method,
+        contact_phone, notes, response_message, created_at, updated_at
+      FROM bookings
+      WHERE vendor_id = '${vendorId}'
+    `;
+    
+    // Add status filter if provided
+    if (status && status !== 'all') {
+      bookingsQuery += ` AND status = '${status}'`;
+    }
+    
+    // Add sorting
+    const validSortColumns = ['created_at', 'event_date', 'status', 'total_amount'];
+    const sortColumn = validSortColumns.includes(sortBy as string) ? sortBy : 'created_at';
+    const sortDirection = (sortOrder as string).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+    bookingsQuery += ` ORDER BY ${sortColumn} ${sortDirection}`;
+    
+    // Add pagination
+    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+    bookingsQuery += ` LIMIT ${limit} OFFSET ${offset}`;
+    
+    console.log(`📝 [VendorBookings] Query:`, bookingsQuery);
+    
+    // Execute query using neon sql
+    const bookings = await sql`
+      SELECT 
+        id, vendor_id, vendor_name, couple_id, couple_name,
+        service_type, event_date, event_time, event_location,
+        guest_count, special_requests, status, total_amount,
+        deposit_amount, budget_range, preferred_contact_method,
+        contact_phone, notes, response_message, created_at, updated_at
+      FROM bookings
+      WHERE vendor_id = ${vendorId}
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+    
+    console.log(`✅ [VendorBookings] Found ${bookings.length} bookings`);
+    
+    // Get total count for pagination
+    const totalCountResult = await sql`
+      SELECT COUNT(*) as total
+      FROM bookings
+      WHERE vendor_id = ${vendorId}
+    `;
+    
+    const totalCount = parseInt(totalCountResult[0]?.total || '0');
+    const totalPages = Math.ceil(totalCount / parseInt(limit as string));
+    
+    // Format bookings to match frontend expectations
+    const formattedBookings = bookings.map(booking => ({
+      id: booking.id.toString(),
+      vendor_id: booking.vendor_id,
+      couple_id: booking.couple_id,
+      contact_person: booking.couple_name,
+      contact_email: '', // Not stored in current schema
+      contact_phone: booking.contact_phone,
+      service_type: booking.service_type,
+      event_date: booking.event_date,
+      event_time: booking.event_time,
+      event_location: booking.event_location,
+      guest_count: booking.guest_count,
+      special_requests: booking.special_requests,
+      status: booking.status,
+      quoted_price: parseFloat(booking.total_amount || '0'),
+      final_price: parseFloat(booking.total_amount || '0'),
+      total_paid: parseFloat(booking.deposit_amount || '0'),
+      downpayment_amount: parseFloat(booking.deposit_amount || '0'),
+      remaining_balance: parseFloat(booking.total_amount || '0') - parseFloat(booking.deposit_amount || '0'),
+      budget_range: booking.budget_range,
+      preferred_contact_method: booking.preferred_contact_method || 'email',
+      vendor_response: booking.response_message,
+      created_at: booking.created_at,
+      updated_at: booking.updated_at,
+      vendor_name: booking.vendor_name || vendor.business_name
     }));
     
-    res.json({
+    // Prepare response in format expected by bookingApiService
+    const response = {
       success: true,
-      categories: formattedCategories
+      bookings: formattedBookings,
+      page: parseInt(page as string),
+      limit: parseInt(limit as string),
+      total: totalCount,
+      totalPages: totalPages
+    };
+    
+    console.log(`📋 [VendorBookings] Returning response:`, {
+      bookingCount: formattedBookings.length,
+      totalCount,
+      totalPages,
+      currentPage: page
     });
+    
+    res.json(response);
+    
   } catch (error) {
-    console.error('Error fetching service categories:', error);
+    console.error('❌ [VendorBookings] Error fetching vendor bookings:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching service categories'
+      message: 'Failed to fetch vendor bookings',
+      error: error.message
     });
   }
 });
 
-// ===== MESSAGING INTEGRATION ENDPOINTS =====
-
-// Get conversation list for user
-app.get('/api/conversations', requireAuth, async (req: AuthenticatedRequest, res) => {
+// Vendor booking statistics endpoint
+app.get('/api/vendors/:vendorId/bookings/stats', async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const { vendorId } = req.params;
     
-    const conversations = await sql`
-      SELECT DISTINCT
-        c.id, c.vendor_id, c.user_id, c.created_at, c.updated_at,
-        v.business_name as vendor_name,
-        u.first_name, u.last_name,
-        (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT created_at FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_time
-      FROM conversations c
-      LEFT JOIN vendors v ON c.vendor_id = v.id
-      LEFT JOIN users u ON c.user_id = u.id
-      WHERE c.user_id = ${userId} OR v.user_id = ${userId}
-      ORDER BY c.updated_at DESC
+    console.log(`📊 [VendorStats] Fetching booking stats for vendor: ${vendorId}`);
+    
+    // Get vendor info
+    const vendorCheck = await sql`
+      SELECT id, business_name, business_type 
+      FROM vendors 
+      WHERE id = ${vendorId} OR user_id = ${vendorId}
+      LIMIT 1
     `;
     
-    res.json({
-      success: true,
-      conversations
-    });
-  } catch (error) {
-    console.error('Error fetching conversations:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching conversations'
-    });
-  }
-});
-
-// Get messages for conversation
-app.get('/api/conversations/:id/messages', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user?.id;
-    
-    // Verify user has access to this conversation
-    const conversation = await sql`
-      SELECT c.*, v.user_id as vendor_user_id
-      FROM conversations c
-      LEFT JOIN vendors v ON c.vendor_id = v.id
-      WHERE c.id = ${id} AND (c.user_id = ${userId} OR v.user_id = ${userId})
-    `;
-    
-    if (conversation.length === 0) {
-      return res.status(403).json({
+    if (vendorCheck.length === 0) {
+      return res.status(404).json({
         success: false,
-        message: 'Access denied to this conversation'
+        message: 'Vendor not found'
       });
     }
     
-    const messages = await sql`
+    const vendor = vendorCheck[0];
+    
+    // Get booking statistics
+    const stats = await sql`
       SELECT 
-        m.*, u.first_name, u.last_name
-      FROM messages m
-      LEFT JOIN users u ON m.sender_id = u.id
-      WHERE m.conversation_id = ${id}
-      ORDER BY m.created_at ASC
+        COUNT(*) as total_bookings,
+        COUNT(CASE WHEN status = 'request' THEN 1 END) as pending_bookings,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_bookings,
+        COUNT(CASE WHEN status IN ('completed', 'paid_in_full') THEN 1 END) as paid_bookings,
+        COALESCE(SUM(CASE WHEN status IN ('completed', 'paid_in_full') THEN CAST(total_amount AS DECIMAL) END), 0) as total_revenue
+      FROM bookings
+      WHERE vendor_id = ${vendorId}
     `;
+    
+    const statsResult = stats[0] || {};
+    
+    const formattedStats = {
+      total_bookings: parseInt(statsResult.total_bookings || '0'),
+      pending_bookings: parseInt(statsResult.pending_bookings || '0'),
+      completed_bookings: parseInt(statsResult.completed_bookings || '0'),
+      paid_bookings: parseInt(statsResult.paid_bookings || '0'),
+      total_revenue: parseFloat(statsResult.total_revenue || '0')
+    };
+    
+    console.log(`✅ [VendorStats] Stats calculated:`, formattedStats);
     
     res.json({
       success: true,
-      messages
+      ...formattedStats
     });
+    
   } catch (error) {
-    console.error('Error fetching messages:', error);
+    console.error('❌ [VendorStats] Error fetching vendor booking stats:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching messages'
-    });
-  }
-});
-
-// Send message
-app.post('/api/conversations/:id/messages', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    const { content } = req.body;
-    const userId = req.user?.id;
-    
-    // Verify user has access to this conversation
-    const conversation = await sql`
-      SELECT c.*, v.user_id as vendor_user_id
-      FROM conversations c
-      LEFT JOIN vendors v ON c.vendor_id = v.id
-      WHERE c.id = ${id} AND (c.user_id = ${userId} OR v.user_id = ${userId})
-    `;
-    
-    if (conversation.length === 0) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied to this conversation'
-      });
-    }
-    
-    const message = await sql`
-      INSERT INTO messages (conversation_id, sender_id, content)
-      VALUES (${id}, ${userId}, ${content})
-      RETURNING *
-    `;
-    
-    // Update conversation timestamp
-    await sql`
-      UPDATE conversations 
-      SET updated_at = NOW()
-      WHERE id = ${id}
-    `;
-    
-    res.json({
-      success: true,
-      message: message[0]
-    });
-  } catch (error) {
-    console.error('Error sending message:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error sending message'
+      message: 'Failed to fetch vendor booking statistics',
+      error: error.message
     });
   }
 });

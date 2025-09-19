@@ -40,7 +40,7 @@ export interface ServicesResponse {
 }
 
 export class ServicesApiService {
-  private static baseUrl = '/api/services';
+  private static baseUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
 
   static async getServices(params: ServiceSearchParams = {}): Promise<ServicesResponse> {
     try {
@@ -53,7 +53,7 @@ export class ServicesApiService {
         }
       });
 
-      const url = `${this.baseUrl}?${searchParams.toString()}`;
+      const url = `${this.baseUrl}/services?${searchParams.toString()}`;
       console.log('ServicesApiService: Fetching services from:', url);
 
       const response = await fetch(url, {
@@ -120,7 +120,7 @@ export class ServicesApiService {
 
   static async getServicesByVendor(vendorId: string): Promise<ApiService[]> {
     try {
-      const response = await fetch(`/api/vendors/${vendorId}/services`, {
+      const response = await fetch(`${this.baseUrl}/vendors/${vendorId}/services`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

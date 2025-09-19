@@ -70,8 +70,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
         // Only verify token if one exists
-        const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-        const response = await fetch(`${apiBaseUrl}/api/auth/verify`, {
+        const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+        const response = await fetch(`${apiBaseUrl}/auth/verify`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -117,8 +117,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // setIsLoading(true);
       
       // Use environment-specific API URL
-      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const fullUrl = `${apiBaseUrl}/api/auth/login`;
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const fullUrl = `${apiBaseUrl}/auth/login`;
       
       console.log('🔐 Attempting login to:', fullUrl);
       
@@ -239,8 +239,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       
       // Use environment-specific API URL
-      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const fullUrl = `${apiBaseUrl}/api/auth/register`;
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const fullUrl = `${apiBaseUrl}/auth/register`;
       
       console.log('📝 Attempting registration to:', fullUrl);
       
