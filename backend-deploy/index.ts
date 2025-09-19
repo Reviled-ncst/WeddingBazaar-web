@@ -1274,26 +1274,37 @@ app.get('/api/bookings/couple/:id', async (req, res) => {
     
     console.log(`🔍 Fetching bookings for couple: ${coupleId}`);
     
-    // Build WHERE clause
-    let whereClause = sql`WHERE b.couple_id = ${coupleId}`;
+    // Get bookings from database with simplified query
+    let bookings;
     if (status) {
-      whereClause = sql`WHERE b.couple_id = ${coupleId} AND b.status = ${status}`;
+      bookings = await sql`
+        SELECT 
+          b.id, b.couple_id, b.vendor_id, b.service_type,
+          b.event_date, b.status, b.total_amount, b.notes,
+          b.created_at, b.updated_at, b.contact_phone,
+          v.business_name as vendor_name, v.business_type as vendor_category,
+          v.location
+        FROM bookings b
+        JOIN vendors v ON b.vendor_id = v.id
+        WHERE b.couple_id = ${coupleId} AND b.status = ${status}
+        ORDER BY b.created_at DESC
+        LIMIT ${limit} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+      `;
+    } else {
+      bookings = await sql`
+        SELECT 
+          b.id, b.couple_id, b.vendor_id, b.service_type,
+          b.event_date, b.status, b.total_amount, b.notes,
+          b.created_at, b.updated_at, b.contact_phone,
+          v.business_name as vendor_name, v.business_type as vendor_category,
+          v.location
+        FROM bookings b
+        JOIN vendors v ON b.vendor_id = v.id
+        WHERE b.couple_id = ${coupleId}
+        ORDER BY b.created_at DESC
+        LIMIT ${limit} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+      `;
     }
-    
-    // Get bookings from database  
-    const bookings = await sql`
-      SELECT 
-        b.id, b.couple_id, b.vendor_id, b.service_type,
-        b.event_date, b.status, b.total_amount, b.notes,
-        b.created_at, b.updated_at, b.contact_phone,
-        v.business_name as vendor_name, v.business_type as vendor_category,
-        v.location
-      FROM bookings b
-      JOIN vendors v ON b.vendor_id = v.id
-      ${whereClause}
-      ORDER BY b.created_at DESC
-      LIMIT ${limit} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
-    `;
 
     const formattedBookings = bookings.map(booking => ({
       id: booking.id,
