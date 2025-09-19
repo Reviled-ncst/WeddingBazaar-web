@@ -1022,7 +1022,7 @@ app.get('/api/bookings', async (req, res) => {
         b.id, b.couple_id, b.vendor_id, b.service_type,
         b.event_date, b.status, b.total_amount, b.notes,
         b.created_at, b.updated_at,
-        v.business_name as vendor_name, v.category as vendor_category,
+        v.business_name as vendor_name, v.business_type as vendor_category,
         v.contact_phone, v.location
       FROM bookings b
       JOIN vendors v ON b.vendor_id = v.id
@@ -1286,7 +1286,7 @@ app.get('/api/bookings/couple/:id', async (req, res) => {
         b.id, b.couple_id, b.vendor_id, b.service_type,
         b.event_date, b.status, b.total_amount, b.notes,
         b.created_at, b.updated_at,
-        v.business_name as vendor_name, v.category as vendor_category,
+        v.business_name as vendor_name, v.business_type as vendor_category,
         v.contact_phone, v.location
       FROM bookings b
       JOIN vendors v ON b.vendor_id = v.id
