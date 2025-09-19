@@ -1021,9 +1021,9 @@ app.get('/api/bookings', async (req, res) => {
       SELECT 
         b.id, b.couple_id, b.vendor_id, b.service_type,
         b.event_date, b.status, b.total_amount, b.notes,
-        b.created_at, b.updated_at,
+        b.created_at, b.updated_at, b.contact_phone,
         v.business_name as vendor_name, v.business_type as vendor_category,
-        v.contact_phone, v.location
+        v.location
       FROM bookings b
       JOIN vendors v ON b.vendor_id = v.id
       ORDER BY b.created_at DESC
@@ -1285,9 +1285,9 @@ app.get('/api/bookings/couple/:id', async (req, res) => {
       SELECT 
         b.id, b.couple_id, b.vendor_id, b.service_type,
         b.event_date, b.status, b.total_amount, b.notes,
-        b.created_at, b.updated_at,
+        b.created_at, b.updated_at, b.contact_phone,
         v.business_name as vendor_name, v.business_type as vendor_category,
-        v.contact_phone, v.location
+        v.location
       FROM bookings b
       JOIN vendors v ON b.vendor_id = v.id
       ${whereClause}
