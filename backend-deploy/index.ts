@@ -642,6 +642,152 @@ function getCategoryIcon(category: string): string {
   return icons[category] || '💍';
 }
 
+// Vendor bookings endpoint - Get bookings for a specific vendor
+app.get('/api/vendors/:vendorId/bookings', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const { page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    
+    console.log(`🔍 Fetching bookings for vendor: ${vendorId}`);
+    
+    // Get bookings from database - JOIN with users table to get couple names
+    let bookings;
+    if (status && status !== '') {
+      bookings = await sql`
+        SELECT 
+          b.id, b.couple_id, b.vendor_id, b.service_type,
+          b.event_date, b.status, b.total_amount, b.notes,
+          b.created_at, b.updated_at, b.contact_phone,
+          COALESCE(u.first_name || ' ' || u.last_name, u.display_name, up.first_name || ' ' || up.last_name, 'Unknown Couple') as couple_name,
+          u.email as contact_email,
+          v.business_name as vendor_name, v.business_type as vendor_category,
+          v.location
+        FROM bookings b
+        LEFT JOIN users u ON b.couple_id = u.id
+        LEFT JOIN user_profiles up ON b.couple_id = up.user_id
+        LEFT JOIN vendors v ON b.vendor_id = v.id
+        WHERE b.vendor_id = ${vendorId} AND b.status = ${status}
+        ORDER BY ${sortBy === 'event_date' ? sql`b.event_date` : sql`b.created_at`} ${sortOrder === 'asc' ? sql`ASC` : sql`DESC`}
+        LIMIT ${limit} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+      `;
+    } else {
+      bookings = await sql`
+        SELECT 
+          b.id, b.couple_id, b.vendor_id, b.service_type,
+          b.event_date, b.status, b.total_amount, b.notes,
+          b.created_at, b.updated_at, b.contact_phone,
+          COALESCE(u.first_name || ' ' || u.last_name, u.display_name, up.first_name || ' ' || up.last_name, 'Unknown Couple') as couple_name,
+          u.email as contact_email,
+          v.business_name as vendor_name, v.business_type as vendor_category,
+          v.location
+        FROM bookings b
+        LEFT JOIN users u ON b.couple_id = u.id
+        LEFT JOIN user_profiles up ON b.couple_id = up.user_id
+        LEFT JOIN vendors v ON b.vendor_id = v.id
+        WHERE b.vendor_id = ${vendorId}
+        ORDER BY ${sortBy === 'event_date' ? sql`b.event_date` : sql`b.created_at`} ${sortOrder === 'asc' ? sql`ASC` : sql`DESC`}
+        LIMIT ${limit} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+      `;
+    }
+
+    // Format bookings to match the comprehensive booking types
+    const formattedBookings = bookings.map(booking => ({
+      id: booking.id.toString(),
+      booking_reference: `WB-${booking.id}`,
+      couple_id: booking.couple_id,
+      vendor_id: booking.vendor_id.toString(),
+      event_date: booking.event_date,
+      service_type: booking.service_type,
+      service_name: booking.service_type,
+      contact_person: booking.couple_name, // This is the couple's name!
+      contact_email: booking.contact_email,
+      contact_phone: booking.contact_phone,
+      preferred_contact_method: 'email',
+      quoted_price: parseFloat(booking.total_amount || 0),
+      final_price: parseFloat(booking.total_amount || 0),
+      downpayment_amount: parseFloat(booking.total_amount || 0) * 0.3,
+      total_paid: parseFloat(booking.total_amount || 0) * 0.3, // Assuming 30% paid
+      remaining_balance: parseFloat(booking.total_amount || 0) * 0.7,
+      status: booking.status,
+      vendor_name: booking.vendor_name,
+      vendor_category: booking.vendor_category,
+      created_at: booking.created_at,
+      updated_at: booking.updated_at,
+      contract_signed: false,
+      metadata: {
+        location: booking.location,
+        notes: booking.notes
+      }
+    }));
+
+    // Get total count for pagination
+    const countResult = await sql`
+      SELECT COUNT(*) as total 
+      FROM bookings b 
+      WHERE b.vendor_id = ${vendorId}
+      ${status && status !== '' ? sql`AND b.status = ${status}` : sql``}
+    `;
+    const total = parseInt(countResult[0]?.total || 0);
+
+    res.json({
+      success: true,
+      data: {
+        bookings: formattedBookings,
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        total: total,
+        totalPages: Math.ceil(total / parseInt(limit as string))
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error fetching vendor bookings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch vendor bookings',
+      details: error.message
+    });
+  }
+});
+
+// Vendor booking stats endpoint
+app.get('/api/vendors/:vendorId/bookings/stats', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    
+    console.log(`📊 Fetching booking stats for vendor: ${vendorId}`);
+    
+    // Get booking statistics
+    const statsResult = await sql`
+      SELECT 
+        COUNT(*) as total_bookings,
+        COUNT(CASE WHEN status IN ('quote_requested', 'quote_sent') THEN 1 END) as pending_bookings,
+        COUNT(CASE WHEN status IN ('completed', 'paid_in_full') THEN 1 END) as completed_bookings,
+        COALESCE(SUM(CASE WHEN status IN ('completed', 'paid_in_full') THEN total_amount ELSE 0 END), 0) as total_revenue
+      FROM bookings 
+      WHERE vendor_id = ${vendorId}
+    `;
+
+    const stats = statsResult[0] || {};
+
+    res.json({
+      success: true,
+      data: {
+        total_bookings: parseInt(stats.total_bookings || 0),
+        pending_bookings: parseInt(stats.pending_bookings || 0),
+        completed_bookings: parseInt(stats.completed_bookings || 0),
+        total_revenue: parseFloat(stats.total_revenue || 0)
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error fetching vendor booking stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch vendor booking stats',
+      details: error.message
+    });
+  }
+});
+
 // Basic auth endpoints - Real database integration
 app.post('/api/auth/login', async (req, res) => {
   const { email, password, userType } = req.body;
