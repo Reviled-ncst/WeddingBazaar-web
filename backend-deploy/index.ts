@@ -250,6 +250,58 @@ app.get('/api/vendors', async (req, res) => {
   }
 });
 
+// Public endpoint to get basic user display name (for vendor booking displays)
+app.get('/api/users/:userId/display-name', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log(`🔍 Fetching display name for user ID: ${userId}`);
+    
+    // Get basic user info (no authentication required for display names)
+    const users = await sql`
+      SELECT 
+        id,
+        first_name,
+        last_name,
+        email
+      FROM users 
+      WHERE id = ${userId}
+      LIMIT 1
+    `;
+
+    if (users.length === 0) {
+      console.log(`❌ User not found for ID: ${userId}`);
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    const user = users[0];
+    console.log(`✅ Found user: ${user.first_name} ${user.last_name}`);
+    
+    // Return display name info
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        displayName: user.first_name && user.last_name 
+          ? `${user.first_name} ${user.last_name}`
+          : user.email?.split('@')[0] || `User ${user.id}`,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user display name:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user display name',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Vendor profile by user ID endpoint
 app.get('/api/vendors/user/:userId/profile', async (req, res) => {
   try {
