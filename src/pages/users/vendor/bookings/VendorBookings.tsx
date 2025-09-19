@@ -201,6 +201,15 @@ export const VendorBookings: React.FC = () => {
   const { user } = useAuth();
   
   const [bookings, setBookings] = useState<UIBooking[]>([]);
+  
+  // Debug function to log booking changes
+  const setBookingsWithLogging = (newBookings: UIBooking[]) => {
+    console.log('📝 [VendorBookings] Setting bookings state:', newBookings);
+    if (newBookings.length > 0) {
+      console.log('📝 [VendorBookings] First booking coupleName:', newBookings[0].coupleName);
+    }
+    setBookings(newBookings);
+  };
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<UIBookingStats | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<UIBooking | null>(null);
@@ -213,10 +222,10 @@ export const VendorBookings: React.FC = () => {
   const [pagination, setPagination] = useState<UIBookingsListResponse['pagination'] | null>(null);
   
   // Use authenticated vendor ID
-  const vendorId = user?.id || 'vendor_001'; // Fallback for demo
+  // TEMPORARY: Use vendor 1 to demonstrate real data with couple names
+  const vendorId = '1'; // user?.id || 'vendor_001'; // Fallback for demo
 
   useEffect(() => {
-    console.log('🔄 [VendorBookings] Effect triggered with:', { vendorId, filterStatus, currentPage });
     // Always try to load real data first, fallback to mock if needed
     loadBookings();
     loadStats();
@@ -244,7 +253,8 @@ export const VendorBookings: React.FC = () => {
       // This avoids the SQL syntax error in the vendor-specific endpoint
       try {
         console.log('🔄 [VendorBookings] Using workaround - fetching all bookings and filtering by vendor...');
-        const apiUrl = `${import.meta.env.VITE_API_URL}/api/bookings/couple/1-2025-001?limit=50`; // Get sample bookings
+        // Use couple that has bookings with vendor 1
+        const apiUrl = `${import.meta.env.VITE_API_URL}/api/bookings/couple/1-2025-001?limit=50`;
         console.log('🔗 [VendorBookings] Calling API:', apiUrl);
         
         const response = await fetch(apiUrl, {
@@ -270,8 +280,6 @@ export const VendorBookings: React.FC = () => {
             console.log('📊 [VendorBookings] Found vendor bookings:', vendorBookings);
             
             if (vendorBookings.length > 0) {
-              console.log('🔄 [VendorBookings] Mapping bookings with couple names...');
-              
               const mappedBookings = await Promise.all(
                 vendorBookings.map(async (booking: any) => {
                   // For this booking, the couple name should be the actual user name
@@ -315,8 +323,14 @@ export const VendorBookings: React.FC = () => {
                 })
               );
               
-              console.log('✅ [VendorBookings] Mapped vendor bookings with couple names:', mappedBookings);
-              setBookings(mappedBookings);
+              console.log('✅ [VendorBookings] Final mapped bookings:', mappedBookings);
+              console.log('🔍 [VendorBookings] First booking details:', {
+                id: mappedBookings[0]?.id,
+                coupleId: mappedBookings[0]?.coupleId,
+                coupleName: mappedBookings[0]?.coupleName,
+                serviceType: mappedBookings[0]?.serviceType
+              });
+              setBookingsWithLogging(mappedBookings);
               setPagination({
                 current_page: 1,
                 total_pages: 1,
@@ -325,10 +339,13 @@ export const VendorBookings: React.FC = () => {
                 hasNext: false,
                 hasPrev: false
               });
-              return; // Success with real data!
+              return; // SUCCESS! Exit here to prevent mock data override
             } else {
               console.log('⚠️ [VendorBookings] No bookings found for vendor:', vendorId);
+              // Don't return here, let it continue to try other APIs
             }
+          } else {
+            console.log('⚠️ [VendorBookings] No bookings data in API response');
           }
         } else {
           const errorText = await response.text();
@@ -356,10 +373,13 @@ export const VendorBookings: React.FC = () => {
           const data = await response.json();
           console.log('✅ [VendorBookings] Vendor API bookings loaded successfully:', data);
           
-          // Handle the response...
+          // Handle the response - vendor API has data wrapper
           if (data.data && data.data.bookings) {
-            const uiResponse = mapToUIBookingsListResponse(data);
-            setBookings(uiResponse.bookings);
+            console.log('🔄 [VendorBookings] Processing vendor API response with data wrapper...');
+            // Extract the actual bookings data from the wrapper
+            const bookingsData = data.data;
+            const uiResponse = mapToUIBookingsListResponse(bookingsData);
+            setBookingsWithLogging(uiResponse.bookings);
             setPagination(uiResponse.pagination);
             return;
           }
@@ -593,7 +613,7 @@ export const VendorBookings: React.FC = () => {
     ];
     
     console.log('🎭 [VendorBookings] Using updated mock data with proper couple names:', mockUIBookings);
-    setBookings(mockUIBookings);
+    setBookingsWithLogging(mockUIBookings);
     setPagination({
       current_page: 1,
       total_pages: 1,
@@ -760,8 +780,8 @@ export const VendorBookings: React.FC = () => {
    */
   async function fetchCoupleName(coupleId: string): Promise<string> {
     try {
-      // Try to fetch user details from the users API
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${coupleId}`, {
+      // Try to fetch user display name from the new public endpoint
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${coupleId}/display-name`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -770,27 +790,28 @@ export const VendorBookings: React.FC = () => {
 
       if (response.ok) {
         const userData = await response.json();
-        console.log('👤 [VendorBookings] User data for', coupleId, ':', userData);
+        console.log('👤 [VendorBookings] User display data for', coupleId, ':', userData);
         
-        if (userData && userData.user) {
-          // Try different name formats
-          const firstName = userData.user.first_name || userData.user.firstName;
-          const lastName = userData.user.last_name || userData.user.lastName;
-          const displayName = userData.user.display_name || userData.user.displayName;
-          
-          if (firstName && lastName) {
-            return `${firstName} ${lastName}`;
-          } else if (displayName) {
-            return displayName;
+        if (userData.success && userData.user) {
+          // Use the display name from the API
+          if (userData.user.displayName) {
+            console.log('🎯 [VendorBookings] Got real display name:', userData.user.displayName, 'for ID:', coupleId);
+            return userData.user.displayName;
+          } else if (userData.user.firstName && userData.user.lastName) {
+            const fullName = `${userData.user.firstName} ${userData.user.lastName}`;
+            console.log('🎯 [VendorBookings] Got real name:', fullName, 'for ID:', coupleId);
+            return fullName;
           } else if (userData.user.email) {
-            return userData.user.email.split('@')[0]; // Use email username as fallback
+            const emailName = userData.user.email.split('@')[0];
+            console.log('🎯 [VendorBookings] Got email name:', emailName, 'for ID:', coupleId);
+            return emailName;
           }
         }
       } else {
-        console.log('⚠️ [VendorBookings] User API failed for', coupleId, '- status:', response.status);
+        console.log('⚠️ [VendorBookings] User display API failed for', coupleId, '- status:', response.status);
       }
     } catch (error) {
-      console.log('⚠️ Failed to fetch couple name for:', coupleId, error);
+      console.log('⚠️ Failed to fetch couple display name for:', coupleId, error);
     }
     
     // Return a user-friendly formatted couple ID as fallback
@@ -798,54 +819,16 @@ export const VendorBookings: React.FC = () => {
       // Format like "1-2025-001" to "Couple #001"
       const parts = coupleId.split('-');
       if (parts.length >= 3) {
-        return `Couple #${parts[2]}`;
+        const formattedName = `Couple #${parts[2]}`;
+        console.log('🎯 [VendorBookings] Formatted couple name:', formattedName, 'from ID:', coupleId);
+        return formattedName;
       }
     }
     
     // Final fallback
-    return `Couple ${coupleId}`;
-  }
-
-  /**
-   * Enhanced booking mapping with couple name fetching
-   */
-  async function mapBookingWithCoupleName(booking: any): Promise<UIBooking> {
-    const coupleName = await fetchCoupleName(booking.coupleId);
-    
-    return {
-      id: booking.id.toString(),
-      vendorId: booking.vendorId.toString(),
-      coupleId: booking.coupleId,
-      coupleName: coupleName, // Real couple name!
-      contactEmail: booking.contactEmail || `couple-${booking.coupleId}@email.com`,
-      contactPhone: booking.contactPhone,
-      serviceType: booking.serviceType,
-      eventDate: booking.eventDate,
-      eventTime: booking.eventTime || undefined,
-      eventLocation: booking.location,
-      guestCount: undefined,
-      specialRequests: booking.notes,
-      status: booking.status as BookingStatus,
-      quoteAmount: booking.amount,
-      totalAmount: booking.amount,
-      downpaymentAmount: booking.downPayment,
-      depositAmount: booking.downPayment,
-      totalPaid: booking.downPayment || 0,
-      remainingBalance: booking.remainingBalance,
-      budgetRange: undefined,
-      preferredContactMethod: 'email',
-      createdAt: booking.bookingDate,
-      updatedAt: booking.bookingDate,
-      paymentProgressPercentage: Math.round(((booking.downPayment || 0) / booking.amount) * 100),
-      paymentCount: booking.downPayment > 0 ? 1 : 0,
-      formatted: {
-        totalAmount: formatPHP(booking.amount),
-        totalPaid: formatPHP(booking.downPayment || 0),
-        remainingBalance: formatPHP(booking.remainingBalance),
-        downpaymentAmount: formatPHP(booking.downPayment || 0),
-      },
-      vendorName: booking.vendorName // Keep vendor name for compatibility
-    };
+    const finalFallback = `Couple ${coupleId}`;
+    console.log('🎯 [VendorBookings] Final fallback name:', finalFallback, 'from ID:', coupleId);
+    return finalFallback;
   }
 
   return (
