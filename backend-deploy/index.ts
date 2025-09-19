@@ -1321,13 +1321,12 @@ app.get('/api/bookings/couple/:id', async (req, res) => {
           b.id, b.couple_id, b.vendor_id, b.service_type,
           b.event_date, b.status, b.total_amount, b.notes,
           b.created_at, b.updated_at, b.contact_phone,
-          COALESCE(u.first_name || ' ' || u.last_name, u.display_name, up.first_name || ' ' || up.last_name, 'Unknown Couple') as couple_name,
+          COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
           u.email as contact_email,
           v.business_name as vendor_name, v.business_type as vendor_category,
           v.location
         FROM bookings b
         LEFT JOIN users u ON b.couple_id = u.id
-        LEFT JOIN user_profiles up ON b.couple_id = up.user_id
         LEFT JOIN vendors v ON b.vendor_id = v.id
         WHERE b.couple_id = ${coupleId} AND b.status = ${status}
         ORDER BY b.created_at DESC
@@ -1339,13 +1338,12 @@ app.get('/api/bookings/couple/:id', async (req, res) => {
           b.id, b.couple_id, b.vendor_id, b.service_type,
           b.event_date, b.status, b.total_amount, b.notes,
           b.created_at, b.updated_at, b.contact_phone,
-          COALESCE(u.first_name || ' ' || u.last_name, u.display_name, up.first_name || ' ' || up.last_name, 'Unknown Couple') as couple_name,
+          COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
           u.email as contact_email,
           v.business_name as vendor_name, v.business_type as vendor_category,
           v.location
         FROM bookings b
         LEFT JOIN users u ON b.couple_id = u.id
-        LEFT JOIN user_profiles up ON b.couple_id = up.user_id
         LEFT JOIN vendors v ON b.vendor_id = v.id
         WHERE b.couple_id = ${coupleId}
         ORDER BY b.created_at DESC
