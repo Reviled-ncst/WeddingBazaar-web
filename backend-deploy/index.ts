@@ -3078,42 +3078,153 @@ app.get('/api/vendors/:vendorId/bookings', async (req, res) => {
     
     console.log(`🔍 Fetching bookings for vendor: ${vendorId}`);
     
-    // Simple query without the non-existent user_profiles table
+    // Simple, safe queries with fixed ORDER BY
     let bookings;
+    
     if (status && status !== '') {
-      bookings = await sql`
-        SELECT 
-          b.id, b.couple_id, b.vendor_id, b.service_type,
-          b.event_date, b.status, b.total_amount, b.notes,
-          b.created_at, b.updated_at, b.contact_phone,
-          COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
-          u.email as contact_email,
-          v.business_name as vendor_name, v.business_type as vendor_category,
-          v.location
-        FROM bookings b
-        LEFT JOIN users u ON b.couple_id = u.id
-        LEFT JOIN vendors v ON b.vendor_id = v.id
-        WHERE b.vendor_id = ${vendorId} AND b.status = ${status as string}
-        ORDER BY ${sortBy === 'event_date' ? sql`b.event_date` : sql`b.created_at`} ${sortOrder === 'asc' ? sql`ASC` : sql`DESC`}
-        LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
-      `;
+      // With status filter - created_at DESC (most common case)
+      if (sortBy === 'event_date' && sortOrder === 'asc') {
+        bookings = await sql`
+          SELECT 
+            b.id, b.couple_id, b.vendor_id, b.service_type,
+            b.event_date, b.status, b.total_amount, b.notes,
+            b.created_at, b.updated_at, b.contact_phone,
+            COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
+            u.email as contact_email,
+            v.business_name as vendor_name, v.business_type as vendor_category,
+            v.location
+          FROM bookings b
+          LEFT JOIN users u ON b.couple_id = u.id
+          LEFT JOIN vendors v ON b.vendor_id = v.id
+          WHERE b.vendor_id = ${vendorId} AND b.status = ${status as string}
+          ORDER BY b.event_date ASC
+          LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+        `;
+      } else if (sortBy === 'event_date' && sortOrder === 'desc') {
+        bookings = await sql`
+          SELECT 
+            b.id, b.couple_id, b.vendor_id, b.service_type,
+            b.event_date, b.status, b.total_amount, b.notes,
+            b.created_at, b.updated_at, b.contact_phone,
+            COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
+            u.email as contact_email,
+            v.business_name as vendor_name, v.business_type as vendor_category,
+            v.location
+          FROM bookings b
+          LEFT JOIN users u ON b.couple_id = u.id
+          LEFT JOIN vendors v ON b.vendor_id = v.id
+          WHERE b.vendor_id = ${vendorId} AND b.status = ${status as string}
+          ORDER BY b.event_date DESC
+          LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+        `;
+      } else if (sortBy === 'created_at' && sortOrder === 'asc') {
+        bookings = await sql`
+          SELECT 
+            b.id, b.couple_id, b.vendor_id, b.service_type,
+            b.event_date, b.status, b.total_amount, b.notes,
+            b.created_at, b.updated_at, b.contact_phone,
+            COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
+            u.email as contact_email,
+            v.business_name as vendor_name, v.business_type as vendor_category,
+            v.location
+          FROM bookings b
+          LEFT JOIN users u ON b.couple_id = u.id
+          LEFT JOIN vendors v ON b.vendor_id = v.id
+          WHERE b.vendor_id = ${vendorId} AND b.status = ${status as string}
+          ORDER BY b.created_at ASC
+          LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+        `;
+      } else {
+        // Default: created_at DESC
+        bookings = await sql`
+          SELECT 
+            b.id, b.couple_id, b.vendor_id, b.service_type,
+            b.event_date, b.status, b.total_amount, b.notes,
+            b.created_at, b.updated_at, b.contact_phone,
+            COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
+            u.email as contact_email,
+            v.business_name as vendor_name, v.business_type as vendor_category,
+            v.location
+          FROM bookings b
+          LEFT JOIN users u ON b.couple_id = u.id
+          LEFT JOIN vendors v ON b.vendor_id = v.id
+          WHERE b.vendor_id = ${vendorId} AND b.status = ${status as string}
+          ORDER BY b.created_at DESC
+          LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+        `;
+      }
     } else {
-      bookings = await sql`
-        SELECT 
-          b.id, b.couple_id, b.vendor_id, b.service_type,
-          b.event_date, b.status, b.total_amount, b.notes,
-          b.created_at, b.updated_at, b.contact_phone,
-          COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
-          u.email as contact_email,
-          v.business_name as vendor_name, v.business_type as vendor_category,
-          v.location
-        FROM bookings b
-        LEFT JOIN users u ON b.couple_id = u.id
-        LEFT JOIN vendors v ON b.vendor_id = v.id
-        WHERE b.vendor_id = ${vendorId}
-        ORDER BY ${sortBy === 'event_date' ? sql`b.event_date` : sql`b.created_at`} ${sortOrder === 'asc' ? sql`ASC` : sql`DESC`}
-        LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
-      `;
+      // Without status filter
+      if (sortBy === 'event_date' && sortOrder === 'asc') {
+        bookings = await sql`
+          SELECT 
+            b.id, b.couple_id, b.vendor_id, b.service_type,
+            b.event_date, b.status, b.total_amount, b.notes,
+            b.created_at, b.updated_at, b.contact_phone,
+            COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
+            u.email as contact_email,
+            v.business_name as vendor_name, v.business_type as vendor_category,
+            v.location
+          FROM bookings b
+          LEFT JOIN users u ON b.couple_id = u.id
+          LEFT JOIN vendors v ON b.vendor_id = v.id
+          WHERE b.vendor_id = ${vendorId}
+          ORDER BY b.event_date ASC
+          LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+        `;
+      } else if (sortBy === 'event_date' && sortOrder === 'desc') {
+        bookings = await sql`
+          SELECT 
+            b.id, b.couple_id, b.vendor_id, b.service_type,
+            b.event_date, b.status, b.total_amount, b.notes,
+            b.created_at, b.updated_at, b.contact_phone,
+            COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
+            u.email as contact_email,
+            v.business_name as vendor_name, v.business_type as vendor_category,
+            v.location
+          FROM bookings b
+          LEFT JOIN users u ON b.couple_id = u.id
+          LEFT JOIN vendors v ON b.vendor_id = v.id
+          WHERE b.vendor_id = ${vendorId}
+          ORDER BY b.event_date DESC
+          LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+        `;
+      } else if (sortBy === 'created_at' && sortOrder === 'asc') {
+        bookings = await sql`
+          SELECT 
+            b.id, b.couple_id, b.vendor_id, b.service_type,
+            b.event_date, b.status, b.total_amount, b.notes,
+            b.created_at, b.updated_at, b.contact_phone,
+            COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
+            u.email as contact_email,
+            v.business_name as vendor_name, v.business_type as vendor_category,
+            v.location
+          FROM bookings b
+          LEFT JOIN users u ON b.couple_id = u.id
+          LEFT JOIN vendors v ON b.vendor_id = v.id
+          WHERE b.vendor_id = ${vendorId}
+          ORDER BY b.created_at ASC
+          LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+        `;
+      } else {
+        // Default: created_at DESC
+        bookings = await sql`
+          SELECT 
+            b.id, b.couple_id, b.vendor_id, b.service_type,
+            b.event_date, b.status, b.total_amount, b.notes,
+            b.created_at, b.updated_at, b.contact_phone,
+            COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
+            u.email as contact_email,
+            v.business_name as vendor_name, v.business_type as vendor_category,
+            v.location
+          FROM bookings b
+          LEFT JOIN users u ON b.couple_id = u.id
+          LEFT JOIN vendors v ON b.vendor_id = v.id
+          WHERE b.vendor_id = ${vendorId}
+          ORDER BY b.created_at DESC
+          LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+        `;
+      }
     }
 
     // Format bookings to match the comprehensive booking types
