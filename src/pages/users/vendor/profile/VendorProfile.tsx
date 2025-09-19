@@ -148,8 +148,8 @@ export const VendorProfile: React.FC = () => {
       formData.append('folder', 'vendor-profiles');
 
       // Upload to backend
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
-      const response = await fetch(`${apiUrl}/vendors/${vendorId}/upload-image`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+      const response = await fetch(`${apiUrl}/api/vendors/${vendorId}/upload-image`, {
         method: 'POST',
         body: formData,
       });

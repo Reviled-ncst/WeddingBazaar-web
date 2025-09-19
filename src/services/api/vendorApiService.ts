@@ -129,13 +129,13 @@ class VendorApiService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
+    this.baseUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
   }
 
   // Fetch vendor dashboard data
   async getDashboardData(vendorId: string): Promise<DashboardData> {
     try {
-      const response = await fetch(`${this.baseUrl}/vendors/${vendorId}/dashboard`);
+      const response = await fetch(`${this.baseUrl}/api/vendors/${vendorId}/dashboard`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -157,7 +157,7 @@ class VendorApiService {
       console.log('Attempting to fetch profile from API for vendor:', vendorId);
       
       // Use the new user_id based endpoint
-      const response = await fetch(`${this.baseUrl}/vendors/user/${vendorId}/profile`);
+      const response = await fetch(`${this.baseUrl}/api/vendors/user/${vendorId}/profile`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -186,7 +186,7 @@ class VendorApiService {
   // Update vendor profile
   async updateProfile(vendorId: string, profileData: Partial<VendorProfile>): Promise<VendorProfile> {
     try {
-      const response = await fetch(`${this.baseUrl}/vendors/${vendorId}/profile`, {
+      const response = await fetch(`${this.baseUrl}/api/vendors/${vendorId}/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -229,7 +229,7 @@ class VendorApiService {
       if (options?.limit) queryParams.append('limit', options.limit.toString());
       
       const response = await fetch(
-        `${this.baseUrl}/vendors/${vendorId}/bookings?${queryParams.toString()}`
+        `${this.baseUrl}/api/vendors/${vendorId}/bookings?${queryParams.toString()}`
       );
       
       if (!response.ok) {
@@ -253,7 +253,7 @@ class VendorApiService {
     notes?: string
   ): Promise<BookingData> {
     try {
-      const response = await fetch(`${this.baseUrl}/vendors/bookings/${bookingId}/status`, {
+      const response = await fetch(`${this.baseUrl}/api/vendors/bookings/${bookingId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -277,7 +277,7 @@ class VendorApiService {
   async getAnalytics(vendorId: string, period: string = 'month'): Promise<AnalyticsData> {
     try {
       const response = await fetch(
-        `${this.baseUrl}/vendors/${vendorId}/analytics?period=${period}`
+        `${this.baseUrl}/api/vendors/${vendorId}/analytics?period=${period}`
       );
       
       if (!response.ok) {

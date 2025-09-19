@@ -1,11 +1,11 @@
 import type { PaymentRequest, PaymentResponse, PaymentReceipt } from '../types/payment.types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 class PaymentService {
   async processPayment(paymentData: PaymentRequest): Promise<PaymentResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/payment/process`, {
+      const response = await fetch(`${API_BASE_URL}/api/payment/process`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -27,7 +27,7 @@ class PaymentService {
 
   async getPaymentReceipts(bookingId: string): Promise<PaymentReceipt[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/payment/receipts/${bookingId}`);
+      const response = await fetch(`${API_BASE_URL}/api/payment/receipts/${bookingId}`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch receipts: ${response.statusText}`);
@@ -43,7 +43,7 @@ class PaymentService {
 
   async getReceipt(receiptId: string): Promise<PaymentReceipt> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment/receipt/${receiptId}`);
+      const response = await fetch(`${API_BASE_URL}/api/api/payment/receipt/${receiptId}`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch receipt: ${response.statusText}`);
@@ -59,7 +59,7 @@ class PaymentService {
 
   async downloadReceiptPDF(receiptId: string): Promise<Blob> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment/receipt/${receiptId}/pdf`);
+      const response = await fetch(`${API_BASE_URL}/api/api/payment/receipt/${receiptId}/pdf`);
       
       if (!response.ok) {
         throw new Error(`Failed to download receipt PDF: ${response.statusText}`);
@@ -74,7 +74,7 @@ class PaymentService {
 
   async emailReceipt(receiptId: string, email: string): Promise<boolean> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment/receipt/${receiptId}/email`, {
+      const response = await fetch(`${API_BASE_URL}/api/api/payment/receipt/${receiptId}/email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,7 +96,7 @@ class PaymentService {
 
   async verifyPayment(paymentId: string): Promise<PaymentResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment/verify/${paymentId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/api/payment/verify/${paymentId}`, {
         method: 'POST',
       });
 
@@ -114,7 +114,7 @@ class PaymentService {
 
   async refundPayment(paymentId: string, reason?: string): Promise<PaymentResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment/refund/${paymentId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/api/payment/refund/${paymentId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,7 +142,7 @@ class PaymentService {
     paymentMethod: string;
   }): Promise<PaymentResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment/paymongo/create`, {
+      const response = await fetch(`${API_BASE_URL}/api/api/payment/paymongo/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -164,7 +164,7 @@ class PaymentService {
 
   async checkPayMongoStatus(paymentId: string): Promise<PaymentResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment/paymongo/status/${paymentId}`);
+      const response = await fetch(`${API_BASE_URL}/api/api/payment/paymongo/status/${paymentId}`);
       
       if (!response.ok) {
         throw new Error(`PayMongo status check failed: ${response.statusText}`);

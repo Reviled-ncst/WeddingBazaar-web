@@ -40,7 +40,7 @@ export interface ServicesResponse {
 }
 
 export class ServicesApiService {
-  private static baseUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
+  private static baseUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
   static async getServices(params: ServiceSearchParams = {}): Promise<ServicesResponse> {
     try {
@@ -53,7 +53,7 @@ export class ServicesApiService {
         }
       });
 
-      const url = `${this.baseUrl}/services?${searchParams.toString()}`;
+      const url = `${this.baseUrl}/api/services?${searchParams.toString()}`;
       console.log('ServicesApiService: Fetching services from:', url);
 
       const response = await fetch(url, {
@@ -86,7 +86,7 @@ export class ServicesApiService {
 
   static async getServiceById(id: string): Promise<ApiService | null> {
     try {
-      const response = await fetch(`${this.baseUrl}/${id}`, {
+      const response = await fetch(`${this.baseUrl}/api/${id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -120,7 +120,7 @@ export class ServicesApiService {
 
   static async getServicesByVendor(vendorId: string): Promise<ApiService[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/vendors/${vendorId}/services`, {
+      const response = await fetch(`${this.baseUrl}/api/vendors/${vendorId}/services`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

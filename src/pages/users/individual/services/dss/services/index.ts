@@ -468,7 +468,7 @@ export class BudgetAnalysisService {
 
 // Real API service integration with enhanced vendor profile support
 export class VendorAPIService {
-  private static baseURL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
+  private static baseURL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
   private static authToken: string | null = null;
 
@@ -549,7 +549,7 @@ export class VendorAPIService {
       if (filters?.minRating) params.set('minRating', filters.minRating.toString());
       if (filters?.maxPrice) params.set('maxPrice', filters.maxPrice.toString());
 
-      const url = `${this.baseURL}/services?${params}`;
+      const url = `${this.baseURL}/api/services?${params}`;
       console.log('📡 Services API Request URL:', url);
       
       const response = await this.makeAuthenticatedRequest(url, {
@@ -587,7 +587,7 @@ export class VendorAPIService {
       if (filters?.minRating) params.set('minRating', filters.minRating.toString());
       if (filters?.verified !== undefined) params.set('verified', filters.verified.toString());
 
-      const url = `${this.baseURL}/vendor-profiles?${params}`;
+      const url = `${this.baseURL}/api/vendor-profiles?${params}`;
       console.log('📡 API Request URL:', url);
       
       const response = await this.makeAuthenticatedRequest(url, {
@@ -823,7 +823,7 @@ export class VendorAPIService {
         };
       }
       
-      const response = await this.makeAuthenticatedRequest(`${this.baseURL}/bookings`, {
+      const response = await this.makeAuthenticatedRequest(`${this.baseURL}/api/bookings`, {
         method: 'POST',
         body: JSON.stringify({
           serviceId,
@@ -889,7 +889,7 @@ export class VendorAPIService {
         };
       }
       
-      const response = await this.makeAuthenticatedRequest(`${this.baseURL}/user/favorites`, {
+      const response = await this.makeAuthenticatedRequest(`${this.baseURL}/api/user/favorites`, {
         method: 'POST',
         body: JSON.stringify({ 
           serviceId,
@@ -949,7 +949,7 @@ export class VendorAPIService {
         };
       }
       
-      const response = await this.makeAuthenticatedRequest(`${this.baseURL}/messages`, {
+      const response = await this.makeAuthenticatedRequest(`${this.baseURL}/api/messages`, {
         method: 'POST',
         body: JSON.stringify({
           serviceId,

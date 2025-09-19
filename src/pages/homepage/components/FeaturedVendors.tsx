@@ -179,15 +179,15 @@ export const FeaturedVendors: React.FC = () => {
   useEffect(() => {
     const fetchFeaturedVendors = async () => {
       try {
-        // Use relative URLs for local development (Vite proxy) or production URL for deployment
-        const apiUrl = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api');
-        console.log('🔍 Fetching featured vendors from:', `${apiUrl}/vendors/featured`);
+        // Use correct API URL construction
+        const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+        console.log('🔍 Fetching featured vendors from:', `${apiBaseUrl}/api/vendors/featured`);
         
         let vendorData: FeaturedVendor[] = [];
         
         // Try the primary endpoint that we know works
         const endpoints = [
-          `${apiUrl}/vendors/featured`
+          `${apiBaseUrl}/api/vendors/featured`
         ];
         
         for (const endpoint of endpoints) {

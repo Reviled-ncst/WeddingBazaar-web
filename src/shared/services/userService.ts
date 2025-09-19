@@ -55,7 +55,7 @@ interface ProfileResponse {
 }
 
 export class UserService {
-  private readonly apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+  private readonly apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
   async getUserProfile(userId: string): Promise<UserProfile> {
     console.log('🔧 UserService: getUserProfile called with userId:', userId);
@@ -68,7 +68,7 @@ export class UserService {
         throw new Error('No authentication token found');
       }
 
-      const url = `${this.apiUrl}/users/profile/${userId}`;
+      const url = `${this.apiUrl}/api/users/profile/${userId}`;
       console.log('📡 UserService: Making API call to:', url);
 
       const response = await fetch(url, {
@@ -111,7 +111,7 @@ export class UserService {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`${this.apiUrl}/users/profile/${userId}`, {
+      const response = await fetch(`${this.apiUrl}/api/users/profile/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

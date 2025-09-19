@@ -1,7 +1,7 @@
 import React from 'react';
 
 export const ApiDebugPage: React.FC = () => {
-  const baseUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
+  const baseUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
   
   React.useEffect(() => {
     console.log('🔍 Current API Base URL:', baseUrl);
@@ -53,19 +53,19 @@ export const ApiDebugPage: React.FC = () => {
           <h2 className="text-xl font-semibold mb-4">API Endpoint Tests</h2>
           <div className="space-y-3">
             <button
-              onClick={() => testEndpoint('/health')}
+              onClick={() => testEndpoint('/api/health')}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mr-3"
             >
               Test Health Endpoint
             </button>
             <button
-              onClick={() => testEndpoint('/bookings/couple/1-2025-001')}
+              onClick={() => testEndpoint('/api/bookings/couple/1-2025-001')}
               className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded mr-3"
             >
               Test Couple Bookings
             </button>
             <button
-              onClick={() => testEndpoint('/vendors/featured')}
+              onClick={() => testEndpoint('/api/vendors/featured')}
               className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded"
             >
               Test Featured Vendors

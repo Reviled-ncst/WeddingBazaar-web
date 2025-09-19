@@ -631,14 +631,14 @@ export const Services: React.FC = () => {
     // Fetch detailed services for this category
     try {
       setModalLoading(true);
-      // Use relative URLs for local development (Vite proxy) or production URL for deployment
-      const apiUrl = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api');
+      // Use correct API URL construction
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
       
       let transformedServices: ServiceDetails[] = [];
       
       // Try services endpoint first
       try {
-        const servicesResponse = await fetch(`${apiUrl}/services?category=${encodeURIComponent(categoryName)}&limit=12`);
+        const servicesResponse = await fetch(`${apiBaseUrl}/api/services?category=${encodeURIComponent(categoryName)}&limit=12`);
         if (servicesResponse.ok) {
           const servicesData = await servicesResponse.json();
           const servicesArray = Array.isArray(servicesData) ? servicesData : servicesData.services || [];
@@ -672,7 +672,7 @@ export const Services: React.FC = () => {
       // If no services data, try vendors endpoint and filter by category
       if (transformedServices.length === 0) {
         try {
-          const vendorsResponse = await fetch(`${apiUrl}/vendors`);
+          const vendorsResponse = await fetch(`${apiBaseUrl}/api/vendors`);
           if (vendorsResponse.ok) {
             const vendorsData = await vendorsResponse.json();
             const vendors = vendorsData.vendors || [];
@@ -837,9 +837,9 @@ export const Services: React.FC = () => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        // Use relative URLs for local development (Vite proxy) or production URL for deployment
-        const apiUrl = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api');
-        console.log('🔍 Fetching services from:', apiUrl);
+        // Use correct API URL construction
+        const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+        console.log('🔍 Fetching services from:', apiBaseUrl);
         
         // Try multiple endpoints to get service data
         let servicesData: ServiceCategoryData[] = [];
@@ -847,7 +847,7 @@ export const Services: React.FC = () => {
         // First try the vendors/featured endpoint (most likely to work)
         try {
           console.log('📡 Trying vendors/featured endpoint...');
-          const vendorsResponse = await fetch(`${apiUrl}/vendors/featured`);
+          const vendorsResponse = await fetch(`${apiBaseUrl}/api/vendors/featured`);
           console.log('📡 Vendors response status:', vendorsResponse.status);
           
           if (vendorsResponse.ok) {
@@ -889,7 +889,7 @@ export const Services: React.FC = () => {
         if (servicesData.length === 0) {
           try {
             console.log('📡 Trying vendors/categories endpoint...');
-            const categoriesResponse = await fetch(`${apiUrl}/vendors/categories`);
+            const categoriesResponse = await fetch(`${apiBaseUrl}/api/vendors/categories`);
             
             if (categoriesResponse.ok) {
               const categoriesResult = await categoriesResponse.json();

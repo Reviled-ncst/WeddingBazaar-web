@@ -19,7 +19,7 @@ import type {
 // ============================================================================
 
 class BookingApiService {
-  private baseUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
+  private baseUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
   // Get all bookings with advanced filtering
   async getAllBookings(params?: {
@@ -46,7 +46,7 @@ class BookingApiService {
       if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
       if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder);
 
-      const response = await fetch(`${this.baseUrl}/bookings?${queryParams.toString()}`);
+      const response = await fetch(`${this.baseUrl}/api/bookings?${queryParams.toString()}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -63,7 +63,7 @@ class BookingApiService {
   // Get specific booking by ID
   async getBookingById(id: string): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${id}`);
+      const response = await fetch(`${this.baseUrl}/api/bookings/${id}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -82,7 +82,7 @@ class BookingApiService {
     try {
       console.log('🔄 [BookingApiService] Creating booking request:', request);
       
-      const response = await fetch(`${this.baseUrl}/bookings/request`, {
+      const response = await fetch(`${this.baseUrl}/api/bookings/request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +113,7 @@ class BookingApiService {
       if (coupleId) queryParams.append('coupleId', coupleId);
       if (vendorId) queryParams.append('vendorId', vendorId);
 
-      const response = await fetch(`${this.baseUrl}/bookings/stats?${queryParams.toString()}`);
+      const response = await fetch(`${this.baseUrl}/api/bookings/stats?${queryParams.toString()}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -130,7 +130,7 @@ class BookingApiService {
   // Get booking timeline/history
   async getBookingTimeline(bookingId: string): Promise<BookingTimelineEntry[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/timeline`);
+      const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/timeline`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -155,7 +155,7 @@ class BookingApiService {
     }
   ): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/send-quote`, {
+      const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/send-quote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -178,7 +178,7 @@ class BookingApiService {
   // Accept quote (for couples)
   async acceptQuote(bookingId: string): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/accept-quote`, {
+      const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/accept-quote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -200,7 +200,7 @@ class BookingApiService {
   // Reject quote (for couples)
   async rejectQuote(bookingId: string, reason?: string): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/reject-quote`, {
+      const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/reject-quote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -230,7 +230,7 @@ class BookingApiService {
     }
   ): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/payment`, {
+      const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -253,7 +253,7 @@ class BookingApiService {
   // Confirm booking (for vendors after payment)
   async confirmBooking(bookingId: string): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/confirm`, {
+      const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/confirm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -275,7 +275,7 @@ class BookingApiService {
   // Mark as delivered (for vendors)
   async markDelivered(bookingId: string, deliveryNotes?: string): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/mark-delivered`, {
+      const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/mark-delivered`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -298,7 +298,7 @@ class BookingApiService {
   // Confirm completion (for couples)
   async confirmCompletion(bookingId: string, rating?: number, review?: string): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/confirm-completion`, {
+      const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/confirm-completion`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -328,7 +328,7 @@ class BookingApiService {
     }
   ): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/pricing`, {
+      const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/pricing`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -363,7 +363,7 @@ class BookingApiService {
     }>;
   }> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/workflow-status`);
+      const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/workflow-status`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -387,7 +387,7 @@ class BookingApiService {
     }
   ): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/request-quote-modification`, {
+      const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/request-quote-modification`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -414,7 +414,7 @@ class BookingApiService {
     cancelledBy: 'couple' | 'vendor'
   ): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/cancel`, {
+      const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/cancel`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -446,7 +446,7 @@ class BookingApiService {
     }
   ): Promise<Booking> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookings/${bookingId}/progress-update`, {
+      const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/progress-update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -486,7 +486,7 @@ class BookingApiService {
       if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
       if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder);
 
-      const url = `${this.baseUrl}/bookings/couple/${coupleId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const url = `${this.baseUrl}/api/bookings/couple/${coupleId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       console.log('📋 [BookingApiService] Fetching couple bookings from:', url);
       
       const response = await fetch(url);

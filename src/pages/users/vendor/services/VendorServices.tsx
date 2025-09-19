@@ -93,7 +93,7 @@ export const VendorServices: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
 
   // Get API base URL
-  const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com/api';
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
   // Get current vendor ID (in a real app, this would come from auth context)
   const vendorId = '2-2025-003';
@@ -123,7 +123,7 @@ export const VendorServices: React.FC = () => {
   const fetchServices = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${apiUrl}/services?vendorId=${vendorId}`);
+      const response = await fetch(`${apiUrl}/api/services?vendorId=${vendorId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch services');
       }
@@ -144,8 +144,8 @@ export const VendorServices: React.FC = () => {
   const handleSubmit = async (serviceData: any) => {
     try {
       const url = editingService 
-        ? `${apiUrl}/services/${editingService.id}`
-        : `${apiUrl}/services`;
+        ? `${apiUrl}/api/services/${editingService.id}`
+        : `${apiUrl}/api/services`;
       
       const method = editingService ? 'PUT' : 'POST';
       
@@ -182,7 +182,7 @@ export const VendorServices: React.FC = () => {
     if (!confirm('Are you sure you want to delete this service?')) return;
 
     try {
-      const response = await fetch(`${apiUrl}/services/${serviceId}`, {
+      const response = await fetch(`${apiUrl}/api/services/${serviceId}`, {
         method: 'DELETE',
       });
 

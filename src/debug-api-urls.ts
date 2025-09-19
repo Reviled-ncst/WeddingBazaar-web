@@ -5,9 +5,9 @@ const apiUrl = import.meta.env.VITE_API_URL;
 console.log('VITE_API_URL:', apiUrl);
 
 // Test URL construction (similar to AuthContext)
-const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-const loginUrl = `${apiBaseUrl}/auth/login`;
-const pingUrl = `${apiBaseUrl}/ping`;
+const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const loginUrl = `${apiBaseUrl}/api/auth/login`;
+const pingUrl = `${apiBaseUrl}/api/ping`;
 
 console.log('🔍 Constructed URLs:');
 console.log('  Login URL:', loginUrl);
