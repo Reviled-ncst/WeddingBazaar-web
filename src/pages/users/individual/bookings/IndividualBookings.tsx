@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CoupleHeader } from '../landing/CoupleHeader';
 
 // Import modular components
 import {
-  BookingStatsCards,
-  BookingFilters,
   BookingCard,
   BookingDetailsModal,
   QuoteDetailsModal,
@@ -13,13 +11,8 @@ import {
 
 // Import payment components
 import { PayMongoPaymentModal } from '../../../../shared/components/PayMongoPaymentModal';
-import { paymentService } from '../payment/services';
 
 // Import auth context to get the real user ID
-import { useAuth } from '../../../../shared/contexts/AuthContext';
-
-// Import comprehensive booking API service
-import { bookingApiService } from '../../../../services/api/bookingApiService';
 
 // Import custom hooks
 import { useBookingPreferences } from './hooks';
@@ -27,30 +20,16 @@ import { useBookingPreferences } from './hooks';
 // Import cn utility
 import { cn } from '../../../../utils/cn';
 
-// Import types - now using comprehensive types with UI extensions
-import { 
-  mapToUIBooking,
-  mapFilterStatusToStatuses
-} from './types/booking.types';
 import type { 
-  Booking, 
-  UIBookingStats as BookingStats, 
-  BookingsResponse
+  Booking
 } from './types/booking.types';
 import type { PaymentType } from '../payment/types/payment.types';
 
 export const IndividualBookings: React.FC = () => {
-  // Get authenticated user for real user ID
-  const { user } = useAuth();
-  
   // User preferences from localStorage
   const { 
-    filterStatus, 
-    setFilterStatus, 
-    viewMode,
-    setViewMode,
-    sortBy,
-    sortOrder
+    filterStatus,
+    viewMode
   } = useBookingPreferences();
   
   // Enhanced booking type with better vendor info and location data
@@ -75,16 +54,11 @@ export const IndividualBookings: React.FC = () => {
 
   // State management
   const [bookings, setBookings] = useState<EnhancedBooking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<BookingStats | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<EnhancedBooking | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showQuoteDetails, setShowQuoteDetails] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pagination, setPagination] = useState<BookingsResponse['pagination'] | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{
     name: string;
@@ -98,10 +72,6 @@ export const IndividualBookings: React.FC = () => {
     paymentType: 'downpayment' as PaymentType,
     loading: false
   });
-
-  // Use authenticated user ID for new bookings, but search for both IDs to include existing bookings
-  const userCoupleId = user?.id || '1-2025-001'; // Real user ID for new bookings
-  const legacyCoupleId = 'current-user-id'; // Legacy ID for existing bookings
 
   // Debounced search effect
   useEffect(() => {
@@ -477,10 +447,10 @@ export const IndividualBookings: React.FC = () => {
         booking={selectedBooking}
         isOpen={showQuoteDetails}
         onClose={() => setShowQuoteDetails(false)}
-        onAcceptQuote={(booking) => {
+        onAcceptQuote={() => {
           setShowQuoteDetails(false);
         }}
-        onRejectQuote={(booking) => {
+        onRejectQuote={() => {
           setShowQuoteDetails(false);
         }}
         onRequestModification={(_booking) => {

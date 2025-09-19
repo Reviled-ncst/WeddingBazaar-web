@@ -665,7 +665,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-white rounded-2xl p-6 mb-8 border border-gray-200 shadow-sm"
                   >
-                    {console.log('🎯 Rendering progress tracker:', { currentProgress, progressMessage, showProgress })}
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-bold text-gray-900 flex items-center gap-2">
                         <Clock className="h-5 w-5 text-blue-500" />
@@ -690,7 +689,7 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                     
                     {/* Progress Steps */}
                     <div className="flex justify-between items-center mb-4">
-                      {paymentSteps.map((step, index) => (
+                      {paymentSteps.map((step) => (
                         <div key={step.step} className="flex flex-col items-center flex-1">
                           <div className={cn(
                             "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300",

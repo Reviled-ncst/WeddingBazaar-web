@@ -6,12 +6,7 @@ import {
   User,
   MessageSquare,
   CheckCircle,
-  XCircle,
-  AlertCircle,
-  FileText,
   Eye,
-  Phone,
-  Mail,
   Edit,
   Send
 } from 'lucide-react';

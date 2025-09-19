@@ -3,8 +3,6 @@ import { CoupleHeader } from '../landing/CoupleHeader';
 
 // Import modular components
 import {
-  BookingStatsCards,
-  BookingFilters,
   BookingCard,
   BookingDetailsModal,
   QuoteDetailsModal,
@@ -13,7 +11,6 @@ import {
 
 // Import payment components
 import { PayMongoPaymentModal } from '../../../../shared/components/PayMongoPaymentModal';
-import { paymentService } from '../payment/services';
 
 // Import auth context to get the real user ID
 import { useAuth } from '../../../../shared/contexts/AuthContext';
@@ -32,9 +29,7 @@ import {
   mapFilterStatusToStatuses
 } from './types/booking.types';
 import type { 
-  Booking, 
-  UIBookingStats as BookingStats, 
-  BookingsResponse
+  Booking
 } from './types/booking.types';
 import type { PaymentType } from '../payment/types/payment.types';
 
@@ -46,12 +41,8 @@ export const IndividualBookings: React.FC = () => {
   
   // User preferences from localStorage
   const { 
-    filterStatus, 
-    setFilterStatus, 
-    viewMode,
-    setViewMode,
-    sortBy,
-    sortOrder
+    filterStatus,
+    viewMode
   } = useBookingPreferences();
   
   // Enhanced booking type with better vendor info and location data
@@ -76,16 +67,12 @@ export const IndividualBookings: React.FC = () => {
 
   // State management
   const [bookings, setBookings] = useState<EnhancedBooking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<BookingStats | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<EnhancedBooking | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showQuoteDetails, setShowQuoteDetails] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pagination, setPagination] = useState<BookingsResponse['pagination'] | null>(null);
+  const [currentPage] = useState(1);
   const [showMapModal, setShowMapModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{
     name: string;
@@ -118,18 +105,15 @@ export const IndividualBookings: React.FC = () => {
   // Load bookings data
   const loadBookings = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-      
       console.log('📊 [Bookings] Loading bookings for user:', userCoupleId);
-      console.log('📊 [Bookings] Filter status:', filterStatus, 'mapped:', mapFilterStatusToStatuses(filterStatus));
+      console.log('📊 [Bookings] Filter status:', filterStatus, 'mapped:', mapFilterStatusToStatuses(filterStatus as any));
       
       // Try to load real bookings first using getCoupleBookings
       try {
         const response = await bookingApiService.getCoupleBookings(userCoupleId, {
           page: currentPage,
           limit: 10,
-          status: filterStatus === 'all' ? undefined : mapFilterStatusToStatuses(filterStatus),
+          status: filterStatus === 'all' ? undefined : mapFilterStatusToStatuses(filterStatus as any),
           sortBy: 'created_at',
           sortOrder: 'desc'
         });
@@ -169,7 +153,7 @@ export const IndividualBookings: React.FC = () => {
           const legacyResponse = await bookingApiService.getCoupleBookings(legacyCoupleId, {
             page: currentPage,
             limit: 10,
-            status: filterStatus === 'all' ? undefined : mapFilterStatusToStatuses(filterStatus),
+            status: filterStatus === 'all' ? undefined : mapFilterStatusToStatuses(filterStatus as any),
             sortBy: 'created_at',
             sortOrder: 'desc'
           });
@@ -213,10 +197,7 @@ export const IndividualBookings: React.FC = () => {
       
     } catch (error) {
       console.error('📊 [Bookings] Error loading bookings:', error);
-      setError('Failed to load bookings. Please try again later.');
       setBookings([]);
-    } finally {
-      setLoading(false);
     }
   }, [userCoupleId, legacyCoupleId, currentPage, filterStatus]);
 
