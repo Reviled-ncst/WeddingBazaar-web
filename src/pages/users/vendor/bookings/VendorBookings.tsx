@@ -282,22 +282,22 @@ export const VendorBookings: React.FC = () => {
             if (vendorBookings.length > 0) {
               const mappedBookings = await Promise.all(
                 vendorBookings.map(async (booking: any) => {
-                  // For this booking, the couple name should be the actual user name
-                  // For now, let's use the couple ID to create a readable name
-                  const coupleName = await fetchCoupleName(booking.coupleId);
+                  // Fetch the real couple info (name and email) using the display-name endpoint
+                  const userInfo = await fetchUserInfo(booking.coupleId);
                   
+                  // Map the actual API response fields correctly
                   return {
                     id: booking.id.toString(),
                     vendorId: booking.vendorId.toString(),
                     coupleId: booking.coupleId,
-                    coupleName: coupleName, // Real couple name or formatted ID
-                    contactEmail: booking.contactEmail || `${booking.coupleId}@email.com`,
+                    coupleName: userInfo.name, // Real couple name from API
+                    contactEmail: userInfo.email, // Real email from API (not generated!)
                     contactPhone: booking.contactPhone,
                     serviceType: booking.serviceType,
                     eventDate: booking.eventDate,
-                    eventTime: booking.eventTime || undefined,
+                    eventTime: undefined, // Extract time from eventDate if needed
                     eventLocation: booking.location,
-                    guestCount: undefined,
+                    guestCount: undefined, // Not provided in API
                     specialRequests: booking.notes,
                     status: booking.status as BookingStatus,
                     quoteAmount: booking.amount,
@@ -306,11 +306,11 @@ export const VendorBookings: React.FC = () => {
                     depositAmount: booking.downPayment,
                     totalPaid: booking.downPayment || 0,
                     remainingBalance: booking.remainingBalance,
-                    budgetRange: undefined,
-                    preferredContactMethod: 'email',
+                    budgetRange: undefined, // Not provided in API
+                    preferredContactMethod: 'phone', // Default to phone since phone is provided
                     createdAt: booking.bookingDate,
                     updatedAt: booking.bookingDate,
-                    paymentProgressPercentage: Math.round(((booking.downPayment || 0) / booking.amount) * 100),
+                    paymentProgressPercentage: booking.amount > 0 ? Math.round(((booking.downPayment || 0) / booking.amount) * 100) : 0,
                     paymentCount: booking.downPayment > 0 ? 1 : 0,
                     formatted: {
                       totalAmount: formatPHP(booking.amount),
@@ -323,12 +323,14 @@ export const VendorBookings: React.FC = () => {
                 })
               );
               
-              console.log('✅ [VendorBookings] Final mapped bookings:', mappedBookings);
+              console.log('✅ [VendorBookings] Final mapped bookings with real couple names:', mappedBookings);
               console.log('🔍 [VendorBookings] First booking details:', {
                 id: mappedBookings[0]?.id,
                 coupleId: mappedBookings[0]?.coupleId,
                 coupleName: mappedBookings[0]?.coupleName,
-                serviceType: mappedBookings[0]?.serviceType
+                serviceType: mappedBookings[0]?.serviceType,
+                contactPhone: mappedBookings[0]?.contactPhone,
+                totalAmount: mappedBookings[0]?.formatted?.totalAmount
               });
               setBookingsWithLogging(mappedBookings);
               setPagination({
@@ -776,9 +778,9 @@ export const VendorBookings: React.FC = () => {
   // ============================================================================
 
   /**
-   * Fetches couple name from user API given a couple ID
+   * Fetches complete user information from user API given a couple ID
    */
-  async function fetchCoupleName(coupleId: string): Promise<string> {
+  async function fetchUserInfo(coupleId: string): Promise<{name: string, email: string}> {
     try {
       // Try to fetch user display name from the new public endpoint
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${coupleId}/display-name`, {
@@ -793,42 +795,56 @@ export const VendorBookings: React.FC = () => {
         console.log('👤 [VendorBookings] User display data for', coupleId, ':', userData);
         
         if (userData.success && userData.user) {
-          // Use the display name from the API
+          // Get display name
+          let displayName = '';
           if (userData.user.displayName) {
-            console.log('🎯 [VendorBookings] Got real display name:', userData.user.displayName, 'for ID:', coupleId);
-            return userData.user.displayName;
+            displayName = userData.user.displayName;
+            console.log('🎯 [VendorBookings] Got real display name:', displayName, 'for ID:', coupleId);
           } else if (userData.user.firstName && userData.user.lastName) {
-            const fullName = `${userData.user.firstName} ${userData.user.lastName}`;
-            console.log('🎯 [VendorBookings] Got real name:', fullName, 'for ID:', coupleId);
-            return fullName;
+            displayName = `${userData.user.firstName} ${userData.user.lastName}`;
+            console.log('🎯 [VendorBookings] Got real name:', displayName, 'for ID:', coupleId);
           } else if (userData.user.email) {
-            const emailName = userData.user.email.split('@')[0];
-            console.log('🎯 [VendorBookings] Got email name:', emailName, 'for ID:', coupleId);
-            return emailName;
+            displayName = userData.user.email.split('@')[0];
+            console.log('🎯 [VendorBookings] Got email name:', displayName, 'for ID:', coupleId);
+          }
+          
+          // Get real email
+          const email = userData.user.email || `${coupleId}@email.com`;
+          console.log('📧 [VendorBookings] Got email:', email, 'for ID:', coupleId);
+          
+          if (displayName) {
+            return { name: displayName, email };
           }
         }
       } else {
         console.log('⚠️ [VendorBookings] User display API failed for', coupleId, '- status:', response.status);
       }
     } catch (error) {
-      console.log('⚠️ Failed to fetch couple display name for:', coupleId, error);
+      console.log('⚠️ Failed to fetch couple display info for:', coupleId, error);
     }
     
     // Return a user-friendly formatted couple ID as fallback
+    let fallbackName = '';
     if (coupleId.includes('-')) {
       // Format like "1-2025-001" to "Couple #001"
       const parts = coupleId.split('-');
       if (parts.length >= 3) {
-        const formattedName = `Couple #${parts[2]}`;
-        console.log('🎯 [VendorBookings] Formatted couple name:', formattedName, 'from ID:', coupleId);
-        return formattedName;
+        fallbackName = `Couple #${parts[2]}`;
+        console.log('🎯 [VendorBookings] Formatted couple name:', fallbackName, 'from ID:', coupleId);
       }
     }
     
-    // Final fallback
-    const finalFallback = `Couple ${coupleId}`;
-    console.log('🎯 [VendorBookings] Final fallback name:', finalFallback, 'from ID:', coupleId);
-    return finalFallback;
+    if (!fallbackName) {
+      // Final fallback
+      fallbackName = `Couple ${coupleId}`;
+      console.log('🎯 [VendorBookings] Final fallback name:', fallbackName, 'from ID:', coupleId);
+    }
+    
+    // Generate fallback email
+    const fallbackEmail = `${coupleId}@email.com`;
+    console.log('📧 [VendorBookings] Using fallback email:', fallbackEmail, 'for ID:', coupleId);
+    
+    return { name: fallbackName, email: fallbackEmail };
   }
 
   return (
