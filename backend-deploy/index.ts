@@ -3911,6 +3911,7 @@ app.listen(PORT, async () => {
   console.log(`⭐ Reviews: ${PORT}/api/vendors/:id/reviews`);
   console.log(`📋 Service categories: ${PORT}/api/services/categories`);
   console.log(`🛡️ Total endpoints: 35+ endpoints implemented`);
+  console.log(`🗄️ Database initialization will run automatically...`);
   
   // Initialize database after server starts
   await initializeDatabase();
