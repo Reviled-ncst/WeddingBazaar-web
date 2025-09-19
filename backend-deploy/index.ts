@@ -1171,6 +1171,101 @@ app.get('/api/bookings/:id', async (req, res) => {
   }
 });
 
+// Test endpoint for debugging bookings (no auth required)
+app.get('/api/test/bookings', async (req, res) => {
+  try {
+    console.log('🧪 [TEST] Test bookings endpoint called');
+    
+    // Return test booking data regardless of auth
+    const testBookings = [
+      {
+        id: 1,
+        coupleId: 'test-user',
+        vendorId: 1,
+        vendorName: 'Test Photography Studio',
+        vendorCategory: 'Photography',
+        serviceType: 'Wedding Photography Package',
+        bookingDate: '2025-09-19T10:00:00Z',
+        eventDate: '2025-12-25T14:00:00Z',
+        status: 'confirmed',
+        amount: 75000,
+        downPayment: 22500,
+        remainingBalance: 52500,
+        location: 'Manila Cathedral',
+        notes: 'Test booking for production debugging',
+        contactPhone: '+63917-123-4567',
+        createdAt: '2025-09-19T10:00:00Z',
+        updatedAt: '2025-09-19T10:00:00Z'
+      },
+      {
+        id: 2,
+        coupleId: 'test-user',
+        vendorId: 2,
+        vendorName: 'Test Catering Services',
+        vendorCategory: 'Catering',
+        serviceType: 'Wedding Reception Catering',
+        bookingDate: '2025-09-19T11:00:00Z',
+        eventDate: '2025-12-25T18:00:00Z',
+        status: 'pending',
+        amount: 150000,
+        downPayment: 45000,
+        remainingBalance: 105000,
+        location: 'Manila Hotel Reception',
+        notes: 'Test catering booking',
+        contactPhone: '+63917-234-5678',
+        createdAt: '2025-09-19T11:00:00Z',
+        updatedAt: '2025-09-19T11:00:00Z'
+      }
+    ];
+
+    res.json({
+      success: true,
+      bookings: testBookings,
+      pagination: {
+        currentPage: 1,
+        totalPages: 1,
+        totalBookings: testBookings.length,
+        hasNext: false,
+        hasPrev: false
+      }
+    });
+    
+    console.log('✅ [TEST] Test bookings returned successfully');
+  } catch (error) {
+    console.error('❌ [TEST] Error in test bookings endpoint:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Test endpoint error'
+    });
+  }
+});
+
+// Test endpoint for debugging bookings (no auth required)
+app.get('/api/test/user', async (req, res) => {
+  try {
+    console.log('🧪 [TEST] Test user endpoint called');
+    
+    res.json({
+      success: true,
+      user: {
+        id: 'test-user-123',
+        email: 'test@production.com',
+        firstName: 'Test',
+        lastName: 'User',
+        role: 'couple'
+      }
+    });
+    
+    console.log('✅ [TEST] Test user returned successfully');
+  } catch (error) {
+    console.error('❌ [TEST] Error in test user endpoint:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Test user endpoint error'
+    });
+  }
+});
+
 // Bookings for a specific couple
 app.get('/api/bookings/couple/:id', async (req, res) => {
   try {
