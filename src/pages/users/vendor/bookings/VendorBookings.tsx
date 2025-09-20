@@ -13,10 +13,15 @@ import {
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { VendorBookingCard } from './components/VendorBookingCard';
 import { VendorBookingDetailsModal } from './components/VendorBookingDetailsModal';
+import { QuoteModal } from './components/QuoteModal';
+import { MessageModal } from './components/MessageModal';
 import { formatPHP } from '../../../../utils/currency';
 
 // Import comprehensive booking API and types
 import { bookingApiService } from '../../../../services/api/bookingApiService';
+import { vendorQuoteMessagingService } from './services/vendorQuoteMessagingService';
+import type { QuoteData } from './components/QuoteModal';
+import type { MessageData } from './components/MessageModal';
 import type { 
   Booking, 
   BookingStatus,
@@ -214,6 +219,9 @@ export const VendorBookings: React.FC = () => {
   const [stats, setStats] = useState<UIBookingStats | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<UIBooking | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [isEditingQuote, setIsEditingQuote] = useState(false);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'created_at' | 'event_date' | 'status'>('created_at');
@@ -734,6 +742,58 @@ export const VendorBookings: React.FC = () => {
     }
   };
 
+  // QUOTE MANAGEMENT FUNCTIONS
+  
+  const handleSendQuote = async (quoteData: QuoteData) => {
+    try {
+      console.log('📤 [VendorBookings] Sending quote:', quoteData);
+      
+      const result = await vendorQuoteMessagingService.sendQuote(quoteData);
+      
+      if (result.success) {
+        console.log('✅ [VendorBookings] Quote sent successfully:', result);
+        
+        // Show success notification
+        alert(`Quote sent successfully! ${result.message}`);
+        
+        // Reload bookings to reflect updated status
+        loadBookings();
+        loadStats();
+        
+        // Close modal
+        setShowQuoteModal(false);
+      } else {
+        throw new Error(result.message || 'Failed to send quote');
+      }
+    } catch (error) {
+      console.error('💥 [VendorBookings] Failed to send quote:', error);
+      throw error; // Re-throw to let the modal handle the error display
+    }
+  };
+
+  const handleSendMessage = async (messageData: MessageData) => {
+    try {
+      console.log('📤 [VendorBookings] Sending message:', messageData);
+      
+      const result = await vendorQuoteMessagingService.sendMessage(messageData);
+      
+      if (result.success) {
+        console.log('✅ [VendorBookings] Message sent successfully:', result);
+        
+        // Show success notification
+        alert(`Message sent successfully! ${result.message}`);
+        
+        // Close modal
+        setShowMessageModal(false);
+      } else {
+        throw new Error(result.message || 'Failed to send message');
+      }
+    } catch (error) {
+      console.error('💥 [VendorBookings] Failed to send message:', error);
+      throw error; // Re-throw to let the modal handle the error display
+    }
+  };
+
   // VENDOR UTILITY FUNCTIONS - No payment processing for vendors
 
   const exportBookings = () => {
@@ -1144,10 +1204,12 @@ export const VendorBookings: React.FC = () => {
                       }}
                       onSendQuote={(booking) => {
                         setSelectedBooking(convertVendorBookingToUIBooking(booking));
-                        console.log('Send quote for booking:', booking.id);
+                        setIsEditingQuote(booking.status === 'quote_sent');
+                        setShowQuoteModal(true);
                       }}
                       onContactClient={(booking) => {
-                        console.log('Contact client:', booking.contactEmail);
+                        setSelectedBooking(convertVendorBookingToUIBooking(booking));
+                        setShowMessageModal(true);
                       }}
                       viewMode="list"
                     />
@@ -1257,13 +1319,52 @@ export const VendorBookings: React.FC = () => {
         onSendQuote={(booking) => {
           // Simple conversion for quote modal compatibility
           setSelectedBooking(booking as any);
-          // TODO: Implement quote functionality or redirect to quote page
-          console.log('Send quote for booking:', booking.id);
+          setIsEditingQuote(booking.status === 'quote_sent');
+          setShowQuoteModal(true);
         }}
         onContactClient={(booking) => {
           // Implement client contact functionality
-          console.log('Contact client:', booking.coupleName);
+          setSelectedBooking(booking as any);
+          setShowMessageModal(true);
         }}
+      />
+
+      {/* Quote Modal */}
+      <QuoteModal
+        booking={selectedBooking ? {
+          id: selectedBooking.id,
+          coupleName: selectedBooking.coupleName,
+          serviceType: selectedBooking.serviceType,
+          eventDate: selectedBooking.eventDate,
+          eventLocation: selectedBooking.eventLocation,
+          guestCount: selectedBooking.guestCount,
+          specialRequests: selectedBooking.specialRequests,
+          budgetRange: selectedBooking.budgetRange,
+          quoteAmount: selectedBooking.quoteAmount,
+          status: selectedBooking.status
+        } : null}
+        isOpen={showQuoteModal}
+        onClose={() => setShowQuoteModal(false)}
+        onSubmitQuote={handleSendQuote}
+        isEditing={isEditingQuote}
+      />
+
+      {/* Message Modal */}
+      <MessageModal
+        booking={selectedBooking ? {
+          id: selectedBooking.id,
+          coupleName: selectedBooking.coupleName,
+          contactEmail: selectedBooking.contactEmail,
+          contactPhone: selectedBooking.contactPhone,
+          serviceType: selectedBooking.serviceType,
+          eventDate: selectedBooking.eventDate,
+          eventLocation: selectedBooking.eventLocation,
+          preferredContactMethod: selectedBooking.preferredContactMethod,
+          status: selectedBooking.status
+        } : null}
+        isOpen={showMessageModal}
+        onClose={() => setShowMessageModal(false)}
+        onSendMessage={handleSendMessage}
       />
 
       {/* DEPRECATED - Old inline modal - Remove this entire section */}
