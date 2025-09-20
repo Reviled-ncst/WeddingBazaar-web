@@ -848,157 +848,285 @@ export const VendorBookings: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50/50 via-pink-50/30 to-white">
+    <div className="min-h-screen bg-gradient-to-br from-rose-50/30 via-pink-50/20 to-purple-50/30">
       <VendorHeader />
       
-      <div className="pt-24 pb-16">
-        <div className="container mx-auto px-4">
-          {/* Simplified Header */}
+      <div className="pt-20 pb-16">
+        <div className="container mx-auto px-4 max-w-7xl">
+          {/* Enhanced Header Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
+            className="mb-8"
           >
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Booking Management
-            </h1>
-            <p className="text-gray-600">
-              Manage your client bookings and track your business performance
-            </p>
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-white/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-rose-600 to-purple-600 bg-clip-text text-transparent mb-3">
+                    Booking Dashboard
+                  </h1>
+                  <p className="text-gray-600 text-lg">
+                    Manage your client bookings and track your business performance
+                  </p>
+                </div>
+                <div className="hidden md:block">
+                  <div className="bg-gradient-to-r from-rose-500 to-purple-500 rounded-2xl p-6">
+                    <Calendar className="h-12 w-12 text-white" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </motion.div>
 
-          {/* Simplified Stats */}
+          {/* Enhanced Stats Cards */}
           {stats && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
             >
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalBookings}</p>
-                    <p className="text-sm text-gray-600">Total Bookings</p>
+              <div className="group hover:scale-105 transition-all duration-300">
+                <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 hover:shadow-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-gray-900 mb-1">{stats.totalBookings}</p>
+                      <p className="text-sm font-medium text-gray-600">Total Bookings</p>
+                      <div className="mt-2 flex items-center text-xs text-green-600">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        <span>Active portfolio</span>
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-r from-rose-400 to-rose-500 rounded-xl p-3">
+                      <Package className="h-8 w-8 text-white" />
+                    </div>
                   </div>
-                  <Package className="h-8 w-8 text-rose-500" />
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">{stats.inquiries}</p>
-                    <p className="text-sm text-gray-600">New Inquiries</p>
+              <div className="group hover:scale-105 transition-all duration-300">
+                <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 hover:shadow-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-gray-900 mb-1">{stats.inquiries}</p>
+                      <p className="text-sm font-medium text-gray-600">New Inquiries</p>
+                      <div className="mt-2 flex items-center text-xs text-yellow-600">
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        <span>Needs attention</span>
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl p-3">
+                      <AlertCircle className="h-8 w-8 text-white" />
+                    </div>
                   </div>
-                  <AlertCircle className="h-8 w-8 text-yellow-500" />
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">{stats.fullyPaidBookings}</p>
-                    <p className="text-sm text-gray-600">Completed</p>
+              <div className="group hover:scale-105 transition-all duration-300">
+                <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 hover:shadow-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-gray-900 mb-1">{stats.fullyPaidBookings}</p>
+                      <p className="text-sm font-medium text-gray-600">Completed</p>
+                      <div className="mt-2 flex items-center text-xs text-green-600">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        <span>Successfully delivered</span>
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-r from-green-400 to-emerald-500 rounded-xl p-3">
+                      <CheckCircle className="h-8 w-8 text-white" />
+                    </div>
                   </div>
-                  <CheckCircle className="h-8 w-8 text-green-500" />
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xl font-bold text-gray-900">{stats.formatted?.totalRevenue}</p>
-                    <p className="text-sm text-gray-600">Total Revenue</p>
+              <div className="group hover:scale-105 transition-all duration-300">
+                <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 hover:shadow-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-2xl font-bold text-gray-900 mb-1">{stats.formatted?.totalRevenue}</p>
+                      <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                      <div className="mt-2 flex items-center text-xs text-blue-600">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        <span>Earnings to date</span>
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-r from-blue-400 to-indigo-500 rounded-xl p-3">
+                      <TrendingUp className="h-8 w-8 text-white" />
+                    </div>
                   </div>
-                  <TrendingUp className="h-8 w-8 text-blue-500" />
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* Simplified Controls */}
+          {/* Enhanced Controls Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white/90 rounded-xl p-4 mb-6 shadow-sm"
+            className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 mb-8 shadow-lg border border-white/20"
           >
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-              {/* Left side - Search and Filter */}
-              <div className="flex gap-3 w-full sm:w-auto">
-                {/* Search */}
-                <div className="relative flex-1 sm:w-64">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
+              {/* Left side - Enhanced Search and Filter */}
+              <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                {/* Enhanced Search */}
+                <div className="relative flex-1 sm:w-80">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Search by couple name..."
+                    placeholder="Search by couple name, service type..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-3 py-2 w-full border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-sm"
+                    className="pl-12 pr-4 py-3 w-full border-0 bg-gray-50/80 rounded-2xl focus:ring-2 focus:ring-rose-500 focus:bg-white transition-all duration-200 text-sm placeholder-gray-500"
                   />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
 
-                {/* Simple Status Filter */}
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
-                  className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-sm min-w-32"
-                  title="Filter bookings by status"
-                >
-                  <option value="all">All Bookings</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="completed">Completed</option>
-                  <option value="quote_requested">Pending</option>
-                </select>
+                {/* Enhanced Status Filter */}
+                <div className="relative">
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
+                    className="appearance-none px-4 py-3 pr-10 border-0 bg-gray-50/80 rounded-2xl focus:ring-2 focus:ring-rose-500 focus:bg-white transition-all duration-200 text-sm font-medium min-w-40"
+                    title="Filter bookings by status"
+                  >
+                    <option value="all">All Bookings</option>
+                    <option value="quote_requested">📝 Quote Requested</option>
+                    <option value="confirmed">✅ Confirmed</option>
+                    <option value="completed">🎉 Completed</option>
+                    <option value="downpayment_paid">💰 Downpayment Paid</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
               </div>
 
-              {/* Right side - Sort and Export */}
-              <div className="flex gap-3">
-                <select
-                  value={`${sortBy}-${sortOrder}`}
-                  onChange={(e) => {
-                    const [sort, order] = e.target.value.split('-');
-                    setSortBy(sort as any);
-                    setSortOrder(order as any);
-                  }}
-                  className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-sm"
-                  title="Sort bookings"
-                >
-                  <option value="created_at-DESC">Latest First</option>
-                  <option value="event_date-ASC">Event Date</option>
-                </select>
+              {/* Right side - Enhanced Sort and Actions */}
+              <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                {/* Enhanced Sort */}
+                <div className="relative">
+                  <select
+                    value={`${sortBy}-${sortOrder}`}
+                    onChange={(e) => {
+                      const [sort, order] = e.target.value.split('-');
+                      setSortBy(sort as any);
+                      setSortOrder(order as any);
+                    }}
+                    className="appearance-none px-4 py-3 pr-10 border-0 bg-gray-50/80 rounded-2xl focus:ring-2 focus:ring-rose-500 focus:bg-white transition-all duration-200 text-sm font-medium min-w-44"
+                    title="Sort bookings"
+                  >
+                    <option value="created_at-DESC">🕒 Latest First</option>
+                    <option value="event_date-ASC">📅 Event Date</option>
+                    <option value="status-ASC">📊 Status</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
 
+                {/* Enhanced Export Button */}
                 <button 
                   onClick={exportBookings}
-                  className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors text-sm"
+                  className="group flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-rose-500 to-purple-500 text-white rounded-2xl hover:from-rose-600 hover:to-purple-600 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
                 >
-                  <Download className="h-4 w-4" />
-                  Export
+                  <Download className="h-5 w-5 group-hover:animate-bounce" />
+                  <span>Export CSV</span>
                 </button>
               </div>
             </div>
+
+            {/* Enhanced Quick Stats Bar */}
+            {bookings.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-gray-200/50">
+                <div className="flex flex-wrap gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="text-gray-600">
+                      Showing <span className="font-semibold text-gray-900">{bookings.length}</span> bookings
+                    </span>
+                  </div>
+                  {filterStatus !== 'all' && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-rose-500 rounded-full"></div>
+                      <span className="text-gray-600">
+                        Filtered by <span className="font-semibold text-gray-900">{filterStatus.replace('_', ' ')}</span>
+                      </span>
+                    </div>
+                  )}
+                  {searchQuery && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                      <span className="text-gray-600">
+                        Search: <span className="font-semibold text-gray-900">"{searchQuery}"</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </motion.div>
 
-          {/* Simplified Bookings List */}
+          {/* Enhanced Bookings List */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-xl shadow-sm overflow-hidden"
+            className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden border border-white/20"
           >
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-rose-500" />
-                <span className="ml-3 text-gray-600">Loading bookings...</span>
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="relative">
+                  <div className="w-16 h-16 bg-gradient-to-r from-rose-400 to-purple-500 rounded-2xl flex items-center justify-center mb-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-white" />
+                  </div>
+                  <div className="absolute -inset-2 bg-gradient-to-r from-rose-400 to-purple-500 rounded-2xl opacity-20 animate-pulse"></div>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading your bookings...</h3>
+                <p className="text-gray-600 text-center max-w-md">
+                  We're fetching your latest booking information and client details.
+                </p>
               </div>
             ) : (!bookings || bookings.length === 0) ? (
-              <div className="text-center py-12">
-                <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>
-                <p className="text-gray-600">
-                  {searchQuery || filterStatus !== 'all' ? 'Try adjusting your filters' : 'New bookings will appear here'}
+              <div className="text-center py-16">
+                <div className="relative mb-6">
+                  <div className="w-20 h-20 bg-gradient-to-r from-gray-200 to-gray-300 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                    <Calendar className="h-10 w-10 text-gray-500" />
+                  </div>
+                  <div className="absolute -inset-2 bg-gradient-to-r from-gray-200 to-gray-300 rounded-3xl opacity-20 mx-auto"></div>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  {searchQuery || filterStatus !== 'all' ? 'No matching bookings found' : 'No bookings yet'}
+                </h3>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  {searchQuery || filterStatus !== 'all' 
+                    ? 'Try adjusting your search terms or filters to find what you\'re looking for.' 
+                    : 'Your new client bookings and inquiries will appear here. Start by promoting your services to attract couples.'
+                  }
                 </p>
+                {(searchQuery || filterStatus !== 'all') && (
+                  <button 
+                    onClick={() => {
+                      setSearchQuery('');
+                      setFilterStatus('all');
+                    }}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-purple-500 text-white rounded-2xl hover:from-rose-600 hover:to-purple-600 transition-all duration-200 font-medium"
+                  >
+                    Clear Filters
+                  </button>
+                )}
               </div>
             ) : (
               <>
@@ -1026,30 +1154,63 @@ export const VendorBookings: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Simple Pagination */}
+                {/* Enhanced Pagination */}
                 {pagination && pagination.total_pages > 1 && (
-                  <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
-                    <div className="flex items-center justify-between text-sm">
-                      <p className="text-gray-600">
-                        {pagination.total_items} total bookings
-                      </p>
+                  <div className="px-6 py-4 bg-gradient-to-r from-gray-50/80 to-rose-50/50 border-t border-gray-100/50">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <Package className="h-4 w-4" />
+                          <span className="font-medium text-gray-900">{pagination.total_items}</span>
+                          <span>total bookings</span>
+                        </div>
+                        <span className="text-gray-400">•</span>
+                        <span>
+                          Page <span className="font-medium text-gray-900">{currentPage}</span> of {pagination.total_pages}
+                        </span>
+                      </div>
+                      
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setCurrentPage(currentPage - 1)}
                           disabled={!pagination.hasPrev}
-                          className="px-3 py-1 border border-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white"
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white/80 rounded-xl border border-gray-200/50 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                         >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                          </svg>
                           Previous
                         </button>
-                        <span className="px-2 py-1 bg-rose-100 text-rose-700 rounded">
-                          {currentPage} / {pagination.total_pages}
-                        </span>
+                        
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                            const pageNum = i + 1;
+                            const isActive = pageNum === currentPage;
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => setCurrentPage(pageNum)}
+                                className={`w-10 h-10 rounded-xl text-sm font-medium transition-all duration-200 ${
+                                  isActive 
+                                    ? 'bg-gradient-to-r from-rose-500 to-purple-500 text-white shadow-lg' 
+                                    : 'bg-white/80 text-gray-700 hover:bg-white border border-gray-200/50'
+                                }`}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        
                         <button
                           onClick={() => setCurrentPage(currentPage + 1)}
                           disabled={!pagination.hasNext}
-                          className="px-3 py-1 border border-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white"
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white/80 rounded-xl border border-gray-200/50 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                         >
                           Next
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                          </svg>
                         </button>
                       </div>
                     </div>
