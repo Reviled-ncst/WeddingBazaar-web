@@ -3,7 +3,6 @@ import {
   Calendar,
   MapPin,
   Clock,
-  User,
   MessageSquare,
   CheckCircle,
   Eye,
@@ -12,7 +11,8 @@ import {
   Phone,
   Mail,
   Users,
-  AlertCircle
+  AlertCircle,
+  Package
 } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
 
@@ -98,54 +98,75 @@ export const VendorBookingCard: React.FC<VendorBookingCardProps> = ({
     if (booking.status === 'quote_sent') {
       actions.push({
         type: 'edit_quote',
-        label: 'Edit Quote', 
+        label: 'Update Quote', 
         icon: Edit,
         variant: 'secondary',
         action: () => onSendQuote?.(booking)
       });
     }
     
-    // Client communication
-    actions.push({
-      type: 'contact_client',
-      label: 'Contact Client',
-      icon: MessageSquare,
-      variant: 'secondary',
-      action: () => onContactClient?.(booking)
-    });
-    
-    // Status management
+    // Booking confirmation
     if (booking.status === 'quote_accepted' && onUpdateStatus) {
       actions.push({
         type: 'confirm_booking',
-        label: 'Confirm Booking',
+        label: 'Accept & Confirm',
         icon: CheckCircle,
         variant: 'primary',
         action: () => onUpdateStatus(booking.id, 'confirmed', 'Booking confirmed by vendor')
       });
     }
     
+    // Service delivery tracking for confirmed bookings
     if (booking.status === 'confirmed' && onUpdateStatus) {
-      actions.push({
-        type: 'start_service',
-        label: 'Start Service',
-        icon: User,
-        variant: 'primary',
-        action: () => onUpdateStatus(booking.id, 'in_progress', 'Service started')
-      });
+      // Check if event date is today or has passed
+      const eventDate = new Date(booking.eventDate);
+      const today = new Date();
+      const isEventToday = eventDate.toDateString() === today.toDateString();
+      const isEventPast = eventDate < today;
+      
+      if (isEventToday || isEventPast) {
+        actions.push({
+          type: 'mark_delivered',
+          label: 'Mark as Delivered',
+          icon: CheckCircle,
+          variant: 'primary',
+          action: () => onUpdateStatus(booking.id, 'completed', 'Service delivered successfully')
+        });
+      } else {
+        // Show prepare action for future events
+        actions.push({
+          type: 'prepare_service',
+          label: 'Prepare Service',
+          icon: Package,
+          variant: 'secondary',
+          action: () => onViewDetails(booking) // Open details to view preparation checklist
+        });
+      }
     }
     
+    // For in-progress bookings (legacy status support)
     if (booking.status === 'in_progress' && onUpdateStatus) {
       actions.push({
         type: 'complete_service',
-        label: 'Mark Complete',
+        label: 'Mark as Delivered',
         icon: CheckCircle,
         variant: 'primary',
-        action: () => onUpdateStatus(booking.id, 'completed', 'Service completed successfully')
+        action: () => onUpdateStatus(booking.id, 'completed', 'Service delivered successfully')
       });
     }
     
-    // View details action
+    // Client communication - always available for active bookings
+    if (!['cancelled', 'completed'].includes(booking.status)) {
+      actions.push({
+        type: 'contact_client',
+        label: 'Message Client',
+        icon: MessageSquare,
+        variant: 'secondary',
+        action: () => onContactClient?.(booking)
+      });
+    }
+    
+    // View details action - always available
     actions.push({
       type: 'view_details',
       label: 'View Details',
@@ -310,8 +331,13 @@ export const VendorBookingCard: React.FC<VendorBookingCardProps> = ({
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
-                        className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${booking.paymentProgressPercentage}%` }}
+                        className={`h-2 rounded-full transition-all duration-300 bg-gradient-to-r from-green-500 to-emerald-500 ${
+                          booking.paymentProgressPercentage >= 100 ? 'w-full' :
+                          booking.paymentProgressPercentage >= 75 ? 'w-3/4' :
+                          booking.paymentProgressPercentage >= 50 ? 'w-1/2' :
+                          booking.paymentProgressPercentage >= 25 ? 'w-1/4' :
+                          booking.paymentProgressPercentage > 0 ? 'w-1/12' : 'w-0'
+                        }`}
                       ></div>
                     </div>
                   </div>
@@ -343,22 +369,22 @@ export const VendorBookingCard: React.FC<VendorBookingCardProps> = ({
                 <Eye className="w-4 h-4" />
                 Details
               </button>
-              {vendorActions.filter(action => action.variant === 'secondary').slice(0, 1).map((action) => (
+              {/* Show message button only for active bookings */}
+              {!['cancelled', 'completed'].includes(booking.status) && (
                 <button
-                  key={action.type}
-                  onClick={action.action}
+                  onClick={() => onContactClient?.(booking)}
                   className="px-4 py-2 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200 transition-colors text-sm font-medium flex items-center justify-center gap-2"
                 >
-                  <action.icon className="w-4 h-4" />
-                  {action.label === 'Contact Client' ? 'Message' : action.label}
+                  <MessageSquare className="w-4 h-4" />
+                  Message
                 </button>
-              ))}
+              )}
             </div>
 
-            {/* Additional Quick Actions */}
-            {vendorActions.filter(action => action.variant === 'secondary').length > 1 && (
+            {/* Additional Actions for Active Bookings */}
+            {vendorActions.filter(action => action.variant === 'secondary' && !['contact_client', 'view_details'].includes(action.type)).length > 0 && (
               <div className="flex gap-2">
-                {vendorActions.filter(action => action.variant === 'secondary').slice(1).map((action) => (
+                {vendorActions.filter(action => action.variant === 'secondary' && !['contact_client', 'view_details'].includes(action.type)).map((action) => (
                   <button
                     key={action.type}
                     onClick={action.action}
@@ -439,8 +465,13 @@ export const VendorBookingCard: React.FC<VendorBookingCardProps> = ({
                         {booking.paymentProgressPercentage !== undefined && (
                           <div className="w-24 bg-gray-200 rounded-full h-2 ml-auto">
                             <div 
-                              className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${booking.paymentProgressPercentage}%` }}
+                              className={`h-2 rounded-full transition-all duration-300 bg-green-500 ${
+                                booking.paymentProgressPercentage >= 100 ? 'w-full' :
+                                booking.paymentProgressPercentage >= 75 ? 'w-3/4' :
+                                booking.paymentProgressPercentage >= 50 ? 'w-1/2' :
+                                booking.paymentProgressPercentage >= 25 ? 'w-1/4' :
+                                booking.paymentProgressPercentage > 0 ? 'w-1/12' : 'w-0'
+                              }`}
                             ></div>
                           </div>
                         )}
@@ -531,14 +562,17 @@ export const VendorBookingCard: React.FC<VendorBookingCardProps> = ({
 
           {/* Secondary Actions */}
           <div className="flex gap-2">
-            <button
-              onClick={() => onContactClient?.(booking)}
-              className="px-4 py-2 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200 transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
-              title={`Contact via ${booking.preferredContactMethod}: ${booking.contactEmail}`}
-            >
-              <MessageSquare className="w-4 h-4" />
-              Message
-            </button>
+            {/* Show message button only for active bookings */}
+            {!['cancelled', 'completed'].includes(booking.status) && (
+              <button
+                onClick={() => onContactClient?.(booking)}
+                className="px-4 py-2 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200 transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                title={`Contact via ${booking.preferredContactMethod}: ${booking.contactEmail}`}
+              >
+                <MessageSquare className="w-4 h-4" />
+                Message
+              </button>
+            )}
             
             <button
               onClick={() => onViewDetails(booking)}
@@ -549,16 +583,19 @@ export const VendorBookingCard: React.FC<VendorBookingCardProps> = ({
             </button>
           </div>
 
-          {/* Additional Actions Dropdown (if needed) */}
-          {vendorActions.filter(action => action.variant === 'secondary').length > 1 && (
-            <div className="relative">
-              <button 
-                className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                title="More actions"
-              >
-                •••
-              </button>
-              {/* Dropdown implementation would go here */}
+          {/* Additional Secondary Actions */}
+          {vendorActions.filter(action => action.variant === 'secondary' && !['contact_client', 'view_details'].includes(action.type)).length > 0 && (
+            <div className="flex gap-2">
+              {vendorActions.filter(action => action.variant === 'secondary' && !['contact_client', 'view_details'].includes(action.type)).slice(0, 2).map((action) => (
+                <button
+                  key={action.type}
+                  onClick={action.action}
+                  className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium flex items-center gap-1 whitespace-nowrap"
+                >
+                  <action.icon className="w-4 h-4" />
+                  {action.label}
+                </button>
+              ))}
             </div>
           )}
         </div>
