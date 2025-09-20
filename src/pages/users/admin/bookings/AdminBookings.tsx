@@ -1,11 +1,653 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Calendar,
+  Search,
+  MoreVertical,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Clock,
+  DollarSign,
+  TrendingUp,
+  RefreshCcw,
+  Download,
+  Eye,
+  Edit,
+  Ban,
+  User,
+  Building,
+  CreditCard,
+  Award
+} from 'lucide-react';
+import { AdminHeader } from '../../../../shared/components/layout/AdminHeader';
+
+// Booking interface - will be updated to use adminApi types later
+interface AdminBooking {
+  id: string;
+  bookingReference: string;
+  userId: string;
+  vendorId: string;
+  serviceId: string;
+  userName: string;
+  vendorName: string;
+  serviceName: string;
+  serviceCategory: string;
+  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'refunded';
+  bookingDate: string;
+  eventDate: string;
+  duration: number;
+  totalAmount: number;
+  paidAmount: number;
+  commission: number;
+  paymentStatus: 'pending' | 'partial' | 'paid' | 'refunded' | 'failed';
+  paymentMethod?: string;
+  notes?: string;
+  cancellationReason?: string;
+  createdAt: string;
+  updatedAt: string;
+  clientContact: {
+    email: string;
+    phone?: string;
+  };
+  vendorContact: {
+    email: string;
+    phone?: string;
+  };
+}
+
+// Sample data for development
+const generateSampleBookings = (): AdminBooking[] => {
+  const statuses: AdminBooking['status'][] = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'refunded'];
+  const paymentStatuses: AdminBooking['paymentStatus'][] = ['pending', 'partial', 'paid', 'refunded', 'failed'];
+  const categories = ['Photography', 'Catering', 'Venues', 'Music & DJ', 'Planning', 'Flowers', 'Beauty', 'Transportation'];
+  const vendors = ['Perfect Weddings Co.', 'Elegant Events', 'Dream Catchers', 'Blissful Moments', 'Royal Affairs'];
+  const clients = ['John & Sarah Smith', 'Mike & Emily Johnson', 'David & Lisa Brown', 'Tom & Anna Wilson'];
+
+  return Array.from({ length: 75 }, (_, i) => ({
+    id: `booking-${i + 1}`,
+    bookingReference: `WB${String(10000 + i).slice(-4)}`,
+    userId: `user-${Math.floor(Math.random() * 50) + 1}`,
+    vendorId: `vendor-${Math.floor(Math.random() * 20) + 1}`,
+    serviceId: `service-${Math.floor(Math.random() * 100) + 1}`,
+    userName: clients[Math.floor(Math.random() * clients.length)],
+    vendorName: vendors[Math.floor(Math.random() * vendors.length)],
+    serviceName: `${categories[Math.floor(Math.random() * categories.length)]} Service`,
+    serviceCategory: categories[Math.floor(Math.random() * categories.length)],
+    status: statuses[Math.floor(Math.random() * statuses.length)],
+    bookingDate: new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)).toISOString(),
+    eventDate: new Date(Date.now() + Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000)).toISOString(),
+    duration: Math.floor(Math.random() * 8) + 1,
+    totalAmount: Math.floor(Math.random() * 5000) + 500,
+    paidAmount: Math.floor(Math.random() * 3000),
+    commission: Math.floor(Math.random() * 500) + 50,
+    paymentStatus: paymentStatuses[Math.floor(Math.random() * paymentStatuses.length)],
+    paymentMethod: Math.random() > 0.5 ? 'Credit Card' : 'Bank Transfer',
+    notes: Math.random() > 0.7 ? 'Special requirements noted' : undefined,
+    cancellationReason: statuses[Math.floor(Math.random() * statuses.length)] === 'cancelled' ? 'Client request' : undefined,
+    createdAt: new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)).toISOString(),
+    updatedAt: new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)).toISOString(),
+    clientContact: {
+      email: `client${i + 1}@example.com`,
+      phone: `+1 (555) ${String(Math.floor(Math.random() * 900) + 100)}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+    },
+    vendorContact: {
+      email: `vendor${Math.floor(Math.random() * 20) + 1}@example.com`,
+      phone: `+1 (555) ${String(Math.floor(Math.random() * 900) + 100)}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+    },
+  }));
+};
 
 export const AdminBookings: React.FC = () => {
+  const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<AdminBooking['status'] | 'all'>('all');
+  const [filterPaymentStatus, setFilterPaymentStatus] = useState<AdminBooking['paymentStatus'] | 'all'>('all');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'bookingDate' | 'eventDate' | 'totalAmount' | 'status'>('bookingDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12);
+
+  // Load bookings data
+  useEffect(() => {
+    const loadBookings = async () => {
+      setLoading(true);
+      try {
+        // For now, use sample data. Replace with API call:
+        // const response = await adminApi.bookings.getBookings({ page: currentPage, limit: itemsPerPage });
+        // if (response.success && response.data) {
+        //   setBookings(response.data);
+        // }
+        
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setBookings(generateSampleBookings());
+      } catch (error) {
+        console.error('Failed to load bookings:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBookings();
+  }, [currentPage, itemsPerPage]);
+
+  // Filter and sort bookings
+  const filteredAndSortedBookings = useMemo(() => {
+    let filtered = bookings.filter(booking => {
+      const matchesSearch = searchTerm === '' || 
+        booking.bookingReference.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.serviceName.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = filterStatus === 'all' || booking.status === filterStatus;
+      const matchesPaymentStatus = filterPaymentStatus === 'all' || booking.paymentStatus === filterPaymentStatus;
+      const matchesCategory = filterCategory === 'all' || booking.serviceCategory === filterCategory;
+      
+      return matchesSearch && matchesStatus && matchesPaymentStatus && matchesCategory;
+    });
+
+    // Sort bookings
+    filtered.sort((a, b) => {
+      let valueA: any, valueB: any;
+      
+      switch (sortBy) {
+        case 'bookingDate':
+          valueA = new Date(a.bookingDate).getTime();
+          valueB = new Date(b.bookingDate).getTime();
+          break;
+        case 'eventDate':
+          valueA = new Date(a.eventDate).getTime();
+          valueB = new Date(b.eventDate).getTime();
+          break;
+        case 'totalAmount':
+          valueA = a.totalAmount;
+          valueB = b.totalAmount;
+          break;
+        case 'status':
+          valueA = a.status;
+          valueB = b.status;
+          break;
+        default:
+          return 0;
+      }
+
+      if (sortOrder === 'asc') {
+        return valueA > valueB ? 1 : -1;
+      } else {
+        return valueA < valueB ? 1 : -1;
+      }
+    });
+
+    return filtered;
+  }, [bookings, searchTerm, filterStatus, filterPaymentStatus, filterCategory, sortBy, sortOrder]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedBookings.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentBookings = filteredAndSortedBookings.slice(startIndex, endIndex);
+
+  // Statistics
+  const stats = useMemo(() => {
+    const total = bookings.length;
+    const pending = bookings.filter(b => b.status === 'pending').length;
+    const confirmed = bookings.filter(b => b.status === 'confirmed').length;
+    const completed = bookings.filter(b => b.status === 'completed').length;
+    const totalRevenue = bookings.reduce((sum, b) => sum + b.totalAmount, 0);
+    const totalCommission = bookings.reduce((sum, b) => sum + b.commission, 0);
+
+    return { total, pending, confirmed, completed, totalRevenue, totalCommission };
+  }, [bookings]);
+
+  const getStatusIcon = (status: AdminBooking['status']) => {
+    switch (status) {
+      case 'confirmed':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'pending':
+        return <Clock className="w-4 h-4 text-yellow-500" />;
+      case 'in_progress':
+        return <AlertCircle className="w-4 h-4 text-blue-500" />;
+      case 'completed':
+        return <Award className="w-4 h-4 text-purple-500" />;
+      case 'cancelled':
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      case 'refunded':
+        return <Ban className="w-4 h-4 text-orange-500" />;
+      default:
+        return <Clock className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
+  const getStatusColor = (status: AdminBooking['status']) => {
+    switch (status) {
+      case 'confirmed':
+        return 'bg-green-100 text-green-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'completed':
+        return 'bg-purple-100 text-purple-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'refunded':
+        return 'bg-orange-100 text-orange-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPaymentStatusColor = (status: AdminBooking['paymentStatus']) => {
+    switch (status) {
+      case 'paid':
+        return 'bg-green-100 text-green-800';
+      case 'partial':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'pending':
+        return 'bg-gray-100 text-gray-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      case 'refunded':
+        return 'bg-orange-100 text-orange-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
+  const handleBookingAction = async (bookingId: string, action: string) => {
+    try {
+      switch (action) {
+        case 'confirm':
+          console.log(`Confirming booking ${bookingId}`);
+          break;
+        case 'cancel':
+          console.log(`Cancelling booking ${bookingId}`);
+          break;
+        case 'refund':
+          console.log(`Processing refund for booking ${bookingId}`);
+          break;
+      }
+    } catch (error) {
+      console.error(`Failed to ${action} booking:`, error);
+    }
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">All Bookings</h1>
-      <p className="text-gray-600">Monitor and manage all platform bookings.</p>
-      {/* TODO: Implement admin bookings functionality */}
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
+      <AdminHeader />
+      <div className="container mx-auto px-4 py-8 pt-28">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                Booking Management
+              </h1>
+              <p className="text-gray-600">Monitor and manage all platform bookings</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
+                <Download className="w-4 h-4" />
+                Export
+              </button>
+              <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl hover:from-pink-600 hover:to-purple-600 transition-all">
+                <RefreshCcw className="w-4 h-4" />
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-8">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Bookings</p>
+                  <p className="text-3xl font-bold text-gray-900">{stats.total.toLocaleString()}</p>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-xl">
+                  <Calendar className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Pending</p>
+                  <p className="text-3xl font-bold text-yellow-600">{stats.pending.toLocaleString()}</p>
+                </div>
+                <div className="p-3 bg-yellow-100 rounded-xl">
+                  <Clock className="w-6 h-6 text-yellow-600" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Confirmed</p>
+                  <p className="text-3xl font-bold text-green-600">{stats.confirmed.toLocaleString()}</p>
+                </div>
+                <div className="p-3 bg-green-100 rounded-xl">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Completed</p>
+                  <p className="text-3xl font-bold text-purple-600">{stats.completed.toLocaleString()}</p>
+                </div>
+                <div className="p-3 bg-purple-100 rounded-xl">
+                  <Award className="w-6 h-6 text-purple-600" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                  <p className="text-2xl font-bold text-green-600">{formatCurrency(stats.totalRevenue)}</p>
+                </div>
+                <div className="p-3 bg-green-100 rounded-xl">
+                  <DollarSign className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Commission</p>
+                  <p className="text-2xl font-bold text-blue-600">{formatCurrency(stats.totalCommission)}</p>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-xl">
+                  <CreditCard className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters and Search */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg mb-8">
+          <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+            <div className="flex flex-col md:flex-row gap-4 items-center flex-1">
+              {/* Search */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search bookings..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as AdminBooking['status'] | 'all')}
+                className="px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                aria-label="Filter by booking status"
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="refunded">Refunded</option>
+              </select>
+
+              {/* Payment Status Filter */}
+              <select
+                value={filterPaymentStatus}
+                onChange={(e) => setFilterPaymentStatus(e.target.value as AdminBooking['paymentStatus'] | 'all')}
+                className="px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                aria-label="Filter by payment status"
+              >
+                <option value="all">All Payments</option>
+                <option value="pending">Pending</option>
+                <option value="partial">Partial</option>
+                <option value="paid">Paid</option>
+                <option value="failed">Failed</option>
+                <option value="refunded">Refunded</option>
+              </select>
+
+              {/* Category Filter */}
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                aria-label="Filter by service category"
+              >
+                <option value="all">All Categories</option>
+                <option value="Photography">Photography</option>
+                <option value="Catering">Catering</option>
+                <option value="Venues">Venues</option>
+                <option value="Music & DJ">Music & DJ</option>
+                <option value="Planning">Planning</option>
+                <option value="Flowers">Flowers</option>
+                <option value="Beauty">Beauty</option>
+                <option value="Transportation">Transportation</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {/* Sort Options */}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                className="px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                aria-label="Sort bookings by"
+              >
+                <option value="bookingDate">Booking Date</option>
+                <option value="eventDate">Event Date</option>
+                <option value="totalAmount">Total Amount</option>
+                <option value="status">Status</option>
+              </select>
+
+              <button
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="p-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                title={`Sort ${sortOrder === 'asc' ? 'descending' : 'ascending'}`}
+                aria-label={`Sort ${sortOrder === 'asc' ? 'descending' : 'ascending'}`}
+              >
+                <TrendingUp className={`w-5 h-5 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Bookings Grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg animate-pulse">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-6 bg-gray-200 rounded w-24"></div>
+                  <div className="h-6 bg-gray-200 rounded w-16"></div>
+                </div>
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+              {currentBookings.map((booking) => (
+                <div key={booking.id} className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 group">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                        {booking.bookingReference}
+                      </h3>
+                      <p className="text-sm text-gray-500">{booking.serviceName}</p>
+                    </div>
+                    
+                    <div className="relative">
+                      <button 
+                        className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                        title="Booking actions menu"
+                        aria-label="Booking actions menu"
+                      >
+                        <MoreVertical className="w-4 h-4 text-gray-400" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Status and Payment */}
+                    <div className="flex items-center justify-between">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                        {getStatusIcon(booking.status)}
+                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1).replace('_', ' ')}
+                      </span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(booking.paymentStatus)}`}>
+                        <CreditCard className="w-3 h-3" />
+                        {booking.paymentStatus.charAt(0).toUpperCase() + booking.paymentStatus.slice(1)}
+                      </span>
+                    </div>
+
+                    {/* Client and Vendor */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <User className="w-4 h-4 text-pink-500" />
+                        <span className="font-medium text-gray-900">{booking.userName}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Building className="w-4 h-4 text-blue-500" />
+                        <span className="text-gray-600">{booking.vendorName}</span>
+                      </div>
+                    </div>
+
+                    {/* Amount and Commission */}
+                    <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-100">
+                      <div className="text-center">
+                        <p className="text-lg font-semibold text-gray-900">{formatCurrency(booking.totalAmount)}</p>
+                        <p className="text-xs text-gray-500">Total Amount</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-semibold text-green-600">{formatCurrency(booking.commission)}</p>
+                        <p className="text-xs text-gray-500">Commission</p>
+                      </div>
+                    </div>
+
+                    {/* Dates */}
+                    <div className="text-xs text-gray-500 space-y-1">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        <span>Booked {formatDate(booking.bookingDate)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>Event {formatDate(booking.eventDate)}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                      <button
+                        onClick={() => console.log('View booking', booking.id)}
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                      >
+                        <Eye className="w-3 h-3" />
+                        View
+                      </button>
+                      <button
+                        onClick={() => console.log('Edit booking', booking.id)}
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                      >
+                        <Edit className="w-3 h-3" />
+                        Edit
+                      </button>
+                      {booking.status === 'pending' && (
+                        <button
+                          onClick={() => handleBookingAction(booking.id, 'confirm')}
+                          className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors"
+                        >
+                          <CheckCircle className="w-3 h-3" />
+                          Confirm
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                
+                <div className="flex items-center gap-2">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const page = currentPage <= 3 ? i + 1 : currentPage - 2 + i;
+                    if (page > totalPages) return null;
+                    
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-10 h-10 rounded-xl transition-colors ${
+                          currentPage === page
+                            ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'
+                            : 'border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };

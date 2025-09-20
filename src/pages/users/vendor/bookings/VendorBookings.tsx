@@ -25,7 +25,7 @@ import type {
 } from '../../../../shared/types/comprehensive-booking.types';
 
 // Import auth context to get the real vendor ID
-import { useAuth } from '../../../../shared/contexts/AuthContext';
+// import { useAuth } from '../../../../shared/contexts/AuthContext'; // Not currently used
 
 // ============================================================================
 // UI-FACING TYPES (camelCase for frontend components)
@@ -153,7 +153,7 @@ function mapToUIBooking(apiBooking: Booking): UIBooking {
       downpaymentAmount: apiBooking.downpayment_amount ? formatPHP(apiBooking.downpayment_amount) : undefined,
     },
     responseMessage: apiBooking.vendor_response,
-    vendorName: apiBooking.vendorName || 'Unknown Vendor' // For PaymentReceipt compatibility
+    vendorName: apiBooking.vendor_name || 'Unknown Vendor' // For PaymentReceipt compatibility
   };
 }
 
@@ -198,7 +198,7 @@ type FilterStatus = 'all' | BookingStatus;
 
 export const VendorBookings: React.FC = () => {
   // Get authenticated vendor user for real vendor ID
-  const { user } = useAuth();
+  // const { user } = useAuth(); // Commented out - not currently used
   
   const [bookings, setBookings] = useState<UIBooking[]>([]);
   

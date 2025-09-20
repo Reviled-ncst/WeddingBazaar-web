@@ -8,7 +8,11 @@ import {
   CheckCircle,
   Eye,
   Edit,
-  Send
+  Send,
+  Phone,
+  Mail,
+  Users,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
 
@@ -30,11 +34,16 @@ interface VendorBooking {
   quoteAmount?: number;
   totalAmount?: number;
   totalPaid: number;
+  remainingBalance?: number;
+  paymentProgressPercentage?: number;
+  budgetRange?: string;
+  preferredContactMethod: string;
   createdAt: string;
   updatedAt: string;
   formatted?: {
     totalAmount?: string;
     totalPaid?: string;
+    remainingBalance?: string;
   };
 }
 
@@ -166,66 +175,145 @@ export const VendorBookingCard: React.FC<VendorBookingCardProps> = ({
         </div>
 
         <div className="p-6">
-          {/* Client Info */}
-          <div className="mb-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-1">{booking.coupleName}</h3>
-            <p className="text-rose-600 font-medium text-lg">{booking.serviceType}</p>
-            <div className="flex items-center gap-2 mt-2">
-              <User className="w-4 h-4 text-gray-400" />
-              <span className="text-sm text-gray-600">{booking.contactEmail}</span>
+          {/* Enhanced Client Info */}
+          <div className="mb-5">
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{booking.coupleName}</h3>
+                <p className="text-rose-600 font-medium text-lg">{booking.serviceType}</p>
+                <p className="text-gray-500 text-sm">Booking #{booking.id}</p>
+              </div>
+              <div className="text-right">
+                {booking.totalAmount && (
+                  <p className="text-2xl font-bold text-emerald-600">
+                    {booking.formatted?.totalAmount || `₱${booking.totalAmount.toLocaleString()}`}
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {/* Contact Information Bar */}
+            <div className="bg-gray-50 rounded-lg p-3 mt-3">
+              <div className="grid grid-cols-1 gap-2">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm text-gray-600 truncate">{booking.contactEmail}</span>
+                </div>
+                {booking.contactPhone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm text-gray-600">{booking.contactPhone}</span>
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full ml-auto">
+                      {booking.preferredContactMethod}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Event Details */}
+          {/* Enhanced Event Details */}
           <div className="space-y-3 mb-5">
-            <div className="flex items-center text-sm">
-              <Calendar className="w-4 h-4 mr-3 text-rose-500" />
-              <span className="font-medium text-gray-900">{booking.eventDate}</span>
-              {booking.eventTime && (
-                <>
-                  <Clock className="w-4 h-4 ml-4 mr-2 text-blue-500" />
-                  <span className="text-gray-700">{booking.eventTime}</span>
-                </>
-              )}
+            <div className="bg-blue-50 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Event Details
+              </h4>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-blue-700">Date:</span>
+                  <span className="text-sm font-medium text-blue-900">
+                    {new Date(booking.eventDate).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </span>
+                </div>
+                {booking.eventTime && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-blue-700">Time:</span>
+                    <span className="text-sm font-medium text-blue-900">{booking.eventTime}</span>
+                  </div>
+                )}
+                {booking.eventLocation && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-blue-700">Venue:</span>
+                    <span className="text-sm font-medium text-blue-900 truncate ml-2">{booking.eventLocation}</span>
+                  </div>
+                )}
+                {booking.guestCount && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-blue-700">Guests:</span>
+                    <span className="text-sm font-medium text-blue-900">{booking.guestCount}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-blue-700">Days to Event:</span>
+                  <span className="text-sm font-bold text-blue-900">
+                    {Math.ceil((new Date(booking.eventDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days
+                  </span>
+                </div>
+              </div>
             </div>
-            {booking.eventLocation && (
-              <div className="flex items-center text-sm">
-                <MapPin className="w-4 h-4 mr-3 text-purple-500" />
-                <span className="text-gray-700">{booking.eventLocation}</span>
-              </div>
-            )}
-            {booking.guestCount && (
-              <div className="flex items-center text-sm">
-                <User className="w-4 h-4 mr-3 text-green-500" />
-                <span className="text-gray-700">{booking.guestCount} guests</span>
-              </div>
-            )}
           </div>
 
-          {/* Special Requests Preview */}
+          {/* Enhanced Special Requests */}
           {booking.specialRequests && (
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500 font-medium mb-1">Special Requests:</p>
-              <p className="text-sm text-gray-700 line-clamp-2">{booking.specialRequests}</p>
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-yellow-800 mb-1">Special Requirements</p>
+                  <p className="text-sm text-yellow-700 line-clamp-2">{booking.specialRequests}</p>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Price & Payment Status */}
+          {/* Enhanced Payment Information */}
           {booking.totalAmount && (
-            <div className="mb-5 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-gray-600">Quote Amount</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {booking.formatted?.totalAmount || `₱${booking.totalAmount.toLocaleString()}`}
-                  </p>
-                </div>
-                {booking.totalPaid > 0 && (
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">Paid</p>
-                    <p className="text-sm font-medium text-green-700">
-                      ₱{booking.totalPaid.toLocaleString()}
+            <div className="mb-5 p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-200">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Total Quote</p>
+                    <p className="text-2xl font-bold text-emerald-600">
+                      {booking.formatted?.totalAmount || `₱${booking.totalAmount.toLocaleString()}`}
                     </p>
+                    {booking.budgetRange && (
+                      <p className="text-xs text-gray-500">Client Budget: {booking.budgetRange}</p>
+                    )}
+                  </div>
+                  {booking.totalPaid > 0 && (
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Received</p>
+                      <p className="text-lg font-bold text-green-700">
+                        ₱{booking.totalPaid.toLocaleString()}
+                      </p>
+                      {booking.remainingBalance && booking.remainingBalance > 0 && (
+                        <p className="text-xs text-orange-600 font-medium">
+                          Pending: ₱{booking.remainingBalance.toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Payment Progress */}
+                {booking.paymentProgressPercentage !== undefined && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Payment Progress</span>
+                      <span className="font-medium text-gray-700">{booking.paymentProgressPercentage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${booking.paymentProgressPercentage}%` }}
+                      ></div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -288,86 +376,153 @@ export const VendorBookingCard: React.FC<VendorBookingCardProps> = ({
     );
   }
 
-  // List view
+  // Enhanced List view
   return (
-    <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-rose-100 p-5">
-      <div className="flex items-center justify-between">
-        {/* Basic Info */}
+    <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-rose-100 p-6">
+      <div className="flex items-start justify-between">
+        {/* Enhanced Main Content */}
         <div className="flex-1">
           <div className="flex items-start gap-6">
             {/* Status Badge */}
-            <div className={cn("px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap", config.color)}>
+            <div className={cn("px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap self-start", config.color)}>
               {config.label}
             </div>
             
             {/* Client & Event Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">{booking.coupleName}</h3>
-                  <p className="text-rose-600 font-medium">{booking.serviceType}</p>
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-lg font-bold text-gray-900">{booking.coupleName}</h3>
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                      #{booking.id}
+                    </span>
+                  </div>
+                  <p className="text-rose-600 font-medium mb-2">{booking.serviceType}</p>
+                  
+                  {/* Contact Info Row */}
+                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                    <div className="flex items-center gap-1">
+                      <Mail className="w-3 h-3" />
+                      <span className="truncate max-w-48">{booking.contactEmail}</span>
+                    </div>
+                    {booking.contactPhone && (
+                      <div className="flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        <span>{booking.contactPhone}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <MessageSquare className="w-3 h-3" />
+                      <span className="capitalize">{booking.preferredContactMethod}</span>
+                    </div>
+                  </div>
                 </div>
+                
+                {/* Price & Payment Section */}
                 {booking.totalAmount && (
-                  <div className="text-right">
-                    <p className="text-xl font-bold text-green-600">
+                  <div className="text-right ml-4">
+                    <p className="text-2xl font-bold text-emerald-600 mb-1">
                       {booking.formatted?.totalAmount || `₱${booking.totalAmount.toLocaleString()}`}
                     </p>
                     {booking.totalPaid > 0 && (
-                      <p className="text-sm text-gray-500">
-                        Paid: ₱{booking.totalPaid.toLocaleString()}
-                      </p>
+                      <div className="space-y-1">
+                        <p className="text-sm text-green-700 font-medium">
+                          Paid: ₱{booking.totalPaid.toLocaleString()}
+                        </p>
+                        {booking.remainingBalance && booking.remainingBalance > 0 && (
+                          <p className="text-sm text-orange-600 font-medium">
+                            Pending: ₱{booking.remainingBalance.toLocaleString()}
+                          </p>
+                        )}
+                        {/* Payment progress indicator */}
+                        {booking.paymentProgressPercentage !== undefined && (
+                          <div className="w-24 bg-gray-200 rounded-full h-2 ml-auto">
+                            <div 
+                              className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${booking.paymentProgressPercentage}%` }}
+                            ></div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {booking.budgetRange && (
+                      <p className="text-xs text-gray-500 mt-1">Budget: {booking.budgetRange}</p>
                     )}
                   </div>
                 )}
               </div>
               
-              <div className="flex items-center gap-6 text-sm text-gray-600">
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  {booking.eventDate}
-                </span>
-                {booking.eventTime && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    {booking.eventTime}
+              {/* Enhanced Event Details Row */}
+              <div className="flex items-center gap-6 text-sm text-gray-600 mb-3">
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4 text-blue-500" />
+                  <span className="font-medium">
+                    {new Date(booking.eventDate).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
                   </span>
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full ml-1">
+                    {Math.ceil((new Date(booking.eventDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days
+                  </span>
+                </div>
+                {booking.eventTime && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-4 h-4 text-purple-500" />
+                    <span>{booking.eventTime}</span>
+                  </div>
                 )}
                 {booking.eventLocation && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    {booking.eventLocation}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4 text-green-500" />
+                    <span className="truncate max-w-32">{booking.eventLocation}</span>
+                  </div>
                 )}
                 {booking.guestCount && (
-                  <span className="flex items-center gap-1">
-                    <User className="w-4 h-4" />
-                    {booking.guestCount} guests
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <Users className="w-4 h-4 text-orange-500" />
+                    <span>{booking.guestCount} guests</span>
+                  </div>
                 )}
               </div>
 
-              {/* Special Requests in List View */}
+              {/* Special Requests with Better Formatting */}
               {booking.specialRequests && (
-                <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-700">
-                  <span className="font-medium">Special: </span>
-                  {booking.specialRequests.length > 100 ? 
-                    `${booking.specialRequests.substring(0, 100)}...` : 
-                    booking.specialRequests
-                  }
+                <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-xs font-medium text-yellow-800">Special Requirements:</span>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        {booking.specialRequests.length > 120 ? 
+                          `${booking.specialRequests.substring(0, 120)}...` : 
+                          booking.specialRequests
+                        }
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* Booking Timeline Info */}
+              <div className="mt-3 text-xs text-gray-500 flex items-center gap-4">
+                <span>Created: {new Date(booking.createdAt).toLocaleDateString()}</span>
+                <span>Updated: {new Date(booking.updatedAt).toLocaleDateString()}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Prominent Action Buttons */}
+        {/* Enhanced Action Buttons */}
         <div className="flex items-center gap-3 ml-6">
           {/* Primary Action - Most Important */}
           {vendorActions.filter(action => action.variant === 'primary').slice(0, 1).map((action) => (
             <button
               key={action.type}
               onClick={action.action}
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-semibold flex items-center gap-2 shadow-lg"
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-semibold flex items-center gap-2 shadow-lg whitespace-nowrap"
             >
               <action.icon className="w-5 h-5" />
               {action.label}
@@ -378,7 +533,8 @@ export const VendorBookingCard: React.FC<VendorBookingCardProps> = ({
           <div className="flex gap-2">
             <button
               onClick={() => onContactClient?.(booking)}
-              className="px-4 py-2 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200 transition-colors font-medium flex items-center gap-2"
+              className="px-4 py-2 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200 transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+              title={`Contact via ${booking.preferredContactMethod}: ${booking.contactEmail}`}
             >
               <MessageSquare className="w-4 h-4" />
               Message
@@ -386,20 +542,23 @@ export const VendorBookingCard: React.FC<VendorBookingCardProps> = ({
             
             <button
               onClick={() => onViewDetails(booking)}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center gap-2"
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
             >
               <Eye className="w-4 h-4" />
               Details
             </button>
           </div>
 
-          {/* More Actions Dropdown (if needed) */}
-          {vendorActions.length > 3 && (
+          {/* Additional Actions Dropdown (if needed) */}
+          {vendorActions.filter(action => action.variant === 'secondary').length > 1 && (
             <div className="relative">
-              <button className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+              <button 
+                className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                title="More actions"
+              >
                 •••
               </button>
-              {/* Dropdown would go here */}
+              {/* Dropdown implementation would go here */}
             </div>
           )}
         </div>

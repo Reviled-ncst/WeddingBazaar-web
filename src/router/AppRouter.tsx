@@ -9,6 +9,19 @@ import { Homepage } from '../pages/homepage/Homepage';
 import { IndividualLanding } from '../pages/users/individual/landing';
 import { AdminLanding } from '../pages/users/admin/landing';
 
+// Admin Pages  
+import { AdminDashboard } from '../pages/users/admin/dashboard';
+import { UserManagement } from '../pages/users/admin/users';
+import { AdminBookings } from '../pages/users/admin/bookings';
+import { AdminAnalytics } from '../pages/users/admin/analytics';
+import { AdminDatabase } from '../pages/users/admin/database';
+import { AdminFinances } from '../pages/users/admin/finances';
+import { AdminSecurity } from '../pages/users/admin/security';
+import { AdminContentModeration } from '../pages/users/admin/content';
+import { AdminSettings } from '../pages/users/admin/settings';
+import { AdminSystemStatus } from '../pages/users/admin/system-status';
+import { AdminEmergency } from '../pages/users/admin/emergency';
+
 // Individual Pages
 import { Services } from '../pages/users/individual/services';
 import { IndividualDashboard } from '../pages/users/individual/dashboard';
@@ -253,6 +266,73 @@ export const AppRouter: React.FC = () => {
             <Route path="/vendor/subscription" element={
               <ProtectedRoute requireAuth={true}>
                 <VendorSubscriptionPage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Admin specific pages */}
+            <Route path="/admin/dashboard" element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/users" element={
+              <ProtectedRoute requireAuth={true}>
+                <UserManagement />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/bookings" element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminBookings />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/analytics" element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminAnalytics />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/database" element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminDatabase />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/finances" element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminFinances />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/security" element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminSecurity />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/content" element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminContentModeration />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/settings" element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminSettings />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/system-status" element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminSystemStatus />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/emergency" element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminEmergency />
               </ProtectedRoute>
             } />
             

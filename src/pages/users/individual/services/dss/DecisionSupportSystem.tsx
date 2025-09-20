@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain,
@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
 import type { Service } from '../../../../../modules/services/types';
+import { dssApiService } from './DSSApiService';
 
 interface DSSProps {
   services: Service[];
@@ -93,7 +94,7 @@ interface WeddingStyle {
 }
 
 export const DecisionSupportSystem: React.FC<DSSProps> = ({
-  services,
+  services: initialServices,
   budget = 50000,
   location = '',
   priorities = [],
@@ -108,6 +109,54 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedWeddingStyle, setSelectedWeddingStyle] = useState<string>('classic');
   const [packageFilter, setPackageFilter] = useState<'all' | 'essential' | 'standard' | 'premium' | 'luxury'>('all');
+  
+  // Real data state
+  const [realVendors, setRealVendors] = useState<any[]>([]);
+  const [realServices, setRealServices] = useState<any[]>([]);
+  const [services, setServices] = useState<Service[]>(initialServices);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
+
+  // Load real data when component opens
+  useEffect(() => {
+    if (isOpen && !dataLoaded) {
+      loadRealData();
+    }
+  }, [isOpen, dataLoaded]);
+
+  const loadRealData = async () => {
+    try {
+      setIsAnalyzing(true);
+      setDataError(null);
+      console.log('🔄 [DSS] Loading real vendor and service data...');
+
+      const { vendors, services: fetchedServices } = await dssApiService.getVendorsAndServices();
+      
+      if (vendors.length > 0 && fetchedServices.length > 0) {
+        console.log('✅ [DSS] Real data loaded:', { vendors: vendors.length, services: fetchedServices.length });
+        
+        setRealVendors(vendors);
+        setRealServices(fetchedServices);
+        
+        // Convert to legacy Service format for existing DSS logic
+        const legacyServices = dssApiService.convertToLegacyServices(vendors, fetchedServices);
+        setServices([...initialServices, ...legacyServices]);
+        
+        setDataLoaded(true);
+      } else {
+        console.warn('⚠️ [DSS] No real data available, using provided services');
+        setServices(initialServices);
+        setDataLoaded(true);
+      }
+    } catch (error) {
+      console.error('❌ [DSS] Failed to load real data:', error);
+      setDataError('Failed to load real vendor data. Using available services.');
+      setServices(initialServices);
+      setDataLoaded(true);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   // Enhanced category pricing for better cost estimation
   const categoryPricing = React.useMemo(() => ({
@@ -861,6 +910,28 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
 
   if (!isOpen) return null;
 
+  // Show loading state while fetching real data
+  if (!dataLoaded && isAnalyzing) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4"
+      >
+        <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Loading Wedding Intelligence</h3>
+          <p className="text-gray-600">Analyzing {realVendors.length + realServices.length} real vendors and services...</p>
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-blue-600">
+            <Brain className="w-4 h-4 animate-pulse" />
+            <span>AI-powered recommendations incoming</span>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -912,6 +983,23 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                 <X className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
               </button>
             </div>
+
+            {/* Data Status Indicator */}
+            {dataLoaded && (
+              <div className="mt-3 flex items-center justify-center gap-2 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-lg border border-white/20">
+                <CheckCircle2 className="w-4 h-4 text-green-300" />
+                <span className="text-sm text-white/90">
+                  Real data loaded: {realVendors.length} vendors, {realServices.length} services
+                </span>
+              </div>
+            )}
+            
+            {dataError && (
+              <div className="mt-3 flex items-center justify-center gap-2 px-3 py-1.5 bg-red-500/20 backdrop-blur-sm rounded-lg border border-red-300/30">
+                <AlertCircle className="w-4 h-4 text-red-300" />
+                <span className="text-sm text-red-200">{dataError}</span>
+              </div>
+            )}
 
             {/* Enhanced Quick Stats Grid with Better Mobile Layout */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
@@ -1632,139 +1720,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                   <p className="text-gray-600">Compare multiple services side by side</p>
                   <p className="text-sm text-gray-500 mt-2">Feature coming soon...</p>
                 </div>
-              </motion.div>              )}
-
-              {/* Budget Analysis Tab */}
-              {activeTab === 'budget' && (
-                <motion.div
-                  key="budget"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="space-y-6"
-                >
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Budget Overview */}
-                    <div className="bg-white border border-gray-200 rounded-xl p-6">
-                      <h3 className="text-lg font-semibold mb-4">Budget Overview</h3>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Total Budget</span>
-                          <span className="font-semibold">${budget.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Estimated Cost</span>
-                          <span className="font-semibold">${analyzeBudget().totalEstimated.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Remaining</span>
-                          <span className={cn(
-                            "font-semibold",
-                            budget - analyzeBudget().totalEstimated >= 0 ? "text-green-600" : "text-red-600"
-                          )}>
-                            ${(budget - analyzeBudget().totalEstimated).toLocaleString()}
-                          </span>
-                        </div>
-                        
-                        {/* Progress Bar */}
-                        <div className="w-full bg-gray-200 rounded-full h-3">
-                          <div 
-                            className={cn(
-                              "h-3 rounded-full transition-all duration-500",
-                              analyzeBudget().percentageUsed > 100 ? "bg-red-500" :
-                              analyzeBudget().percentageUsed > 80 ? "bg-yellow-500" : "bg-green-500"
-                            )}
-                            aria-label={`Budget usage: ${Math.round(analyzeBudget().percentageUsed)}%`}
-                          >
-                            <div className="w-full h-full rounded-full" />
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-600 text-center">
-                          {Math.round(analyzeBudget().percentageUsed)}% of budget used
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Category Breakdown */}
-                    <div className="bg-white border border-gray-200 rounded-xl p-6">
-                      <h3 className="text-lg font-semibold mb-4">Category Breakdown</h3>
-                      <div className="space-y-3">
-                        {Object.entries(analyzeBudget().categoryBreakdown).map(([category, amount]) => (
-                          <div key={category} className="flex justify-between items-center">
-                            <span className="text-gray-600 text-sm">{category}</span>
-                            <span className="font-medium">${amount.toLocaleString()}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Recommendations */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-                      <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                        <Lightbulb className="h-5 w-5" />
-                        Recommendations
-                      </h4>
-                      <ul className="space-y-2">
-                        {analyzeBudget().recommendations.map((rec, index) => (
-                          <li key={index} className="text-sm text-blue-800 flex items-start gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                            {rec}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-6">
-                      <h4 className="font-semibold text-orange-900 mb-3 flex items-center gap-2">
-                        <AlertCircle className="h-5 w-5" />
-                        Risk Areas
-                      </h4>
-                      <ul className="space-y-2">
-                        {analyzeBudget().riskAreas.map((risk, index) => (
-                          <li key={index} className="text-sm text-orange-800 flex items-start gap-2">
-                            <AlertCircle className="h-4 w-4 text-orange-600 flex-shrink-0 mt-0.5" />
-                            {risk}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-                      <h4 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
-                        <DollarSign className="h-5 w-5" />
-                        Saving Opportunities
-                      </h4>
-                      <ul className="space-y-2">
-                        {analyzeBudget().savingOpportunities.map((opportunity, index) => (
-                          <li key={index} className="text-sm text-green-800 flex items-start gap-2">
-                            <DollarSign className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            {opportunity}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Comparison Tab */}
-              {activeTab === 'comparison' && (
-                <motion.div
-                  key="comparison"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="space-y-6"
-                >
-                  <div className="text-center py-12">
-                    <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Service Comparison</h3>
-                    <p className="text-gray-600">Compare multiple services side by side</p>
-                    <p className="text-sm text-gray-500 mt-2">Feature coming soon...</p>
-                  </div>
-                </motion.div>
+              </motion.div>
               )}
             </AnimatePresence>
           </div>
