@@ -39,8 +39,8 @@ test-*.ts
 scripts/
 database/
 
-# Backend server files
-server/
+# Backend server files - TEMPORARILY COMMENTED FOR DEPLOYMENT
+# server/
 backend/
 
 # Editor directories and files
