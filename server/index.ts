@@ -210,7 +210,7 @@ app.post('/api/bookings/:bookingId/confirm', async (req, res) => {
 
 console.log('✅ Booking action endpoints registered');
 
-// Individual user conversations endpoint - MUST be before messagingRoutes
+// Individual user conversations endpoint - MUST be before messagingRoutes - Updated for deployment fix
 app.get('/api/conversations/individual/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
