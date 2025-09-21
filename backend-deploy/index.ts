@@ -2093,110 +2093,86 @@ app.get('/api/messaging/conversations/:vendorId', async (req, res) => {
   }
 });
 
-// Get conversations for individual users (couples)
-app.get('/api/messaging/conversations/:userId', async (req, res) => {
+// Individual user conversations endpoint - PRODUCTION DEPLOYMENT FIX
+app.get('/api/conversations/individual/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log(`💬 Fetching conversations for individual user: ${userId} (updated deployment)`);
+    console.log('🔍 [Production] Getting conversations for individual user:', userId);
     
-    // Get real conversations from database where the user is the creator
-    try {
-      console.log(`🔍 Querying conversations where creator_id = ${userId}`);
-      const conversations = await sql`
-        SELECT 
-          id,
-          participant_id,
-          participant_name,
-          participant_type,
-          participant_avatar,
-          creator_id,
-          creator_type,
-          conversation_type,
-          last_message,
-          last_message_time,
-          unread_count,
-          is_online,
-          status,
-          wedding_date,
-          location,
-          service_id,
-          service_name,
-          service_category,
-          service_price,
-          service_image,
-          service_description,
-          created_at,
-          updated_at
-        FROM conversations 
-        WHERE creator_id = ${userId}
-        ORDER BY last_message_time DESC NULLS LAST, created_at DESC
-      `;
+    const conversations = await sql`
+      SELECT 
+        c.id,
+        c.participant_id,
+        c.participant_name,
+        c.participant_type,
+        c.participant_avatar,
+        c.creator_id,
+        c.creator_type,
+        c.conversation_type,
+        c.last_message,
+        c.last_message_time,
+        c.unread_count,
+        c.is_online,
+        c.status,
+        c.wedding_date,
+        c.location,
+        c.service_id,
+        c.service_name,
+        c.service_category,
+        c.service_price,
+        c.service_image,
+        c.service_description,
+        c.created_at,
+        c.updated_at
+      FROM conversations c
+      WHERE c.creator_id = ${userId}
+      ORDER BY c.last_message_time DESC, c.created_at DESC
+    `;
 
-      console.log(`✅ Found ${conversations.length} conversations in database for user ${userId}`);
-      
-      if (conversations.length > 0) {
-        // Transform conversations to expected frontend format
-        const formattedConversations = conversations.map(conv => {
-          return {
-            id: conv.id,
-            participants: [{
-              id: conv.participant_id,
-              name: conv.participant_name || 'Vendor',
-              role: conv.participant_type || 'vendor',
-              isOnline: conv.is_online || false,
-              avatar: conv.participant_avatar || 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=400'
-            }],
-            lastMessage: conv.last_message ? {
-              id: 'msg-' + Date.now(),
-              content: conv.last_message,
-              senderId: conv.participant_id,
-              senderName: conv.participant_name || 'Vendor',
-              senderRole: conv.participant_type || 'vendor',
-              timestamp: conv.last_message_time || conv.updated_at,
-              type: 'text'
-            } : null,
-            unreadCount: conv.unread_count || 0,
-            status: conv.status,
-            weddingDate: conv.wedding_date,
-            location: conv.location,
-            serviceInfo: conv.service_id ? {
-              id: conv.service_id,
-              name: conv.service_name,
-              category: conv.service_category,
-              price: conv.service_price,
-              image: conv.service_image || 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400',
-              description: conv.service_description
-            } : null,
-            createdAt: conv.created_at,
-            updatedAt: conv.updated_at
-          };
-        });
+    console.log(`✅ [Production] Found ${conversations.length} conversations for user ${userId}`);
 
-        return res.json({
-          success: true,
-          conversations: formattedConversations,
-          count: formattedConversations.length,
-          source: 'database'
-        });
-      }
-    } catch (dbError) {
-      console.log(`🔍 Database query failed for user ${userId}:`, dbError.message);
-      console.log('Database error, but continuing...');
-    }
+    // Format conversations for frontend
+    const formattedConversations = conversations.map(conv => ({
+      id: conv.id.toString(),
+      participants: [{
+        id: conv.participant_id,
+        name: conv.participant_name || 'Unknown Vendor',
+        role: conv.participant_type || 'vendor',
+        avatar: conv.participant_avatar || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
+        isOnline: conv.is_online || false
+      }],
+      lastMessage: conv.last_message ? {
+        id: 'last-msg',
+        senderId: conv.participant_id,
+        senderName: conv.participant_name || 'Vendor',
+        senderRole: 'vendor',
+        content: conv.last_message,
+        timestamp: conv.last_message_time || conv.updated_at,
+        type: 'text'
+      } : undefined,
+      unreadCount: parseInt(conv.unread_count || 0),
+      createdAt: conv.created_at,
+      updatedAt: conv.updated_at,
+      serviceInfo: conv.service_id ? {
+        id: conv.service_id,
+        name: conv.service_name || 'Wedding Service',
+        category: conv.service_category || 'General',
+        price: conv.service_price || 'Contact for pricing',
+        image: conv.service_image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+        description: conv.service_description
+      } : undefined
+    }));
 
-    console.log(`ℹ️ No conversations found for user ${userId}, returning empty array`);
     res.json({
       success: true,
-      conversations: [],
-      count: 0,
-      source: 'database_empty'
+      conversations: formattedConversations
     });
   } catch (error) {
-    console.error('❌ Error fetching individual conversations:', error);
+    console.error('❌ [Production] Error fetching individual conversations:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching conversations',
-      error: error.message
+      error: 'Failed to fetch conversations',
+      message: error.message
     });
   }
 });
@@ -3274,44 +3250,36 @@ app.get('/api/messaging/conversations/user/:userId', async (req, res) => {
         console.log(`✅ Found ${conversations.length} conversations in database for user`);
         
         // Transform conversations to expected frontend format
-        const formattedConversations = conversations.map(conv => {
-          const participant = {
+        const formattedConversations = conversations.map(conv => ({
+          id: conv.id.toString(),
+          participants: [{
             id: conv.participant_id,
-            name: conv.participant_name || 'Vendor',
+            name: conv.participant_name || 'Unknown Vendor',
             role: conv.participant_type || 'vendor',
-            isOnline: conv.is_online || false,
-            avatar: conv.participant_avatar || '/api/placeholder/40/40'
-          };
-
-          return {
-            id: conv.id,
-            participants: [participant],
-            lastMessage: conv.last_message ? {
-              id: 'msg-' + Date.now(),
-              content: conv.last_message,
-              senderId: participant.id,
-              senderName: participant.name,
-              senderType: participant.role,
-              timestamp: conv.last_message_time || conv.updated_at,
-              messageType: 'text',
-              isRead: true
-            } : null,
-            unreadCount: conv.unread_count || 0,
-            status: conv.status,
-            weddingDate: conv.wedding_date,
-            location: conv.location,
-            serviceInfo: conv.service_id ? {
-              id: conv.service_id,
-              name: conv.service_name,
-              category: conv.service_category,
-              price: conv.service_price,
-              image: conv.service_image,
-              description: conv.service_description
-            } : null,
-            createdAt: conv.created_at,
-            updatedAt: conv.updated_at
-          };
-        });
+            avatar: conv.participant_avatar || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
+            isOnline: conv.is_online || false
+          }],
+          lastMessage: conv.last_message ? {
+            id: 'last-msg',
+            senderId: conv.participant_id,
+            senderName: conv.participant_name || 'Vendor',
+            senderRole: 'vendor',
+            content: conv.last_message,
+            timestamp: conv.last_message_time || conv.updated_at,
+            type: 'text'
+          } : undefined,
+          unreadCount: parseInt(conv.unread_count || 0),
+          createdAt: conv.created_at,
+          updatedAt: conv.updated_at,
+          serviceInfo: conv.service_id ? {
+            id: conv.service_id,
+            name: conv.service_name || 'Wedding Service',
+            category: conv.service_category || 'General',
+            price: conv.service_price || 'Contact for pricing',
+            image: conv.service_image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+            description: conv.service_description
+          } : undefined
+        }));
 
         return res.json({
           success: true,
