@@ -65,56 +65,41 @@ export const IndividualMessages: React.FC = () => {
   }, []);
 
   const fetchConversations = async () => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
-      setIsLoading(true);
-      setError(null);
-      
       const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      const user = { id: '1-2025-001' }; // Test user with real conversations
+      const response = await fetch(`${apiUrl}/api/conversations/individual/1-2025-001`);
       
-      console.log('🔍 Fetching conversations from:', `${apiUrl}/api/conversations/individual/${user.id}`);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
       
-      const response = await fetch(`${apiUrl}/api/conversations/individual/${user.id}`);
+      const data = await response.json();
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Real conversations from API:', data);
-        
-        if (data.conversations && data.conversations.length > 0) {
-          setConversations(data.conversations);
-          console.log(`✅ ${data.conversations.length} real conversations loaded`);
-        } else {
-          console.log('📋 No conversations found');
-          setConversations([]);
-          setError('No conversations found');
-        }
+      if (data.success && data.conversations) {
+        setConversations(data.conversations);
       } else {
-        console.error('❌ API error:', response.status);
-        setError(`API error: ${response.status}`);
-        setConversations([]);
+        setError('No conversations found');
       }
     } catch (error) {
-      console.error('❌ Fetch error:', error);
-      setError('Connection error');
-      setConversations([]);
+      setError(error instanceof Error ? error.message : 'Connection error');
     } finally {
       setIsLoading(false);
     }
   };
 
   const filteredConversations = conversations.filter(conv => {
-    const matchesSearch = conv.participants[0].name.toLowerCase().includes(searchTerm.toLowerCase());
+    // Safe access to participant name
+    const participantName = conv.participants?.[0]?.name || '';
+    const matchesSearch = searchTerm === '' || participantName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filter === 'all' || 
                          (filter === 'unread' && conv.unreadCount > 0) ||
                          (filter === 'starred' && false); // No starred logic yet
+    
     return matchesSearch && matchesFilter;
   });
-
-  // Debug: Log to check if conversations are being filtered properly
-  console.log('Conversations:', conversations.length);
-  console.log('FilteredConversations:', filteredConversations.length);
-  console.log('SearchTerm:', searchTerm);
-  console.log('Filter:', filter);
 
   const handleConversationClick = (conversationId: string) => {
     setSelectedConversation(conversationId);
@@ -145,9 +130,6 @@ export const IndividualMessages: React.FC = () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
                 <p className="text-gray-600 mt-2">Chat with your wedding vendors and get quick responses</p>
-                <p className="text-sm text-blue-600 mt-1">
-                  Debug: {conversations.length} total conversations, {filteredConversations.length} filtered
-                </p>
               </div>
               
               <button className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl hover:from-pink-600 hover:to-rose-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
@@ -202,11 +184,17 @@ export const IndividualMessages: React.FC = () => {
 
                 {/* Conversations */}
                 <div className="max-h-96 overflow-y-auto">
-                  <div className="p-4 text-sm text-gray-600">
-                    Total conversations: {conversations.length} | Filtered: {filteredConversations.length}
-                  </div>
-                  
-                  {filteredConversations.length > 0 ? (
+                  {isLoading ? (
+                    <div className="p-8 text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600 mx-auto"></div>
+                      <p className="text-gray-500 mt-2">Loading conversations...</p>
+                    </div>
+                  ) : error ? (
+                    <div className="p-8 text-center">
+                      <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                      <p className="text-red-600">{error}</p>
+                    </div>
+                  ) : filteredConversations.length > 0 ? (
                     filteredConversations.map((conversation) => (
                       <motion.div
                         key={conversation.id}
@@ -221,11 +209,11 @@ export const IndividualMessages: React.FC = () => {
                         <div className="flex items-start space-x-3">
                           <div className="relative">
                             <img
-                              src={conversation.participants[0].avatar}
-                              alt={conversation.participants[0].name}
+                              src={conversation.participants?.[0]?.avatar || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400'}
+                              alt={conversation.participants?.[0]?.name || 'Vendor'}
                               className="w-12 h-12 rounded-full object-cover"
                             />
-                            {conversation.participants[0].isOnline && (
+                            {conversation.participants?.[0]?.isOnline && (
                               <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                             )}
                           </div>
@@ -233,7 +221,7 @@ export const IndividualMessages: React.FC = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
                               <h3 className="text-sm font-semibold text-gray-900 truncate">
-                                {conversation.participants[0].name}
+                                {conversation.participants?.[0]?.name || 'Unknown Vendor'}
                               </h3>
                               <div className="flex items-center space-x-1">
                                 {conversation.unreadCount > 0 && (
