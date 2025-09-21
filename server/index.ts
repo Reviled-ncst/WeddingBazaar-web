@@ -210,15 +210,7 @@ app.post('/api/bookings/:bookingId/confirm', async (req, res) => {
 
 console.log('✅ Booking action endpoints registered');
 
-app.use('/api/vendors', vendorRoutes);
-app.use('/api/dss', dssRoutes);
-app.use('/api/bookings/enhanced', enhancedBookingRoutes);
-app.use('/api/bookings', bookingRoutes);
-app.use('/api/conversations', messagingRoutes);
-app.use('/api/payment', paymentRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);
-
-// Individual user conversations endpoint - for couples/individuals
+// Individual user conversations endpoint - MUST be before messagingRoutes
 app.get('/api/conversations/individual/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -279,6 +271,14 @@ app.get('/api/conversations/individual/:userId', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch individual conversations' });
   }
 });
+
+app.use('/api/vendors', vendorRoutes);
+app.use('/api/dss', dssRoutes);
+app.use('/api/bookings/enhanced', enhancedBookingRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/conversations', messagingRoutes);
+app.use('/api/payment', paymentRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 // Image proxy route for handling CORS issues with external images
 app.get('/api/image-proxy', ImageProxyService.proxyImage);
