@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   MessageSquare, 
@@ -17,113 +17,93 @@ import { CoupleHeader } from '../landing/CoupleHeader';
 // import { Messenger, useMessenger } from '../../../shared/messenger'; // Disabled in demo mode
 import { cn } from '../../../../utils/cn';
 
+interface Conversation {
+  id: string;
+  participants: Array<{
+    id: string;
+    name: string;
+    role: string;
+    avatar: string;
+    isOnline: boolean;
+  }>;
+  lastMessage?: {
+    id: string;
+    senderId: string;
+    senderName: string;
+    senderRole: string;
+    content: string;
+    timestamp: string | Date;
+    type: string;
+  };
+  unreadCount: number;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  serviceInfo?: {
+    id: string;
+    name: string;
+    category: string;
+    price: string;
+    image: string;
+    description?: string;
+  };
+}
+
 export const IndividualMessages: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'unread' | 'starred'>('all');
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'starred'>('all');
   
   // Note: Messenger hooks disabled in demo mode to prevent API calls
   // const { isMessengerOpen, closeMessenger, activeConversationId } = useMessenger();
 
-  // Mock conversations for couple/individual user (will be replaced with real data)
-  const mockConversations = [
-    {
-      id: 'conv-vendor-1',
-      participants: [
-        {
-          id: 'vendor-1',
-          name: 'Elegant Photography Studio',
-          role: 'vendor' as const,
-          avatar: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=400',
-          isOnline: true
-        }
-      ],
-      lastMessage: {
-        id: 'msg-1',
-        senderId: 'vendor-1',
-        senderName: 'Sarah from Elegant Photography',
-        senderRole: 'vendor' as const,
-        content: 'Thank you for your inquiry! I\'d love to capture your special day. When would be a good time to chat?',
-        timestamp: new Date(Date.now() - 1000 * 60 * 30),
-        type: 'text' as const
-      },
-      unreadCount: 1,
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 30),
-      serviceInfo: {
-        id: 'SRV-001',
-        name: 'Wedding Photography Package',
-        category: 'Photography',
-        price: '$2,500',
-        image: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400'
-      }
-    },
-    {
-      id: 'conv-vendor-2',
-      participants: [
-        {
-          id: 'vendor-2',
-          name: 'Delicious Catering Co.',
-          role: 'vendor' as const,
-          avatar: 'https://images.unsplash.com/photo-1577303935007-0d306ee4f67b?w=400',
-          isOnline: false
-        }
-      ],
-      lastMessage: {
-        id: 'msg-2',
-        senderId: 'couple-1',
-        senderName: 'You',
-        senderRole: 'couple' as const,
-        content: 'Could we schedule a tasting for next weekend?',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-        type: 'text' as const
-      },
-      unreadCount: 0,
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-      serviceInfo: {
-        id: 'SRV-002',
-        name: 'Wedding Catering Service',
-        category: 'Catering',
-        price: '$85/person',
-        image: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400'
-      }
-    },
-    {
-      id: 'conv-vendor-3',
-      participants: [
-        {
-          id: 'vendor-3',
-          name: 'Harmony Wedding Planners',
-          role: 'vendor' as const,
-          avatar: 'https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?w=400',
-          isOnline: true
-        }
-      ],
-      lastMessage: {
-        id: 'msg-3',
-        senderId: 'vendor-3',
-        senderName: 'Emma from Harmony Planners',
-        senderRole: 'vendor' as const,
-        content: 'I\'ve prepared a detailed timeline for your wedding day. Let\'s review it together!',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1),
-        type: 'text' as const
-      },
-      unreadCount: 2,
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1),
-      serviceInfo: {
-        id: 'SRV-003',
-        name: 'Full Wedding Planning',
-        category: 'Planning',
-        price: '$3,800',
-        image: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400'
-      }
-    }
-  ];
+  // Fetch real conversations from database
+  useEffect(() => {
+    fetchConversations();
+  }, []);
 
-  const filteredConversations = mockConversations.filter(conv => {
-    const matchesSearch = conv.participants[0].name.toLowerCase().includes(searchQuery.toLowerCase());
+  const fetchConversations = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+      const user = { id: '1-2025-001' }; // Test user with real conversations
+      
+      console.log('🔍 Fetching conversations from:', `${apiUrl}/api/conversations/individual/${user.id}`);
+      
+      const response = await fetch(`${apiUrl}/api/conversations/individual/${user.id}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Real conversations from API:', data);
+        
+        if (data.conversations && data.conversations.length > 0) {
+          setConversations(data.conversations);
+          console.log(`✅ ${data.conversations.length} real conversations loaded`);
+        } else {
+          console.log('📋 No conversations found');
+          setConversations([]);
+          setError('No conversations found');
+        }
+      } else {
+        console.error('❌ API error:', response.status);
+        setError(`API error: ${response.status}`);
+        setConversations([]);
+      }
+    } catch (error) {
+      console.error('❌ Fetch error:', error);
+      setError('Connection error');
+      setConversations([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredConversations = conversations.filter(conv => {
+    const matchesSearch = conv.participants[0].name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filter === 'all' || 
                          (filter === 'unread' && conv.unreadCount > 0) ||
                          (filter === 'starred' && false); // No starred logic yet
@@ -131,9 +111,9 @@ export const IndividualMessages: React.FC = () => {
   });
 
   // Debug: Log to check if conversations are being filtered properly
-  console.log('MockConversations:', mockConversations.length);
+  console.log('Conversations:', conversations.length);
   console.log('FilteredConversations:', filteredConversations.length);
-  console.log('SearchQuery:', searchQuery);
+  console.log('SearchTerm:', searchTerm);
   console.log('Filter:', filter);
 
   const handleConversationClick = (conversationId: string) => {
@@ -166,7 +146,7 @@ export const IndividualMessages: React.FC = () => {
                 <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
                 <p className="text-gray-600 mt-2">Chat with your wedding vendors and get quick responses</p>
                 <p className="text-sm text-blue-600 mt-1">
-                  Debug: {mockConversations.length} total conversations, {filteredConversations.length} filtered
+                  Debug: {conversations.length} total conversations, {filteredConversations.length} filtered
                 </p>
               </div>
               
@@ -188,8 +168,8 @@ export const IndividualMessages: React.FC = () => {
                     <input
                       type="text"
                       placeholder="Search vendors..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
                     />
                   </div>
@@ -223,7 +203,7 @@ export const IndividualMessages: React.FC = () => {
                 {/* Conversations */}
                 <div className="max-h-96 overflow-y-auto">
                   <div className="p-4 text-sm text-gray-600">
-                    Total conversations: {mockConversations.length} | Filtered: {filteredConversations.length}
+                    Total conversations: {conversations.length} | Filtered: {filteredConversations.length}
                   </div>
                   
                   {filteredConversations.length > 0 ? (
@@ -326,7 +306,7 @@ export const IndividualMessages: React.FC = () => {
                       <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500">No conversations found</p>
                       <p className="text-sm text-gray-400 mt-1">
-                        Search query: "{searchQuery}" | Filter: {filter}
+                        Search query: "{searchTerm}" | Filter: {filter}
                       </p>
                     </div>
                   )}
@@ -427,14 +407,14 @@ export const IndividualMessages: React.FC = () => {
             {[
               {
                 label: 'Active Vendors',
-                value: mockConversations.length.toString(),
+                value: conversations.length.toString(),
                 change: '+2 this week',
                 icon: Users,
                 color: 'pink'
               },
               {
                 label: 'Unread Messages',
-                value: mockConversations.reduce((acc, conv) => acc + conv.unreadCount, 0).toString(),
+                value: conversations.reduce((acc, conv) => acc + conv.unreadCount, 0).toString(),
                 change: '3 new today',
                 icon: AlertCircle,
                 color: 'orange'
