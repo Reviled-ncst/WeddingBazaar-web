@@ -4,7 +4,6 @@ import {
   X, 
   Send, 
   Minus,
-  Maximize2,
   Phone,
   Video,
   Users,
@@ -12,7 +11,6 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useGlobalMessenger } from '../../contexts/GlobalMessengerContext';
-import { useMessenger } from '../../../pages/shared/messenger';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const GlobalFloatingChat: React.FC = () => {
@@ -36,7 +34,6 @@ export const GlobalFloatingChat: React.FC = () => {
   const [message, setMessage] = useState('');
   const [showConversationList, setShowConversationList] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { openMessenger } = useMessenger();
 
   const activeConversation = getActiveConversation();
   const isVendorTyping = activeConversation?.isTyping || false;
@@ -326,13 +323,6 @@ export const GlobalFloatingChat: React.FC = () => {
                     title="Minimize chat"
                   >
                     <Minus className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => openMessenger()}
-                    className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
-                    title="Open full messenger"
-                  >
-                    <Maximize2 className="h-4 w-4" />
                   </button>
                   <button
                     onClick={closeFloatingChat}

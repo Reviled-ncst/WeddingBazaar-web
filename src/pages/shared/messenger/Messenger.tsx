@@ -56,11 +56,13 @@ export const Messenger: React.FC<MessengerProps> = ({ isOpen, onClose, conversat
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Load conversations when component opens
+  // Load conversations when component opens - DISABLED to prevent API calls to non-existent backend
   useEffect(() => {
-    if (isOpen && user?.id) {
-      loadConversations(user.id);
-    }
+    // TODO: Re-enable when backend messaging API is implemented
+    // if (isOpen && user?.id) {
+    //   loadConversations(user.id);
+    // }
+    console.log('🔄 Messenger opened - API calls disabled until backend is ready');
   }, [isOpen, user?.id, loadConversations]);
 
   // Set active conversation from prop
@@ -70,11 +72,13 @@ export const Messenger: React.FC<MessengerProps> = ({ isOpen, onClose, conversat
     }
   }, [conversationId]);
 
-  // Load messages when active conversation changes
+  // Load messages when active conversation changes - DISABLED to prevent API calls
   useEffect(() => {
-    if (activeConversation) {
-      loadMessages(activeConversation);
-    }
+    // TODO: Re-enable when backend messaging API is implemented
+    // if (activeConversation) {
+    //   loadMessages(activeConversation);
+    // }
+    console.log('🔄 Active conversation changed - API calls disabled until backend is ready');
   }, [activeConversation, loadMessages]);
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !activeConversation || !user) return;

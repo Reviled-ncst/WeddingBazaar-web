@@ -14,7 +14,7 @@ import {
   Heart
 } from 'lucide-react';
 import { CoupleHeader } from '../landing/CoupleHeader';
-import { Messenger, useMessenger } from '../../../shared/messenger';
+// import { Messenger, useMessenger } from '../../../shared/messenger'; // Disabled in demo mode
 import { cn } from '../../../../utils/cn';
 
 export const IndividualMessages: React.FC = () => {
@@ -22,12 +22,8 @@ export const IndividualMessages: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'unread' | 'starred'>('all');
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   
-  const { 
-    isMessengerOpen, 
-    openMessenger, 
-    closeMessenger,
-    activeConversationId 
-  } = useMessenger();
+  // Note: Messenger hooks disabled in demo mode to prevent API calls
+  // const { isMessengerOpen, closeMessenger, activeConversationId } = useMessenger();
 
   // Mock conversations for couple/individual user (will be replaced with real data)
   const mockConversations = [
@@ -134,9 +130,16 @@ export const IndividualMessages: React.FC = () => {
     return matchesSearch && matchesFilter;
   });
 
+  // Debug: Log to check if conversations are being filtered properly
+  console.log('MockConversations:', mockConversations.length);
+  console.log('FilteredConversations:', filteredConversations.length);
+  console.log('SearchQuery:', searchQuery);
+  console.log('Filter:', filter);
+
   const handleConversationClick = (conversationId: string) => {
     setSelectedConversation(conversationId);
-    openMessenger(conversationId);
+    // Note: Opening messenger is disabled in demo mode to prevent API calls
+    // openMessenger(conversationId);
   };
 
   const formatTime = (date: Date | string) => {
@@ -162,6 +165,9 @@ export const IndividualMessages: React.FC = () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
                 <p className="text-gray-600 mt-2">Chat with your wedding vendors and get quick responses</p>
+                <p className="text-sm text-blue-600 mt-1">
+                  Debug: {mockConversations.length} total conversations, {filteredConversations.length} filtered
+                </p>
               </div>
               
               <button className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl hover:from-pink-600 hover:to-rose-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
@@ -216,106 +222,112 @@ export const IndividualMessages: React.FC = () => {
 
                 {/* Conversations */}
                 <div className="max-h-96 overflow-y-auto">
-                  {filteredConversations.map((conversation) => (
-                    <motion.div
-                      key={conversation.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={cn(
-                        "p-4 border-b border-gray-100 cursor-pointer transition-all duration-300 hover:bg-gray-50",
-                        selectedConversation === conversation.id ? 'bg-pink-50 border-pink-200' : ''
-                      )}
-                      onClick={() => handleConversationClick(conversation.id)}
-                    >
-                      <div className="flex items-start space-x-3">
-                        <div className="relative">
-                          <img
-                            src={conversation.participants[0].avatar}
-                            alt={conversation.participants[0].name}
-                            className="w-12 h-12 rounded-full object-cover"
-                          />
-                          {conversation.participants[0].isOnline && (
-                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <h3 className="text-sm font-semibold text-gray-900 truncate">
-                              {conversation.participants[0].name}
-                            </h3>
-                            <div className="flex items-center space-x-1">
-                              {conversation.unreadCount > 0 && (
-                                <span className="bg-pink-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
-                                  {conversation.unreadCount}
-                                </span>
-                              )}
-                              <span className="text-xs text-gray-500">
-                                {formatTime(conversation.lastMessage?.timestamp || conversation.updatedAt || '')}
-                              </span>
-                            </div>
+                  <div className="p-4 text-sm text-gray-600">
+                    Total conversations: {mockConversations.length} | Filtered: {filteredConversations.length}
+                  </div>
+                  
+                  {filteredConversations.length > 0 ? (
+                    filteredConversations.map((conversation) => (
+                      <motion.div
+                        key={conversation.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={cn(
+                          "p-4 border-b border-gray-100 cursor-pointer transition-all duration-300 hover:bg-gray-50",
+                          selectedConversation === conversation.id ? 'bg-pink-50 border-pink-200' : ''
+                        )}
+                        onClick={() => handleConversationClick(conversation.id)}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className="relative">
+                            <img
+                              src={conversation.participants[0].avatar}
+                              alt={conversation.participants[0].name}
+                              className="w-12 h-12 rounded-full object-cover"
+                            />
+                            {conversation.participants[0].isOnline && (
+                              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                            )}
                           </div>
                           
-                          {/* Service Info */}
-                          {conversation.serviceInfo && (
-                            <div className="flex items-center space-x-2 mb-2">
-                              <img
-                                src={conversation.serviceInfo.image}
-                                alt={conversation.serviceInfo.name}
-                                className="w-6 h-6 rounded object-cover"
-                              />
-                              <span className="text-xs text-pink-600 font-medium">
-                                {conversation.serviceInfo.category}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {conversation.serviceInfo.price}
-                              </span>
-                            </div>
-                          )}
-                          
-                          <p className="text-sm text-gray-600 truncate">
-                            {conversation.lastMessage?.senderName === 'You' ? 'You: ' : ''}
-                            {conversation.lastMessage?.content}
-                          </p>
-                          
-                          <div className="flex items-center justify-between mt-2">
-                            <div className="flex items-center space-x-2">
-                              {conversation.lastMessage?.senderName === 'You' && (
-                                <CheckCheck className="w-4 h-4 text-blue-500" />
-                              )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <h3 className="text-sm font-semibold text-gray-900 truncate">
+                                {conversation.participants[0].name}
+                              </h3>
+                              <div className="flex items-center space-x-1">
+                                {conversation.unreadCount > 0 && (
+                                  <span className="bg-pink-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                                    {conversation.unreadCount}
+                                  </span>
+                                )}
+                                <span className="text-xs text-gray-500">
+                                  {formatTime(conversation.lastMessage?.timestamp || conversation.updatedAt || '')}
+                                </span>
+                              </div>
                             </div>
                             
-                            <div className="flex items-center space-x-1">
-                              <button 
-                                className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-                                title="Call vendor"
-                              >
-                                <Phone className="w-4 h-4 text-gray-400" />
-                              </button>
-                              <button 
-                                className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-                                title="Video call"
-                              >
-                                <Video className="w-4 h-4 text-gray-400" />
-                              </button>
-                              <button 
-                                className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-                                title="More options"
-                              >
-                                <MoreVertical className="w-4 h-4 text-gray-400" />
-                              </button>
+                            {/* Service Info */}
+                            {conversation.serviceInfo && (
+                              <div className="flex items-center space-x-2 mb-2">
+                                <img
+                                  src={conversation.serviceInfo.image}
+                                  alt={conversation.serviceInfo.name}
+                                  className="w-6 h-6 rounded object-cover"
+                                />
+                                <span className="text-xs text-pink-600 font-medium">
+                                  {conversation.serviceInfo.category}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {conversation.serviceInfo.price}
+                                </span>
+                              </div>
+                            )}
+                            
+                            <p className="text-sm text-gray-600 truncate">
+                              {conversation.lastMessage?.senderName === 'You' ? 'You: ' : ''}
+                              {conversation.lastMessage?.content}
+                            </p>
+                            
+                            <div className="flex items-center justify-between mt-2">
+                              <div className="flex items-center space-x-2">
+                                {conversation.lastMessage?.senderName === 'You' && (
+                                  <CheckCheck className="w-4 h-4 text-blue-500" />
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center space-x-1">
+                                <button 
+                                  className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                                  title="Call vendor"
+                                >
+                                  <Phone className="w-4 h-4 text-gray-400" />
+                                </button>
+                                <button 
+                                  className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                                  title="Video call"
+                                >
+                                  <Video className="w-4 h-4 text-gray-400" />
+                                </button>
+                                <button 
+                                  className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                                  title="More options"
+                                >
+                                  <MoreVertical className="w-4 h-4 text-gray-400" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                  
-                  {filteredConversations.length === 0 && (
+                      </motion.div>
+                    ))
+                  ) : (
                     <div className="p-8 text-center">
                       <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500">No conversations found</p>
-                      <p className="text-sm text-gray-400 mt-1">Start by contacting a vendor</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Search query: "{searchQuery}" | Filter: {filter}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -381,16 +393,19 @@ export const IndividualMessages: React.FC = () => {
                   {/* Messages Area */}
                   <div className="flex-1 p-6 overflow-y-auto">
                     <div className="text-center text-gray-500 mb-6">
-                      <p>Click the message bubble to open the full messenger</p>
+                      <p>💬 Demo Messaging Interface</p>
+                      <p className="text-sm mt-2">This is a preview of the messaging system. Real-time messaging will be available when the backend API is implemented.</p>
                     </div>
                     
                     <div className="flex justify-center">
                       <button
-                        onClick={() => openMessenger(selectedConversation)}
-                        className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl hover:from-pink-600 hover:to-rose-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                        onClick={() => {
+                          alert('🚧 Demo Mode\n\nThis messaging system is currently in demo mode. The full real-time messaging functionality will be available once the backend messaging API is implemented.\n\nFor now, you can:\n✅ Browse mock conversations\n✅ See the UI design\n✅ Test the interface\n\n🔜 Coming soon: Real-time messaging with vendors!');
+                        }}
+                        className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-xl hover:from-gray-500 hover:to-gray-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
                       >
                         <MessageSquare className="w-5 h-5" />
-                        <span>Open Chat</span>
+                        <span>Demo Chat (API Coming Soon)</span>
                       </button>
                     </div>
                   </div>
@@ -472,14 +487,14 @@ export const IndividualMessages: React.FC = () => {
         </div>
       </main>
 
-      {/* Messenger Modal */}
-      {isMessengerOpen && (
+      {/* Note: Messenger component disabled in demo mode to prevent API calls */}
+      {/* {isMessengerOpen && (
         <Messenger
           isOpen={isMessengerOpen}
           onClose={closeMessenger}
           conversationId={activeConversationId}
         />
-      )}
+      )} */}
     </div>
   );
 };

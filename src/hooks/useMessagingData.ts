@@ -73,6 +73,14 @@ export const useMessagingData = (vendorId?: string): UseMessagingDataReturn => {
     try {
       setError(null);
       
+      console.log('📤 [useMessagingData] Sending message:', {
+        conversationId,
+        senderId,
+        senderName,
+        senderType,
+        contentLength: content.length
+      });
+      
       const newMessage = await MessagingApiService.sendMessage(
         conversationId,
         content,
@@ -80,6 +88,8 @@ export const useMessagingData = (vendorId?: string): UseMessagingDataReturn => {
         senderName,
         senderType
       );
+      
+      console.log('✅ [useMessagingData] Message sent successfully:', newMessage.id);
       
       // Add the new message to the current messages if we're viewing this conversation
       if (currentConversationId === conversationId) {
@@ -107,7 +117,7 @@ export const useMessagingData = (vendorId?: string): UseMessagingDataReturn => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
       setError(errorMessage);
-      console.error('Error sending message:', err);
+      console.error('💥 [useMessagingData] Error sending message:', err);
       throw err;
     }
   }, [currentConversationId]);

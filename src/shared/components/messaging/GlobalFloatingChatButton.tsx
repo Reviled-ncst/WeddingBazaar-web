@@ -16,12 +16,29 @@ export const GlobalFloatingChatButton: React.FC = () => {
   } = useGlobalMessenger();
 
   // Don't show if user is not authenticated
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated) {
+    console.log('🔒 [GlobalFloatingChatButton] Not showing - user not authenticated');
+    return null;
+  }
 
   // Only show button if there are conversations AND chat is completely closed 
   // OR if chat exists but is minimized (show button below the minimized bubble)
-  if (conversations.length === 0) return null;
-  if (showFloatingChat && !isMinimized) return null; // Only hide if chat is open and NOT minimized
+  if (conversations.length === 0) {
+    console.log('💬 [GlobalFloatingChatButton] Not showing - no conversations found');
+    return null;
+  }
+  if (showFloatingChat && !isMinimized) {
+    console.log('📱 [GlobalFloatingChatButton] Not showing - chat is open and not minimized');
+    return null; // Only hide if chat is open and NOT minimized
+  }
+
+  console.log('✅ [GlobalFloatingChatButton] Showing chat button', {
+    isAuthenticated,
+    conversationsCount: conversations.length,
+    showFloatingChat,
+    isMinimized,
+    totalUnreadCount
+  });
 
   // Debug logging for development only
   if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_MESSENGER) {

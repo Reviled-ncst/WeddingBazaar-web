@@ -10,7 +10,6 @@ import {
   Users,
   Calendar,
   DollarSign,
-  BookOpen,
   Search,
   Star,
   Crown
@@ -252,21 +251,6 @@ export const weddingPlanningInstructions: InstructionStep[] = [
     ]
   },
   {
-    id: 'planning',
-    title: 'Wedding Planning & Tasks',
-    description: 'Organize your wedding with our comprehensive task management system. Track what needs to be done, set priorities, and never miss an important deadline.',
-    icon: BookOpen,
-    action: {
-      label: 'Start Planning',
-      href: '/individual/planning'
-    },
-    tips: [
-      'Start with high-priority tasks first',
-      'Set realistic deadlines for each task',
-      'Use categories to organize different aspects of your wedding'
-    ]
-  },
-  {
     id: 'budget',
     title: 'Budget Management',
     description: 'Keep your wedding expenses on track with our detailed budget management tools. Track spending by category and stay within your budget.',
@@ -347,16 +331,6 @@ export const quickStartInstructions: InstructionStep[] = [
     action: {
       label: 'Set Budget',
       href: '/individual/budget'
-    }
-  },
-  {
-    id: 'planning',
-    title: 'Create Your Timeline',
-    description: 'Set your wedding date and create a planning timeline. This will help you prioritize tasks and stay organized.',
-    icon: Calendar,
-    action: {
-      label: 'Start Planning',
-      href: '/individual/planning'
     }
   }
 ];

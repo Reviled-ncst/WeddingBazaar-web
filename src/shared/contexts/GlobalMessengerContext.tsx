@@ -88,6 +88,9 @@ interface ChatVendor {
   name: string;
   service: string;
   vendorId?: string;
+  rating?: number;
+  verified?: boolean;
+  image?: string;
 }
 
 interface Message {
@@ -199,6 +202,173 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
       localStorage.removeItem('wedding-bazaar-chat-minimized');
     }
   }, [isAuthenticated]);
+
+  // Load conversations automatically when user is authenticated OR in development mode
+  React.useEffect(() => {
+    const loadUserConversations = async () => {
+      // In development mode, always try to load conversations even without authentication
+      const shouldLoad = isAuthenticated && user?.id;
+      const shouldLoadDev = import.meta.env.DEV && !shouldLoad;
+      
+      if (!shouldLoad && !shouldLoadDev) {
+        console.log('🔍 [GlobalMessenger] Skipping conversation load - no auth and not dev mode');
+        return;
+      }
+      
+      const currentUserId = user?.id || 'dev-user-vendor';
+      const currentUserRole = user?.role || 'vendor';
+      
+      console.log('🔄 [GlobalMessenger] Loading conversations:', {
+        isAuthenticated,
+        hasUser: !!user,
+        userId: currentUserId,
+        userRole: currentUserRole,
+        isDev: import.meta.env.DEV
+      });
+      
+      try {
+        // If user is a vendor (or in dev mode), load their vendor conversations
+        if (currentUserRole === 'vendor') {
+          const conversationsData = await MessagingApiService.getConversations(currentUserId);
+          
+          if (conversationsData && conversationsData.length > 0) {
+            console.log('✅ [GlobalMessenger] Found vendor conversations:', conversationsData.length);
+            
+            // Convert API conversations to GlobalMessenger format
+            const safeUser = user || { id: currentUserId, firstName: 'Test', lastName: 'Vendor', email: 'test@example.com' };
+            const globalConversations: Conversation[] = conversationsData.map(conv => ({
+              id: conv.id,
+              vendor: {
+                vendorId: safeUser.id,
+                name: safeUser.firstName ? `${safeUser.firstName} ${safeUser.lastName}` : safeUser.email,
+                service: 'Wedding Services',
+                rating: 4.5,
+                verified: true,
+                image: (safeUser as any).profileImage || `https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400`
+              },
+              lastActivity: new Date(conv.updatedAt || conv.createdAt || Date.now()),
+              unreadCount: conv.unreadCount || 0,
+              messages: conv.lastMessage ? [{
+                id: conv.lastMessage.id,
+                text: conv.lastMessage.content,
+                sender: conv.lastMessage.senderRole === 'vendor' ? 'vendor' : 'user',
+                timestamp: new Date(conv.lastMessage.timestamp)
+              }] : []
+            }));
+            
+            setConversations(globalConversations);
+            
+            // If no active conversation but conversations exist, set the first one as active
+            if (!activeConversationId && globalConversations.length > 0) {
+              setActiveConversationId(globalConversations[0].id);
+            }
+          }
+        }
+        // TODO: Add similar logic for couple/admin roles if needed
+        
+      } catch (error) {
+        console.error('💥 [GlobalMessenger] Failed to load conversations:', error);
+        
+        // Check if this is a 404 error (backend endpoint not found)
+        const is404Error = error instanceof Error && (
+          error.message.includes('404') || 
+          error.message.includes('endpoint not found') ||
+          error.message.includes('Messaging API endpoint not available')
+        );
+        
+        console.log('🔍 [GlobalMessenger] Error analysis:', {
+          is404Error,
+          isDev: import.meta.env.DEV,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          willShowFallback: is404Error && import.meta.env.DEV
+        });
+        
+        // Provide fallback conversations for development/testing when backend endpoints don't exist
+        if (is404Error && import.meta.env.DEV) {
+          console.log('🔧 [GlobalMessenger] Backend messaging endpoints not available, providing development conversations');
+          
+          // Create development conversations with safe user handling
+          const safeUser = user || { id: 'dev-user', role: 'vendor', firstName: 'Test', lastName: 'Vendor' };
+          
+          const developmentConversations: Conversation[] = [
+            {
+              id: 'dev-conversation-1',
+              vendor: {
+                vendorId: safeUser.role === 'vendor' ? safeUser.id : '2-2025-003',
+                name: safeUser.role === 'vendor' ? `${safeUser.firstName || 'Test'} ${safeUser.lastName || 'Vendor'}` : 'Perfect Weddings Co.',
+                service: 'Wedding Photography',
+                rating: 4.8,
+                verified: true,
+                image: `https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400`
+              },
+              lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+              unreadCount: 2,
+              messages: [
+                {
+                  id: 'dev-msg-1',
+                  text: 'Hi! I\'m interested in your wedding photography services for my June wedding.',
+                  sender: safeUser.role === 'vendor' ? 'user' : 'vendor',
+                  timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000)
+                },
+                {
+                  id: 'dev-msg-2',
+                  text: 'Hello! I\'d be happy to help with your special day. What date are you planning?',
+                  sender: safeUser.role === 'vendor' ? 'vendor' : 'user',
+                  timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000)
+                },
+                {
+                  id: 'dev-msg-3',
+                  text: 'We\'re planning for June 15th at Garden Manor. Do you have availability?',
+                  sender: safeUser.role === 'vendor' ? 'user' : 'vendor',
+                  timestamp: new Date(Date.now() - 30 * 60 * 1000)
+                }
+              ]
+            },
+            {
+              id: 'dev-conversation-2',
+              vendor: {
+                vendorId: safeUser.role === 'vendor' ? safeUser.id : '2-2025-004',
+                name: safeUser.role === 'vendor' ? `${safeUser.firstName || 'Test'} ${safeUser.lastName || 'Vendor'}` : 'Elegant Events Co.',
+                service: 'Wedding Planning',
+                rating: 4.6,
+                verified: true,
+                image: `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400`
+              },
+              lastActivity: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+              unreadCount: 0,
+              messages: [
+                {
+                  id: 'dev-msg-4',
+                  text: 'Thank you for the beautiful wedding planning service! Everything was perfect.',
+                  sender: safeUser.role === 'vendor' ? 'user' : 'vendor',
+                  timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000)
+                },
+                {
+                  id: 'dev-msg-5',
+                  text: 'It was our pleasure! Wishing you both a lifetime of happiness. 💕',
+                  sender: safeUser.role === 'vendor' ? 'vendor' : 'user',
+                  timestamp: new Date(Date.now() - 23 * 60 * 60 * 1000)
+                }
+              ]
+            }
+          ];
+          
+          setConversations(developmentConversations);
+          
+          // Set the first conversation as active if none is selected
+          if (!activeConversationId && developmentConversations.length > 0) {
+            setActiveConversationId(developmentConversations[0].id);
+          }
+        } else {
+          // In production or when it's not a 404, don't add fallback conversations
+          setConversations([]);
+        }
+      }
+    };
+    
+    // Load conversations when conditions are met
+    loadUserConversations();
+  }, [isAuthenticated, user?.id, user?.role]);
 
   // Persist state to localStorage
   React.useEffect(() => {
@@ -325,7 +495,7 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
 
   const closeFloatingChat = () => {
     setShowFloatingChat(false);
-    // Don't clear activeConversationId or conversations - keep them for persistence
+    setActiveConversationId(null); // Clear active conversation to prevent auto-restore
     setIsMinimized(false);
   };
 

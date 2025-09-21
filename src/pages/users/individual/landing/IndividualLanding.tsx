@@ -136,14 +136,6 @@ export const IndividualLanding: React.FC = () => {
                 link: "/individual/services"
               },
               {
-                icon: Search,
-                title: "Wedding Planning",
-                description: "Manage your planning checklist",
-                color: "from-blue-500 to-purple-500",
-                action: "View Planning",
-                link: "/individual/planning"
-              },
-              {
                 icon: Calendar,
                 title: "Budget Manager",
                 description: "Track wedding expenses",

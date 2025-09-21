@@ -1,10 +1,11 @@
 import type { Conversation, Message } from '../../pages/shared/messenger/types';
 
 const getApiBaseUrl = (): string => {
-  return import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+  const baseUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+  return `${baseUrl}/api`;
 };
 
-const API_BASE = `${getApiBaseUrl()}/messaging`;
+const API_BASE = getApiBaseUrl();
 
 export interface MessagingApiResponse<T> {
   conversations?: T;
@@ -16,15 +17,37 @@ export interface MessagingApiResponse<T> {
 }
 
 export class MessagingApiService {
+  // Helper method to handle API errors consistently
+  private static handleApiError(error: any, operation: string): never {
+    console.error(`❌ ${operation} failed:`, error);
+    
+    if (error.message?.includes('404')) {
+      throw new Error(`Messaging API endpoint not available. The backend messaging system needs to be implemented. (${operation})`);
+    }
+    
+    if (error.message?.includes('Failed to fetch')) {
+      throw new Error(`Unable to connect to the messaging server. Please check your internet connection. (${operation})`);
+    }
+    
+    throw error;
+  }
+
   // Get all conversations for a vendor
   static async getConversations(vendorId: string): Promise<Conversation[]> {
     try {
-      const apiUrl = `${getApiBaseUrl()}/messaging/conversations/${vendorId}`;
+      const apiUrl = `${getApiBaseUrl()}/conversations?vendorId=${vendorId}`;
       console.log('🔍 Fetching conversations from:', apiUrl);
       
       const response = await fetch(apiUrl);
       
       console.log('🔍 Conversations response status:', response.status);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('404 - Conversations endpoint not found');
+        }
+        throw new Error(`Failed to fetch conversations: ${response.status} ${response.statusText}`);
+      }
       
       // Check if response is HTML (error page) instead of JSON
       const contentType = response.headers.get('content-type');
@@ -33,17 +56,12 @@ export class MessagingApiService {
         throw new Error('Server configuration error. Please contact support.');
       }
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch conversations: ${response.status} ${response.statusText}`);
-      }
-      
       const data: MessagingApiResponse<Conversation[]> = await response.json();
       console.log('✅ Conversations data received:', data);
       
       return data.conversations || [];
     } catch (error) {
-      console.error('❌ Error fetching conversations:', error);
-      throw error;
+      return this.handleApiError(error, 'Get Conversations');
     }
   }
 
@@ -58,7 +76,7 @@ export class MessagingApiService {
     userType: 'couple' | 'vendor' | 'admin';
   }): Promise<any> {
     try {
-      const apiUrl = `${getApiBaseUrl()}/messaging/conversations`;
+      const apiUrl = `${getApiBaseUrl()}/conversations`;
       console.log('📤 Creating conversation at:', apiUrl);
       
       const response = await fetch(apiUrl, {
@@ -85,8 +103,7 @@ export class MessagingApiService {
       const result: MessagingApiResponse<any> = await response.json();
       return result.conversation || result;
     } catch (error) {
-      console.error('Error creating conversation:', error);
-      throw error;
+      return this.handleApiError(error, 'Create Conversation');
     }
   }
 
@@ -98,14 +115,16 @@ export class MessagingApiService {
       );
       
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('404 - Messages endpoint not found');
+        }
         throw new Error(`Failed to fetch messages: ${response.statusText}`);
       }
       
       const data: MessagingApiResponse<Message[]> = await response.json();
       return data.messages || [];
     } catch (error) {
-      console.error('Error fetching messages:', error);
-      throw error;
+      return this.handleApiError(error, 'Get Messages');
     }
   }
 
@@ -134,6 +153,9 @@ export class MessagingApiService {
       });
       
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('404 - Send message endpoint not found');
+        }
         throw new Error(`Failed to send message: ${response.statusText}`);
       }
       
@@ -145,8 +167,7 @@ export class MessagingApiService {
       
       return data.message;
     } catch (error) {
-      console.error('Error sending message:', error);
-      throw error;
+      return this.handleApiError(error, 'Send Message');
     }
   }
 
@@ -162,14 +183,16 @@ export class MessagingApiService {
       });
       
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('404 - Mark as read endpoint not found');
+        }
         throw new Error(`Failed to mark messages as read: ${response.statusText}`);
       }
       
       const data: MessagingApiResponse<boolean> = await response.json();
       return data.success || false;
     } catch (error) {
-      console.error('Error marking messages as read:', error);
-      throw error;
+      return this.handleApiError(error, 'Mark As Read');
     }
   }
 }

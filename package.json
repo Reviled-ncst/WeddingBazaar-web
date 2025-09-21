@@ -8,6 +8,7 @@
     "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\"",
     "dev:backend": "nodemon --exec tsx server/index.ts",
     "build": "tsc -b && vite build",
+    "build:prod": "vite build --mode production",
     "build:backend": "echo 'Backend ready for deployment'",
     "build:full": "npm run build",
     "start:backend": "tsx server/index.ts",

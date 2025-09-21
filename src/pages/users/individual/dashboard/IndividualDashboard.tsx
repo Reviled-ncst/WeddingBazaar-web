@@ -9,7 +9,6 @@ import {
   ArrowRight,
   DollarSign,
   MessageCircle,
-  BookOpen,
   HelpCircle,
   X,
   ChevronLeft,
@@ -100,12 +99,6 @@ const quickTips = [
     description: 'Import contacts, track RSVPs, and manage table assignments',
     icon: Users,
     route: '/individual/guests'
-  },
-  {
-    title: 'Wedding Timeline',
-    description: 'Follow our expert-curated checklist for stress-free planning',
-    icon: BookOpen,
-    route: '/individual/planning'
   }
 ];
 
@@ -201,13 +194,6 @@ export const IndividualDashboard: React.FC = () => {
       icon: Users,
       color: 'bg-pink-500',
       onClick: () => navigate('/individual/services')
-    },
-    {
-      title: 'Plan Tasks',
-      description: 'Manage your wedding checklist',
-      icon: BookOpen,
-      color: 'bg-purple-500',
-      onClick: () => navigate('/individual/planning')
     },
     {
       title: 'Track Budget',

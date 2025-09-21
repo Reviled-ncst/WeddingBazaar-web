@@ -5,13 +5,14 @@ import {
   Crown, 
   Heart, 
   Search, 
-  BookOpen, 
   DollarSign, 
   Users, 
   Calendar, 
   MessageCircle, 
   Lightbulb, 
-  LogOut 
+  LogOut,
+  Clock,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../../../../shared/contexts/AuthContext';
 
@@ -45,10 +46,16 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
       description: 'Browse wedding vendors'
     },
     { 
-      name: 'Wedding Planning', 
-      href: '/individual/planning', 
-      icon: BookOpen,
-      description: 'Manage tasks & timeline'
+      name: 'Timeline', 
+      href: '/individual/timeline', 
+      icon: Clock,
+      description: 'Wedding planning timeline'
+    },
+    { 
+      name: 'For You', 
+      href: '/individual/foryou', 
+      icon: Sparkles,
+      description: 'Personalized content'
     },
     { 
       name: 'Budget Manager', 

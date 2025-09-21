@@ -25,7 +25,6 @@ import { AdminEmergency } from '../pages/users/admin/emergency';
 // Individual Pages
 import { Services } from '../pages/users/individual/services';
 import { IndividualDashboard } from '../pages/users/individual/dashboard';
-import { WeddingPlanning } from '../pages/users/individual/planning';
 import { BudgetManagement } from '../pages/users/individual/budget';
 import { GuestManagement } from '../pages/users/individual/guests';
 import { IndividualBookings } from '../pages/users/individual/bookings';
@@ -36,6 +35,8 @@ import { WeddingRegistry } from '../pages/users/individual/registry';
 import { ReviewsRatings } from '../pages/users/individual/reviews';
 import { HelpSupport } from '../pages/users/individual/help';
 import { IndividualMessages } from '../pages/users/individual/messages/IndividualMessages';
+import { WeddingTimeline } from '../pages/users/individual/timeline/WeddingTimeline';
+import { ForYouPage } from '../pages/users/individual/foryou/ForYouPage';
 
 // Vendor Pages
 import { VendorDashboard } from '../pages/users/vendor/dashboard';
@@ -116,9 +117,14 @@ export const AppRouter: React.FC = () => {
                 <Services />
               </ProtectedRoute>
             } />
-            <Route path="/individual/planning" element={
+            <Route path="/individual/timeline" element={
               <ProtectedRoute requireAuth={true}>
-                <WeddingPlanning />
+                <WeddingTimeline weddingDate={new Date('2025-12-31')} userId="current-user" />
+              </ProtectedRoute>
+            } />
+            <Route path="/individual/foryou" element={
+              <ProtectedRoute requireAuth={true}>
+                <ForYouPage />
               </ProtectedRoute>
             } />
             <Route path="/individual/budget" element={

@@ -17,9 +17,114 @@ import {
   Mic
 } from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
-import { useMessagingData } from '../../../../hooks/useMessagingData';
+import { useGlobalMessenger } from '../../../../shared/contexts/GlobalMessengerContext';
 import { useAuth } from '../../../../shared/contexts/AuthContext';
 import { cn } from '../../../../utils/cn';
+
+// Type adapters to bridge GlobalMessengerContext types with VendorMessages expectations
+interface VendorConversation {
+  id: string;
+  participants: Array<{
+    id: string;
+    name: string;
+    role: 'couple' | 'vendor' | 'admin';
+    avatar?: string;
+    isOnline: boolean;
+  }>;
+  lastMessage?: {
+    id: string;
+    content: string;
+    timestamp: Date;
+    senderRole: 'couple' | 'vendor' | 'admin';
+    senderName: string;
+  };
+  unreadCount: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+  serviceInfo?: {
+    id?: string;
+    name?: string;
+    category?: string;
+    price?: string;
+    image?: string;
+    description?: string;
+  };
+}
+
+interface VendorMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: 'couple' | 'vendor' | 'admin';
+  content: string;
+  timestamp: Date;
+  type: 'text' | 'image' | 'file';
+}
+
+// Helper function to convert GlobalMessenger types to Vendor types
+const adaptGlobalMessengerData = (globalConversations: any[]): { conversations: VendorConversation[], messages: VendorMessage[] } => {
+  const conversations: VendorConversation[] = globalConversations.map(conv => {
+    const lastMessage = conv.messages && conv.messages.length > 0 
+      ? conv.messages[conv.messages.length - 1]
+      : null;
+    
+    return {
+      id: conv.id,
+      participants: [
+        {
+          id: conv.vendor.vendorId || 'vendor-1',
+          name: conv.vendor.name,
+          role: 'vendor' as const,
+          avatar: conv.vendor.image,
+          isOnline: false
+        },
+        {
+          id: 'customer-1',
+          name: 'Customer',
+          role: 'couple' as const,
+          avatar: undefined,
+          isOnline: true
+        }
+      ],
+      lastMessage: lastMessage ? {
+        id: lastMessage.id,
+        content: lastMessage.text,
+        timestamp: lastMessage.timestamp,
+        senderRole: lastMessage.sender === 'vendor' ? 'vendor' as const : 'couple' as const,
+        senderName: lastMessage.sender === 'vendor' ? conv.vendor.name : 'Customer'
+      } : undefined,
+      unreadCount: conv.unreadCount || 0,
+      createdAt: conv.lastActivity,
+      updatedAt: conv.lastActivity,
+      serviceInfo: {
+        name: conv.vendor.service,
+        category: conv.vendor.service,
+        description: `${conv.vendor.service} services`
+      }
+    };
+  });
+
+  const messages: VendorMessage[] = [];
+  globalConversations.forEach(conv => {
+    if (conv.messages) {
+      conv.messages.forEach((msg: any) => {
+        messages.push({
+          id: msg.id,
+          conversationId: conv.id,
+          senderId: msg.sender === 'vendor' ? conv.vendor.vendorId || 'vendor-1' : 'customer-1',
+          senderName: msg.sender === 'vendor' ? conv.vendor.name : 'Customer',
+          senderRole: msg.sender === 'vendor' ? 'vendor' as const : 'couple' as const,
+          content: msg.text,
+          timestamp: msg.timestamp,
+          type: 'text' as const
+        });
+      });
+    }
+  });
+
+  return { conversations, messages };
+};
 
 export const VendorMessages: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,19 +136,51 @@ export const VendorMessages: React.FC = () => {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   
   const { user } = useAuth();
+  const { 
+    conversations: globalConversations, 
+    addMessage, 
+    markAsRead: globalMarkAsRead,
+    clearConversations 
+  } = useGlobalMessenger();
+  
+  // Create a test user if no user is authenticated (for development/testing)
+  const testUser = {
+    id: '2-2025-003',
+    email: 'vendor@test.com',
+    firstName: 'Test',
+    lastName: 'Vendor',
+    role: 'vendor' as const
+  };
+  
+  const currentUser = user || testUser;
   
   // Use real messaging data - hardcoded vendor ID for now
-  const vendorId = '2-2025-003'; // This should come from user.vendorId or similar
-  const {
-    conversations,
-    messages,
-    loading,
-    error,
-    refreshConversations,
-    loadMessages,
-    sendMessage,
-    markAsRead
-  } = useMessagingData(vendorId);    // Filter conversations based on search and filter
+  const vendorId = currentUser?.id || '2-2025-003'; // Use authenticated user ID or fallback
+  
+  console.log('🔧 [VendorMessages] Component initialized', {
+    hasUser: !!user,
+    hasCurrentUser: !!currentUser,
+    userId: currentUser?.id,
+    userEmail: currentUser?.email,
+    userRole: currentUser?.role,
+    vendorId: vendorId,
+    isTestUser: !user && !!currentUser
+  });
+  
+  // Convert GlobalMessenger data to VendorMessages format
+  const { conversations, messages } = adaptGlobalMessengerData(globalConversations);
+  const loading = false; // GlobalMessenger handles loading internally
+  
+  console.log('🔧 [VendorMessages] Data loaded:', {
+    conversationsCount: conversations.length,
+    globalConversationsCount: globalConversations.length,
+    messagesCount: messages.length
+  });
+
+  // Get messages for the selected conversation
+  const selectedConversationMessages = messages.filter(
+    msg => msg.conversationId === selectedConversation
+  );    // Filter conversations based on search and filter
     const filteredConversations = conversations.filter(conv => {
       // For vendor view, the customer name is in participants[0] (this is the person talking TO the vendor)
       const customerName = conv.participants[0]?.name || '';
@@ -63,38 +200,65 @@ export const VendorMessages: React.FC = () => {
         container.scrollTop = container.scrollHeight;
       });
     }
-  }, [messages, selectedConversation]);
+  }, [selectedConversationMessages, selectedConversation]);
 
   // Load messages when conversation is selected
   useEffect(() => {
     if (selectedConversation) {
-      loadMessages(selectedConversation);
-      // Mark as read when conversation is opened
-      if (user?.id) {
-        markAsRead(selectedConversation, user.id);
+      // For GlobalMessenger, messages are already loaded with conversations
+      // Just mark as read
+      if (globalMarkAsRead) {
+        globalMarkAsRead(selectedConversation);
       }
     }
-  }, [selectedConversation, loadMessages, markAsRead, user?.id]);
+  }, [selectedConversation, globalMarkAsRead]);
 
   const handleConversationClick = (conversationId: string) => {
+    console.log('💬 [VendorMessages] Conversation selected:', conversationId);
     setSelectedConversation(conversationId);
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || !user) return;
+    console.log('🚀 [VendorMessages] Send message clicked', {
+      hasMessage: !!newMessage.trim(),
+      hasConversation: !!selectedConversation,
+      hasUser: !!user,
+      userId: user?.id,
+      userEmail: user?.email,
+      messageLength: newMessage.trim().length
+    });
+
+    if (!newMessage.trim()) {
+      console.log('❌ [VendorMessages] No message content');
+      return;
+    }
+    
+    if (!selectedConversation) {
+      console.log('❌ [VendorMessages] No conversation selected');
+      return;
+    }
+    
+    if (!currentUser) {
+      console.log('❌ [VendorMessages] No user authenticated');
+      return;
+    }
 
     try {
-      await sendMessage(
-        selectedConversation,
-        newMessage.trim(),
-        user.id,
-        user.email || 'Vendor',
-        'vendor'
-      );
+      console.log('📤 [VendorMessages] Sending message...');
+      
+      // Use GlobalMessenger's addMessage function
+      await addMessage(selectedConversation, {
+        text: newMessage.trim(),
+        sender: 'vendor',
+        timestamp: new Date()
+      });
+      
+      console.log('✅ [VendorMessages] Message sent successfully');
       setNewMessage('');
       setIsTyping(false);
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('💥 [VendorMessages] Failed to send message:', error);
+      alert('Failed to send message. Please try again.');
     }
   };
 
@@ -140,26 +304,32 @@ export const VendorMessages: React.FC = () => {
     );
   }
 
-  // Show error state
-  if (error) {
+  // Show empty state when no conversations are available
+  if (conversations.length === 0) {
     return (
       <div className="min-h-screen flex flex-col">
         <VendorHeader />
         <div className="flex-1 bg-gray-50 pt-20">
           <div className="container mx-auto px-4 py-8">
             <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertCircle className="h-8 w-8 text-red-500" />
+              <div className="text-center max-w-md">
+                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+                  <MessageSquare className="h-8 w-8 text-blue-500" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Messages</h3>
-                <p className="text-gray-600 mb-4">{error}</p>
-                <button
-                  onClick={refreshConversations}
-                  className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors"
-                >
-                  Try Again
-                </button>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No Messages Yet
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  You don't have any conversations yet. Customer messages will appear here when they contact you about your services.
+                </p>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => clearConversations && clearConversations()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -413,12 +583,12 @@ export const VendorMessages: React.FC = () => {
                         e.stopPropagation();
                       }}
                     >
-                      {messages.length > 0 ? (
+                      {selectedConversationMessages.length > 0 ? (
                         <div className="space-y-4 pb-4">
                           <AnimatePresence>
-                            {messages.map((message, index) => {
+                            {selectedConversationMessages.map((message, index) => {
                               const isVendor = message.senderRole === 'vendor' || message.senderId === user?.id;
-                              const showAvatar = index === 0 || messages[index - 1]?.senderId !== message.senderId;
+                              const showAvatar = index === 0 || selectedConversationMessages[index - 1]?.senderId !== message.senderId;
                               
                               return (
                                 <motion.div
@@ -547,7 +717,12 @@ export const VendorMessages: React.FC = () => {
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={handleSendMessage}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              console.log('🖱️ [VendorMessages] Send button clicked');
+                              handleSendMessage();
+                            }}
                             disabled={!newMessage.trim()}
                             className={cn(
                               "p-3 rounded-xl transition-all duration-200",
@@ -555,6 +730,7 @@ export const VendorMessages: React.FC = () => {
                                 ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg hover:shadow-xl"
                                 : "bg-gray-100 text-gray-400 cursor-not-allowed"
                             )}
+                            type="button"
                           >
                             <Send className="w-5 h-5" />
                           </motion.button>

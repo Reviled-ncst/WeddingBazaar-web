@@ -76,7 +76,7 @@ export interface ContractDetails {
 }
 
 class BookingInteractionService {
-  private apiBaseUrl = import.meta.env.VITE_API_URL || '';
+  private apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
 
   // ============================================================================
   // COUPLE ACTIONS
