@@ -16,11 +16,12 @@ import {
 import { cn } from '../../../../utils/cn';
 import { CoupleHeader } from '../landing/CoupleHeader';
 import { useGlobalMessenger } from '../../../../shared/contexts/GlobalMessengerContext';
-import { servicesApiService } from '../../../../modules/services/services/servicesApiService';
+// Remove mock data imports - using real API instead
+// import { servicesApiService } from '../../../../modules/services/services/servicesApiService';
 import type { Service } from '../../../../modules/services/types';
 import { ServiceDetailsModal, type Service as ModuleService } from '../../../../modules/services';
 import { DecisionSupportSystem } from './dss/DecisionSupportSystem';
-import { dataOptimizationService } from './dss/DataOptimizationService';
+// import { dataOptimizationService } from './dss/DataOptimizationService';
 
 interface FilterOptions {
   categories: string[];
@@ -172,58 +173,88 @@ export const Services: React.FC = () => {
     ratings: [5, 4, 3, 2, 1]
   };
 
-  // Load services from API with optimization for low-speed internet
+  // Load services from real API - FIXED to use production data
   useEffect(() => {
     const loadServices = async () => {
       try {
         setLoading(true);
-        console.log('Loading services from API with optimization...');
+        console.log('🔍 Loading real services from production API...');
         
-        // Use optimized loading for better performance on slow connections
-        const optimizedResponse = await dataOptimizationService.loadServicesProgressive(50);
+        // Use the production API URL directly
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
         
-        console.log('Optimized services API response:', optimizedResponse);
-        console.log('Number of services loaded:', optimizedResponse.services?.length || 0);
+        // Try multiple endpoints to get services data
+        let servicesData: Service[] = [];
         
-        if (optimizedResponse.services && optimizedResponse.services.length > 0) {
-          console.log('🔍 Debug: Raw services from API:', optimizedResponse.services.length);
-          console.log('🔍 Debug: First service has gallery:', optimizedResponse.services[0]?.gallery);
-          console.log('🔍 Debug: First service full object:', optimizedResponse.services[0]);
-          setServices(optimizedResponse.services);
-          setFilteredServices(optimizedResponse.services);
-          console.log('Services set successfully:', optimizedResponse.services.slice(0, 3)); // Show first 3
-          
-          // Preload critical data in background for better UX
-          dataOptimizationService.preloadCriticalData();
-        } else {
-          console.warn('No services returned from API - empty or failed response');
-          // Fallback to regular API call if optimized loading fails
-          const fallbackResponse = await servicesApiService.getServices({ limit: 50 });
-          if (fallbackResponse.services && fallbackResponse.services.length > 0) {
-            setServices(fallbackResponse.services);
-            setFilteredServices(fallbackResponse.services);
-          } else {
-            setServices([]);
-            setFilteredServices([]);
+        try {
+          // First try the services endpoint
+          const servicesResponse = await fetch(`${apiUrl}/api/services`);
+          if (servicesResponse.ok) {
+            const data = await servicesResponse.json();
+            if (data.services && Array.isArray(data.services)) {
+              servicesData = data.services;
+              console.log('✅ Loaded services from /api/services:', servicesData.length);
+            }
+          }
+        } catch (error) {
+          console.warn('Services endpoint not available, trying vendors endpoint');
+        }
+        
+        // If no services found, try to get vendor data and convert to services
+        if (servicesData.length === 0) {
+          try {
+            const vendorsResponse = await fetch(`${apiUrl}/api/vendors/featured`);
+            if (vendorsResponse.ok) {
+              const vendorData = await vendorsResponse.json();
+              console.log('🔍 Raw vendor data:', vendorData);
+              
+              if (vendorData.vendors && Array.isArray(vendorData.vendors)) {
+                // Convert vendors to services format
+                servicesData = vendorData.vendors.map((vendor: any, index: number) => ({
+                  id: vendor.id || `vendor-${index}`,
+                  name: vendor.name || vendor.business_name || 'Unnamed Service',
+                  category: vendor.category || vendor.business_type || 'General',
+                  vendorId: vendor.id,
+                  vendorName: vendor.name || vendor.business_name,
+                  vendorImage: vendor.image || vendor.profile_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
+                  description: vendor.description || vendor.bio || `Professional ${vendor.category || 'wedding'} services`,
+                  priceRange: vendor.price_range || '$$',
+                  location: vendor.location || vendor.address || 'Location Available',
+                  rating: typeof vendor.rating === 'number' ? vendor.rating : parseFloat(vendor.rating) || 4.5,
+                  reviewCount: vendor.review_count || vendor.reviews_count || 0,
+                  image: vendor.image || vendor.profile_image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+                  gallery: vendor.gallery || [],
+                  features: vendor.features || vendor.specialties || [],
+                  availability: vendor.availability !== false,
+                  contactInfo: {
+                    phone: vendor.phone || vendor.contact_phone,
+                    email: vendor.email || vendor.contact_email,
+                    website: vendor.website || vendor.business_website
+                  }
+                }));
+                console.log('✅ Converted vendors to services:', servicesData.length);
+              }
+            }
+          } catch (error) {
+            console.error('Failed to load vendor data:', error);
           }
         }
-      } catch (error) {
-        console.error('Failed to load services with optimization, trying fallback:', error);
-        try {
-          // Fallback to regular API call
-          const fallbackResponse = await servicesApiService.getServices({ limit: 50 });
-          if (fallbackResponse.services && fallbackResponse.services.length > 0) {
-            setServices(fallbackResponse.services);
-            setFilteredServices(fallbackResponse.services);
-          } else {
-            setServices([]);
-            setFilteredServices([]);
-          }
-        } catch (fallbackError) {
-          console.error('Fallback API call also failed:', fallbackError);
+        
+        // If still no data, show empty state
+        if (servicesData.length === 0) {
+          console.warn('⚠️ No real data available from API endpoints');
           setServices([]);
           setFilteredServices([]);
+        } else {
+          console.log('🎉 Successfully loaded real services:', servicesData.slice(0, 3));
+          setServices(servicesData);
+          setFilteredServices(servicesData);
         }
+        
+      } catch (error) {
+        console.error('❌ Failed to load real services:', error);
+        setServices([]);
+        setFilteredServices([]);
       } finally {
         setLoading(false);
       }
@@ -232,65 +263,43 @@ export const Services: React.FC = () => {
     loadServices();
   }, []);
 
-  // Filter and search logic with optimization
+  // Filter and search logic - FIXED to remove mock dependencies
   useEffect(() => {
-    const performOptimizedFiltering = async () => {
+    const performFiltering = () => {
       let filtered = services;
 
-      // Use optimized search for text queries
-      if (searchQuery && searchQuery.length > 2) {
-        try {
-          const searchResults = await dataOptimizationService.searchServices(searchQuery, {
-            categories: selectedCategory !== 'all' ? [selectedCategory] : [],
-            location: selectedLocation !== 'all' ? selectedLocation : '',
-            priceRange: selectedPriceRange !== 'all' ? selectedPriceRange : '',
-            minRating: selectedRating
-          });
-          
-          if (searchResults.services) {
-            filtered = searchResults.services;
-          } else {
-            // Fallback to client-side filtering
-            filtered = services.filter(service =>
-              service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              service.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              service.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              service.description.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-          }
-        } catch (error) {
-          console.warn('Optimized search failed, falling back to client-side filtering:', error);
-          // Fallback to client-side search
-          filtered = services.filter(service =>
-            service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            service.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            service.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            service.description.toLowerCase().includes(searchQuery.toLowerCase())
-          );
-        }
-      } else if (searchQuery && searchQuery.length <= 2) {
-        // For short queries, use client-side filtering for better performance
+      // Text search
+      if (searchQuery && searchQuery.trim().length > 0) {
+        const query = searchQuery.toLowerCase().trim();
         filtered = services.filter(service =>
-          service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          service.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          service.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          service.description.toLowerCase().includes(searchQuery.toLowerCase())
+          service.name.toLowerCase().includes(query) ||
+          service.category.toLowerCase().includes(query) ||
+          service.vendorName.toLowerCase().includes(query) ||
+          service.description.toLowerCase().includes(query) ||
+          service.location.toLowerCase().includes(query)
         );
       }
 
-      // Apply other filters client-side for better performance
+      // Category filter
       if (selectedCategory !== 'all') {
-        filtered = filtered.filter(service => service.category === selectedCategory);
+        filtered = filtered.filter(service => 
+          service.category.toLowerCase() === selectedCategory.toLowerCase()
+        );
       }
 
+      // Location filter
       if (selectedLocation !== 'all') {
-        filtered = filtered.filter(service => service.location === selectedLocation);
+        filtered = filtered.filter(service => 
+          service.location.toLowerCase().includes(selectedLocation.toLowerCase())
+        );
       }
 
+      // Price range filter
       if (selectedPriceRange !== 'all') {
         filtered = filtered.filter(service => service.priceRange === selectedPriceRange);
       }
 
+      // Rating filter
       if (selectedRating > 0) {
         filtered = filtered.filter(service => service.rating >= selectedRating);
       }
@@ -318,7 +327,7 @@ export const Services: React.FC = () => {
     };
 
     // Debounce the filtering for search queries
-    const timeoutId = setTimeout(performOptimizedFiltering, searchQuery ? 300 : 0);
+    const timeoutId = setTimeout(performFiltering, searchQuery ? 300 : 0);
     return () => clearTimeout(timeoutId);
   }, [services, searchQuery, selectedCategory, selectedLocation, selectedPriceRange, selectedRating, sortBy]);
 
@@ -443,13 +452,8 @@ export const Services: React.FC = () => {
               <div className="text-center">
                 <div className="w-12 h-12 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <p className="text-gray-600 mb-2">
-                  {optimizationActive ? 'Optimizing data for your connection...' : 'Loading services...'}
+                  Loading services from production API...
                 </p>
-                {optimizationActive && (
-                  <p className="text-sm text-gray-500">
-                    Enhanced loading for {connectionSpeed} connection speed
-                  </p>
-                )}
               </div>
             </div>
           </div>
