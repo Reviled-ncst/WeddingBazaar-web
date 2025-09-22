@@ -1561,6 +1561,103 @@ app.get('/api/bookings/couple/:id', async (req, res) => {
   }
 });
 
+// Create booking request endpoint
+app.post('/api/bookings/request', async (req, res) => {
+  try {
+    console.log('📝 [BookingRequest] Received booking request:', req.body);
+    
+    const {
+      vendor_id,
+      service_id,
+      service_type,
+      service_name,
+      event_date,
+      event_time,
+      event_end_time,
+      event_location,
+      venue_details,
+      guest_count,
+      special_requests,
+      contact_person,
+      contact_phone,
+      contact_email,
+      preferred_contact_method,
+      budget_range,
+      metadata
+    } = req.body;
+
+    const userId = req.headers['x-user-id'] || '1-2025-001'; // Get user ID from header or fallback
+    
+    // Validate required fields
+    if (!vendor_id || !service_id || !event_date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: vendor_id, service_id, event_date'
+      });
+    }
+
+    // Generate booking ID
+    const bookingId = `BK-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    
+    console.log(`✨ [BookingRequest] Creating booking request with ID: ${bookingId}`);
+
+    // Insert booking request into database
+    await sql`
+      INSERT INTO bookings (
+        id, couple_id, vendor_id, service_id, service_type, service_name,
+        event_date, event_time, event_end_time, event_location, venue_details,
+        guest_count, special_requests, contact_person, contact_phone, 
+        contact_email, preferred_contact_method, budget_range, status,
+        total_amount, created_at, updated_at, metadata
+      ) VALUES (
+        ${bookingId}, ${userId}, ${vendor_id}, ${service_id}, ${service_type}, ${service_name},
+        ${event_date}, ${event_time}, ${event_end_time}, ${event_location}, ${venue_details},
+        ${guest_count}, ${special_requests}, ${contact_person}, ${contact_phone},
+        ${contact_email}, ${preferred_contact_method}, ${budget_range}, 'pending',
+        0, NOW(), NOW(), ${JSON.stringify(metadata)}
+      )
+    `;
+
+    // Prepare response
+    const createdBooking = {
+      id: bookingId,
+      coupleId: userId,
+      vendorId: vendor_id,
+      serviceId: service_id,
+      serviceName: service_name,
+      serviceType: service_type,
+      eventDate: event_date,
+      eventTime: event_time,
+      eventLocation: event_location,
+      guestCount: guest_count,
+      budgetRange: budget_range,
+      specialRequests: special_requests,
+      contactPhone: contact_phone,
+      contactEmail: contact_email,
+      preferredContactMethod: preferred_contact_method,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    console.log('✅ [BookingRequest] Booking request created successfully:', bookingId);
+
+    res.json({
+      success: true,
+      message: 'Booking request created successfully',
+      data: createdBooking
+    });
+
+  } catch (error) {
+    console.error('❌ [BookingRequest] Error creating booking request:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create booking request',
+      error: error.message
+    });
+  }
+});
+
 // Services endpoint with real database integration
 app.get('/api/services', async (req, res) => {
   try {
@@ -2339,7 +2436,7 @@ app.get('/api/conversations/individual/:userId', async (req, res) => {
       SELECT 
         c.id,
         c.participant_id,
-        c.participant_name,
+        COALESCE(v.business_name, v.name, c.participant_name) as participant_name,
         c.participant_type,
         c.participant_avatar,
         c.creator_id,
@@ -2359,8 +2456,11 @@ app.get('/api/conversations/individual/:userId', async (req, res) => {
         c.service_image,
         c.service_description,
         c.created_at,
-        c.updated_at
+        c.updated_at,
+        v.business_name as vendor_business_name,
+        v.name as vendor_name
       FROM conversations c
+      LEFT JOIN vendors v ON c.participant_id = v.id
       WHERE c.creator_id = ${userId}
       ORDER BY c.last_message_time DESC, c.created_at DESC
     `;
@@ -2368,36 +2468,45 @@ app.get('/api/conversations/individual/:userId', async (req, res) => {
     console.log(`✅ [Production] Found ${conversations.length} conversations for user ${userId}`);
 
     // Format conversations for frontend
-    const formattedConversations = conversations.map(conv => ({
-      id: conv.id.toString(),
-      participants: [{
-        id: conv.participant_id,
-        name: conv.participant_name || 'Unknown Vendor',
-        role: conv.participant_type || 'vendor',
-        avatar: conv.participant_avatar || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-        isOnline: conv.is_online || false
-      }],
-      lastMessage: conv.last_message ? {
-        id: 'last-msg',
-        senderId: conv.participant_id,
-        senderName: conv.participant_name || 'Vendor',
-        senderRole: 'vendor',
-        content: conv.last_message,
-        timestamp: conv.last_message_time || conv.updated_at,
-        type: 'text'
-      } : undefined,
-      unreadCount: parseInt(conv.unread_count || 0),
-      createdAt: conv.created_at,
-      updatedAt: conv.updated_at,
-      serviceInfo: conv.service_id ? {
-        id: conv.service_id,
-        name: conv.service_name || 'Wedding Service',
-        category: conv.service_category || 'General',
-        price: conv.service_price || 'Contact for pricing',
-        image: conv.service_image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
-        description: conv.service_description
-      } : undefined
-    }));
+    const formattedConversations = conversations.map(conv => {
+      // Use the actual vendor business name, fallback to vendor name, then participant_name
+      const vendorDisplayName = conv.vendor_business_name || conv.vendor_name || conv.participant_name || 'Unknown Vendor';
+      
+      return {
+        id: conv.id.toString(),
+        participants: [{
+          id: conv.participant_id,
+          name: vendorDisplayName,
+          role: conv.participant_type || 'vendor',
+          avatar: conv.participant_avatar || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
+          isOnline: conv.is_online || false,
+          businessName: conv.vendor_business_name,
+          serviceCategory: conv.service_category
+        }],
+        lastMessage: conv.last_message ? {
+          id: 'last-msg',
+          senderId: conv.participant_id,
+          senderName: vendorDisplayName,
+          senderRole: 'vendor',
+          content: conv.last_message,
+          timestamp: conv.last_message_time || conv.updated_at,
+          type: 'text'
+        } : undefined,
+        unreadCount: parseInt(conv.unread_count || 0),
+        createdAt: conv.created_at,
+        updatedAt: conv.updated_at,
+        vendorName: vendorDisplayName, // Add this for the frontend title generation
+        businessName: conv.vendor_business_name,
+        serviceInfo: conv.service_id ? {
+          id: conv.service_id,
+          name: conv.service_name || 'Wedding Service',
+          category: conv.service_category || 'General',
+          price: conv.service_price || 'Contact for pricing',
+          image: conv.service_image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+          description: conv.service_description
+        } : undefined
+      };
+    });
 
     res.json({
       success: true,
