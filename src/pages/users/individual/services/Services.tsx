@@ -173,40 +173,86 @@ export const Services: React.FC = () => {
     ratings: [5, 4, 3, 2, 1]
   };
 
-  // Load services from real API - FIXED to use production data
+  // Load services from real API - FIXED to use all available vendors
   useEffect(() => {
     const loadServices = async () => {
       try {
         setLoading(true);
-        console.log('🔍 Loading real services from production API...');
+        console.log('🔍 Loading all vendors from production API...');
         
         // Use the production API URL directly
         const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
         
-        // Try multiple endpoints to get services data
         let servicesData: Service[] = [];
         
         try {
-          // First try the services endpoint
-          const servicesResponse = await fetch(`${apiUrl}/api/services`);
-          if (servicesResponse.ok) {
-            const data = await servicesResponse.json();
-            if (data.services && Array.isArray(data.services)) {
-              servicesData = data.services;
-              console.log('✅ Loaded services from /api/services:', servicesData.length);
+          // First try to get ALL vendors from the vendors endpoint
+          console.log('🔍 Trying /api/vendors endpoint...');
+          const vendorsResponse = await fetch(`${apiUrl}/api/vendors`);
+          if (vendorsResponse.ok) {
+            const data = await vendorsResponse.json();
+            console.log('📊 Vendors endpoint response:', data);
+            
+            if (data.success && data.vendors && Array.isArray(data.vendors) && data.vendors.length > 0) {
+              // Convert vendors to services format
+              servicesData = data.vendors.map((vendor: any, index: number) => ({
+                id: vendor.id || `vendor-${index}`,
+                name: vendor.name || vendor.business_name || 'Unnamed Service',
+                category: vendor.category || vendor.business_type || 'General',
+                vendorId: vendor.id,
+                vendorName: vendor.name || vendor.business_name,
+                vendorImage: vendor.image || vendor.profile_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
+                description: vendor.description || vendor.bio || `Professional ${vendor.category || vendor.business_type || 'wedding'} services`,
+                priceRange: vendor.price_range || vendor.priceRange || '$$',
+                location: vendor.location || vendor.address || 'Location Available',
+                rating: typeof vendor.rating === 'number' ? vendor.rating : parseFloat(vendor.rating) || 4.5,
+                reviewCount: vendor.review_count || vendor.reviewCount || vendor.reviews_count || 0,
+                image: vendor.image || vendor.profile_image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+                gallery: vendor.gallery || [],
+                features: vendor.features || vendor.specialties || [],
+                availability: vendor.availability !== false,
+                contactInfo: {
+                  phone: vendor.phone || vendor.contact_phone,
+                  email: vendor.email || vendor.contact_email,
+                  website: vendor.website || vendor.business_website
+                }
+              }));
+              console.log(`✅ Successfully loaded ${servicesData.length} vendors from /api/vendors`);
+            } else {
+              console.log('⚠️ No vendors found in /api/vendors response');
             }
+          } else {
+            console.warn(`❌ /api/vendors endpoint failed with status: ${vendorsResponse.status}`);
           }
         } catch (error) {
-          console.warn('Services endpoint not available, trying vendors endpoint');
+          console.warn('❌ Failed to load from /api/vendors:', error);
         }
         
-        // If no services found, try to get vendor data and convert to services
+        // If no vendors found, try services endpoint
         if (servicesData.length === 0) {
           try {
-            const vendorsResponse = await fetch(`${apiUrl}/api/vendors/featured`);
-            if (vendorsResponse.ok) {
-              const vendorData = await vendorsResponse.json();
-              console.log('🔍 Raw vendor data:', vendorData);
+            console.log('🔍 Trying /api/services endpoint as fallback...');
+            const servicesResponse = await fetch(`${apiUrl}/api/services`);
+            if (servicesResponse.ok) {
+              const data = await servicesResponse.json();
+              if (data.services && Array.isArray(data.services) && data.services.length > 0) {
+                servicesData = data.services;
+                console.log(`✅ Loaded ${servicesData.length} services from /api/services`);
+              }
+            }
+          } catch (error) {
+            console.warn('❌ Failed to load from /api/services:', error);
+          }
+        }
+        
+        // If still no data, fallback to featured vendors
+        if (servicesData.length === 0) {
+          try {
+            console.log('🔍 Trying /api/vendors/featured as final fallback...');
+            const featuredResponse = await fetch(`${apiUrl}/api/vendors/featured`);
+            if (featuredResponse.ok) {
+              const vendorData = await featuredResponse.json();
+              console.log('� Featured vendors response:', vendorData);
               
               if (vendorData.vendors && Array.isArray(vendorData.vendors)) {
                 // Convert vendors to services format
@@ -217,11 +263,11 @@ export const Services: React.FC = () => {
                   vendorId: vendor.id,
                   vendorName: vendor.name || vendor.business_name,
                   vendorImage: vendor.image || vendor.profile_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-                  description: vendor.description || vendor.bio || `Professional ${vendor.category || 'wedding'} services`,
-                  priceRange: vendor.price_range || '$$',
+                  description: vendor.description || vendor.bio || `Professional ${vendor.category || vendor.business_type || 'wedding'} services`,
+                  priceRange: vendor.price_range || vendor.priceRange || '$$',
                   location: vendor.location || vendor.address || 'Location Available',
                   rating: typeof vendor.rating === 'number' ? vendor.rating : parseFloat(vendor.rating) || 4.5,
-                  reviewCount: vendor.review_count || vendor.reviews_count || 0,
+                  reviewCount: vendor.review_count || vendor.reviewCount || vendor.reviews_count || 0,
                   image: vendor.image || vendor.profile_image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
                   gallery: vendor.gallery || [],
                   features: vendor.features || vendor.specialties || [],
@@ -232,27 +278,27 @@ export const Services: React.FC = () => {
                     website: vendor.website || vendor.business_website
                   }
                 }));
-                console.log('✅ Converted vendors to services:', servicesData.length);
+                console.log(`✅ Loaded ${servicesData.length} featured vendors as fallback`);
               }
             }
           } catch (error) {
-            console.error('Failed to load vendor data:', error);
+            console.error('❌ Failed to load featured vendors:', error);
           }
         }
         
-        // If still no data, show empty state
+        // Final check
         if (servicesData.length === 0) {
-          console.warn('⚠️ No real data available from API endpoints');
+          console.warn('⚠️ No real data available from any API endpoint');
           setServices([]);
           setFilteredServices([]);
         } else {
-          console.log('🎉 Successfully loaded real services:', servicesData.slice(0, 3));
+          console.log(`🎉 Successfully loaded ${servicesData.length} services from production API`);
           setServices(servicesData);
           setFilteredServices(servicesData);
         }
         
       } catch (error) {
-        console.error('❌ Failed to load real services:', error);
+        console.error('❌ Failed to load services:', error);
         setServices([]);
         setFilteredServices([]);
       } finally {
