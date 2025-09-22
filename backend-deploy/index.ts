@@ -208,34 +208,38 @@ app.get('/api/ping', async (req, res) => {
   });
 });
 
-// Basic vendors endpoint
+// Basic vendors endpoint - Fixed to use correct database column names
 app.get('/api/vendors', async (req, res) => {
   try {
-    // Get vendors from database
+    console.log('🔍 Fetching all vendors...');
+    
+    // Get all vendors using actual database column names
     const vendors = await sql`
       SELECT 
-        v.id, v.business_name as name, v.category, v.location,
-        v.rating, v.review_count, v.starting_price,
-        v.price_range, v.description, v.portfolio_images,
-        v.contact_phone, v.contact_website, v.verified,
-        v.created_at, v.updated_at
-      FROM vendors v
-      WHERE v.verified = true
-      ORDER BY v.rating DESC, v.review_count DESC
-      LIMIT 20
+        id, business_name, business_type, location, rating, review_count,
+        description, contact_phone, website_url, verified
+      FROM vendors 
+      WHERE verified = true
+      ORDER BY CAST(rating AS FLOAT) DESC, review_count DESC
+      LIMIT 50
     `;
+
+    console.log(`✅ Found ${vendors.length} vendors`);
 
     const formattedVendors = vendors.map(vendor => ({
       id: vendor.id,
-      name: vendor.name,
-      category: vendor.category,
+      name: vendor.business_name,        // Use correct column name
+      category: vendor.business_type,    // Use correct column name
       location: vendor.location,
-      rating: parseFloat(vendor.rating || 0),
-      reviewCount: vendor.review_count || 0,
-      priceRange: vendor.price_range || 'Contact for pricing',
-      description: vendor.description,
-      image: vendor.portfolio_images?.[0] || '/api/placeholder/300/200',
-      featured: vendor.rating >= 4.5
+      rating: parseFloat(vendor.rating || '4.5'),
+      reviewCount: parseInt(vendor.review_count || '0'),
+      priceRange: 'Contact for pricing',
+      description: vendor.description || 'Professional wedding services',
+      image: 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+      website: vendor.website_url,
+      phone: vendor.contact_phone,
+      verified: vendor.verified,
+      featured: parseFloat(vendor.rating || '0') >= 4.5
     }));
 
     res.json({
@@ -243,7 +247,7 @@ app.get('/api/vendors', async (req, res) => {
       vendors: formattedVendors
     });
   } catch (error) {
-    console.error('Error fetching vendors:', error);
+    console.error('❌ Error fetching vendors:', error);
     // Fallback to empty array if database error
     res.json({
       success: true,
