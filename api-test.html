@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Test</h1>
+    <div id="result"></div>
+    
+    <script>
+        console.log('🧪 Starting API test...');
+        
+        async function testAPI() {
+            try {
+                const url = 'http://localhost:3001/api/conversations/individual/1-2025-001';
+                console.log('🧪 Fetching from:', url);
+                
+                const response = await fetch(url);
+                console.log('🧪 Response status:', response.status);
+                console.log('🧪 Response ok:', response.ok);
+                
+                const data = await response.json();
+                console.log('🧪 Data received:', data);
+                console.log('🧪 Conversations count:', data.conversations?.length);
+                
+                document.getElementById('result').innerHTML = `
+                    <h2>Results:</h2>
+                    <p>Status: ${response.status}</p>
+                    <p>Success: ${data.success}</p>
+                    <p>Count: ${data.count}</p>
+                    <p>Conversations: ${data.conversations?.length}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('🧪 Error:', error);
+                document.getElementById('result').innerHTML = `
+                    <h2>Error:</h2>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+        
+        // Run test when page loads
+        testAPI();
+    </script>
+</body>
+</html>

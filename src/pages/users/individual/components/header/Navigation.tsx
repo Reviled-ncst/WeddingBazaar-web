@@ -90,15 +90,15 @@ export const Navigation: React.FC<NavigationProps> = ({ onMessengerOpen }) => {
         );
       })}
       
-      {/* Messages Button */}
-      <button
-        onClick={onMessengerOpen}
+      {/* Messages Button - Navigate to Messages Page */}
+      <Link
+        to="/individual/messages"
         className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-200"
-        title="Open messages"
+        title="View messages"
       >
         <MessageCircle className="h-4 w-4" />
         <span>Messages</span>
-      </button>
+      </Link>
     </nav>
   );
 };

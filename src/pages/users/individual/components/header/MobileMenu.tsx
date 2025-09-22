@@ -160,12 +160,10 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
           );
         })}
         
-        {/* Messages */}
-        <button
-          onClick={() => {
-            onMessengerOpen();
-            onClose();
-          }}
+        {/* Messages - Navigate to Messages Page */}
+        <Link
+          to="/individual/messages"
+          onClick={onClose}
           className="flex items-center space-x-3 px-3 py-3 text-gray-700 hover:bg-rose-50/50 hover:text-rose-600 rounded-xl transition-all duration-200 w-full group"
         >
           <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-100 transition-all duration-200">
@@ -178,7 +176,7 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
             <div className="font-medium">Messages</div>
             <div className="text-sm text-gray-500">Chat with vendors</div>
           </div>
-        </button>
+        </Link>
       </div>
 
       {/* Quick Profile Actions */}

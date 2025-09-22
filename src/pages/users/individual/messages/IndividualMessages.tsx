@@ -14,7 +14,7 @@ import {
   Heart
 } from 'lucide-react';
 import { CoupleHeader } from '../landing/CoupleHeader';
-// import { Messenger, useMessenger } from '../../../shared/messenger'; // Disabled in demo mode
+import { useGlobalMessenger } from '../../../../shared/contexts/GlobalMessengerContext';
 import { cn } from '../../../../utils/cn';
 
 interface Conversation {
@@ -56,8 +56,8 @@ export const IndividualMessages: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'unread' | 'starred'>('all');
   
-  // Note: Messenger hooks disabled in demo mode to prevent API calls
-  // const { isMessengerOpen, closeMessenger, activeConversationId } = useMessenger();
+  // Use real messaging system now that backend is working
+  const { openFloatingChat } = useGlobalMessenger();
 
   // Fetch real conversations from database
   useEffect(() => {
@@ -103,8 +103,22 @@ export const IndividualMessages: React.FC = () => {
 
   const handleConversationClick = (conversationId: string) => {
     setSelectedConversation(conversationId);
-    // Note: Opening messenger is disabled in demo mode to prevent API calls
-    // openMessenger(conversationId);
+    
+    // Find the conversation and open the real messaging system
+    const conversation = conversations.find(c => c.id === conversationId);
+    if (conversation) {
+      const vendorParticipant = conversation.participants.find(p => p.role === 'vendor');
+      
+      if (vendorParticipant) {
+        // Open the floating chat with real vendor data
+        openFloatingChat({
+          name: vendorParticipant.name,
+          service: conversation.serviceInfo?.name || 'Wedding Service',
+          vendorId: vendorParticipant.id,
+          image: vendorParticipant.avatar
+        });
+      }
+    }
   };
 
   const formatTime = (date: Date | string) => {
@@ -361,19 +375,21 @@ export const IndividualMessages: React.FC = () => {
                   {/* Messages Area */}
                   <div className="flex-1 p-6 overflow-y-auto">
                     <div className="text-center text-gray-500 mb-6">
-                      <p>💬 Demo Messaging Interface</p>
-                      <p className="text-sm mt-2">This is a preview of the messaging system. Real-time messaging will be available when the backend API is implemented.</p>
+                      <p>💬 Real-time Messaging Available</p>
+                      <p className="text-sm mt-2">Click the button below to open the full messaging interface with this vendor.</p>
                     </div>
                     
                     <div className="flex justify-center">
                       <button
                         onClick={() => {
-                          alert('🚧 Demo Mode\n\nThis messaging system is currently in demo mode. The full real-time messaging functionality will be available once the backend messaging API is implemented.\n\nFor now, you can:\n✅ Browse mock conversations\n✅ See the UI design\n✅ Test the interface\n\n🔜 Coming soon: Real-time messaging with vendors!');
+                          if (selectedConversation) {
+                            handleConversationClick(selectedConversation);
+                          }
                         }}
-                        className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-xl hover:from-gray-500 hover:to-gray-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                        className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
                       >
                         <MessageSquare className="w-5 h-5" />
-                        <span>Demo Chat (API Coming Soon)</span>
+                        <span>Open Chat</span>
                       </button>
                     </div>
                   </div>

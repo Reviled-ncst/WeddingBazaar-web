@@ -559,8 +559,8 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
       })
     );
 
-    // Send to database if user is sending the message
-    if (message.sender === 'user' && user?.id) {
+    // Send to database if user OR vendor is sending the message
+    if ((message.sender === 'user' || message.sender === 'vendor') && user?.id) {
       try {
         // First, check if conversation exists in database, if not create it
         const activeConv = conversations.find(conv => conv.id === conversationId);
@@ -574,7 +574,7 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
               serviceName: activeConv.vendor.service,
               userId: user.id,
               userName: `${user.firstName} ${user.lastName}`.trim() || user.email || 'User',
-              userType: 'couple'
+              userType: message.sender === 'vendor' ? 'vendor' : 'couple'
             });
           } catch (createError) {
             // Conversation might already exist, which is fine
@@ -582,17 +582,24 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
           }
         }
 
+        // Determine sender details based on message type
+        const senderId = message.sender === 'vendor' ? user.id : user.id;
+        const senderName = message.sender === 'vendor' 
+          ? `${user.firstName} ${user.lastName}`.trim() || user.email || 'Vendor'
+          : `${user.firstName} ${user.lastName}`.trim() || user.email || 'User';
+        const senderType = message.sender === 'vendor' ? 'vendor' : 'couple';
+
         // Now send the message
         await MessagingApiService.sendMessage(
           conversationId,
           message.text,
-          user.id,
-          `${user.firstName} ${user.lastName}`.trim() || user.email || 'User',
-          'couple'
+          senderId,
+          senderName,
+          senderType
         );
-        console.log('Message sent to database successfully');
+        console.log(`✅ ${message.sender} message sent to database successfully`);
       } catch (error) {
-        console.error('Failed to send message to database:', error);
+        console.error(`❌ Failed to send ${message.sender} message to database:`, error);
         // In a production app, you might want to show an error message or retry
       }
     }
