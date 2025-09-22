@@ -254,11 +254,29 @@ app.get('/api/vendors', async (req, res) => {
   try {
     console.log('🔍 Fetching all vendors...');
     
-    // Get all vendors using actual database column names
+    // Get all vendors using the correct column names from the database
     const vendors = await sql`
       SELECT 
-        id, business_name, business_type, location, rating, review_count,
-        description, contact_phone, website_url, verified
+        id, 
+        business_name, 
+        business_type, 
+        location, 
+        rating, 
+        review_count,
+        description, 
+        website_url, 
+        verified,
+        years_experience,
+        portfolio_url,
+        instagram_url,
+        facebook_url,
+        service_areas,
+        profile_image,
+        starting_price,
+        price_range,
+        portfolio_images,
+        created_at,
+        updated_at
       FROM vendors 
       WHERE verified = true
       ORDER BY CAST(rating AS FLOAT) DESC, review_count DESC
@@ -269,18 +287,37 @@ app.get('/api/vendors', async (req, res) => {
 
     const formattedVendors = vendors.map(vendor => ({
       id: vendor.id,
-      name: vendor.business_name,        // Use correct column name
-      category: vendor.business_type,    // Use correct column name
-      location: vendor.location,
+      name: vendor.business_name || 'Unnamed Vendor',
+      category: vendor.business_type || 'General',
+      location: vendor.location || 'Location Available',
       rating: parseFloat(vendor.rating || '4.5'),
       reviewCount: parseInt(vendor.review_count || '0'),
-      priceRange: 'Contact for pricing',
+      priceRange: vendor.price_range || 'Contact for pricing',
       description: vendor.description || 'Professional wedding services',
-      image: 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+      image: vendor.profile_image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+      gallery: vendor.portfolio_images || [],
+      features: [vendor.business_type || 'Wedding Services'],
+      availability: true,
+      contactInfo: {
+        phone: vendor.contact_phone,
+        email: vendor.email,
+        website: vendor.website_url
+      },
+      vendorId: vendor.id,
+      vendorName: vendor.business_name || 'Unnamed Vendor',
+      vendorImage: vendor.profile_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
       website: vendor.website_url,
       phone: vendor.contact_phone,
       verified: vendor.verified,
-      featured: parseFloat(vendor.rating || '0') >= 4.5
+      featured: parseFloat(vendor.rating || '0') >= 4.5,
+      yearsExperience: vendor.years_experience,
+      portfolioUrl: vendor.portfolio_url,
+      instagramUrl: vendor.instagram_url,
+      facebookUrl: vendor.facebook_url,
+      serviceAreas: vendor.service_areas,
+      startingPrice: vendor.starting_price,
+      createdAt: vendor.created_at,
+      updatedAt: vendor.updated_at
     }));
 
     res.json({
