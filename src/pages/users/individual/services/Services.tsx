@@ -23,136 +23,31 @@ import { ServiceDetailsModal, type Service as ModuleService } from '../../../../
 import { DecisionSupportSystem } from './dss/DecisionSupportSystem';
 // import { dataOptimizationService } from './dss/DataOptimizationService';
 
-// Mock data fallback for when API is unavailable
+// Minimal mock data fallback for emergencies only
 const mockServicesData: Service[] = [
   {
     id: 'mock-1',
-    name: 'Elegant Photography Studios',
+    name: 'Sample Wedding Photography',
     category: 'photography',
-    vendorId: 'vendor-photo-1',
-    vendorName: 'Elegant Photography Studios',
+    vendorId: 'mock-vendor-1',
+    vendorName: 'Sample Photography Studio',
     vendorImage: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-    description: 'Professional wedding photography services with over 8 years of experience. Specializing in candid moments and romantic portraits.',
+    description: 'Professional wedding photography services',
     priceRange: '₱25,000 - ₱80,000',
-    location: 'Manila, Philippines',
+    location: 'Metro Manila, Philippines',
     rating: 4.8,
-    reviewCount: 127,
+    reviewCount: 45,
     image: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400',
     gallery: [
       'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400',
-      'https://images.unsplash.com/photo-1519741497674-611481863552?w=400',
-      'https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=400'
+      'https://images.unsplash.com/photo-1519741497674-611481863552?w=400'
     ],
-    features: ['Wedding Photography', 'Pre-wedding Shoots', 'Digital Album'],
+    features: ['Wedding Photography', 'Pre-wedding Shoots'],
     availability: true,
     contactInfo: {
       phone: '+63917-123-4567',
-      email: 'info@elegantphoto.ph',
-      website: 'https://elegantphoto.ph'
-    }
-  },
-  {
-    id: 'mock-2',
-    name: 'Divine Catering Services',
-    category: 'catering',
-    vendorId: 'vendor-cater-1',
-    vendorName: 'Divine Catering Services',
-    vendorImage: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=400',
-    description: 'Exquisite wedding catering and events with 12 years of experience. Filipino and international cuisine available.',
-    priceRange: '₱800 - ₱2,500/person',
-    location: 'Quezon City, Philippines',
-    rating: 4.6,
-    reviewCount: 89,
-    image: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400',
-    gallery: [
-      'https://images.unsplash.com/photo-1555244162-803834f70033?w=400',
-      'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=400',
-      'https://images.unsplash.com/photo-1547573854-74d2a71d0826?w=400'
-    ],
-    features: ['Wedding Catering', 'Corporate Events', 'Buffet Service'],
-    availability: true,
-    contactInfo: {
-      phone: '+63917-234-5678',
-      email: 'info@divinecatering.ph',
-      website: 'https://divinecatering.ph'
-    }
-  },
-  {
-    id: 'mock-3',
-    name: 'Garden Villa Venues',
-    category: 'venue',
-    vendorId: 'vendor-venue-1',
-    vendorName: 'Garden Villa Venues',
-    vendorImage: 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
-    description: 'Beautiful garden wedding venues in Tagaytay with stunning mountain views. Perfect for outdoor ceremonies and receptions.',
-    priceRange: '₱150,000 - ₱500,000',
-    location: 'Tagaytay, Philippines',
-    rating: 4.9,
-    reviewCount: 156,
-    image: 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
-    gallery: [
-      'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
-      'https://images.unsplash.com/photo-1464207687429-7505649dae38?w=400',
-      'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400'
-    ],
-    features: ['Garden Weddings', 'Reception Venues', 'Mountain Views'],
-    availability: true,
-    contactInfo: {
-      phone: '+63917-345-6789',
-      email: 'info@gardenvilla.ph',
-      website: 'https://gardenvilla.ph'
-    }
-  },
-  {
-    id: 'mock-4',
-    name: 'Harmony DJ Services',
-    category: 'music_dj',
-    vendorId: 'vendor-dj-1',
-    vendorName: 'Harmony DJ Services',
-    vendorImage: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400',
-    description: 'Professional DJ and sound system services for weddings. Modern and classic music collections to keep your guests dancing.',
-    priceRange: '₱15,000 - ₱35,000',
-    location: 'Makati, Philippines',
-    rating: 4.7,
-    reviewCount: 93,
-    image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400',
-    gallery: [
-      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400',
-      'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400',
-      'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400'
-    ],
-    features: ['Wedding DJ', 'Sound System', 'Lighting Effects'],
-    availability: true,
-    contactInfo: {
-      phone: '+63917-456-7890',
-      email: 'info@harmonydj.ph',
-      website: 'https://harmonydj.ph'
-    }
-  },
-  {
-    id: 'mock-5',
-    name: 'Bloom & Blossom Florists',
-    category: 'floral',
-    vendorId: 'vendor-flower-1',
-    vendorName: 'Bloom & Blossom Florists',
-    vendorImage: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400',
-    description: 'Fresh flower arrangements and bridal bouquets. Specializing in romantic and elegant floral designs for weddings.',
-    priceRange: '₱8,000 - ₱25,000',
-    location: 'Pasig, Philippines',
-    rating: 4.5,
-    reviewCount: 67,
-    image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400',
-    gallery: [
-      'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400',
-      'https://images.unsplash.com/photo-1520442266-60e8f7d56c2d?w=400',
-      'https://images.unsplash.com/photo-1546842931-886c185b4c8c?w=400'
-    ],
-    features: ['Bridal Bouquets', 'Centerpieces', 'Ceremony Arrangements'],
-    availability: true,
-    contactInfo: {
-      phone: '+63917-567-8901',
-      email: 'info@bloomblossom.ph',
-      website: 'https://bloomblossom.ph'
+      email: 'info@sample.ph',
+      website: 'https://sample.ph'
     }
   }
 ];
@@ -312,7 +207,7 @@ export const Services: React.FC = () => {
     const loadServices = async () => {
       try {
         setLoading(true);
-        console.log('🔍 Loading all vendors from production API...');
+        console.log('🔍 Loading ALL available vendors and services from production API...');
         
         // Use the production API URL directly
         const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
@@ -427,14 +322,16 @@ export const Services: React.FC = () => {
           console.log(`🎭 Using ${servicesData.length} mock services as fallback`);
         }
         
-        console.log(`🎉 Successfully loaded ${servicesData.length} services (${servicesData === mockServicesData ? 'mock' : 'real'} data)`);
+        console.log(`🎉 Successfully loaded ${servicesData.length} services from multiple API endpoints`);
         setServices(servicesData);
         setFilteredServices(servicesData);
         
       } catch (error) {
         console.error('❌ Failed to load services:', error);
-        setServices([]);
-        setFilteredServices([]);
+        // Use mock data as final fallback
+        console.log('🎭 Using mock data as final fallback due to API errors');
+        setServices(mockServicesData);
+        setFilteredServices(mockServicesData);
       } finally {
         setLoading(false);
       }
@@ -818,10 +715,18 @@ export const Services: React.FC = () => {
 
           {/* Results Summary */}
           <div className="flex items-center justify-between mb-6">
-            <p className="text-gray-600 font-medium">
-              Showing <span className="text-gray-900">{filteredServices.length}</span> of{' '}
-              <span className="text-gray-900">{services.length}</span> services
-            </p>
+            <div className="flex flex-col space-y-1">
+              <p className="text-gray-600 font-medium">
+                Showing <span className="text-gray-900">{filteredServices.length}</span> of{' '}
+                <span className="text-gray-900">{services.length}</span> services
+              </p>
+              {services.length > 0 && (
+                <p className="text-xs text-gray-500">
+                  {services.filter(s => !s.id.startsWith('mock-')).length} real vendors •{' '}
+                  {services.filter(s => s.id.startsWith('mock-')).length} sample services
+                </p>
+              )}
+            </div>
             
             {/* Connection Speed & Optimization Indicator */}
             {optimizationActive && (
