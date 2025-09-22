@@ -3157,5 +3157,12 @@ app.get('/api/vendor/analytics', requireAuth, requireRole('vendor'), async (req:
   }
 });
 
+// Start the server
+app.listen(PORT, () => {
+  console.log(`🚀 Wedding Bazaar API server running on port ${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`💻 CORS origins: ${corsOrigins.join(', ')}`);
+});
 
 export default app;
