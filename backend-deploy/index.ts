@@ -1596,27 +1596,24 @@ app.post('/api/bookings/request', async (req, res) => {
       });
     }
 
-    // Generate booking ID
-    const bookingId = `BK-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-    
-    console.log(`✨ [BookingRequest] Creating booking request with ID: ${bookingId}`);
+    console.log(`✨ [BookingRequest] Creating booking request for user: ${userId}`);
 
-    // Insert booking request into database
-    await sql`
+    // Insert booking request into database (using only existing columns)
+    const result = await sql`
       INSERT INTO bookings (
-        id, couple_id, vendor_id, service_id, service_type, service_name,
-        event_date, event_time, event_end_time, event_location, venue_details,
-        guest_count, special_requests, contact_person, contact_phone, 
-        contact_email, preferred_contact_method, budget_range, status,
-        total_amount, created_at, updated_at, metadata
+        couple_id, vendor_id, service_id, service_type, service_name,
+        event_date, event_time, event_location, guest_count, special_requests, 
+        contact_phone, preferred_contact_method, budget_range, status,
+        total_amount, created_at, updated_at
       ) VALUES (
-        ${bookingId}, ${userId}, ${vendor_id}, ${service_id}, ${service_type}, ${service_name},
-        ${event_date}, ${event_time}, ${event_end_time}, ${event_location}, ${venue_details},
-        ${guest_count}, ${special_requests}, ${contact_person}, ${contact_phone},
-        ${contact_email}, ${preferred_contact_method}, ${budget_range}, 'pending',
-        0, NOW(), NOW(), ${JSON.stringify(metadata)}
-      )
+        ${userId}, ${vendor_id}, ${service_id}, ${service_type}, ${service_name},
+        ${event_date}, ${event_time}, ${event_location}, ${guest_count}, ${special_requests},
+        ${contact_phone}, ${preferred_contact_method}, ${budget_range}, 'pending',
+        0, NOW(), NOW()
+      ) RETURNING id
     `;
+
+    const bookingId = result[0].id;
 
     // Prepare response
     const createdBooking = {
@@ -1633,7 +1630,6 @@ app.post('/api/bookings/request', async (req, res) => {
       budgetRange: budget_range,
       specialRequests: special_requests,
       contactPhone: contact_phone,
-      contactEmail: contact_email,
       preferredContactMethod: preferred_contact_method,
       status: 'pending',
       createdAt: new Date().toISOString(),
