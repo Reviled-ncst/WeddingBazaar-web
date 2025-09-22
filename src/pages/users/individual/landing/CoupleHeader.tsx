@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useMessenger } from '../../../shared/messenger';
-import { Messenger } from '../../../shared/messenger';
+import { useUniversalMessaging } from '../../../../shared/contexts/UniversalMessagingContext';
 import { InstructionDialog, weddingPlanningInstructions, quickStartInstructions } from '../../../../shared/components/InstructionDialog';
 import {
   Logo,
@@ -21,7 +20,7 @@ export const CoupleHeader: React.FC = () => {
   const [notificationCount] = useState(3);
 
   // Hooks
-  const { isMessengerOpen, openMessenger, closeMessenger } = useMessenger();
+  const { showFloatingChat, expandChat, closeChat } = useUniversalMessaging();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -74,7 +73,7 @@ export const CoupleHeader: React.FC = () => {
 
             {/* Desktop Navigation - Centered */}
             <div className="hidden lg:flex flex-1 justify-center">
-              <Navigation onMessengerOpen={openMessenger} />
+              <Navigation onMessengerOpen={expandChat} />
             </div>
 
             {/* Desktop User Menu */}
@@ -107,17 +106,11 @@ export const CoupleHeader: React.FC = () => {
           <MobileMenu 
             isOpen={isMobileMenuOpen}
             onClose={handleMobileMenuClose}
-            onMessengerOpen={openMessenger}
+            onMessengerOpen={expandChat}
             onInstructionOpen={handleInstructionOpen}
           />
         </div>
       </header>
-      
-      {/* Messenger Modal */}
-      <Messenger 
-        isOpen={isMessengerOpen} 
-        onClose={closeMessenger} 
-      />
 
       {/* Instruction Dialog */}
       <InstructionDialog

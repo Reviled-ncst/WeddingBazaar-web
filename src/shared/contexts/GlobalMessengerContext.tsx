@@ -215,33 +215,44 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
         return;
       }
       
-      const currentUserId = user?.id || 'dev-user-vendor';
-      const currentUserRole = user?.role || 'vendor';
+      // Determine user role - default based on current page context
+      const currentPath = window.location.pathname;
+      const isVendorPage = currentPath.includes('/vendor');
+      const isIndividualPage = currentPath.includes('/individual');
+      
+      const currentUserId = user?.id || (isVendorPage ? 'dev-user-vendor' : 'dev-user-couple');
+      const currentUserRole = user?.role || (isVendorPage ? 'vendor' : 'couple');
       
       console.log('🔄 [GlobalMessenger] Loading conversations:', {
         isAuthenticated,
         hasUser: !!user,
         userId: currentUserId,
         userRole: currentUserRole,
+        currentPath,
+        isVendorPage,
+        isIndividualPage,
         isDev: import.meta.env.DEV
       });
       
       try {
-        // If user is a vendor (or in dev mode), load their vendor conversations
+        let conversationsData: any[] = [];
+        
+        // Load conversations based on user role
         if (currentUserRole === 'vendor') {
-          const conversationsData = await MessagingApiService.getConversations(currentUserId);
+          // For vendors: Load conversations where they are the service provider
+          conversationsData = await MessagingApiService.getConversations(currentUserId);
           
           if (conversationsData && conversationsData.length > 0) {
             console.log('✅ [GlobalMessenger] Found vendor conversations:', conversationsData.length);
             
-            // Convert API conversations to GlobalMessenger format
+            // Convert API conversations to GlobalMessenger format (vendor perspective)
             const safeUser = user || { id: currentUserId, firstName: 'Test', lastName: 'Vendor', email: 'test@example.com' };
             const globalConversations: Conversation[] = conversationsData.map(conv => ({
               id: conv.id,
               vendor: {
                 vendorId: safeUser.id,
                 name: safeUser.firstName ? `${safeUser.firstName} ${safeUser.lastName}` : safeUser.email,
-                service: 'Wedding Services',
+                service: conv.serviceName || 'Wedding Services',
                 rating: 4.5,
                 verified: true,
                 image: (safeUser as any).profileImage || `https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400`
@@ -263,8 +274,50 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
               setActiveConversationId(globalConversations[0].id);
             }
           }
+        } else if (currentUserRole === 'couple' || currentUserRole === 'admin') {
+          // For couples/individuals: Load conversations where they are the customer
+          try {
+            const coupleConversationsData = await MessagingApiService.getConversations(currentUserId);
+            conversationsData = coupleConversationsData || [];
+          } catch (error) {
+            console.log('⚠️ [GlobalMessenger] No couple conversations found, this is normal for new users');
+            conversationsData = [];
+          }
+          
+          if (conversationsData && conversationsData.length > 0) {
+            console.log('✅ [GlobalMessenger] Found couple conversations:', conversationsData.length);
+            
+            // Convert API conversations to GlobalMessenger format (couple perspective)
+            const safeUser = user || { id: currentUserId, firstName: 'Test', lastName: 'User', email: 'test@example.com' };
+            const globalConversations: Conversation[] = conversationsData.map(conv => ({
+              id: conv.id,
+              vendor: {
+                vendorId: conv.vendorId || conv.participants?.[0]?.id || conv.participantId || 'unknown-vendor',
+                name: conv.vendorName || conv.participants?.[0]?.name || conv.participantName || 'Wedding Vendor',
+                service: conv.serviceName || conv.serviceInfo?.name || conv.serviceInfo?.category || 'Wedding Services',
+                rating: conv.rating || 4.5,
+                verified: conv.verified || true,
+                image: conv.vendorImage || conv.participants?.[0]?.avatar || `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400`
+              },
+              lastActivity: new Date(conv.updatedAt || conv.createdAt || Date.now()),
+              unreadCount: conv.unreadCount || 0,
+              messages: conv.lastMessage ? [{
+                id: conv.lastMessage.id,
+                text: conv.lastMessage.content,
+                sender: conv.lastMessage.senderRole === 'couple' ? 'user' : 'vendor',
+                timestamp: new Date(conv.lastMessage.timestamp)
+              }] : []
+            }));
+            
+            console.log('✅ [GlobalMessenger] Transformed conversations for couples:', globalConversations.length);
+            setConversations(globalConversations);
+            
+            // If no active conversation but conversations exist, set the first one as active
+            if (!activeConversationId && globalConversations.length > 0) {
+              setActiveConversationId(globalConversations[0].id);
+            }
+          }
         }
-        // TODO: Add similar logic for couple/admin roles if needed
         
       } catch (error) {
         console.error('💥 [GlobalMessenger] Failed to load conversations:', error);
@@ -285,73 +338,141 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
         
         // Provide fallback conversations for development/testing when backend endpoints don't exist
         if (is404Error && import.meta.env.DEV) {
-          console.log('🔧 [GlobalMessenger] Backend messaging endpoints not available, providing development conversations');
+          console.log('🔧 [GlobalMessenger] Backend messaging endpoints not available, providing development conversations for', currentUserRole);
           
-          // Create development conversations with safe user handling
-          const safeUser = user || { id: 'dev-user', role: 'vendor', firstName: 'Test', lastName: 'Vendor' };
+          // Create development conversations with safe user handling - different perspectives for different roles
+          const safeUser = user || { 
+            id: currentUserId, 
+            role: currentUserRole, 
+            firstName: currentUserRole === 'vendor' ? 'Test' : 'Test', 
+            lastName: currentUserRole === 'vendor' ? 'Vendor' : 'Couple' 
+          };
           
-          const developmentConversations: Conversation[] = [
-            {
-              id: 'dev-conversation-1',
-              vendor: {
-                vendorId: safeUser.role === 'vendor' ? safeUser.id : '2-2025-003',
-                name: safeUser.role === 'vendor' ? `${safeUser.firstName || 'Test'} ${safeUser.lastName || 'Vendor'}` : 'Perfect Weddings Co.',
-                service: 'Wedding Photography',
-                rating: 4.8,
-                verified: true,
-                image: `https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400`
+          let developmentConversations: Conversation[] = [];
+          
+          if (currentUserRole === 'vendor') {
+            // Vendor sees conversations with customers (couples)
+            developmentConversations = [
+              {
+                id: `vendor-${safeUser.id}-customer-1`,
+                vendor: {
+                  vendorId: safeUser.id,
+                  name: `${safeUser.firstName || 'Test'} ${safeUser.lastName || 'Vendor'}`,
+                  service: 'Wedding Photography',
+                  rating: 4.8,
+                  verified: true,
+                  image: `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400`
+                },
+                lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+                unreadCount: 2,
+                messages: [
+                  {
+                    id: 'vendor-msg-1',
+                    text: 'Hi! I\'m interested in your wedding photography services for my June wedding.',
+                    sender: 'user', // Customer message TO vendor
+                    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000)
+                  },
+                  {
+                    id: 'vendor-msg-2',
+                    text: 'Hello! I\'d be happy to help with your special day. What date are you planning?',
+                    sender: 'vendor', // Vendor response
+                    timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000)
+                  },
+                  {
+                    id: 'vendor-msg-3',
+                    text: 'We\'re planning for June 15th at Garden Manor. Do you have availability?',
+                    sender: 'user', // Customer follow-up
+                    timestamp: new Date(Date.now() - 30 * 60 * 1000)
+                  }
+                ]
               },
-              lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-              unreadCount: 2,
-              messages: [
-                {
-                  id: 'dev-msg-1',
-                  text: 'Hi! I\'m interested in your wedding photography services for my June wedding.',
-                  sender: safeUser.role === 'vendor' ? 'user' : 'vendor',
-                  timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000)
+              {
+                id: `vendor-${safeUser.id}-customer-2`,
+                vendor: {
+                  vendorId: safeUser.id,
+                  name: `${safeUser.firstName || 'Test'} ${safeUser.lastName || 'Vendor'}`,
+                  service: 'Event Planning',
+                  rating: 4.6,
+                  verified: true,
+                  image: `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400`
                 },
-                {
-                  id: 'dev-msg-2',
-                  text: 'Hello! I\'d be happy to help with your special day. What date are you planning?',
-                  sender: safeUser.role === 'vendor' ? 'vendor' : 'user',
-                  timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000)
+                lastActivity: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+                unreadCount: 0,
+                messages: [
+                  {
+                    id: 'vendor-msg-4',
+                    text: 'Thank you for the beautiful wedding planning service! Everything was perfect.',
+                    sender: 'user', // Customer thank you
+                    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000)
+                  },
+                  {
+                    id: 'vendor-msg-5',
+                    text: 'It was our pleasure! Wishing you both a lifetime of happiness. 💕',
+                    sender: 'vendor', // Vendor response
+                    timestamp: new Date(Date.now() - 23 * 60 * 60 * 1000)
+                  }
+                ]
+              }
+            ];
+          } else {
+            // Couple sees conversations with different vendors
+            developmentConversations = [
+              {
+                id: `couple-${safeUser.id}-vendor-1`,
+                vendor: {
+                  vendorId: '2-2025-003',
+                  name: 'Perfect Weddings Co.',
+                  service: 'Wedding Photography',
+                  rating: 4.8,
+                  verified: true,
+                  image: `https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400`
                 },
-                {
-                  id: 'dev-msg-3',
-                  text: 'We\'re planning for June 15th at Garden Manor. Do you have availability?',
-                  sender: safeUser.role === 'vendor' ? 'user' : 'vendor',
-                  timestamp: new Date(Date.now() - 30 * 60 * 1000)
-                }
-              ]
-            },
-            {
-              id: 'dev-conversation-2',
-              vendor: {
-                vendorId: safeUser.role === 'vendor' ? safeUser.id : '2-2025-004',
-                name: safeUser.role === 'vendor' ? `${safeUser.firstName || 'Test'} ${safeUser.lastName || 'Vendor'}` : 'Elegant Events Co.',
-                service: 'Wedding Planning',
-                rating: 4.6,
-                verified: true,
-                image: `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400`
+                lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+                unreadCount: 1,
+                messages: [
+                  {
+                    id: 'couple-msg-1',
+                    text: 'Hi! I\'m interested in your wedding photography services for my June wedding.',
+                    sender: 'user', // Couple message
+                    timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000)
+                  },
+                  {
+                    id: 'couple-msg-2',
+                    text: 'Congratulations on your engagement! I\'d love to capture your special day. When is your wedding date?',
+                    sender: 'vendor', // Vendor response
+                    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000)
+                  }
+                ]
               },
-              lastActivity: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-              unreadCount: 0,
-              messages: [
-                {
-                  id: 'dev-msg-4',
-                  text: 'Thank you for the beautiful wedding planning service! Everything was perfect.',
-                  sender: safeUser.role === 'vendor' ? 'user' : 'vendor',
-                  timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000)
+              {
+                id: `couple-${safeUser.id}-vendor-2`,
+                vendor: {
+                  vendorId: '2-2025-004',
+                  name: 'Elegant Events Co.',
+                  service: 'Wedding Planning',
+                  rating: 4.6,
+                  verified: true,
+                  image: `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400`
                 },
-                {
-                  id: 'dev-msg-5',
-                  text: 'It was our pleasure! Wishing you both a lifetime of happiness. 💕',
-                  sender: safeUser.role === 'vendor' ? 'vendor' : 'user',
-                  timestamp: new Date(Date.now() - 23 * 60 * 60 * 1000)
-                }
-              ]
-            }
-          ];
+                lastActivity: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+                unreadCount: 0,
+                messages: [
+                  {
+                    id: 'couple-msg-3',
+                    text: 'We\'re looking for a full-service wedding planner. What packages do you offer?',
+                    sender: 'user', // Couple inquiry
+                    timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000)
+                  },
+                  {
+                    id: 'couple-msg-4',
+                    text: 'I offer several packages from consultation-only to full planning. Let me send you our details!',
+                    sender: 'vendor', // Vendor response
+                    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000)
+                  }
+                ]
+              }
+            ];
+          }
           
           setConversations(developmentConversations);
           
@@ -401,17 +522,18 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
     }
   }, [showFloatingChat, conversations.length, activeConversationId, isMinimized, totalUnreadCount]);
 
-  // Auto-restore chat visibility if there are conversations but chat is not visible
-  React.useEffect(() => {
-    if (conversations.length > 0 && !showFloatingChat && activeConversationId) {
-      setShowFloatingChat(true);
-    }
-  }, [conversations.length, showFloatingChat, activeConversationId]);
+  // Auto-restore chat visibility disabled - let users manually open chat
+  // React.useEffect(() => {
+  //   if (conversations.length > 0 && !showFloatingChat && activeConversationId) {
+  //     setShowFloatingChat(true);
+  //   }
+  // }, [conversations.length, showFloatingChat, activeConversationId]);
 
   // Ensure active conversation exists in conversations list
-  React.useEffect(() => {      if (activeConversationId && !conversations.find(conv => conv.id === activeConversationId)) {
-        setActiveConversationId(null);
-      }
+  React.useEffect(() => {
+    if (activeConversationId && !conversations.find(conv => conv.id === activeConversationId)) {
+      setActiveConversationId(null);
+    }
   }, [activeConversationId, conversations]);
 
   const generateConversationId = (vendor: ChatVendor): string => {
@@ -422,6 +544,18 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
   };
 
   const openFloatingChat = async (vendor: ChatVendor) => {
+    // Determine current user role to handle conversation creation properly
+    const currentPath = window.location.pathname;
+    const isVendorPage = currentPath.includes('/vendor');
+    const currentUserRole = user?.role || (isVendorPage ? 'vendor' : 'couple');
+    
+    console.log('🔄 [GlobalMessenger] Opening chat:', {
+      vendor: vendor.name,
+      service: vendor.service,
+      currentUserRole,
+      currentPath
+    });
+    
     // Check if conversation already exists for this vendor and service combination
     const existingConversation = conversations.find(
       conv => conv.vendor.vendorId === vendor.vendorId && conv.vendor.service === vendor.service
@@ -429,11 +563,12 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
 
     if (existingConversation) {
       // Switch to existing conversation
+      console.log('✅ [GlobalMessenger] Switching to existing conversation:', existingConversation.id);
       setActiveConversationId(existingConversation.id);
       setShowFloatingChat(true);
       setIsMinimized(false);
-    } else {
-      // Create new conversation with enhanced vendor name
+    } else if (currentUserRole === 'couple' || currentUserRole === 'admin') {
+      // Only couples/individuals can initiate new conversations with vendors
       const conversationId = generateConversationId(vendor);
       const enhancedVendor = {
         ...vendor,
@@ -456,7 +591,7 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
 
       setConversations(prev => {
         const updated = [...prev, newConversation];
-        console.log('Updated conversations:', updated);
+        console.log('✅ [GlobalMessenger] Added new conversation:', conversationId, updated.length);
         return updated;
       });
       setActiveConversationId(conversationId);
@@ -475,9 +610,9 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
             userName: `${user.firstName} ${user.lastName}`.trim() || user.email || 'User',
             userType: 'couple'
           });
-          console.log('Conversation created in database successfully');
+          console.log('✅ [GlobalMessenger] Conversation created in database successfully');
         } catch (error) {
-          console.error('Failed to create conversation in database:', error);
+          console.error('❌ [GlobalMessenger] Failed to create conversation in database:', error);
           // Continue with local conversation even if database creation fails
         }
       }
@@ -490,6 +625,10 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
           timestamp: new Date()
         });
       }, 2000);
+    } else {
+      // Vendors cannot initiate new conversations - they can only respond to existing ones
+      console.log('⚠️ [GlobalMessenger] Vendors cannot initiate new conversations');
+      alert('As a vendor, you can only respond to existing customer inquiries. New conversations are initiated by couples looking for services.');
     }
   };
 
@@ -589,18 +728,37 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
           : `${user.firstName} ${user.lastName}`.trim() || user.email || 'User';
         const senderType = message.sender === 'vendor' ? 'vendor' : 'couple';
 
-        // Now send the message
-        await MessagingApiService.sendMessage(
-          conversationId,
-          message.text,
-          senderId,
-          senderName,
-          senderType
-        );
-        console.log(`✅ ${message.sender} message sent to database successfully`);
+        // Now send the message to backend
+        try {
+          await MessagingApiService.sendMessage(
+            conversationId,
+            message.text,
+            senderId,
+            senderName,
+            senderType
+          );
+          console.log(`✅ ${message.sender} message sent to database successfully`);
+        } catch (sendError) {
+          console.error(`❌ Failed to send ${message.sender} message to database:`, sendError);
+          
+          // Update the message in UI to show it failed to send
+          setConversations(prev => 
+            prev.map(conv => {
+              if (conv.id === conversationId) {
+                const updatedMessages = conv.messages.map(msg => 
+                  msg.id === messageWithId.id 
+                    ? { ...msg, failed: true }
+                    : msg
+                );
+                return { ...conv, messages: updatedMessages };
+              }
+              return conv;
+            })
+          );
+        }
       } catch (error) {
-        console.error(`❌ Failed to send ${message.sender} message to database:`, error);
-        // In a production app, you might want to show an error message or retry
+        console.error('❌ Failed to process message for database:', error);
+        // Even if database operations fail, the message is already in local state
       }
     }
   };

@@ -63,16 +63,16 @@ import { VendorSubscriptionPage } from '../pages/users/vendor/subscription';
 import { AuthProvider } from '../shared/contexts/AuthContext';
 import { SubscriptionProvider } from '../shared/contexts/SubscriptionContext';
 
-// Global Messenger
-import { GlobalMessengerProvider } from '../shared/contexts/GlobalMessengerContext';
-import { GlobalFloatingChat } from '../shared/components/messaging/GlobalFloatingChat';
-import { GlobalFloatingChatButton } from '../shared/components/messaging/GlobalFloatingChatButton';
+// Universal Messaging System
+import { UniversalMessagingProvider } from '../shared/contexts/UniversalMessagingContext';
+import { UniversalFloatingChat } from '../shared/components/messaging/UniversalFloatingChat';
+import { UniversalFloatingChatButton } from '../shared/components/messaging/UniversalFloatingChatButton';
 
 export const AppRouter: React.FC = () => {
   return (
     <AuthProvider>
       <SubscriptionProvider>
-        <GlobalMessengerProvider>
+        <UniversalMessagingProvider>
         <Router>
           <div className="min-h-screen flex flex-col">
             <Routes>
@@ -351,12 +351,12 @@ export const AppRouter: React.FC = () => {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           
-          {/* Global Floating Chat Components */}
-          <GlobalFloatingChatButton />
-          <GlobalFloatingChat />
+          {/* Universal Floating Chat Components */}
+          <UniversalFloatingChatButton />
+          <UniversalFloatingChat />
         </div>
       </Router>
-    </GlobalMessengerProvider>
+    </UniversalMessagingProvider>
     </SubscriptionProvider>
     </AuthProvider>
   );

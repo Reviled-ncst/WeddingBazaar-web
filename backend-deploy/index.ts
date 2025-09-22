@@ -9,7 +9,7 @@ import { neon } from '@neondatabase/serverless';
 // Load environment variables
 config();
 
-// Updated: September 22, 2025 - Fixed conversations endpoint for real database data
+// Updated: September 22, 2025 - Fixed booking status constraint (using 'request' instead of 'pending')
 
 // Database connection
 const sql = neon(process.env.DATABASE_URL!);
@@ -1608,7 +1608,7 @@ app.post('/api/bookings/request', async (req, res) => {
       ) VALUES (
         ${userId}, ${vendor_id}, ${service_id}, ${service_type}, ${service_name},
         ${event_date}, ${event_time}, ${event_location}, ${guest_count}, ${special_requests},
-        ${contact_phone}, ${preferred_contact_method}, ${budget_range}, 'pending',
+        ${contact_phone}, ${preferred_contact_method}, ${budget_range}, 'request',
         0, NOW(), NOW()
       ) RETURNING id
     `;

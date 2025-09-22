@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { CoupleHeader } from '../landing/CoupleHeader';
-import { useGlobalMessenger } from '../../../../shared/contexts/GlobalMessengerContext';
+import { useUniversalMessaging } from '../../../../shared/contexts/UniversalMessagingContext';
 // Remove mock data imports - using real API instead
 // import { servicesApiService } from '../../../../modules/services/services/servicesApiService';
 import type { Service } from '../../../../modules/services/types';
@@ -150,7 +150,7 @@ export const Services: React.FC = () => {
   const [connectionSpeed, setConnectionSpeed] = useState<'slow' | 'medium' | 'fast'>('medium');
   const [optimizationActive, setOptimizationActive] = useState(false);
   
-  const { openFloatingChat } = useGlobalMessenger();
+  const { startConversationWith } = useUniversalMessaging();
 
   // Monitor connection speed and optimization status
   useEffect(() => {
@@ -455,30 +455,56 @@ export const Services: React.FC = () => {
   };
 
   const handleContactVendor = async (service: Service) => {
-    console.log('handleContactVendor called', { 
-      service: service.name, 
-      vendor: service.vendorName,
-      vendorId: service.vendorId,
-      realVendorId: service.vendorId // This is now the real vendor ID from the database
+    console.log('🚀 [Services] Starting conversation for service:', { 
+      serviceName: service.name, 
+      serviceCategory: service.category,
+      vendorName: service.vendorName,
+      vendorId: service.vendorId
     });
     
     try {
-      // Open the floating chat with real vendor info
-      await openFloatingChat({ 
-        name: service.vendorName, 
-        service: service.name,
-        vendorId: service.vendorId // Real vendor ID from database
-      });
+      // Start conversation with vendor using universal messaging
+      const vendor = {
+        id: service.vendorId,
+        name: service.vendorName,
+        role: 'vendor' as const,
+        businessName: service.vendorName,
+        serviceCategory: service.category
+      };
+
+      // Detailed service information for conversation context
+      const serviceInfo = {
+        id: service.id,
+        name: service.name,
+        category: service.category,
+        description: service.description,
+        priceRange: service.priceRange,
+        location: service.location
+      };
+
+      const conversationId = await startConversationWith(vendor, serviceInfo);
+      console.log(`✅ [Services] Started conversation about "${service.name}" with ${service.vendorName}`);
+      console.log(`📞 [Services] Conversation ID: ${conversationId}`);
       
-      console.log('Floating chat opened successfully with real vendor ID:', service.vendorId);
+      // Optional: Send an initial message to provide context
+      // This helps both parties understand what service is being discussed
+      // The message will be sent automatically by the messaging system
+      
     } catch (error) {
-      console.error('Error contacting vendor:', error);
-      // Still show floating chat as fallback
-      await openFloatingChat({ 
-        name: service.vendorName, 
-        service: service.name,
-        vendorId: service.vendorId
-      });
+      console.error('❌ [Services] Error contacting vendor:', error);
+      // Fallback to basic conversation
+      const vendor = {
+        id: service.vendorId || `vendor-${Date.now()}`,
+        name: service.vendorName,
+        role: 'vendor' as const
+      };
+      
+      try {
+        await startConversationWith(vendor);
+        console.log('✅ [Services] Started basic conversation with vendor (fallback)');
+      } catch (fallbackError) {
+        console.error('❌ [Services] Failed to start even basic conversation:', fallbackError);
+      }
     }
   };
 

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { CoupleHeader } from '../users/individual/landing/CoupleHeader';
-import { useGlobalMessenger } from '../../shared/contexts/GlobalMessengerContext';
+import { useUniversalMessaging } from '../../shared/contexts/UniversalMessagingContext';
 import { ServicesApiService, type ApiService as Service } from '../../services/api/servicesApiService';
 import { ServiceDetailsModal, type Service as ModuleService } from '../../modules/services';
 import type { ServiceCategory } from '../../shared/types/comprehensive-booking.types';
@@ -40,7 +40,7 @@ export const Services: React.FC = () => {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   
-  const { openFloatingChat } = useGlobalMessenger();
+  const { startConversationWith } = useUniversalMessaging();
 
   const filterOptions: FilterOptions = {
     categories: [
@@ -203,21 +203,21 @@ export const Services: React.FC = () => {
     });
     
     try {
-      // Open the floating chat with real vendor info
-      await openFloatingChat({ 
-        name: service.vendorName, 
-        service: service.name,
-        vendorId: service.vendorId // Real vendor ID from database
+      // Start a conversation with the vendor using the universal messaging system
+      await startConversationWith(service.vendorId, {
+        vendorName: service.vendorName,
+        serviceName: service.name,
+        serviceCategory: service.category
       });
       
-      console.log('Floating chat opened successfully with real vendor ID:', service.vendorId);
+      console.log('Conversation started successfully with vendor ID:', service.vendorId);
     } catch (error) {
       console.error('Error contacting vendor:', error);
-      // Still show floating chat as fallback
-      await openFloatingChat({ 
-        name: service.vendorName, 
-        service: service.name,
-        vendorId: service.vendorId
+      // Fallback: try to start conversation anyway
+      await startConversationWith(service.vendorId, {
+        vendorName: service.vendorName,
+        serviceName: service.name,
+        serviceCategory: service.category
       });
     }
   };
