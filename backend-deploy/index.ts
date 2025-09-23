@@ -168,7 +168,11 @@ app.use(helmet());
 const corsOrigins = [
   'https://weddingbazaar-web.web.app',  // ✅ Fixed: Correct production URL
   'https://weddingbazaarph.web.app',    // Legacy URL for compatibility
-  'http://localhost:5173',
+  'http://localhost:5173',              // Development frontend
+  'http://localhost:5174',              // Alternative development ports
+  'http://localhost:5175',
+  'http://localhost:5176',
+  'http://localhost:5177',
   'http://localhost:3000'
 ];
 
