@@ -2437,18 +2437,32 @@ app.get('/api/conversations/individual/:userId', async (req, res) => {
       SELECT 
         c.id,
         c.participant_id,
-        COALESCE(v.business_name, v.name, c.participant_name) as participant_name,
+        COALESCE(v.business_name, c.participant_name) as participant_name,
         c.participant_type,
+        c.participant_avatar,
         c.creator_id,
         c.creator_type,
+        c.conversation_type,
+        c.last_message,
+        c.last_message_time,
+        c.unread_count,
+        c.is_online,
+        c.status,
+        c.wedding_date,
+        c.location,
+        c.service_id,
+        c.service_name,
+        c.service_category,
+        c.service_price,
+        c.service_image,
+        c.service_description,
         c.created_at,
         c.updated_at,
-        v.business_name as vendor_business_name,
-        v.name as vendor_name
+        v.business_name as vendor_business_name
       FROM conversations c
       LEFT JOIN vendors v ON c.participant_id = v.id
       WHERE c.creator_id = ${userId}
-      ORDER BY c.updated_at DESC, c.created_at DESC
+      ORDER BY c.last_message_time DESC, c.created_at DESC
     `;
 
     console.log(`✅ [Production] Found ${conversations.length} conversations for user ${userId}`);
@@ -2456,7 +2470,7 @@ app.get('/api/conversations/individual/:userId', async (req, res) => {
     // Format conversations for frontend
     const formattedConversations = conversations.map(conv => {
       // Use the actual vendor business name, fallback to vendor name, then participant_name
-      const vendorDisplayName = conv.vendor_business_name || conv.vendor_name || conv.participant_name || 'Unknown Vendor';
+      const vendorDisplayName = conv.vendor_business_name || conv.participant_name || 'Unknown Vendor';
       
       return {
         id: conv.id.toString(),
@@ -2464,18 +2478,33 @@ app.get('/api/conversations/individual/:userId', async (req, res) => {
           id: conv.participant_id,
           name: vendorDisplayName,
           role: conv.participant_type || 'vendor',
-          avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-          isOnline: false,
+          avatar: conv.participant_avatar || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
+          isOnline: conv.is_online || false,
           businessName: conv.vendor_business_name,
-          serviceCategory: 'General'
+          serviceCategory: conv.service_category
         }],
-        lastMessage: undefined, // No last message data available yet
-        unreadCount: 0, // Default to 0
+        lastMessage: conv.last_message ? {
+          id: 'last-msg',
+          senderId: conv.participant_id,
+          senderName: vendorDisplayName,
+          senderRole: 'vendor',
+          content: conv.last_message,
+          timestamp: conv.last_message_time || conv.updated_at,
+          type: 'text'
+        } : undefined,
+        unreadCount: parseInt(conv.unread_count || 0),
         createdAt: conv.created_at,
         updatedAt: conv.updated_at,
         vendorName: vendorDisplayName, // Add this for the frontend title generation
         businessName: conv.vendor_business_name,
-        serviceInfo: undefined // No service info available yet
+        serviceInfo: conv.service_id ? {
+          id: conv.service_id,
+          name: conv.service_name || 'Wedding Service',
+          category: conv.service_category || 'General',
+          price: conv.service_price || 'Contact for pricing',
+          image: conv.service_image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+          description: conv.service_description
+        } : undefined
       };
     });
 
