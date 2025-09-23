@@ -1194,21 +1194,58 @@ app.get('/api/auth/debug/tokens', async (req, res) => {
 // Booking endpoints - Real database integration
 app.get('/api/bookings', async (req, res) => {
   try {
-    const { page = 1, limit = 10, coupleId, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    const { page = 1, limit = 10, coupleId, vendorId, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
     
-    // Get bookings from database
-    const bookings = await sql`
-      SELECT 
-        b.id, b.couple_id, b.vendor_id, b.service_type,
-        b.event_date, b.status, b.total_amount, b.notes,
-        b.created_at, b.updated_at, b.contact_phone,
-        v.business_name as vendor_name, v.business_type as vendor_category,
-        v.location
-      FROM bookings b
-      JOIN vendors v ON b.vendor_id = v.id
-      ORDER BY b.created_at DESC
-      LIMIT ${limit} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
-    `;
+    console.log('📥 [Bookings API] Query params:', { page, limit, coupleId, vendorId, sortBy, sortOrder });
+    
+    // Get bookings from database with conditional filtering
+    let bookings;
+    
+    if (vendorId) {
+      console.log('🔍 [Bookings API] Filtering by vendor ID:', vendorId);
+      bookings = await sql`
+        SELECT 
+          b.id, b.couple_id, b.vendor_id, b.service_type,
+          b.event_date, b.status, b.total_amount, b.notes,
+          b.created_at, b.updated_at, b.contact_phone,
+          v.business_name as vendor_name, v.business_type as vendor_category,
+          v.location
+        FROM bookings b
+        JOIN vendors v ON b.vendor_id = v.id
+        WHERE b.vendor_id = ${vendorId}
+        ORDER BY b.created_at DESC
+        LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+      `;
+    } else if (coupleId) {
+      console.log('🔍 [Bookings API] Filtering by couple ID:', coupleId);
+      bookings = await sql`
+        SELECT 
+          b.id, b.couple_id, b.vendor_id, b.service_type,
+          b.event_date, b.status, b.total_amount, b.notes,
+          b.created_at, b.updated_at, b.contact_phone,
+          v.business_name as vendor_name, v.business_type as vendor_category,
+          v.location
+        FROM bookings b
+        JOIN vendors v ON b.vendor_id = v.id
+        WHERE b.couple_id = ${coupleId}
+        ORDER BY b.created_at DESC
+        LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+      `;
+    } else {
+      console.log('🔍 [Bookings API] No filters applied - returning all bookings');
+      bookings = await sql`
+        SELECT 
+          b.id, b.couple_id, b.vendor_id, b.service_type,
+          b.event_date, b.status, b.total_amount, b.notes,
+          b.created_at, b.updated_at, b.contact_phone,
+          v.business_name as vendor_name, v.business_type as vendor_category,
+          v.location
+        FROM bookings b
+        JOIN vendors v ON b.vendor_id = v.id
+        ORDER BY b.created_at DESC
+        LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+      `;
+    }
 
     const formattedBookings = bookings.map(booking => ({
       id: booking.id,
@@ -1229,9 +1266,18 @@ app.get('/api/bookings', async (req, res) => {
       contactPhone: booking.contact_phone
     }));
 
-    // Get total count for pagination
-    const totalResult = await sql`SELECT COUNT(*) as total FROM bookings`;
+    // Get total count for pagination with same filtering
+    let totalResult;
+    if (vendorId) {
+      totalResult = await sql`SELECT COUNT(*) as total FROM bookings WHERE vendor_id = ${vendorId}`;
+    } else if (coupleId) {
+      totalResult = await sql`SELECT COUNT(*) as total FROM bookings WHERE couple_id = ${coupleId}`;
+    } else {
+      totalResult = await sql`SELECT COUNT(*) as total FROM bookings`;
+    }
     const total = parseInt(totalResult[0]?.total || 0);
+
+    console.log(`✅ [Bookings API] Found ${formattedBookings.length} bookings (${total} total)`);
 
     res.json({
       success: true,
