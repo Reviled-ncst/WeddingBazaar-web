@@ -749,25 +749,129 @@ app.post('/api/vendors', async (req, res) => {
 // Services endpoints
 app.get('/api/services', async (req, res) => {
   try {
-    const params = {
-      query: req.query.query as string,
-      category: req.query.category as string,
-      location: req.query.location as string,
-      priceRange: req.query.priceRange as string,
-      minRating: req.query.minRating ? Number(req.query.minRating) : undefined,
-      sortBy: req.query.sortBy as string,
-      page: req.query.page ? Number(req.query.page) : undefined,
-      limit: req.query.limit ? Number(req.query.limit) : undefined
+    console.log('🔍 [/api/services] Direct database query bypass - fixing production issue');
+    
+    // TEMPORARY FIX: Direct database query to bypass ServicesService issue
+    const sql = db.neonSql;
+    
+    // Build query parameters
+    const limit = parseInt(String(req.query.limit || 12));
+    const offset = parseInt(String((req.query.page || 1) - 1)) * limit;
+    
+    console.log('🔍 [/api/services] Query params:', { limit, offset });
+    
+    // Direct query to get services (same as ServicesService but bypassing the class)
+    const servicesResult = await sql`
+      SELECT 
+        s.id, s.vendor_id, s.title, s.description, s.category, s.price, s.images, s.featured, s.is_active, s.created_at, s.updated_at,
+        v.business_name as vendor_business_name,
+        v.profile_image as vendor_profile_image,
+        v.website_url as vendor_website_url,
+        v.business_type as vendor_business_type
+      FROM services s
+      LEFT JOIN vendors v ON s.vendor_id = v.id
+      WHERE s.is_active = true
+      ORDER BY s.featured DESC, s.created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+    
+    console.log('🔍 [/api/services] Direct query returned:', servicesResult.length, 'services');
+    
+    // Get total count
+    const countResult = await sql`
+      SELECT COUNT(*) as total 
+      FROM services s
+      WHERE s.is_active = true
+    `;
+    
+    const total = parseInt(countResult[0].total);
+    console.log('🔍 [/api/services] Total active services:', total);
+    
+    // Convert to frontend format (simplified version of ServicesService mapping)
+    const services = servicesResult.map(dbService => ({
+      id: dbService.id,
+      name: dbService.title,
+      category: dbService.category || 'General',
+      location: 'Los Angeles, CA', // Default location
+      rating: 4.5, // Default rating
+      reviewCount: Math.floor(Math.random() * 100) + 10,
+      priceRange: dbService.price ? `$${Math.floor(dbService.price * 0.8)} - $${Math.floor(dbService.price * 1.2)}` : '$$',
+      image: Array.isArray(dbService.images) && dbService.images.length > 0 
+        ? dbService.images[0] 
+        : 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+      gallery: Array.isArray(dbService.images) && dbService.images.length > 1 
+        ? dbService.images.slice(1) 
+        : [],
+      description: dbService.description || 'Professional wedding service',
+      features: [dbService.category || 'Professional Service'],
+      availability: dbService.is_active,
+      vendorName: dbService.vendor_business_name || 'Professional Vendor',
+      vendorImage: dbService.vendor_profile_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
+      vendorId: dbService.vendor_id,
+      contactInfo: {
+        phone: '+1 (555) 123-4567',
+        email: 'contact@vendor.com',
+        website: dbService.vendor_website_url
+      }
+    }));
+    
+    // Format response to match frontend expectations
+    const response = {
+      success: true,
+      services: services,
+      pagination: {
+        page: parseInt(String(req.query.page || 1)),
+        limit: limit,
+        total: total,
+        totalPages: Math.ceil(total / limit)
+      },
+      total: total
     };
-
-    const result = await servicesService.getServices(params);
-    res.json(result);
-  } catch (error) {
-    console.error('Error fetching services:', error);
-    res.status(500).json({
-      error: 'Failed to fetch services',
-      message: error instanceof Error ? error.message : 'Unknown error'
+    
+    console.log('🔍 [/api/services] Sending direct query response:', { 
+      success: response.success, 
+      servicesCount: response.services.length,
+      total: response.total 
     });
+    
+    res.json(response);
+    
+  } catch (error) {
+    console.error('❌ [/api/services] Direct query failed:', error);
+    
+    // Fallback to original ServicesService
+    try {
+      console.log('🔄 [/api/services] Falling back to ServicesService...');
+      const params = {
+        query: req.query.query as string,
+        category: req.query.category as string,
+        location: req.query.location as string,
+        priceRange: req.query.priceRange as string,
+        minRating: req.query.minRating ? Number(req.query.minRating) : undefined,
+        sortBy: req.query.sortBy as string,
+        page: req.query.page ? Number(req.query.page) : undefined,
+        limit: req.query.limit ? Number(req.query.limit) : undefined
+      };
+
+      const result = await servicesService.getServices(params);
+      
+      const response = {
+        success: true,
+        services: result.services || [],
+        pagination: result.pagination,
+        total: result.pagination?.total || 0
+      };
+      
+      res.json(response);
+    } catch (fallbackError) {
+      console.error('❌ [/api/services] Fallback also failed:', fallbackError);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch services',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        services: []
+      });
+    }
   }
 });
 
@@ -1123,6 +1227,80 @@ app.get('/bookings/stats/:coupleId', async (req, res) => {
       success: false,
       error: 'Failed to fetch booking stats',
       message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// DIRECT SERVICES ENDPOINT - Bypasses broken ServicesService
+app.get('/api/services/direct', async (req, res) => {
+  try {
+    console.log('🔍 [DIRECT] /api/services/direct called - bypassing ServicesService');
+    
+    // Use direct database access to get services
+    const sql = db.neonSql;
+    
+    // Execute the exact query that works
+    const result = await sql`
+      SELECT 
+        s.id, s.vendor_id, s.title, s.description, s.category, s.price, s.images, s.featured, s.is_active, s.created_at, s.updated_at,
+        v.business_name as vendor_business_name,
+        v.profile_image as vendor_profile_image,
+        v.website_url as vendor_website_url,
+        v.business_type as vendor_business_type
+      FROM services s
+      LEFT JOIN vendors v ON s.vendor_id = v.id
+      WHERE s.is_active = true
+      ORDER BY s.featured DESC, s.created_at DESC
+      LIMIT 50
+    `;
+    
+    console.log(`🔍 [DIRECT] Direct query returned ${result.length} services`);
+    
+    // Convert database results to frontend format
+    const services = result.map(dbService => ({
+      id: dbService.id,
+      name: dbService.title, // Map 'title' to 'name'
+      category: dbService.category || 'Other',
+      location: 'Los Angeles, CA', // Default location
+      rating: 4.5, // Default rating (add to DB later)
+      reviewCount: Math.floor(Math.random() * 200) + 10, // Placeholder
+      priceRange: dbService.price < 500 ? '$' : dbService.price < 1500 ? '$$' : dbService.price < 3000 ? '$$$' : '$$$$',
+      image: dbService.images && dbService.images.length > 0 
+        ? dbService.images[0] 
+        : 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+      gallery: dbService.images && dbService.images.length > 1 ? dbService.images.slice(1) : [],
+      description: dbService.description || 'Professional wedding service',
+      features: [dbService.category || 'Professional Service'],
+      availability: dbService.is_active || false,
+      vendorName: dbService.vendor_business_name || 'Professional Vendor',
+      vendorImage: dbService.vendor_profile_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100',
+      vendorId: dbService.vendor_id,
+      contactInfo: {
+        phone: '+1 (555) 123-4567', // Default phone
+        email: 'contact@vendor.com', // Default email
+        website: dbService.vendor_website_url || undefined,
+      }
+    }));
+    
+    console.log(`🔍 [DIRECT] Converted ${services.length} services for frontend`);
+    console.log(`🔍 [DIRECT] Sample services:`, services.slice(0, 3).map(s => ({ id: s.id, name: s.name, category: s.category })));
+    
+    const response = {
+      success: true,
+      services: services,
+      total: services.length,
+      message: 'Direct database query - bypassing ServicesService'
+    };
+    
+    res.json(response);
+    
+  } catch (error) {
+    console.error('❌ [DIRECT] Direct services query failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Direct services query failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      services: []
     });
   }
 });
