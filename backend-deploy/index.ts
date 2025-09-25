@@ -180,7 +180,8 @@ app.use(cors({
   origin: corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-user-id']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-user-id'
+  ]
 }));
 
 app.use(morgan('combined'));
@@ -563,6 +564,10 @@ app.get('/api/vendor-profiles', async (req, res) => {
       featured_image_url: profile.featured_image_url,
       business_hours: profile.business_hours,
       social_media_links: profile.social_media_links,
+      certifications_licenses: profile.certifications_licenses,
+      insurance_info: profile.insurance_info,
+      cancellation_policy: profile.cancellation_policy,
+      payment_methods: profile.payment_methods,
       average_rating: profile.average_rating || '4.5',
       total_reviews: profile.total_reviews || 0,
       total_bookings: profile.total_bookings || 0,
@@ -782,6 +787,162 @@ function getCategoryIcon(category: string): string {
   };
   return icons[category] || '💍';
 }
+
+// Services endpoint - Expose services table data
+app.get('/api/services', async (req, res) => {
+  try {
+    console.log('🚀 [API] /api/services endpoint called');
+    
+    // Get services from database
+    const services = await sql`
+      SELECT 
+        s.id,
+        s.vendor_id,
+        s.title,
+        s.name,
+        s.description,
+        s.category,
+        s.price,
+        s.images,
+        s.featured,
+        s.is_active,
+        s.created_at,
+        s.updated_at,
+        v.business_name as vendor_name,
+        v.rating,
+        v.review_count,
+        v.location,
+        v.contact_phone,
+        v.contact_email,
+        v.contact_website
+      FROM services s
+      LEFT JOIN vendors v ON s.vendor_id = v.id
+      WHERE s.is_active = true
+      ORDER BY s.featured DESC, s.created_at DESC
+    `;
+
+    console.log(`✅ [API] Found ${services.length} services in database`);
+
+    // Format services for frontend
+    const formattedServices = services.map(service => ({
+      id: service.id,
+      name: service.name || service.title,
+      category: service.category,
+      vendorId: service.vendor_id,
+      vendorName: service.vendor_name,
+      vendorImage: `https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400`, // Default vendor image
+      description: service.description,
+      priceRange: service.price ? `₱${parseFloat(service.price).toLocaleString()}` : '₱₱',
+      location: service.location || 'Philippines',
+      rating: parseFloat(service.rating || 4.5),
+      reviewCount: service.review_count || 0,
+      image: service.images && service.images.length > 0 
+        ? service.images[0] 
+        : `https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400`,
+      gallery: service.images || [],
+      features: [service.category],
+      availability: service.is_active,
+      featured: service.featured,
+      contactInfo: {
+        phone: service.contact_phone,
+        email: service.contact_email,
+        website: service.contact_website
+      }
+    }));
+
+    res.json({
+      success: true,
+      services: formattedServices,
+      count: formattedServices.length
+    });
+
+  } catch (error) {
+    console.error('❌ [API] Error fetching services:', error);
+    
+    // Return empty array on error so frontend doesn't break
+    res.json({
+      success: true,
+      services: [],
+      count: 0,
+      error: 'Database temporarily unavailable'
+    });
+  }
+});
+
+// Services direct endpoint (for priority loading)
+app.get('/api/services/direct', async (req, res) => {
+  try {
+    console.log('🚀 [API] /api/services/direct endpoint called');
+    
+    // Get services directly from database with all vendor info
+    const services = await sql`
+      SELECT 
+        s.*,
+        v.business_name,
+        v.rating,
+        v.review_count,
+        v.location,
+        v.contact_phone,
+        v.contact_email,
+        v.contact_website,
+        v.portfolio_images
+      FROM services s
+      LEFT JOIN vendors v ON s.vendor_id = v.id
+      WHERE s.is_active = true
+      ORDER BY s.featured DESC, s.created_at DESC
+    `;
+
+    console.log(`✅ [API] Found ${services.length} services via direct query`);
+
+    // Enhanced formatting for direct endpoint
+    const directServices = services.map(service => ({
+      id: service.id,
+      name: service.name || service.title,
+      category: service.category,
+      vendorId: service.vendor_id,
+      vendorName: service.business_name,
+      vendorImage: service.portfolio_images && service.portfolio_images.length > 0 
+        ? service.portfolio_images[0] 
+        : `https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400`,
+      description: service.description,
+      priceRange: service.price ? `₱${parseFloat(service.price).toLocaleString()}` : '₱₱',
+      location: service.location || 'Philippines',
+      rating: parseFloat(service.rating || 4.5),
+      reviewCount: service.review_count || 0,
+      image: service.images && service.images.length > 0 
+        ? service.images[0] 
+        : `https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400`,
+      gallery: [...(service.images || []), ...(service.portfolio_images || [])],
+      features: [service.category, ...(service.featured ? ['Featured'] : [])],
+      availability: service.is_active,
+      featured: service.featured,
+      contactInfo: {
+        phone: service.contact_phone,
+        email: service.contact_email,
+        website: service.contact_website
+      },
+      createdAt: service.created_at,
+      updatedAt: service.updated_at
+    }));
+
+    res.json({
+      success: true,
+      services: directServices,
+      count: directServices.length,
+      source: 'direct_database_query'
+    });
+
+  } catch (error) {
+    console.error('❌ [API] Error in direct services query:', error);
+    
+    res.status(500).json({
+      success: false,
+      services: [],
+      count: 0,
+      error: 'Direct database query failed'
+    });
+  }
+});
 
 // Vendor booking stats endpoint
 app.get('/api/vendors/:vendorId/bookings/stats', async (req, res) => {
@@ -1307,646 +1468,231 @@ app.get('/api/bookings', async (req, res) => {
   }
 });
 
-// Booking statistics endpoint
-app.get('/api/bookings/stats', async (req, res) => {
+// Enhanced bookings endpoint with comprehensive data
+app.get('/api/bookings/enhanced', async (req, res) => {
   try {
-    const mockStats = {
-      totalBookings: 3,
-      confirmedBookings: 2,
-      pendingBookings: 1,
-      cancelledBookings: 0,
-      totalSpent: 525000,
-      totalPaid: 175000,
-      remainingBalance: 350000,
-      upcomingPayments: 2,
-      monthlyBreakdown: [
-        { month: 'Aug 2025', bookings: 1, amount: 300000 },
-        { month: 'Sep 2025', bookings: 2, amount: 225000 }
-      ],
-      categoryBreakdown: [
-        { category: 'Venue', count: 1, amount: 300000 },
-        { category: 'Catering', count: 1, amount: 150000 },
-        { category: 'Photography', count: 1, amount: 75000 }
-      ]
-    };
-
-    res.json({
-      success: true,
-      stats: mockStats
-    });
-  } catch (error) {
-    console.error('Error fetching booking stats:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching booking statistics'
-    });
-  }
-});
-
-// Individual booking details endpoint
-app.get('/api/bookings/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
+    const { 
+      page = 1, 
+      limit = 10, 
+      coupleId, 
+      vendorId, 
+      serviceId,
+      status,
+      sortBy = 'created_at', 
+      sortOrder = 'DESC' 
+    } = req.query;
     
-    // Mock detailed booking data
-    const mockBooking = {
-      id: parseInt(id),
-      vendorId: 1,
-      vendorName: 'Elegant Photography Studios',
-      vendorCategory: 'Photography',
-      vendorImage: '/api/placeholder/400/300',
-      serviceType: 'Wedding Photography Package',
-      bookingDate: '2025-09-01',
-      eventDate: '2026-03-15',
-      eventTime: '14:00',
-      status: 'confirmed',
-      amount: 75000,
-      downPayment: 25000,
-      remainingBalance: 50000,
-      paymentSchedule: [
-        { dueDate: '2025-09-01', amount: 25000, status: 'paid', description: 'Booking deposit' },
-        { dueDate: '2026-01-15', amount: 25000, status: 'pending', description: 'Mid payment' },
-        { dueDate: '2026-03-01', amount: 25000, status: 'pending', description: 'Final payment' }
-      ],
-      services: [
-        'Full day wedding photography',
-        'Pre-wedding photoshoot (2 hours)',
-        'Digital photo gallery (500+ photos)',
-        'Printed photo album (50 pages)',
-        'USB drive with all photos'
-      ],
-      location: 'Manila Cathedral + Reception Venue',
-      notes: 'Include family portraits during ceremony prep',
-      contactPerson: 'John Cruz',
-      contactPhone: '+63917-123-4567',
-      contactEmail: 'john@elegantphoto.ph',
-      createdAt: '2025-09-01T10:00:00Z',
-      updatedAt: '2025-09-10T15:30:00Z'
-    };
-
-    res.json({
-      success: true,
-      booking: mockBooking
-    });
-  } catch (error) {
-    console.error('Error fetching booking details:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching booking details'
-    });
-  }
-});
-
-// Test endpoint for debugging bookings (no auth required)
-app.get('/api/test/bookings', async (req, res) => {
-  try {
-    console.log('🧪 [TEST] Test bookings endpoint called');
-    
-    // Return test booking data regardless of auth
-    const testBookings = [
-      {
-        id: 1,
-        coupleId: 'test-user',
-        vendorId: 1,
-        vendorName: 'Test Photography Studio',
-        vendorCategory: 'Photography',
-        serviceType: 'Wedding Photography Package',
-        bookingDate: '2025-09-19T10:00:00Z',
-        eventDate: '2025-12-25T14:00:00Z',
-        status: 'confirmed',
-        amount: 75000,
-        downPayment: 22500,
-        remainingBalance: 52500,
-        location: 'Manila Cathedral',
-        notes: 'Test booking for production debugging',
-        contactPhone: '+63917-123-4567',
-        createdAt: '2025-09-19T10:00:00Z',
-        updatedAt: '2025-09-19T10:00:00Z'
-      },
-      {
-        id: 2,
-        coupleId: 'test-user',
-        vendorId: 2,
-        vendorName: 'Test Catering Services',
-        vendorCategory: 'Catering',
-        serviceType: 'Wedding Reception Catering',
-        bookingDate: '2025-09-19T11:00:00Z',
-        eventDate: '2025-12-25T18:00:00Z',
-        status: 'pending',
-        amount: 150000,
-        downPayment: 45000,
-        remainingBalance: 105000,
-        location: 'Manila Hotel Reception',
-        notes: 'Test catering booking',
-        contactPhone: '+63917-234-5678',
-        createdAt: '2025-09-19T11:00:00Z',
-        updatedAt: '2025-09-19T11:00:00Z'
-      }
-    ];
-
-    res.json({
-      success: true,
-      bookings: testBookings,
-      pagination: {
-        currentPage: 1,
-        totalPages: 1,
-        totalBookings: testBookings.length,
-        hasNext: false,
-        hasPrev: false
-      }
+    console.log('📥 [Enhanced Bookings API] Query params:', { 
+      page, limit, coupleId, vendorId, serviceId, status, sortBy, sortOrder 
     });
     
-    console.log('✅ [TEST] Test bookings returned successfully');
-  } catch (error) {
-    console.error('❌ [TEST] Error in test bookings endpoint:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Test endpoint error'
-    });
-  }
-});
-
-// Test endpoint for debugging bookings (no auth required)
-app.get('/api/test/user', async (req, res) => {
-  try {
-    console.log('🧪 [TEST] Test user endpoint called');
+    // Build WHERE clause based on filters
+    let whereConditions = [];
+    let queryParams = [];
+    let paramIndex = 1;
     
-    res.json({
-      success: true,
-      user: {
-        id: 'test-user-123',
-        email: 'test@production.com',
-        firstName: 'Test',
-        lastName: 'User',
-        role: 'couple'
-      }
-    });
+    if (coupleId) {
+      whereConditions.push(`b.couple_id = $${paramIndex}`);
+      queryParams.push(coupleId);
+      paramIndex++;
+    }
     
-    console.log('✅ [TEST] Test user returned successfully');
-  } catch (error) {
-    console.error('❌ [TEST] Error in test user endpoint:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Test user endpoint error'
-    });
-  }
-});
-
-// Bookings for a specific couple
-app.get('/api/bookings/couple/:id', async (req, res) => {
-  try {
-    const { id: coupleId } = req.params;
-    const { page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    if (vendorId) {
+      whereConditions.push(`b.vendor_id = $${paramIndex}`);
+      queryParams.push(vendorId);
+      paramIndex++;
+    }
     
-    console.log(`🔍 Fetching bookings for couple: ${coupleId}`);
+    if (serviceId) {
+      whereConditions.push(`b.service_id = $${paramIndex}`);
+      queryParams.push(serviceId);
+      paramIndex++;
+    }
     
-    // Get bookings from database with simplified query
-    let bookings;
     if (status) {
+      whereConditions.push(`b.status = $${paramIndex}`);
+      queryParams.push(status);
+      paramIndex++;
+    }
+    
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const offsetValue = (parseInt(page as string) - 1) * parseInt(limit as string);
+    
+    // Get enhanced bookings with comprehensive data (simplified query)
+    let bookings;
+    let countResult;
+    
+    if (coupleId) {
       bookings = await sql`
         SELECT 
-          b.id, b.couple_id, b.vendor_id, b.service_type,
-          b.event_date, b.status, b.total_amount, b.notes,
-          b.created_at, b.updated_at, b.contact_phone,
-          COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
-          u.email as contact_email,
-          v.business_name as vendor_name, v.business_type as vendor_category,
-          v.location
+          b.id, b.couple_id, b.vendor_id, b.service_id, b.service_type, b.service_name,
+          b.event_date, b.event_time, b.event_location, b.guest_count, 
+          b.special_requests, b.contact_phone, b.preferred_contact_method,
+          b.budget_range, b.status, b.total_amount, b.notes,
+          b.created_at, b.updated_at,
+          v.business_name as vendor_name, 
+          v.business_type as vendor_category,
+          v.location as vendor_location,
+          v.contact_phone as vendor_phone,
+          v.website_url as vendor_website,
+          u.first_name, u.last_name, u.email as couple_email
         FROM bookings b
-        LEFT JOIN users u ON b.couple_id = u.id
         LEFT JOIN vendors v ON b.vendor_id = v.id
-        WHERE b.couple_id = ${coupleId} AND b.status = ${status}
-        ORDER BY b.created_at DESC
-        LIMIT ${limit} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
-      `;
-    } else {
-      bookings = await sql`
-        SELECT 
-          b.id, b.couple_id, b.vendor_id, b.service_type,
-          b.event_date, b.status, b.total_amount, b.notes,
-          b.created_at, b.updated_at, b.contact_phone,
-          COALESCE(u.first_name || ' ' || u.last_name, 'Couple #' || b.couple_id) as couple_name,
-          u.email as contact_email,
-          v.business_name as vendor_name, v.business_type as vendor_category,
-          v.location
-        FROM bookings b
         LEFT JOIN users u ON b.couple_id = u.id
-        LEFT JOIN vendors v ON b.vendor_id = v.id
         WHERE b.couple_id = ${coupleId}
         ORDER BY b.created_at DESC
-        LIMIT ${limit} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+        LIMIT ${parseInt(limit as string)} OFFSET ${offsetValue}
+      `;
+      
+      countResult = await sql`
+        SELECT COUNT(*) as total
+        FROM bookings b
+        WHERE b.couple_id = ${coupleId}
+      `;
+    } else if (vendorId) {
+      bookings = await sql`
+        SELECT 
+          b.id, b.couple_id, b.vendor_id, b.service_id, b.service_type, b.service_name,
+          b.event_date, b.event_time, b.event_location, b.guest_count, 
+          b.special_requests, b.contact_phone, b.preferred_contact_method,
+          b.budget_range, b.status, b.total_amount, b.notes,
+          b.created_at, b.updated_at,
+          v.business_name as vendor_name, 
+          v.business_type as vendor_category,
+          v.location as vendor_location,
+          v.contact_phone as vendor_phone,
+          v.website_url as vendor_website,
+          u.first_name, u.last_name, u.email as couple_email
+        FROM bookings b
+        LEFT JOIN vendors v ON b.vendor_id = v.id
+        LEFT JOIN users u ON b.couple_id = u.id
+        WHERE b.vendor_id = ${vendorId}
+        ORDER BY b.created_at DESC
+        LIMIT ${parseInt(limit as string)} OFFSET ${offsetValue}
+      `;
+      
+      countResult = await sql`
+        SELECT COUNT(*) as total
+        FROM bookings b
+        WHERE b.vendor_id = ${vendorId}
+      `;
+    } else {
+      // Get all bookings
+      bookings = await sql`
+        SELECT 
+          b.id, b.couple_id, b.vendor_id, b.service_id, b.service_type, b.service_name,
+          b.event_date, b.event_time, b.event_location, b.guest_count, 
+          b.special_requests, b.contact_phone, b.preferred_contact_method,
+          b.budget_range, b.status, b.total_amount, b.notes,
+          b.created_at, b.updated_at,
+          v.business_name as vendor_name, 
+          v.business_type as vendor_category,
+          v.location as vendor_location,
+          v.contact_phone as vendor_phone,
+          v.website_url as vendor_website,
+          u.first_name, u.last_name, u.email as couple_email
+        FROM bookings b
+        LEFT JOIN vendors v ON b.vendor_id = v.id
+        LEFT JOIN users u ON b.couple_id = u.id
+        ORDER BY b.created_at DESC
+        LIMIT ${parseInt(limit as string)} OFFSET ${offsetValue}
+      `;
+      
+      countResult = await sql`
+        SELECT COUNT(*) as total
+        FROM bookings
       `;
     }
-
+    
+    const totalBookings = parseInt(countResult[0].total);
+    const totalPages = Math.ceil(totalBookings / parseInt(limit as string));
+    const currentPage = parseInt(page as string);
+    
+    // Format comprehensive booking data
     const formattedBookings = bookings.map(booking => ({
-      id: booking.id.toString(),
+      id: booking.id,
+      coupleId: booking.couple_id,
       vendorId: booking.vendor_id,
-      vendorName: booking.vendor_name,
-      vendorCategory: booking.vendor_category,
+      serviceId: booking.service_id,
+      serviceName: booking.service_name,
       serviceType: booking.service_type,
-      bookingDate: booking.created_at,
       eventDate: booking.event_date,
+      eventTime: booking.event_time,
+      eventLocation: booking.event_location,
+      guestCount: booking.guest_count,
+      budgetRange: booking.budget_range,
+      specialRequests: booking.special_requests,
+      contactPhone: booking.contact_phone,
+      preferredContactMethod: booking.preferred_contact_method,
       status: booking.status,
-      amount: parseFloat(booking.total_amount || 0),
-      downPayment: parseFloat(booking.total_amount || 0) * 0.3,
-      remainingBalance: parseFloat(booking.total_amount || 0) * 0.7,
+      totalAmount: parseFloat(booking.total_amount || '0'),
+      notes: booking.notes,
       createdAt: booking.created_at,
       updatedAt: booking.updated_at,
-      location: booking.location,
-      notes: booking.notes,
-      contactPhone: booking.contact_phone
+      // Vendor information
+      vendorName: booking.vendor_name,
+      vendorCategory: booking.vendor_category,
+      vendorLocation: booking.vendor_location,
+      vendorPhone: booking.vendor_phone,
+      vendorWebsite: booking.vendor_website,
+      // Couple information
+      coupleName: booking.first_name && booking.last_name 
+        ? `${booking.first_name} ${booking.last_name}` 
+        : 'N/A',
+      coupleEmail: booking.couple_email,
+      // Additional UI-friendly fields
+      displayDate: booking.event_date 
+        ? new Date(booking.event_date).toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })
+        : 'N/A',
+      displayTime: booking.event_time || 'All day',
+      statusColor: getStatusColor(booking.status),
+      canCancel: ['request', 'quote_requested', 'quote_sent'].includes(booking.status),
+      canConfirm: booking.status === 'quote_sent'
     }));
-
-    // Get total count for pagination
-    const countResult = await sql`
-      SELECT COUNT(*) as total 
-      FROM bookings b 
-      WHERE b.couple_id = ${coupleId}
-      ${status ? sql`AND b.status = ${status}` : sql``}
-    `;
-    const total = parseInt(countResult[0]?.total || 0);
-
+    
+    console.log(`✅ [Enhanced Bookings API] Found ${formattedBookings.length} bookings`);
+    
     res.json({
       success: true,
       bookings: formattedBookings,
       pagination: {
-        currentPage: parseInt(page as string),
-        totalPages: Math.ceil(total / parseInt(limit as string)),
-        totalBookings: total,
-        hasNext: (parseInt(page as string) * parseInt(limit as string)) < total,
-        hasPrev: parseInt(page as string) > 1
+        currentPage,
+        totalPages,
+        totalBookings,
+        hasNext: currentPage < totalPages,
+        hasPrev: currentPage > 1,
+        limit: parseInt(limit as string)
       }
     });
-  } catch (error) {
-    console.error('Error fetching couple bookings:', error);
-    // Return mock data if database error
-    res.json({
-      success: true,
-      bookings: [
-        {
-          id: 1,
-          coupleId: req.params.id,
-          vendorId: 1,
-          vendorName: 'Elegant Photography Studio',
-          vendorCategory: 'Photography',
-          serviceType: 'Wedding Photography Package',
-          bookingDate: '2025-09-01T10:00:00Z',
-          eventDate: '2025-12-15T14:00:00Z',
-          status: 'confirmed',
-          amount: 75000,
-          downPayment: 22500,
-          remainingBalance: 52500,
-          location: 'Manila Cathedral',
-          notes: 'Include family portraits',
-          contactPhone: '+63917-123-4567'
-        }
-      ],
-      pagination: {
-        currentPage: 1,
-        totalPages: 1,
-        totalBookings: 1,
-        hasNext: false,
-        hasPrev: false
-      }
-    });
-  }
-});
-
-// Create booking request endpoint
-app.post('/api/bookings/request', async (req, res) => {
-  try {
-    console.log('📝 [BookingRequest] Received booking request:', req.body);
     
-    const {
-      vendor_id,
-      service_id,
-      service_type,
-      service_name,
-      event_date,
-      event_time,
-      event_end_time,
-      event_location,
-      venue_details,
-      guest_count,
-      special_requests,
-      contact_person,
-      contact_phone,
-      contact_email,
-      preferred_contact_method,
-      budget_range,
-      metadata
-    } = req.body;
-
-    const userId = req.headers['x-user-id'] || '1-2025-001'; // Get user ID from header or fallback
-    
-    // Validate required fields
-    if (!vendor_id || !service_id || !event_date) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields: vendor_id, service_id, event_date'
-      });
-    }
-
-    console.log(`✨ [BookingRequest] Creating booking request for user: ${userId}`);
-
-    // Insert booking request into database (using only existing columns)
-    const result = await sql`
-      INSERT INTO bookings (
-        couple_id, vendor_id, service_id, service_type, service_name,
-        event_date, event_time, event_location, guest_count, special_requests, 
-        contact_phone, preferred_contact_method, budget_range, status,
-        total_amount, created_at, updated_at
-      ) VALUES (
-        ${userId}, ${vendor_id}, ${service_id}, ${service_type}, ${service_name},
-        ${event_date}, ${event_time}, ${event_location}, ${guest_count}, ${special_requests},
-        ${contact_phone}, ${preferred_contact_method}, ${budget_range}, 'request',
-        0, NOW(), NOW()
-      ) RETURNING id
-    `;
-
-    const bookingId = result[0].id;
-
-    // Prepare response
-    const createdBooking = {
-      id: bookingId,
-      coupleId: userId,
-      vendorId: vendor_id,
-      serviceId: service_id,
-      serviceName: service_name,
-      serviceType: service_type,
-      eventDate: event_date,
-      eventTime: event_time,
-      eventLocation: event_location,
-      guestCount: guest_count,
-      budgetRange: budget_range,
-      specialRequests: special_requests,
-      contactPhone: contact_phone,
-      preferredContactMethod: preferred_contact_method,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    console.log('✅ [BookingRequest] Booking request created successfully:', bookingId);
-
-    res.json({
-      success: true,
-      message: 'Booking request created successfully',
-      data: createdBooking
-    });
-
   } catch (error) {
-    console.error('❌ [BookingRequest] Error creating booking request:', error);
+    console.error('❌ [Enhanced Bookings API] Error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to create booking request',
+      message: 'Failed to fetch enhanced bookings',
       error: error.message
     });
   }
 });
 
-// Services endpoint with real database integration
-app.get('/api/services', async (req, res) => {
-  try {
-    const { vendorId } = req.query;
-    
-    // If vendorId is provided, return vendor-specific services
-    if (vendorId) {
-      console.log(`🔍 Fetching services for vendor: ${vendorId}`);
-      
-      const services = await sql`
-        SELECT 
-          id, vendor_id, title, description, category, price,
-          images, featured, is_active, created_at, updated_at
-        FROM services 
-        WHERE vendor_id = ${vendorId}
-        ORDER BY featured DESC, created_at DESC
-      `;
-      
-      console.log(`📊 Found ${services.length} services for vendor ${vendorId}`);
-      
-      res.json({
-        success: true,
-        services: services
-      });
-      return;
-    }
-    
-    // Otherwise, return service categories grouped by vendor types (original logic)
-    const services = await sql`
-      SELECT DISTINCT
-        v.category,
-        COUNT(v.id) as provider_count,
-        AVG(v.rating) as avg_rating
-      FROM vendors v
-      WHERE v.verified = true 
-        AND v.category IS NOT NULL
-      GROUP BY v.category
-      ORDER BY provider_count DESC, avg_rating DESC
-    `;
-
-    const formattedServices = await Promise.all(
-      services.map(async (service, index) => {
-        // Get providers for this category
-        const providers = await sql`
-          SELECT 
-            v.id, v.business_name as name, v.rating, v.review_count,
-            v.price_range, v.location, v.description, v.portfolio_images,
-            EXTRACT(YEAR FROM AGE(NOW(), v.created_at)) as years_experience
-          FROM vendors v
-          WHERE v.category = ${service.category} 
-            AND v.verified = true
-          ORDER BY v.rating DESC, v.review_count DESC
-          LIMIT 5
-        `;
-
-        const formattedProviders = providers.map(provider => ({
-          id: provider.id,
-          name: provider.name,
-          rating: parseFloat(provider.rating || 0),
-          reviewCount: provider.review_count || 0,
-          priceRange: provider.price_range || 'Contact for pricing',
-          location: provider.location,
-          specialties: [service.category],
-          yearsExperience: provider.years_experience || 1,
-          image: provider.portfolio_images?.[0] || getDefaultServiceImage(service.category),
-          gallery: provider.portfolio_images?.slice(0, 3) || [getDefaultServiceImage(service.category)]
-        }));
-
-        return {
-          id: index + 1,
-          name: `Wedding ${service.category}`,
-          category: service.category,
-          description: `Professional ${service.category.toLowerCase()} services`,
-          icon: getCategoryIcon(service.category),
-          providers: formattedProviders
-        };
-      })
-    );
-
-    res.json({
-      success: true,
-      services: formattedServices
-    });
-  } catch (error) {
-    console.error('Error fetching services:', error);
-    // Fallback to empty services if database error
-    res.json({
-      success: true,
-      services: []
-    });
-  }
-});
-
-// Create new service
-app.post('/api/services', async (req, res) => {
-  try {
-    const {
-      vendor_id,
-      title,
-      description,
-      category,
-      price,
-      images,
-      featured,
-      is_active
-    } = req.body;
-
-    console.log(`🔧 Creating new service for vendor: ${vendor_id}`);
-
-    // Generate new service ID
-    const serviceId = `SRV-${Date.now()}`;
-
-    const newService = await sql`
-      INSERT INTO services (
-        id, vendor_id, title, description, category, price,
-        images, featured, is_active, created_at, updated_at
-      ) VALUES (
-        ${serviceId}, ${vendor_id}, ${title}, ${description}, ${category}, ${price || null},
-        ${images || []}, ${featured || false}, ${is_active !== false}, NOW(), NOW()
-      )
-      RETURNING *
-    `;
-
-    console.log(`✅ Service created successfully: ${serviceId}`);
-
-    res.json({
-      success: true,
-      service: newService[0],
-      message: 'Service created successfully'
-    });
-  } catch (error) {
-    console.error('Error creating service:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create service',
-      error: error.message
-    });
-  }
-});
-
-// Update existing service
-app.put('/api/services/:serviceId', async (req, res) => {
-  try {
-    const { serviceId } = req.params;
-    const {
-      title,
-      description,
-      category,
-      price,
-      images,
-      featured,
-      is_active
-    } = req.body;
-
-    console.log(`🔧 Updating service: ${serviceId}`);
-
-    const updatedService = await sql`
-      UPDATE services SET
-        title = ${title},
-        description = ${description},
-        category = ${category},
-        price = ${price || null},
-        images = ${images || []},
-        featured = ${featured || false},
-        is_active = ${is_active !== false},
-        updated_at = NOW()
-      WHERE id = ${serviceId}
-      RETURNING *
-    `;
-
-    if (updatedService.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Service not found'
-      });
-    }
-
-    console.log(`✅ Service updated successfully: ${serviceId}`);
-
-    res.json({
-      success: true,
-      service: updatedService[0],
-      message: 'Service updated successfully'
-    });
-  } catch (error) {
-    console.error('Error updating service:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update service',
-      error: error.message
-    });
-  }
-});
-
-// Delete service
-app.delete('/api/services/:serviceId', async (req, res) => {
-  try {
-    const { serviceId } = req.params;
-
-    console.log(`🗑️ Deleting service: ${serviceId}`);
-
-    const deletedService = await sql`
-      DELETE FROM services
-      WHERE id = ${serviceId}
-      RETURNING *
-    `;
-
-    if (deletedService.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Service not found'
-      });
-    }
-
-    console.log(`✅ Service deleted successfully: ${serviceId}`);
-
-    res.json({
-      success: true,
-      message: 'Service deleted successfully',
-      service: deletedService[0]
-    });
-  } catch (error) {
-    console.error('Error deleting service:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete service',
-      error: error.message
-    });
-  }
-});
-
-// Helper function for default service images
-function getDefaultServiceImage(category: string): string {
-  const images = {
-    'Photography': 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400',
-    'Catering': 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400',
-    'Venues': 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
-    'Music & Entertainment': 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400',
-    'Flowers & Decoration': 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=400',
-    'Wedding Planning': 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400'
+// Helper function for status colors
+function getStatusColor(status: string): string {
+  const statusColors = {
+    'request': 'bg-blue-100 text-blue-800',
+    'quote_requested': 'bg-yellow-100 text-yellow-800',
+    'quote_sent': 'bg-purple-100 text-purple-800',
+    'confirmed': 'bg-green-100 text-green-800',
+    'completed': 'bg-emerald-100 text-emerald-800',
+    'cancelled': 'bg-red-100 text-red-800',
+    'paid_partial': 'bg-orange-100 text-orange-800',
+    'paid_in_full': 'bg-teal-100 text-teal-800'
   };
-  return images[category] || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400';
+  return statusColors[status] || 'bg-gray-100 text-gray-800';
 }
 
 // Vendor subscription endpoints - Real database integration
@@ -2223,267 +1969,6 @@ app.get('/api/messaging/conversations/:vendorId', async (req, res) => {
         return res.json({
           success: true,
           conversations: formattedConversations,
-          source: 'database'
-        });
-      }
-    } catch (dbError) {
-      console.log(`🔍 Database query failed for vendor ${vendorId}:`, dbError.message);
-      console.log('Using fallback mock conversations...');
-    }
-
-    // Fallback to mock data with proper vendor ID
-    const mockConversations = [
-      {
-        id: `conv-${vendorId}-1`,
-        participants: [{
-          id: 'user-1',
-          name: 'Maria Santos',
-          role: 'couple',
-          isOnline: true,
-          avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b977?w=40&h=40&fit=crop&crop=face'
-        }],
-        lastMessage: {
-          id: 'msg-1',
-          content: 'Hi! I\'m interested in your wedding photography services for March 2025.',
-          senderId: 'user-1',
-          senderName: 'Maria Santos',
-          senderType: 'couple',
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          messageType: 'text',
-          isRead: false
-        },
-        unreadCount: 1,
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        updatedAt: new Date(Date.now() - 3600000).toISOString()
-      },
-      {
-        id: `conv-${vendorId}-2`,
-        participants: [{
-          id: 'user-2',
-          name: 'John & Sarah Cruz',
-          role: 'couple',
-          isOnline: false,
-          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face'
-        }],
-        lastMessage: {
-          id: 'msg-2',
-          content: 'Thank you for the beautiful engagement photos! We love them.',
-          senderId: 'user-2',
-          senderName: 'John & Sarah Cruz',
-          senderType: 'couple',
-          timestamp: new Date(Date.now() - 7200000).toISOString(),
-          messageType: 'text',
-          isRead: true
-        },
-        unreadCount: 0,
-        createdAt: new Date(Date.now() - 172800000).toISOString(),
-        updatedAt: new Date(Date.now() - 7200000).toISOString()
-      },
-      {
-        id: `conv-${vendorId}-3`,
-        participants: [{
-          id: 'user-3',
-          name: 'Ana Rodriguez',
-          role: 'couple',
-          isOnline: true,
-          avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face'
-        }],
-        lastMessage: {
-          id: 'msg-3',
-          content: 'Could we schedule a consultation for our December wedding?',
-          senderId: 'user-3',
-          senderName: 'Ana Rodriguez',
-          senderType: 'couple',
-          timestamp: new Date(Date.now() - 10800000).toISOString(),
-          messageType: 'text',
-          isRead: false
-        },
-        unreadCount: 2,
-        createdAt: new Date(Date.now() - 259200000).toISOString(),
-        updatedAt: new Date(Date.now() - 10800000).toISOString()
-      }
-    ];
-
-    console.log(`✅ Returning ${mockConversations.length} mock conversations for vendor: ${vendorId}`);
-    res.json({
-      success: true,
-      conversations: mockConversations
-    });
-  } catch (error) {
-    console.error('❌ Error fetching conversations:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching conversations',
-      error: error.message
-    });
-  }
-});
-
-// General conversations endpoint - handles all user types
-app.get('/api/conversations', async (req, res) => {
-  try {
-    const { vendorId, userId, userType } = req.query;
-    console.log('🔍 [Production] Getting conversations with params:', { vendorId, userId, userType });
-    
-    if (vendorId) {
-      // Return vendor conversations (similar to existing vendor endpoint)
-      const conversations = await sql`
-        SELECT 
-          c.id,
-          c.participant_id,
-          c.participant_name,
-          c.participant_type,
-          c.participant_avatar,
-          c.creator_id,
-          c.creator_type,
-          c.conversation_type,
-          c.last_message,
-          c.last_message_time,
-          c.unread_count,
-          c.is_online,
-          c.status,
-          c.wedding_date,
-          c.location,
-          c.created_at,
-          c.updated_at
-        FROM conversations c
-        WHERE c.participant_id = ${vendorId} OR c.creator_id = ${vendorId}
-        ORDER BY c.last_message_time DESC
-      `;
-      
-      if (conversations.length === 0) {
-        console.log('⚠️ No conversations found in database, returning mock data');
-        // Return mock conversations for development
-        const mockConversations = [
-          {
-            id: 'conv-1',
-            participantId: 'couple-1',
-            participantName: 'Sarah & Mike Johnson',
-            participantType: 'couple',
-            participantAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100',
-            lastMessage: 'Thank you for the beautiful photos!',
-            lastMessageTime: '2025-09-22T10:30:00Z',
-            unreadCount: 0,
-            isOnline: false,
-            status: 'active',
-            weddingDate: '2025-12-15',
-            location: 'Manila',
-            createdAt: '2025-09-15T08:00:00Z'
-          }
-        ];
-        
-        res.json({
-          success: true,
-          conversations: mockConversations
-        });
-        return;
-      }
-      
-      res.json({
-        success: true,
-        conversations: conversations
-      });
-      return;
-    }
-    
-    if (userId) {
-      // Return user conversations
-      const conversations = await sql`
-        SELECT 
-          c.id,
-          c.participant_id,
-          c.participant_name,
-          c.participant_type,
-          c.participant_avatar,
-          c.creator_id,
-          c.creator_type,
-          c.conversation_type,
-          c.last_message,
-          c.last_message_time,
-          c.unread_count,
-          c.is_online,
-          c.status,
-          c.wedding_date,
-          c.location,
-          c.created_at,
-          c.updated_at
-        FROM conversations c
-        WHERE c.participant_id = ${userId} OR c.creator_id = ${userId}
-        ORDER BY c.last_message_time DESC
-      `;
-      
-      res.json({
-        success: true,
-        conversations: conversations
-      });
-      return;
-    }
-    
-    // Return all conversations if no specific filter
-    res.json({
-      success: true,
-      conversations: []
-    });
-    
-  } catch (error) {
-    console.error('❌ Error fetching conversations:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching conversations',
-      error: error.message
-    });
-  }
-});
-
-// Create new conversation endpoint
-app.post('/api/conversations', async (req, res) => {
-  try {
-    const { vendorId, userId, participantName, message } = req.body;
-    console.log('📤 [Production] Creating conversation:', { vendorId, userId, participantName });
-    
-    // For now, return success without actual database creation
-    // This allows the frontend to work while we set up the full conversation system
-    const newConversation = {
-      id: `conv-${Date.now()}`,
-      participantId: vendorId || userId,
-      participantName: participantName || 'User',
-      participantType: vendorId ? 'vendor' : 'user',
-      participantAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100',
-      lastMessage: message || 'Conversation started',
-      lastMessageTime: new Date().toISOString(),
-      unreadCount: 0,
-      isOnline: false,
-      status: 'active',
-      createdAt: new Date().toISOString()
-    };
-    
-    console.log('✅ Mock conversation created:', newConversation.id);
-    res.json({
-      success: true,
-      conversation: newConversation
-    });
-    
-  } catch (error) {
-    console.error('❌ Error creating conversation:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error creating conversation',
-      error: error.message
-    });
-  }
-});
-
-// Individual user conversations endpoint - PRODUCTION DEPLOYMENT FIX
-app.get('/api/conversations/individual/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    console.log('🔍 [Production] Getting conversations for individual user:', userId);
-    
-    const conversations = await sql`
-      SELECT 
-        c.id,
-        c.participant_id,
-        COALESCE(v.business_name, c.participant_name) as participant_name,
         c.participant_type,
         c.participant_avatar,
         c.creator_id,
@@ -2571,7 +2056,7 @@ app.get('/api/conversations/individual/:userId', async (req, res) => {
 // Create a new conversation
 app.post('/api/messaging/conversations', async (req, res) => {
   try {
-    const { conversationId, vendorId, vendorName, serviceName, userId, userName, userType } = req.body;
+    const { vendorId, userId, participantName, message } = req.body;
     
     // Create new conversation in database
     const result = await sql`
