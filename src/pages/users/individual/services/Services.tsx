@@ -298,63 +298,9 @@ export const Services: React.FC = () => {
           }
         });
         
+        // PRIORITY 0: Load vendors first since /api/vendors works and has real data
+        console.log('🚀 [Services] PRIORITY 0: Loading vendors from /api/vendors (GUARANTEED REAL DATA)...');
         try {
-          // PRIORITY 0: Try direct database services endpoint first (GUARANTEED TO WORK)
-          console.log('🚀 [Services] PRIORITY 0: Loading services from /api/services/direct (bypasses broken ServicesService)...');
-          const directResponse = await fetch(`${apiUrl}/api/services/direct`);
-          console.log('📡 [Services] Direct services response status:', directResponse.status, directResponse.statusText);
-          
-          if (directResponse.ok) {
-            const directData = await directResponse.json();
-            console.log('📊 [Services] Direct services response:', directData);
-            
-            if (directData.success && directData.services && Array.isArray(directData.services) && directData.services.length > 0) {
-              // Services from direct endpoint are already in the correct format
-              allServicesData.push(...directData.services);
-              console.log(`🎉 [Services] SUCCESS! Loaded ${directData.services.length} real services from direct database query!`);
-              console.log(`📋 [Services] Sample direct services:`, directData.services.slice(0, 3).map((s: any) => ({ id: s.id, name: s.name, category: s.category })));
-            } else {
-              console.log('⚠️ [Services] Direct endpoint returned empty services');
-            }
-          } else {
-            console.warn(`❌ [Services] /api/services/direct failed with status: ${directResponse.status}`);
-          }
-        } catch (error) {
-          console.warn('❌ [Services] Failed to load from /api/services/direct:', error);
-        }
-
-        // PRIORITY 1: Fallback to regular services endpoint if direct failed
-        if (allServicesData.length === 0) {
-          try {
-            console.log('🔍 [Services] PRIORITY 1: Loading services from /api/services (fallback)...');
-            const servicesResponse = await fetch(`${apiUrl}/api/services`);
-            console.log('📡 [Services] Services response status:', servicesResponse.status, servicesResponse.statusText);
-            
-            if (servicesResponse.ok) {
-              const servicesData = await servicesResponse.json();
-              console.log('📊 [Services] Services endpoint response:', servicesData);
-              
-              if (servicesData.success && servicesData.services && Array.isArray(servicesData.services) && servicesData.services.length > 0) {
-                const convertedServices = servicesData.services.map(convertServiceToService);
-                allServicesData.push(...convertedServices);
-                console.log(`✅ [Services] Loaded ${convertedServices.length} dedicated services from /api/services`);
-              } else if (servicesData.services && typeof servicesData.services === 'object' && Object.keys(servicesData.services).length === 0) {
-                console.log('⚠️ [Services] /api/services returned empty array - backend issue detected');
-                console.log('🔄 [Services] Will prioritize vendor fallback due to backend services issue');
-              } else {
-                console.log('⚠️ [Services] No services found in /api/services response. Service array length:', servicesData.services?.length || 'undefined');
-              }
-            } else {
-              console.warn(`❌ [Services] /api/services endpoint failed with status: ${servicesResponse.status}`);
-            }
-          } catch (error) {
-            console.warn('❌ [Services] Failed to load from /api/services:', error);
-          }
-        }
-
-        try {
-          // PRIORITY 2: Load ALL vendors from /api/vendors and convert to services
-          console.log('🔍 [Services] PRIORITY 2: Loading vendors from /api/vendors...');
           const vendorsResponse = await fetch(`${apiUrl}/api/vendors`);
           console.log('📡 [Services] Vendors response status:', vendorsResponse.status, vendorsResponse.statusText);
           
@@ -366,7 +312,7 @@ export const Services: React.FC = () => {
               console.log(`📝 [Services] Raw vendors data (first 2):`, vendorsData.vendors.slice(0, 2));
               const convertedVendors = vendorsData.vendors.map((vendor: any) => convertVendorToService(vendor, 'vendor'));
               allServicesData.push(...convertedVendors);
-              console.log(`✅ [Services] Loaded ${convertedVendors.length} vendors as services from /api/vendors`);
+              console.log(`✅ [Services] SUCCESS! Loaded ${convertedVendors.length} vendors as services from /api/vendors`);
               console.log(`📋 [Services] Sample converted vendors:`, convertedVendors.slice(0, 2));
             } else {
               console.log('⚠️ [Services] No vendors found in /api/vendors response. Vendors array length:', vendorsData.vendors?.length || 'undefined');
@@ -377,6 +323,32 @@ export const Services: React.FC = () => {
         } catch (error) {
           console.warn('❌ [Services] Failed to load from /api/vendors:', error);
         }
+
+        // PRIORITY 1: Try new services endpoint as secondary data source
+        try {
+          console.log('🔍 [Services] PRIORITY 1: Loading from /api/services (secondary)...');
+          const servicesResponse = await fetch(`${apiUrl}/api/services`);
+          console.log('📡 [Services] Services response status:', servicesResponse.status, servicesResponse.statusText);
+          
+          if (servicesResponse.ok) {
+            const servicesData = await servicesResponse.json();
+            console.log('📊 [Services] Services endpoint response:', servicesData);
+            
+            if (servicesData.success && servicesData.services && Array.isArray(servicesData.services) && servicesData.services.length > 0) {
+              const convertedServices = servicesData.services.map(convertServiceToService);
+              allServicesData.push(...convertedServices);
+              console.log(`✅ [Services] Loaded ${convertedServices.length} dedicated services from /api/services`);
+            } else {
+              console.log('⚠️ [Services] /api/services returned empty or no services');
+            }
+          } else {
+            console.warn(`❌ [Services] /api/services endpoint failed with status: ${servicesResponse.status}`);
+          }
+        } catch (error) {
+          console.warn('❌ [Services] Failed to load from /api/services:', error);
+        }
+
+        // Vendors already loaded as priority 0 above
         
         // PRIORITY 3: If still no data, try featured vendors as fallback
         if (allServicesData.length === 0) {
@@ -806,27 +778,64 @@ export const Services: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-rose-50/30 via-white to-pink-50/20">
+      <div className="min-h-screen bg-gradient-to-br from-rose-50/30 via-white to-pink-50/20 relative overflow-hidden">
+        {/* Enhanced Background Animation */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-rose-200/20 to-pink-200/30 rounded-full blur-3xl animate-float"></div>
+          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-pink-200/20 to-rose-200/30 rounded-full blur-3xl animate-float-delayed"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-rose-100/10 to-pink-100/20 rounded-full blur-2xl animate-pulse"></div>
+        </div>
+        
         <CoupleHeader />
-        <div className="flex-1 pt-20">
+        <div className="flex-1 pt-20 relative z-10">
           <div className="container mx-auto px-4 py-8">
             <div className="flex items-center justify-center h-96">
               <div className="text-center">
-                <div className="relative mb-8">
-                  <div className="absolute inset-0 bg-gradient-to-r from-rose-200/30 to-pink-200/30 rounded-full blur-2xl"></div>
-                  <div className="relative w-16 h-16 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto shadow-lg"></div>
+                {/* Premium Loading Animation */}
+                <div className="relative mb-12">
+                  <div className="absolute inset-0 bg-gradient-to-r from-rose-300/40 to-pink-300/40 rounded-full blur-3xl animate-pulse"></div>
+                  <div className="relative">
+                    {/* Outer ring */}
+                    <div className="w-24 h-24 border-4 border-rose-200/30 rounded-full animate-spin-slow mx-auto"></div>
+                    {/* Inner spinning ring */}
+                    <div className="absolute inset-2 w-20 h-20 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto shadow-2xl"></div>
+                    {/* Center glow */}
+                    <div className="absolute inset-6 w-12 h-12 bg-gradient-to-r from-rose-400 to-pink-400 rounded-full blur-sm animate-pulse mx-auto"></div>
+                    {/* Floating particles */}
+                    <div className="absolute -top-2 -right-2 w-3 h-3 bg-rose-400 rounded-full animate-bounce"></div>
+                    <div className="absolute -bottom-2 -left-2 w-2 h-2 bg-pink-400 rounded-full animate-bounce-delayed"></div>
+                  </div>
                 </div>
+                
                 <div className="max-w-md mx-auto">
-                  <h3 className="text-xl font-bold text-gray-800 mb-3">
-                    🌸 Loading Your Perfect Wedding Services
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent mb-4 animate-fade-in">
+                    ✨ Curating Your Perfect Wedding Services
                   </h3>
-                  <p className="text-gray-600 mb-4 leading-relaxed">
-                    We're gathering the best wedding professionals just for you...
+                  <p className="text-gray-600 mb-6 leading-relaxed text-lg animate-fade-in-delayed">
+                    We're gathering the most talented wedding professionals just for you...
                   </p>
-                  <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
-                    <div className="w-2 h-2 bg-rose-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"></div>
+                  
+                  {/* Enhanced loading dots */}
+                  <div className="flex items-center justify-center space-x-3 mb-8">
+                    <div className="w-3 h-3 bg-gradient-to-r from-rose-400 to-pink-400 rounded-full animate-bounce shadow-lg"></div>
+                    <div className="w-3 h-3 bg-gradient-to-r from-pink-400 to-rose-500 rounded-full animate-bounce-delayed shadow-lg"></div>
+                    <div className="w-3 h-3 bg-gradient-to-r from-rose-500 to-pink-500 rounded-full animate-bounce-slow shadow-lg"></div>
+                  </div>
+                  
+                  {/* Loading progress steps */}
+                  <div className="space-y-3 text-sm text-gray-500">
+                    <div className="flex items-center justify-center space-x-2 animate-fade-in">
+                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      <span>Verified professionals found</span>
+                    </div>
+                    <div className="flex items-center justify-center space-x-2 animate-fade-in-delayed">
+                      <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                      <span>Checking availability...</span>
+                    </div>
+                    <div className="flex items-center justify-center space-x-2 animate-fade-in-slow">
+                      <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                      <span>Personalizing recommendations</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -838,89 +847,125 @@ export const Services: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-rose-50/30 via-white to-pink-50/20">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-rose-50/30 via-white to-pink-50/20 relative overflow-hidden">
+      {/* Enhanced Background Effects */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-rose-200/20 to-pink-200/30 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-pink-200/20 to-rose-200/30 rounded-full blur-3xl animate-float-delayed"></div>
+        <div className="absolute top-1/3 left-1/4 w-64 h-64 bg-gradient-to-r from-rose-100/10 to-pink-100/20 rounded-full blur-2xl animate-pulse"></div>
+        
+        {/* Floating Elements */}
+        <div className="absolute top-20 right-20 w-4 h-4 bg-rose-300/40 rounded-full animate-float-slow"></div>
+        <div className="absolute bottom-32 right-32 w-6 h-6 bg-pink-300/30 rounded-full animate-float"></div>
+        <div className="absolute top-1/2 right-16 w-3 h-3 bg-rose-400/50 rounded-full animate-bounce-slow"></div>
+      </div>
+      
       <CoupleHeader />
-      <div className="flex-1 pt-20">
+      <div className="flex-1 pt-20 relative z-10">
         <div className="container mx-auto px-4 py-8 max-w-7xl">
-          {/* Enhanced Header with gradient background */}
-          <div className="relative mb-12 text-center">
-            <div className="absolute inset-0 bg-gradient-to-r from-rose-100/50 to-pink-100/50 rounded-3xl blur-3xl"></div>
-            <div className="relative bg-white/60 backdrop-blur-sm rounded-2xl p-8 border border-white/50 shadow-xl">
-              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-rose-600 via-pink-600 to-rose-700 bg-clip-text text-transparent mb-4 font-serif">
-                Wedding Services
-              </h1>
-              <p className="text-gray-700 text-xl max-w-2xl mx-auto leading-relaxed">
-                Discover exceptional wedding professionals to make your special day unforgettable
-              </p>
-              <div className="flex items-center justify-center space-x-8 mt-6 text-sm text-gray-600">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-rose-500 rounded-full"></div>
-                  <span>{filteredServices.length}+ Services Available</span>
+          {/* Premium Header with Advanced Glassmorphism */}
+          <div className="relative mb-16 text-center">
+            {/* Background glow effects */}
+            <div className="absolute inset-0 bg-gradient-to-r from-rose-200/30 to-pink-200/30 rounded-3xl blur-3xl animate-pulse"></div>
+            <div className="absolute -inset-4 bg-gradient-to-r from-rose-100/20 to-pink-100/20 rounded-3xl blur-2xl"></div>
+            
+            {/* Main content card */}
+            <div className="relative bg-white/70 backdrop-blur-md rounded-3xl p-12 border border-white/60 shadow-2xl hover:shadow-3xl transition-all duration-700 hover:bg-white/80 hover:scale-[1.02] group">
+              {/* Animated border glow */}
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-rose-400/20 to-pink-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-pulse"></div>
+              
+              <div className="relative z-10">
+                <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-rose-600 via-pink-600 to-rose-700 bg-clip-text text-transparent mb-6 font-serif animate-gradient-shift">
+                  ✨ Wedding Services
+                </h1>
+                <p className="text-gray-700 text-xl md:text-2xl max-w-3xl mx-auto leading-relaxed mb-8 animate-fade-in-delayed">
+                  Discover exceptional wedding professionals to create your dream celebration
+                </p>
+                
+                {/* Enhanced stats with animations */}
+                <div className="flex flex-wrap items-center justify-center gap-8 mt-8 text-sm md:text-base text-gray-600">
+                  <div className="flex items-center space-x-3 bg-white/50 backdrop-blur-sm px-4 py-2 rounded-full border border-white/60 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 group/stat">
+                    <div className="w-3 h-3 bg-gradient-to-r from-rose-500 to-pink-500 rounded-full animate-pulse group-hover/stat:animate-bounce"></div>
+                    <span className="font-medium">{filteredServices.length}+ Premium Services</span>
+                  </div>
+                  <div className="flex items-center space-x-3 bg-white/50 backdrop-blur-sm px-4 py-2 rounded-full border border-white/60 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 group/stat">
+                    <div className="w-3 h-3 bg-gradient-to-r from-pink-500 to-rose-600 rounded-full animate-pulse group-hover/stat:animate-bounce"></div>
+                    <span className="font-medium">✓ Verified Professionals</span>
+                  </div>
+                  <div className="flex items-center space-x-3 bg-white/50 backdrop-blur-sm px-4 py-2 rounded-full border border-white/60 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 group/stat">
+                    <div className="w-3 h-3 bg-gradient-to-r from-rose-600 to-pink-600 rounded-full animate-pulse group-hover/stat:animate-bounce"></div>
+                    <span className="font-medium">⚡ Instant Booking</span>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
-                  <span>Verified Professionals</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-rose-600 rounded-full"></div>
-                  <span>Instant Booking</span>
-                </div>
+                
+                {/* Floating decorative elements */}
+                <div className="absolute -top-4 -left-4 w-8 h-8 bg-gradient-to-r from-rose-300/30 to-pink-300/30 rounded-full blur-sm animate-float"></div>
+                <div className="absolute -bottom-4 -right-4 w-6 h-6 bg-gradient-to-r from-pink-300/30 to-rose-300/30 rounded-full blur-sm animate-float-delayed"></div>
               </div>
             </div>
           </div>
 
-          {/* Enhanced Search and Filters */}
-          <div className="relative bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 mb-12">
-            <div className="absolute inset-0 bg-gradient-to-r from-rose-50/30 to-pink-50/30 rounded-2xl"></div>
+          {/* Premium Search and Filters with Advanced Glassmorphism */}
+          <div className="relative bg-white/70 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/60 p-10 mb-16 hover:shadow-3xl hover:bg-white/80 transition-all duration-700 group">
+            {/* Enhanced background effects */}
+            <div className="absolute inset-0 bg-gradient-to-r from-rose-50/40 to-pink-50/40 rounded-3xl opacity-50 group-hover:opacity-70 transition-opacity duration-500"></div>
+            <div className="absolute -inset-2 bg-gradient-to-r from-rose-200/20 to-pink-200/20 rounded-3xl blur-xl opacity-60 group-hover:opacity-100 transition-opacity duration-500"></div>
+            
             <div className="relative z-10">
-              {/* Search Bar with enhanced styling */}
-              <div className="relative mb-8">
-                <div className="absolute inset-0 bg-gradient-to-r from-rose-100/20 to-pink-100/20 rounded-2xl blur-sm"></div>
-                <div className="relative flex items-center">
-                  <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 h-6 w-6 text-rose-400" />
+              {/* Premium Search Bar */}
+              <div className="relative mb-10">
+                <div className="absolute inset-0 bg-gradient-to-r from-rose-200/30 to-pink-200/30 rounded-3xl blur-lg animate-pulse"></div>
+                <div className="relative flex items-center group/search">
+                  <Search className="absolute left-8 top-1/2 transform -translate-y-1/2 h-7 w-7 text-rose-400 group-focus-within/search:text-rose-600 group-focus-within/search:scale-110 transition-all duration-300" />
                   <input
                     type="text"
-                    placeholder="Search for your dream wedding services..."
+                    placeholder="✨ Search for your dream wedding services..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-16 pr-6 py-4 bg-white/90 backdrop-blur-sm border-2 border-rose-200/50 rounded-2xl focus:ring-4 focus:ring-rose-500/20 focus:border-rose-400 transition-all duration-300 text-gray-900 placeholder-gray-500 text-lg shadow-inner"
+                    className="w-full pl-20 pr-8 py-6 bg-white/90 backdrop-blur-md border-2 border-rose-200/60 rounded-3xl focus:ring-6 focus:ring-rose-500/20 focus:border-rose-400 transition-all duration-500 text-gray-900 placeholder-gray-500 text-xl shadow-2xl hover:shadow-3xl focus:shadow-3xl hover:bg-white focus:bg-white transform hover:scale-[1.02] focus:scale-[1.02]"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-6 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors duration-200"
+                      className="absolute right-8 top-1/2 transform -translate-y-1/2 p-2 hover:bg-rose-100 rounded-full transition-all duration-300 hover:scale-110 group"
                       title="Clear search"
                       aria-label="Clear search"
                     >
-                      <X className="h-5 w-5 text-gray-400" />
+                      <X className="h-6 w-6 text-gray-400 group-hover:text-rose-500 transition-colors duration-200" />
                     </button>
                   )}
+                  
+                  {/* Search glow effect */}
+                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-rose-400/10 to-pink-400/10 opacity-0 group-focus-within/search:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
                 </div>
               </div>
             </div>
 
-              {/* Enhanced Quick Filters */}
-              <div className="flex flex-wrap items-center gap-4 mb-6">
+              {/* Premium Quick Filters */}
+              <div className="flex flex-wrap items-center gap-6 mb-8">
                 <button
                   onClick={() => setShowFilters(!showFilters)}
                   className={cn(
-                    "flex items-center space-x-3 px-6 py-3 rounded-xl border-2 transition-all duration-300 font-medium shadow-sm hover:shadow-md transform hover:scale-105",
+                    "group flex items-center space-x-4 px-8 py-4 rounded-2xl border-2 transition-all duration-500 font-semibold shadow-lg hover:shadow-2xl transform hover:scale-105 hover:-translate-y-1",
                     showFilters 
-                      ? "bg-gradient-to-r from-rose-500 to-pink-500 border-rose-400 text-white shadow-rose-200" 
-                      : "border-gray-200 hover:bg-white hover:border-rose-200 hover:text-rose-600 bg-white/70"
+                      ? "bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 border-rose-400 text-white shadow-rose-300/50 animate-pulse-soft" 
+                      : "border-rose-200/60 hover:bg-white hover:border-rose-300 hover:text-rose-600 bg-white/80 backdrop-blur-sm text-gray-700"
                   )}
                 >
-                  <SlidersHorizontal className="h-5 w-5" />
-                  <span>Advanced Filters</span>
-                  {showFilters ? (
-                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                  ) : null}
+                  <SlidersHorizontal className={cn(
+                    "h-6 w-6 transition-all duration-300",
+                    showFilters ? "rotate-180 animate-bounce-soft" : "group-hover:rotate-12"
+                  )} />
+                  <span className="text-lg">✨ Advanced Filters</span>
+                  {showFilters && (
+                    <div className="w-3 h-3 bg-white/80 rounded-full animate-pulse shadow-lg"></div>
+                  )}
                 </button>
 
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="px-5 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-rose-500/20 focus:border-rose-400 transition-all duration-300 bg-white/90 backdrop-blur-sm text-gray-900 font-medium shadow-sm hover:shadow-md cursor-pointer"
+                  className="px-6 py-4 border-2 border-rose-200/60 rounded-2xl focus:ring-6 focus:ring-rose-500/20 focus:border-rose-400 transition-all duration-500 bg-white/90 backdrop-blur-md text-gray-900 font-semibold shadow-lg hover:shadow-xl cursor-pointer text-lg hover:scale-105 hover:bg-white focus:scale-105 focus:bg-white transform"
                   aria-label="Filter by category"
                 >
                   <option value="all">🎭 All Categories</option>
@@ -938,7 +983,7 @@ export const Services: React.FC = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="px-5 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-rose-500/20 focus:border-rose-400 transition-all duration-300 bg-white/90 backdrop-blur-sm text-gray-900 font-medium shadow-sm hover:shadow-md cursor-pointer"
+                  className="px-6 py-4 border-2 border-rose-200/60 rounded-2xl focus:ring-6 focus:ring-rose-500/20 focus:border-rose-400 transition-all duration-500 bg-white/90 backdrop-blur-md text-gray-900 font-semibold shadow-lg hover:shadow-xl cursor-pointer text-lg hover:scale-105 hover:bg-white focus:scale-105 focus:bg-white transform"
                   aria-label="Sort services by"
                 >
                   <option value="relevance">🎯 Most Relevant</option>
@@ -948,44 +993,53 @@ export const Services: React.FC = () => {
                   <option value="price-high">💎 Price: High to Low</option>
                 </select>
 
-                <div className="flex items-center space-x-3 ml-auto">
+                <div className="flex items-center space-x-6 ml-auto">
                   <button
                     onClick={handleOpenDSS}
-                    className="group flex items-center space-x-3 px-6 py-3 bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500 text-white rounded-xl hover:from-purple-600 hover:via-blue-600 hover:to-indigo-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium"
-                    title="AI Decision Support"
+                    className="group flex items-center space-x-4 px-8 py-4 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white rounded-2xl hover:from-purple-600 hover:via-indigo-600 hover:to-blue-600 transition-all duration-500 shadow-xl hover:shadow-2xl transform hover:scale-110 hover:-translate-y-1 font-semibold border border-white/20 backdrop-blur-sm"
+                    title="AI Decision Support System"
                     aria-label="Open AI Decision Support System"
                   >
-                    <Brain className="h-5 w-5 group-hover:animate-pulse" />
-                    <span className="hidden sm:inline">🤖 AI Assist</span>
-                    <div className="hidden sm:block w-2 h-2 bg-white/60 rounded-full animate-bounce"></div>
+                    <Brain className="h-6 w-6 group-hover:animate-pulse group-hover:scale-125 transition-all duration-300" />
+                    <span className="hidden sm:inline text-lg">🤖 AI Assist</span>
+                    <div className="hidden sm:flex w-3 h-3 bg-white/80 rounded-full animate-bounce shadow-lg"></div>
+                    
+                    {/* AI glow effect */}
+                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-400/20 to-blue-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
                   </button>
                   
-                  <div className="flex items-center bg-white/90 backdrop-blur-sm rounded-xl border-2 border-gray-200 shadow-sm p-1">
+                  <div className="flex items-center bg-white/90 backdrop-blur-md rounded-2xl border-2 border-rose-200/60 shadow-xl p-2 hover:shadow-2xl transition-all duration-300 hover:scale-105">
                     <button
                       onClick={() => setViewMode('grid')}
                       className={cn(
-                        "p-3 rounded-lg transition-all duration-300 transform hover:scale-110",
+                        "p-4 rounded-xl transition-all duration-500 transform hover:scale-125 relative group",
                         viewMode === 'grid' 
-                          ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md scale-105" 
-                          : "text-gray-500 hover:bg-rose-50 hover:text-rose-600"
+                          ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg scale-110 animate-pulse-soft" 
+                          : "text-gray-500 hover:bg-rose-50 hover:text-rose-600 hover:shadow-md"
                       )}
                       title="Grid view"
                       aria-label="Switch to grid view"
                     >
-                      <Grid className="h-4 w-4" />
+                      <Grid className="h-5 w-5 relative z-10" />
+                      {viewMode === 'grid' && (
+                        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-rose-400/30 to-pink-400/30 blur-sm animate-pulse"></div>
+                      )}
                     </button>
                     <button
                       onClick={() => setViewMode('list')}
                       className={cn(
-                        "p-3 rounded-lg transition-all duration-300 transform hover:scale-110",
+                        "p-4 rounded-xl transition-all duration-500 transform hover:scale-125 relative group",
                         viewMode === 'list' 
-                          ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md scale-105" 
-                          : "text-gray-500 hover:bg-rose-50 hover:text-rose-600"
+                          ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg scale-110 animate-pulse-soft" 
+                          : "text-gray-500 hover:bg-rose-50 hover:text-rose-600 hover:shadow-md"
                       )}
                       title="List view"
                       aria-label="Switch to list view"
                     >
-                      <List className="h-4 w-4" />
+                      <List className="h-5 w-5 relative z-10" />
+                      {viewMode === 'list' && (
+                        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-rose-400/30 to-pink-400/30 blur-sm animate-pulse"></div>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -1121,40 +1175,93 @@ export const Services: React.FC = () => {
           })()}
           
           {filteredServices.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-rose-100/30 to-pink-100/30 rounded-full blur-3xl"></div>
-                <div className="relative w-24 h-24 bg-gradient-to-r from-rose-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg">
-                  <Search className="h-12 w-12 text-rose-500" />
+            <div className="text-center py-32 relative">
+              {/* Enhanced background effects */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-96 h-96 bg-gradient-to-r from-rose-200/20 to-pink-200/30 rounded-full blur-3xl animate-pulse"></div>
+              </div>
+              
+              <div className="relative z-10">
+                {/* Premium empty state illustration */}
+                <div className="relative mb-12">
+                  <div className="absolute inset-0 bg-gradient-to-r from-rose-300/30 to-pink-300/30 rounded-full blur-2xl animate-pulse"></div>
+                  <div className="relative w-32 h-32 bg-gradient-to-br from-rose-100 via-white to-pink-100 rounded-full flex items-center justify-center mx-auto shadow-2xl border-4 border-white/80 backdrop-blur-sm group hover:scale-110 transition-all duration-500">
+                    <Search className="h-16 w-16 text-rose-500 group-hover:scale-125 transition-transform duration-300" />
+                    
+                    {/* Floating search particles */}
+                    <div className="absolute -top-2 -right-2 w-4 h-4 bg-rose-400/60 rounded-full animate-bounce"></div>
+                    <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-pink-400/60 rounded-full animate-bounce-delayed"></div>
+                    <div className="absolute top-1/2 -right-4 w-2 h-2 bg-rose-500/60 rounded-full animate-ping"></div>
+                  </div>
+                </div>
+                
+                <div className="max-w-2xl mx-auto">
+                  <h3 className="text-4xl font-bold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent mb-6 font-serif animate-fade-in">
+                    ✨ No Perfect Matches Yet
+                  </h3>
+                  <p className="text-gray-600 mb-10 text-xl leading-relaxed animate-fade-in-delayed">
+                    We couldn't find services matching your specific criteria. Let's adjust your search to discover amazing wedding professionals waiting to make your day magical!
+                  </p>
+                  
+                  {/* Enhanced action buttons */}
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-8">
+                    <button
+                      onClick={clearFilters}
+                      className="group px-10 py-5 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 text-white rounded-2xl hover:from-rose-600 hover:via-pink-600 hover:to-rose-700 transition-all duration-500 hover:scale-110 hover:-translate-y-1 shadow-xl hover:shadow-2xl font-semibold text-xl flex items-center space-x-3 border border-white/20 backdrop-blur-sm"
+                    >
+                      <span>🔄 Clear All Filters</span>
+                      <div className="w-3 h-3 bg-white/80 rounded-full group-hover:animate-bounce"></div>
+                    </button>
+                    
+                    <button
+                      onClick={handleOpenDSS}
+                      className="group px-10 py-5 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white rounded-2xl hover:from-purple-600 hover:via-indigo-600 hover:to-blue-600 transition-all duration-500 hover:scale-110 hover:-translate-y-1 shadow-xl hover:shadow-2xl font-semibold text-xl flex items-center space-x-3 border border-white/20 backdrop-blur-sm"
+                    >
+                      <Brain className="h-6 w-6 group-hover:animate-pulse" />
+                      <span>🤖 Get AI Recommendations</span>
+                    </button>
+                  </div>
+                  
+                  {/* Helpful suggestions */}
+                  <div className="bg-white/60 backdrop-blur-md rounded-2xl p-8 border border-white/60 shadow-xl max-w-lg mx-auto">
+                    <h4 className="font-semibold text-gray-800 mb-4 text-lg">💡 Try these suggestions:</h4>
+                    <ul className="text-sm text-gray-600 space-y-2 text-left">
+                      <li className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-rose-400 rounded-full"></div>
+                        <span>Remove location or price filters</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-pink-400 rounded-full"></div>
+                        <span>Try different search keywords</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-rose-500 rounded-full"></div>
+                        <span>Browse all categories</span>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4 font-serif">No services found</h3>
-              <p className="text-gray-600 mb-8 max-w-lg mx-auto text-lg leading-relaxed">
-                We couldn't find any services matching your criteria. Try adjusting your filters or search terms to discover the perfect vendors for your special day.
-              </p>
-              <button
-                onClick={clearFilters}
-                className="px-8 py-4 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl font-medium text-lg"
-              >
-                🔄 Clear All Filters
-              </button>
             </div>
           ) : (
             <div className={cn(
               "w-full max-w-full overflow-hidden",
               viewMode === 'grid' 
-                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
-                : "space-y-8"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10"
+                : "space-y-10"
             )}>
-              {filteredServices.map((service) => (
+              {filteredServices.map((service, index) => (
                 <div
                   key={service.id}
                   className={cn(
-                    "group relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 flex flex-col w-full",
-                    "hover:bg-white/90 hover:border-rose-200/50",
-                    viewMode === 'list' ? "flex-row max-w-full" : "min-h-[520px] max-h-[520px]"
+                    "group relative bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/60 overflow-hidden hover:shadow-3xl transition-all duration-700 hover:-translate-y-3 hover:scale-[1.02] flex flex-col w-full animate-fade-in-up",
+                    "hover:bg-white/90 hover:border-rose-200/60 hover:rotate-1",
+                    viewMode === 'list' ? "flex-row max-w-full" : "min-h-[580px] max-h-[580px]",
+                    // Staggered animation using CSS class
+                    index % 4 === 0 ? "animate-delay-0" :
+                    index % 4 === 1 ? "animate-delay-100" :
+                    index % 4 === 2 ? "animate-delay-200" : "animate-delay-300"
                   )}
-
                 >
                   <div className={cn(
                     "relative overflow-hidden",

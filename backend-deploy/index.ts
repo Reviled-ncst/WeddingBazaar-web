@@ -809,8 +809,8 @@ app.get('/api/services', async (req, res) => {
         s.created_at,
         s.updated_at,
         v.business_name as vendor_name,
-        v.average_rating as rating,
-        v.total_reviews as review_count,
+        v.rating,
+        v.review_count,
         v.service_areas,
         v.website_url as contact_website
       FROM services s
@@ -904,8 +904,8 @@ app.get('/api/services/direct', async (req, res) => {
       SELECT 
         s.*,
         v.business_name,
-        v.average_rating as rating,
-        v.total_reviews as review_count,
+        v.rating,
+        v.review_count,
         v.service_areas,
         v.website_url as contact_website,
         v.portfolio_images

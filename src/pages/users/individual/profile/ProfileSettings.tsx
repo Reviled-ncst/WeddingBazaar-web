@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../../../../shared/contexts/AuthContext';
 import { userService, type UserProfile, type UpdateProfileData } from '../../../../shared/services/userService';
 import { CoupleHeader } from '../landing/CoupleHeader';
+import { SecuritySettings } from '../../../../shared/components/security';
 
 export const ProfileSettings: React.FC = () => {
   const { user } = useAuth();
@@ -431,6 +432,30 @@ export const ProfileSettings: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Security Settings */}
+        <div className="mb-8">
+          <SecuritySettings
+            userProfile={{
+              email: userProfile?.email || user?.email || '',
+              phone: formData.phone,
+              isEmailVerified: userProfile?.isEmailVerified || false,
+              isPhoneVerified: userProfile?.isPhoneVerified || false,
+              hasFaceRecognition: userProfile?.hasFaceRecognition || false
+            }}
+            userId={user?.id || ''}
+            onVerificationUpdate={(type, verified) => {
+              // Update the user profile when verification status changes
+              if (userProfile) {
+                const updatedProfile = { ...userProfile };
+                if (type === 'email') updatedProfile.isEmailVerified = verified;
+                if (type === 'phone') updatedProfile.isPhoneVerified = verified;
+                if (type === 'face') updatedProfile.hasFaceRecognition = verified;
+                setUserProfile(updatedProfile);
+              }
+            }}
+          />
         </div>
 
         {/* Account Information - Read Only */}

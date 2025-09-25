@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Quote, ChevronLeft, ChevronRight, Heart, Calendar, MapPin } from 'lucide-react';
+import { Star, Quote, ChevronLeft, ChevronRight, Heart, Calendar, MapPin, Play, ExternalLink, Share2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '../../../utils/cn';
 
 const testimonials = [
@@ -78,11 +79,18 @@ const testimonials = [
 ];
 
 export const Testimonials: React.FC = () => {
+  const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [likedTestimonials, setLikedTestimonials] = useState<Set<number>>(new Set());
   const [autoPlay, setAutoPlay] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [imagesLoaded, setImagesLoaded] = useState<Set<number>>(new Set());
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedTestimonial, setSelectedTestimonial] = useState<any>(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [progressPercent, setProgressPercent] = useState(0);
 
   // Simulate loading state
   useEffect(() => {
@@ -90,16 +98,55 @@ export const Testimonials: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Auto-slide functionality with smoother transitions
+  // Auto-slide functionality with smoother transitions and progress
   useEffect(() => {
     if (!autoPlay || isLoading) return;
     
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % Math.ceil(testimonials.length / 3));
-    }, 6000); // Increased to 6 seconds for better readability
+    let progressInterval: NodeJS.Timeout;
+    let slideInterval: NodeJS.Timeout;
     
-    return () => clearInterval(interval);
+    const startProgress = () => {
+      setProgressPercent(0);
+      progressInterval = setInterval(() => {
+        setProgressPercent((prev) => {
+          if (prev >= 100) {
+            return 0;
+          }
+          return prev + (100 / 60); // 60 steps for 6 seconds
+        });
+      }, 100);
+    };
+    
+    slideInterval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % Math.ceil(testimonials.length / 3));
+      startProgress();
+    }, 6000);
+    
+    startProgress();
+    
+    return () => {
+      if (progressInterval) clearInterval(progressInterval);
+      if (slideInterval) clearInterval(slideInterval);
+    };
   }, [autoPlay, isLoading]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const totalSlides = Math.ceil(testimonials.length / 3);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') {
+        setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides);
+      } else if (event.key === 'ArrowRight') {
+        setCurrentSlide((prev) => (prev + 1) % totalSlides);
+      } else if (event.key === 'Escape') {
+        setShowVideoModal(false);
+        setShareModalOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleImageLoad = (index: number) => {
     setImagesLoaded(prev => new Set([...prev, index]));
@@ -115,6 +162,43 @@ export const Testimonials: React.FC = () => {
       }
       return newSet;
     });
+  };
+
+  const handleGetStarted = () => {
+    navigate('/individual');
+  };
+
+  const handleLearnMore = () => {
+    navigate('/services');
+  };
+
+  const handleViewVendor = (testimonial: any) => {
+    // Navigate to vendor profile or services page with category filter
+    navigate(`/services?category=${encodeURIComponent(testimonial.category)}&search=${encodeURIComponent(testimonial.vendor)}`);
+  };
+
+  const handleShareTestimonial = (testimonial: any) => {
+    setSelectedTestimonial(testimonial);
+    setShareModalOpen(true);
+  };
+
+  const handleWatchStory = (testimonial: any) => {
+    setSelectedTestimonial(testimonial);
+    setShowVideoModal(true);
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setToastMessage('Link copied to clipboard!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+      setToastMessage('Failed to copy link');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    }
   };
 
   const visibleTestimonials = testimonials.slice(currentSlide * 3, (currentSlide + 1) * 3);
@@ -228,7 +312,12 @@ export const Testimonials: React.FC = () => {
             {visibleTestimonials.map((testimonial, index) => (
               <div
                 key={currentSlide * 3 + index}
-                className="group relative p-8 bg-white/80 backdrop-blur-xl rounded-3xl border border-white/40 hover:border-rose-300/50 hover:shadow-2xl transition-all duration-700 transform hover:-translate-y-3 hover:rotate-1"
+                className={cn(
+                  "group relative p-8 bg-white/80 backdrop-blur-xl rounded-3xl border border-white/40 hover:border-rose-300/50 hover:shadow-2xl transition-all duration-700 transform hover:-translate-y-3 hover:rotate-1 animate-fade-in-up hover-glow",
+                  index === 0 && "[animation-delay:0ms]",
+                  index === 1 && "[animation-delay:200ms]", 
+                  index === 2 && "[animation-delay:400ms]"
+                )}
                 onMouseEnter={() => setAutoPlay(false)}
                 onMouseLeave={() => setAutoPlay(true)}
               >
@@ -315,6 +404,50 @@ export const Testimonials: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Testimonial Stats Overlay */}
+                <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                  <div className="bg-white/90 backdrop-blur-sm px-3 py-2 rounded-xl border border-white/60 shadow-lg">
+                    <div className="flex items-center space-x-3 text-sm">
+                      <div className="flex items-center space-x-1">
+                        <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                        <span className="font-semibold text-gray-700">{testimonial.rating.toFixed(1)}</span>
+                      </div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full" />
+                      <div className="flex items-center space-x-1">
+                        <Heart className="h-3 w-3 text-rose-400 fill-current" />
+                        <span className="font-semibold text-gray-700">{testimonial.likes}</span>
+                      </div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full" />
+                      <span className="text-xs text-gray-500 font-medium">{testimonial.category}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Interactive Action Buttons */}
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 flex space-x-2">
+                  <button
+                    onClick={() => handleWatchStory(testimonial)}
+                    className="p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:shadow-xl border border-white/60 hover:bg-rose-50 transition-all duration-200 group/btn hover-scale animate-bounce-in [animation-delay:100ms]"
+                    aria-label="Watch wedding story video"
+                  >
+                    <Play className="h-4 w-4 text-gray-600 group-hover/btn:text-rose-500 group-hover/btn:animate-pulse" />
+                  </button>
+                  <button
+                    onClick={() => handleShareTestimonial(testimonial)}
+                    className="p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:shadow-xl border border-white/60 hover:bg-rose-50 transition-all duration-200 group/btn hover-scale animate-bounce-in [animation-delay:200ms]"
+                    aria-label="Share testimonial"
+                  >
+                    <Share2 className="h-4 w-4 text-gray-600 group-hover/btn:text-rose-500 group-hover/btn:animate-pulse" />
+                  </button>
+                  <button
+                    onClick={() => handleViewVendor(testimonial)}
+                    className="p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:shadow-xl border border-white/60 hover:bg-rose-50 transition-all duration-200 group/btn hover-scale animate-bounce-in [animation-delay:300ms]"
+                    aria-label="View vendor profile"
+                  >
+                    <ExternalLink className="h-4 w-4 text-gray-600 group-hover/btn:text-rose-500 group-hover/btn:animate-pulse" />
+                  </button>
+                </div>
+
                 {/* Enhanced Hover Effect Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-br from-rose-500/10 via-pink-500/5 to-purple-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none" />
                 
@@ -326,20 +459,32 @@ export const Testimonials: React.FC = () => {
             ))}
           </div>
 
-          {/* Navigation Dots */}
+          {/* Navigation Dots with Progress */}
           <div className="flex justify-center mt-8 space-x-2">
             {[...Array(totalSlides)].map((_, index) => (
               <button
                 key={index}
-                onClick={() => setCurrentSlide(index)}
+                onClick={() => {
+                  setCurrentSlide(index);
+                  setProgressPercent(0);
+                }}
                 className={cn(
-                  "w-3 h-3 rounded-full transition-all duration-300",
+                  "relative w-3 h-3 rounded-full transition-all duration-300 overflow-hidden",
                   currentSlide === index 
                     ? "bg-rose-500 w-8" 
                     : "bg-gray-300 hover:bg-gray-400"
                 )}
                 aria-label={`Go to slide ${index + 1}`}
-              />
+              >
+                {currentSlide === index && autoPlay && (
+                  <div 
+                    className={cn(
+                      "progress-bar",
+                      `progress-${Math.round(progressPercent / 5) * 5}`
+                    )}
+                  />
+                )}
+              </button>
             ))}
           </div>
 
@@ -369,23 +514,162 @@ export const Testimonials: React.FC = () => {
             Join thousands of happy couples who found their perfect vendors through Wedding Bazaar.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <button className={cn(
-              "px-8 py-4 bg-gradient-to-r from-rose-600 to-pink-600 text-white font-semibold rounded-full",
-              "hover:from-rose-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-200",
-              "shadow-lg hover:shadow-xl"
-            )}>
+            <button 
+              onClick={handleGetStarted}
+              className={cn(
+                "px-8 py-4 bg-gradient-to-r from-rose-600 to-pink-600 text-white font-semibold rounded-full",
+                "hover:from-rose-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-200",
+                "shadow-lg hover:shadow-xl"
+              )}
+            >
               Get Started Free
             </button>
-            <button className={cn(
-              "px-8 py-4 bg-white text-gray-700 font-semibold rounded-full border-2 border-gray-200",
-              "hover:border-rose-300 hover:text-rose-600 transform hover:scale-105 transition-all duration-200",
-              "shadow-lg hover:shadow-xl"
-            )}>
+            <button 
+              onClick={handleLearnMore}
+              className={cn(
+                "px-8 py-4 bg-white text-gray-700 font-semibold rounded-full border-2 border-gray-200",
+                "hover:border-rose-300 hover:text-rose-600 transform hover:scale-105 transition-all duration-200",
+                "shadow-lg hover:shadow-xl"
+              )}
+            >
               Learn More
             </button>
           </div>
         </div>
       </div>
+
+      {/* Video Story Modal */}
+      {showVideoModal && selectedTestimonial && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+            <div className="relative">
+              <button
+                onClick={() => setShowVideoModal(false)}
+                className="absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+              >
+                ✕
+              </button>
+              <div className="aspect-video bg-gradient-to-br from-rose-100 to-pink-100 flex items-center justify-center">
+                <div className="text-center">
+                  <Play className="h-16 w-16 text-rose-500 mx-auto mb-4" />
+                  <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                    {selectedTestimonial.name}'s Wedding Story
+                  </h3>
+                  <p className="text-gray-600">
+                    Coming Soon - Wedding stories and video testimonials will be available in our next update!
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6">
+              <h4 className="text-xl font-bold text-gray-800 mb-2">{selectedTestimonial.name}</h4>
+              <p className="text-gray-600 mb-4">{selectedTestimonial.quote}</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <span>{selectedTestimonial.wedding}</span>
+                  <span>•</span>
+                  <span>{selectedTestimonial.location}</span>
+                </div>
+                <button
+                  onClick={() => handleViewVendor(selectedTestimonial)}
+                  className="px-4 py-2 bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-colors"
+                >
+                  View Vendor
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {shareModalOpen && selectedTestimonial && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-800">Share This Story</h3>
+                <button
+                  onClick={() => setShareModalOpen(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <div className="flex items-center mb-4">
+                  <img
+                    src={selectedTestimonial.image}
+                    alt={selectedTestimonial.name}
+                    className="w-12 h-12 rounded-full object-cover mr-3"
+                  />
+                  <div>
+                    <h4 className="font-semibold text-gray-800">{selectedTestimonial.name}</h4>
+                    <p className="text-sm text-gray-500">{selectedTestimonial.wedding}</p>
+                  </div>
+                </div>
+                <p className="text-gray-600 text-sm bg-gray-50 p-3 rounded-xl">
+                  "{selectedTestimonial.quote}"
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    const text = `"${selectedTestimonial.quote}" - ${selectedTestimonial.name} | Wedding Bazaar`;
+                    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+                    window.open(url, '_blank');
+                  }}
+                  className="w-full flex items-center justify-center px-4 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                  </svg>
+                  Share on Twitter
+                </button>
+                
+                <button
+                  onClick={() => {
+                    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`;
+                    window.open(url, '_blank');
+                  }}
+                  className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  Share on Facebook
+                </button>
+
+                <button
+                  onClick={() => {
+                    const text = `"${selectedTestimonial.quote}" - ${selectedTestimonial.name} | Check out Wedding Bazaar for amazing wedding vendors!`;
+                    copyToClipboard(text);
+                    setShareModalOpen(false);
+                  }}
+                  className="w-full flex items-center justify-center px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Copy Link
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed bottom-4 right-4 z-50 animate-slide-up">
+          <div className="bg-white border border-green-200 text-green-800 px-6 py-4 rounded-2xl shadow-xl backdrop-blur-sm flex items-center space-x-3">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="font-medium">{toastMessage}</span>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
