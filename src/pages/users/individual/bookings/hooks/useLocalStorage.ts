@@ -34,7 +34,7 @@ export function useLocalStorage<T>(key: string, defaultValue: T): [T, (value: T)
  */
 export function useBookingPreferences() {
   const [rawFilterStatus, setRawFilterStatus] = useLocalStorage<FilterStatus>('bookings-filter-status', 'all');
-  const [viewMode, setViewMode] = useLocalStorage<'grid' | 'list'>('bookings-view-mode', 'grid');
+  const [viewMode, setViewMode] = useLocalStorage<'grid' | 'list'>('bookings-view-mode', 'list');
   const [sortBy, setSortBy] = useLocalStorage<string>('bookings-sort-by', 'created_at');
   const [sortOrder, setSortOrder] = useLocalStorage<'asc' | 'desc'>('bookings-sort-order', 'desc');
 

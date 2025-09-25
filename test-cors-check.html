@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CORS Check</title>
+</head>
+<body>
+    <h1>CORS Check for Wedding Bazaar Backend</h1>
+    <div id="result"></div>
+    
+    <script>
+        async function testCORS() {
+            const result = document.getElementById('result');
+            
+            try {
+                console.log('Testing CORS with fetch...');
+                
+                // Test health endpoint
+                const healthResponse = await fetch('https://weddingbazaar-web.onrender.com/api/health', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                console.log('Health response status:', healthResponse.status);
+                console.log('Health response headers:', [...healthResponse.headers.entries()]);
+                
+                const healthData = await healthResponse.text();
+                console.log('Health data:', healthData);
+                
+                // Test booking endpoint with OPTIONS (preflight)
+                const bookingResponse = await fetch('https://weddingbazaar-web.onrender.com/api/bookings', {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer fake-token',
+                    }
+                });
+                
+                console.log('Booking OPTIONS response status:', bookingResponse.status);
+                console.log('Booking OPTIONS response headers:', [...bookingResponse.headers.entries()]);
+                
+                result.innerHTML = `
+                    <h2>Health Check: ✅ Success</h2>
+                    <p>Status: ${healthResponse.status}</p>
+                    <p>Data: ${healthData}</p>
+                    
+                    <h2>Booking OPTIONS Check:</h2>
+                    <p>Status: ${bookingResponse.status}</p>
+                    <p>CORS Headers: ${[...bookingResponse.headers.entries()].map(([k,v]) => `${k}: ${v}`).join('<br>')}</p>
+                `;
+                
+            } catch (error) {
+                console.error('CORS test failed:', error);
+                result.innerHTML = `
+                    <h2>❌ CORS Test Failed</h2>
+                    <p>Error: ${error.message}</p>
+                    <p>This indicates a CORS or network connectivity issue.</p>
+                `;
+            }
+        }
+        
+        testCORS();
+    </script>
+</body>
+</html>

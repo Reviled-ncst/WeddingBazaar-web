@@ -33,6 +33,7 @@ interface Review {
 }
 import type { Service } from '../types';
 import { BookingRequestModal } from './BookingRequestModal';
+import { BookingSuccessModal } from './BookingSuccessModal';
 // Use the comprehensive booking types for consistency
 import type { Booking } from '../../../pages/users/individual/bookings/types/booking.types';
 import { mapToUIBooking } from '../../../pages/users/individual/bookings/types/booking.types';
@@ -154,6 +155,17 @@ export const ServiceDetailsModal: React.FC<ServiceDetailsModalProps> = ({
   // Authentication modal states
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+
+  // Booking success modal states
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successBookingData, setSuccessBookingData] = useState<{
+    id: string | number;
+    serviceName: string;
+    vendorName: string;
+    eventDate: string;
+    eventTime?: string;
+    eventLocation?: string;
+  } | null>(null);
 
   // Keyboard navigation for gallery
   useEffect(() => {

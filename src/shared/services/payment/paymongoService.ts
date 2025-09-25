@@ -18,36 +18,40 @@ class PayMongoService {
   }
 
   // Create Card Payment
-  async createCardPayment(bookingId: string, amount: number, paymentType: string, cardDetails: {
+  async createCardPayment(bookingId: string, amount: number, paymentType: string, _cardDetails: {
     number: string;
     expiry: string;
     cvc: string;
     name: string;
   }): Promise<PaymentResult> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/payment/card/create`, {
+      // First create a payment intent
+      const response = await fetch(`${this.baseUrl}/api/payments/create-intent`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({
-          bookingId,
-          amount,
-          paymentType,
-          cardDetails
+          amount: amount * 100, // Convert to centavos
+          currency: 'PHP',
+          description: `Wedding Bazaar - ${paymentType} payment`,
+          metadata: {
+            booking_id: bookingId,
+            payment_type: paymentType
+          }
         })
       });
 
       const result = await response.json();
       
       if (!response.ok) {
-        throw new Error(result.error || 'Card payment creation failed');
+        throw new Error(result.error || 'Payment intent creation failed');
       }
 
       return {
         success: true,
-        paymentId: result.paymentId,
-        paymentIntent: result.paymentIntent,
-        requiresAction: result.requiresAction,
-        clientSecret: result.clientSecret
+        paymentId: result.data?.id,
+        paymentIntent: result.data,
+        requiresAction: false,
+        clientSecret: result.data?.attributes?.client_key
       };
     } catch (error) {
       console.error('Card payment creation error:', error);
@@ -128,13 +132,21 @@ class PayMongoService {
   // Create GCash Payment
   async createGCashPayment(bookingId: string, amount: number, paymentType: string): Promise<PaymentResult> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/payment/gcash/create`, {
+      const response = await fetch(`${this.baseUrl}/api/payments/create-source`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({
-          bookingId,
-          amount,
-          paymentType
+          type: 'gcash',
+          amount: amount * 100, // Convert to centavos
+          currency: 'PHP',
+          redirect: {
+            success: `${window.location.origin}/payment/success?booking_id=${bookingId}&payment_type=${paymentType}`,
+            failed: `${window.location.origin}/payment/failed?booking_id=${bookingId}`
+          },
+          metadata: {
+            booking_id: bookingId,
+            payment_type: paymentType
+          }
         })
       });
 
@@ -146,9 +158,9 @@ class PayMongoService {
 
       return {
         success: true,
-        paymentId: result.paymentId,
-        checkoutUrl: result.checkoutUrl,
-        sourceId: result.sourceId
+        paymentId: result.data?.id,
+        checkoutUrl: result.data?.attributes?.redirect?.checkout_url,
+        sourceId: result.data?.id
       };
     } catch (error) {
       console.error('GCash payment creation error:', error);
@@ -162,13 +174,21 @@ class PayMongoService {
   // Create PayMaya Payment
   async createPayMayaPayment(bookingId: string, amount: number, paymentType: string): Promise<PaymentResult> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/payment/paymaya/create`, {
+      const response = await fetch(`${this.baseUrl}/api/payments/create-source`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({
-          bookingId,
-          amount,
-          paymentType
+          type: 'paymaya',
+          amount: amount * 100, // Convert to centavos
+          currency: 'PHP',
+          redirect: {
+            success: `${window.location.origin}/payment/success?booking_id=${bookingId}&payment_type=${paymentType}`,
+            failed: `${window.location.origin}/payment/failed?booking_id=${bookingId}`
+          },
+          metadata: {
+            booking_id: bookingId,
+            payment_type: paymentType
+          }
         })
       });
 
@@ -180,9 +200,9 @@ class PayMongoService {
 
       return {
         success: true,
-        paymentId: result.paymentId,
-        checkoutUrl: result.checkoutUrl,
-        sourceId: result.sourceId
+        paymentId: result.data?.id,
+        checkoutUrl: result.data?.attributes?.redirect?.checkout_url,
+        sourceId: result.data?.id
       };
     } catch (error) {
       console.error('PayMaya payment creation error:', error);

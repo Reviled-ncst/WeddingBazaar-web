@@ -3,6 +3,7 @@ import type { Booking } from '../types/booking.types';
 
 interface BookingActionsProps {
   booking: Booking;
+  onViewDetails?: (booking: Booking) => void;
   onBookingUpdate: (updatedBooking: Booking) => void;
   onViewQuoteDetails?: (booking: Booking) => void;
   onPayDeposit?: (booking: Booking) => void;
@@ -11,6 +12,7 @@ interface BookingActionsProps {
 
 export const BookingActions: React.FC<BookingActionsProps> = ({ 
   booking, 
+  onViewDetails,
   onBookingUpdate, 
   onViewQuoteDetails,
   onPayDeposit,
@@ -167,12 +169,12 @@ export const BookingActions: React.FC<BookingActionsProps> = ({
         break;
         
       default:
-        // For testing purposes, show a test button for any unknown status
+        // For any other status, show view details action
         actions.push({ 
-          id: 'test-action', 
-          label: `Test Action (${booking.status})`, 
-          color: 'bg-gray-500 hover:bg-gray-600',
-          icon: '🔧'
+          id: 'view-details', 
+          label: 'View Details', 
+          color: 'bg-pink-600 hover:bg-pink-700',
+          icon: '�️'
         });
         break;
     }
@@ -192,10 +194,7 @@ export const BookingActions: React.FC<BookingActionsProps> = ({
 
   return (
     <>
-      <div className="flex flex-wrap gap-2 mt-4 p-3 bg-blue-50 border-2 border-blue-200 rounded-lg">
-        <div className="w-full text-xs text-blue-700 font-medium mb-2">
-          🔧 Booking Actions (Status: {booking.status})
-        </div>
+      <div className="flex flex-wrap gap-2">{/* Clean action buttons */}
         {availableActions.map((action) => (
           <button
             key={action.id}
@@ -234,17 +233,21 @@ export const BookingActions: React.FC<BookingActionsProps> = ({
                 if (confirmed) {
                   handleAction(action.id);
                 }
+              } else if (action.id === 'view-details') {
+                // Call parent handler to open booking details modal
+                onViewDetails?.(booking);
               } else {
                 handleAction(action.id);
               }
             }}
             disabled={loading === action.id}
             className={`
-              px-4 py-2 rounded-lg text-white font-medium text-sm
+              px-4 py-2 rounded-xl text-white font-medium text-sm
               ${action.color}
               disabled:opacity-50 disabled:cursor-not-allowed
-              transition-all duration-200 transform hover:scale-105
-              flex items-center gap-2
+              transition-all duration-200 hover:shadow-lg
+              flex items-center gap-2 min-w-[120px] justify-center
+              border border-transparent hover:border-white/20
             `}
           >
             <span>{action.icon}</span>

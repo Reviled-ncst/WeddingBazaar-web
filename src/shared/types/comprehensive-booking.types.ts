@@ -34,6 +34,7 @@ export type ServiceCategory =
 
 export type BookingStatus = 
   | 'draft'
+  | 'request'
   | 'quote_requested' 
   | 'quote_sent' 
   | 'quote_accepted' 
@@ -274,6 +275,9 @@ export interface Booking {
   vendor_category?: string; // Business type
   vendor_rating?: number; // Average rating
   vendor_image?: string; // Featured image URL
+  
+  // Enhanced couple information (from joins/views)
+  couple_name?: string; // Couple display name
   
   // Metadata
   metadata?: Record<string, any>;

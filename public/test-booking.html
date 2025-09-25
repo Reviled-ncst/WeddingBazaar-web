@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Booking from Vite Dev Server</title>
+</head>
+<body>
+    <h1>Test Booking from Vite Dev Server (localhost:5177)</h1>
+    <button onclick="testBooking()">Test Booking Request</button>
+    <div id="result"></div>
+    
+    <script>
+        async function testBooking() {
+            const result = document.getElementById('result');
+            result.innerHTML = '<p>🔄 Testing from exact same origin as React app...</p>';
+            
+            // Use the same environment variable logic as the React app
+            const API_URL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+            
+            console.log('🌐 API URL from environment:', API_URL);
+            console.log('🌐 Current origin:', window.location.origin);
+            
+            const testData = {
+                vendor_id: '2-2025-002',
+                service_id: 'SRV-0013',
+                service_type: 'other',
+                service_name: 'Vite Dev Server Test',
+                event_date: '2025-12-31',
+                event_time: '16:00',
+                event_location: 'Vite Test Location',
+                guest_count: 120,
+                special_requests: 'Testing from Vite dev server',
+                contact_phone: '+639171234567',
+                contact_email: 'vitetest@example.com',
+                preferred_contact_method: 'email',
+                budget_range: '₱50,000-₱100,000',
+                metadata: {
+                    sourceModal: 'ViteDevServerTest',
+                    submissionTimestamp: new Date().toISOString(),
+                    origin: window.location.origin
+                }
+            };
+            
+            try {
+                console.log('📤 Sending request to:', `${API_URL}/api/bookings/request`);
+                
+                const response = await fetch(`${API_URL}/api/bookings/request`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'x-user-id': '1-2025-001'
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                console.log('📦 Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Success:', data);
+                    
+                    result.innerHTML = `
+                        <div style="border: 2px solid green; padding: 20px; border-radius: 10px; background: #f0fff0; margin-top: 20px;">
+                            <h2>✅ SUCCESS from Vite Dev Server!</h2>
+                            <p><strong>API URL:</strong> ${API_URL}</p>
+                            <p><strong>Origin:</strong> ${window.location.origin}</p>
+                            <p><strong>Booking ID:</strong> ${data.data.id}</p>
+                            <p><strong>Status:</strong> ${data.data.status}</p>
+                            <hr>
+                            <p><strong>🎉 React app should work now!</strong></p>
+                        </div>
+                    `;
+                } else {
+                    const errorText = await response.text();
+                    console.error('❌ HTTP Error:', errorText);
+                    
+                    result.innerHTML = `
+                        <div style="border: 2px solid red; padding: 20px; border-radius: 10px; background: #fff0f0; margin-top: 20px;">
+                            <h2>❌ HTTP Error</h2>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Response:</strong> ${errorText}</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('💥 Network error:', error);
+                
+                result.innerHTML = `
+                    <div style="border: 2px solid orange; padding: 20px; border-radius: 10px; background: #fff8f0; margin-top: 20px;">
+                        <h2>⚠️ Network Error</h2>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>API URL:</strong> ${API_URL}</p>
+                        <p><strong>Origin:</strong> ${window.location.origin}</p>
+                        <p>This suggests a persistent CORS or network issue.</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

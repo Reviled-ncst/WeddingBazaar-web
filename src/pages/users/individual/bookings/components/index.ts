@@ -1,6 +1,6 @@
 export { BookingStatsCards } from './BookingStatsCards';
 export { BookingFilters } from './BookingFilters';
-export { BookingCard } from './BookingCard';
+export { default as BookingCard } from './BookingCard';
 export { BookingDetailsModal } from './BookingDetailsModal';
 export { QuoteDetailsModal } from './QuoteDetailsModal';
 export { VendorImage } from './VendorImage';

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Booking Test</title>
+</head>
+<body>
+    <h1>Wedding Bazaar - Backend Booking Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const results = document.getElementById('results');
+        
+        function log(message) {
+            results.innerHTML += '<div>' + message + '</div>';
+            console.log(message);
+        }
+        
+        const testBackendBooking = async () => {
+          const backendUrl = 'http://localhost:3001';
+          
+          log('🧪 Testing backend booking creation...');
+          
+          // Test 1: Check if backend is running
+          try {
+            const healthResponse = await fetch(`${backendUrl}/api/health`);
+            if (healthResponse.ok) {
+              const health = await healthResponse.json();
+              log('✅ Backend is running: ' + health.status + ' ' + health.timestamp);
+            } else {
+              log('❌ Backend health check failed');
+              return;
+            }
+          } catch (error) {
+            log('❌ Cannot connect to backend: ' + error.message);
+            return;
+          }
+          
+          // Test 2: Get current bookings count
+          try {
+            const getResponse = await fetch(`${backendUrl}/api/bookings/enhanced?coupleId=1-2025-001&limit=10`);
+            if (getResponse.ok) {
+              const currentBookings = await getResponse.json();
+              log('📊 Current bookings count: ' + currentBookings.total);
+            }
+          } catch (error) {
+            log('❌ Failed to get current bookings: ' + error.message);
+          }
+          
+          // Test 3: Create a new booking
+          const payload = {
+            coupleId: '1-2025-001',
+            vendorId: 'VEND-0002',
+            serviceId: 'SRV-8154',
+            serviceType: 'photography',
+            serviceName: 'Test Backend Photography',
+            eventDate: '2025-09-25',
+            eventTime: '18:00',
+            eventLocation: 'Backend Test Location',
+            venueDetails: 'Backend Test Venue',
+            guestCount: 200,
+            specialRequests: 'Backend test booking - automated',
+            contactPhone: '+639171234567',
+            preferredContactMethod: 'phone',
+            budgetRange: '₱100,000 - ₱150,000'
+          };
+          
+          try {
+            log('📤 Creating booking...');
+            
+            const createResponse = await fetch(`${backendUrl}/api/bookings/enhanced`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(payload)
+            });
+            
+            log('📡 Create response status: ' + createResponse.status);
+            
+            if (createResponse.ok) {
+              const createdBooking = await createResponse.json();
+              log('✅ Booking created: ' + JSON.stringify(createdBooking, null, 2));
+              
+              // Test 4: Verify booking appears in list
+              setTimeout(async () => {
+                try {
+                  const verifyResponse = await fetch(`${backendUrl}/api/bookings/enhanced?coupleId=1-2025-001&limit=10&sortBy=created_at&sortOrder=DESC`);
+                  if (verifyResponse.ok) {
+                    const verifyBookings = await verifyResponse.json();
+                    log('📊 New bookings count: ' + verifyBookings.total);
+                    
+                    if (verifyBookings.bookings && verifyBookings.bookings.length > 0) {
+                      const latestBooking = verifyBookings.bookings[0];
+                      log('📋 Latest booking ID: ' + latestBooking.id);
+                      log('📋 Latest booking service: ' + latestBooking.service_name);
+                      
+                      if (latestBooking.id === createdBooking.id) {
+                        log('🎉 SUCCESS: Backend booking creation and retrieval working!');
+                      } else {
+                        log('⚠️ WARNING: Latest booking ID doesn\'t match created booking ID');
+                      }
+                    }
+                  }
+                } catch (error) {
+                  log('❌ Failed to verify booking: ' + error.message);
+                }
+              }, 1000);
+              
+            } else {
+              const errorText = await createResponse.text();
+              log('❌ Failed to create booking: ' + createResponse.status + ' ' + errorText);
+            }
+            
+          } catch (error) {
+            log('💥 Exception during booking creation: ' + error.message);
+          }
+        };
+        
+        // Auto-run test
+        setTimeout(testBackendBooking, 1000);
+    </script>
+</body>
+</html>

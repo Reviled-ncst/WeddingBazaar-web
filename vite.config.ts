@@ -8,12 +8,13 @@ export default defineConfig({
     host: true, // Always expose to network
     port: 5173, // Fixed port for consistency
     strictPort: false, // Allow fallback to other ports if 5173 is busy
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        secure: false,
-      }
-    }
+    // TEMPORARILY DISABLED: Proxy that might be interfering with booking requests
+    // proxy: {
+    //   '/api': {
+    //     target: 'http://localhost:3001',
+    //     changeOrigin: true,
+    //     secure: false,
+    //   }
+    // }
   }
 })

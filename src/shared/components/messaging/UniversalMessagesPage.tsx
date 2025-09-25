@@ -92,7 +92,7 @@ export const UniversalMessagesPage: React.FC<UniversalMessagesPageProps> = ({
     if (title) return title;
     switch (userType) {
       case 'vendor': return 'Customer Messages';
-      case 'couple': return 'Vendor Messages';
+      case 'couple': return 'Messages'; // ✅ Fixed: More intuitive title for couples
       case 'admin': return 'Platform Messages';
       default: return 'Messages';
     }

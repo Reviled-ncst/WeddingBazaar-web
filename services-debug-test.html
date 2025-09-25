@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Services Page Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; }
+        .error { background: #ffe6e6; color: #cc0000; }
+        .success { background: #e6ffe6; color: #006600; }
+        .warning { background: #fff3cd; color: #856404; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Services Page Debug Test</h1>
+    <p>This page will test the complete Services page data loading flow and log all console messages.</p>
+    
+    <div id="results">
+        <div class="log info">Starting test...</div>
+    </div>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+        
+        function addLog(message, type = 'info') {
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            logDiv.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            resultsDiv.appendChild(logDiv);
+            console.log(message);
+        }
+
+        // Override console methods to capture logs
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+
+        console.log = (...args) => {
+            const message = args.join(' ');
+            if (message.includes('[Services]')) {
+                addLog(message, 'info');
+            }
+            originalLog.apply(console, args);
+        };
+
+        console.warn = (...args) => {
+            const message = args.join(' ');
+            if (message.includes('[Services]')) {
+                addLog(message, 'warning');
+            }
+            originalWarn.apply(console, args);
+        };
+
+        console.error = (...args) => {
+            const message = args.join(' ');
+            if (message.includes('[Services]')) {
+                addLog(message, 'error');
+            }
+            originalError.apply(console, args);
+        };
+
+        // Simulate the Services component data loading
+        async function simulateServicesComponent() {
+            addLog('🔍 [Services] Starting data loading simulation...', 'info');
+            
+            const apiUrl = 'https://weddingbazaar-web.onrender.com';
+            let allServicesData = [];
+
+            // PRIORITY 1: Load services
+            try {
+                addLog('🔍 [Services] PRIORITY 1: Loading services from /api/services...', 'info');
+                const servicesResponse = await fetch(`${apiUrl}/api/services`);
+                
+                if (servicesResponse.ok) {
+                    const servicesData = await servicesResponse.json();
+                    addLog('📊 [Services] Services endpoint response: ' + JSON.stringify({success: servicesData.success, count: servicesData.services?.length}), 'info');
+                    
+                    if (servicesData.success && servicesData.services && Array.isArray(servicesData.services) && servicesData.services.length > 0) {
+                        allServicesData.push(...servicesData.services);
+                        addLog(`✅ [Services] Loaded ${servicesData.services.length} dedicated services from /api/services`, 'success');
+                    } else {
+                        addLog('⚠️ [Services] No services found in /api/services response', 'warning');
+                    }
+                }
+            } catch (error) {
+                addLog('❌ [Services] Failed to load from /api/services: ' + error.message, 'error');
+            }
+
+            // PRIORITY 2: Load vendors if no services
+            if (allServicesData.length === 0) {
+                try {
+                    addLog('🔍 [Services] PRIORITY 2: Loading vendors from /api/vendors...', 'info');
+                    const vendorsResponse = await fetch(`${apiUrl}/api/vendors`);
+                    
+                    if (vendorsResponse.ok) {
+                        const vendorsData = await vendorsResponse.json();
+                        addLog('📊 [Services] Vendors endpoint response: ' + JSON.stringify({success: vendorsData.success, count: vendorsData.vendors?.length}), 'info');
+                        
+                        if (vendorsData.success && vendorsData.vendors && Array.isArray(vendorsData.vendors) && vendorsData.vendors.length > 0) {
+                            // Convert vendors to services (simplified)
+                            const convertedVendors = vendorsData.vendors.map(vendor => ({
+                                id: vendor.id,
+                                name: vendor.name || vendor.business_name,
+                                category: vendor.category || vendor.business_type,
+                                vendorName: vendor.name || vendor.business_name,
+                                rating: vendor.rating || 4.5,
+                                reviewCount: vendor.reviewCount || 0,
+                                priceRange: vendor.priceRange || '$$',
+                                location: vendor.location || 'Unknown'
+                            }));
+                            
+                            allServicesData.push(...convertedVendors);
+                            addLog(`✅ [Services] Loaded ${convertedVendors.length} vendors as services from /api/vendors`, 'success');
+                        }
+                    }
+                } catch (error) {
+                    addLog('❌ [Services] Failed to load from /api/vendors: ' + error.message, 'error');
+                }
+            }
+
+            // Simulate the React component state
+            addLog(`🔍 [Services] After data loading: ${allServicesData.length} unique services`, 'info');
+            
+            if (allServicesData.length === 0) {
+                addLog('⚠️ [Services] No real data available, would use mock data fallback', 'warning');
+                allServicesData = [{
+                    id: 'mock-1',
+                    name: 'Sample Wedding Photography',
+                    category: 'photography',
+                    vendorName: 'Sample Vendor',
+                    rating: 4.8,
+                    reviewCount: 45,
+                    priceRange: '₱25,000 - ₱80,000',
+                    location: 'Metro Manila'
+                }];
+                addLog(`🎭 [Services] Using ${allServicesData.length} mock services as fallback`, 'info');
+            }
+
+            // Simulate filtering (no filters applied initially)
+            let filteredServices = allServicesData;
+            
+            addLog('🔍 [Services] FILTERING EFFECT TRIGGERED', 'info');
+            addLog(`📊 [Services] Input services count: ${allServicesData.length}`, 'info');
+            addLog('🔍 [Services] Filter states: all defaults (no filtering)', 'info');
+            addLog(`🎯 [Services] FINAL FILTERED RESULT: ${filteredServices.length} services`, 'info');
+            
+            // Simulate component render decision
+            if (filteredServices.length === 0) {
+                addLog('⚠️ [Services] FILTERED SERVICES IS EMPTY - This is why "No services found" is shown!', 'warning');
+                addLog('❌ Component would show: "No services found" message', 'error');
+            } else {
+                addLog(`✅ Component would show: ${filteredServices.length} services in grid/list`, 'success');
+                filteredServices.forEach((service, i) => {
+                    addLog(`   ${i + 1}. ${service.name} (${service.category})`, 'info');
+                });
+            }
+
+            return { services: allServicesData, filteredServices };
+        }
+
+        // Run the simulation
+        simulateServicesComponent().then(result => {
+            addLog('\n📊 SIMULATION COMPLETE', 'info');
+            addLog(`Final result: ${result.services.length} services, ${result.filteredServices.length} filtered`, 'info');
+            
+            if (result.filteredServices.length > 0) {
+                addLog('✅ The Services page SHOULD be working and showing services', 'success');
+                addLog('If the actual page shows 0 items, there is a React/component bug', 'warning');
+            } else {
+                addLog('❌ The Services page correctly shows "No services found"', 'error');
+                addLog('The issue is in the backend - services are not being returned', 'error');
+            }
+        }).catch(error => {
+            addLog('❌ Simulation failed: ' + error.message, 'error');
+        });
+    </script>
+</body>
+</html>

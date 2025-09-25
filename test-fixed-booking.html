@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Fixed Booking Creation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        button { padding: 10px 20px; margin: 10px 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .test-btn { background-color: #007bff; color: white; }
+        .get-btn { background-color: #28a745; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Wedding Bazaar - Fixed Booking Creation Test</h1>
+    
+    <div id="results"></div>
+    
+    <button class="test-btn" onclick="testBookingCreation()">Test Create Booking (Fixed Integer ID)</button>
+    <button class="get-btn" onclick="testGetBookings()">Get Current Bookings</button>
+    <button class="test-btn" onclick="testCompleteFlow()">Test Complete Flow</button>
+    
+    <script>
+        const results = document.getElementById('results');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+            console.log(message);
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        // Test booking creation with INTEGER service ID (fixed)
+        async function testBookingCreation() {
+            log('🧪 Testing booking creation with INTEGER service ID...', 'info');
+            
+            const payload = {
+                coupleId: '1-2025-001',
+                vendorId: 'VEND-0002',
+                serviceId: 1, // INTEGER, not string!
+                serviceType: 'photography',
+                serviceName: 'Fixed Integer ID Photography Test',
+                eventDate: '2025-09-26',
+                eventTime: '16:00',
+                eventLocation: 'Fixed Test Location',
+                venueDetails: 'Fixed Test Venue',
+                guestCount: 180,
+                specialRequests: 'Test booking with FIXED integer service ID - should work now!',
+                contactPhone: '+639171234567',
+                preferredContactMethod: 'phone',
+                budgetRange: '₱95,000 - ₱145,000'
+            };
+            
+            log(`📤 Payload with INTEGER serviceId: ${JSON.stringify(payload, null, 2)}`, 'info');
+            
+            try {
+                // Test against production backend first
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/bookings/enhanced', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                log(`📡 Production backend response status: ${response.status}`, 'info');
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`✅ SUCCESS: Booking created in production backend!`, 'success');
+                    log(`📋 Created booking: ${JSON.stringify(result, null, 2)}`, 'success');
+                    return result;
+                } else {
+                    const error = await response.text();
+                    log(`❌ Production backend error: ${response.status} - ${error}`, 'error');
+                    
+                    // Try local backend if production fails
+                    log('🔄 Trying local backend...', 'info');
+                    const localResponse = await fetch('/api/bookings/enhanced', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (localResponse.ok) {
+                        const localResult = await localResponse.json();
+                        log(`✅ SUCCESS: Booking created in local backend!`, 'success');
+                        log(`📋 Created booking: ${JSON.stringify(localResult, null, 2)}`, 'success');
+                        return localResult;
+                    } else {
+                        const localError = await localResponse.text();
+                        log(`❌ Local backend error: ${localResponse.status} - ${localError}`, 'error');
+                        return null;
+                    }
+                }
+                
+            } catch (error) {
+                log(`💥 Exception: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        // Test getting bookings
+        async function testGetBookings() {
+            log('🔍 Testing get bookings...', 'info');
+            
+            try {
+                // Try production first
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/bookings/enhanced?coupleId=1-2025-001&limit=10&sortBy=created_at&sortOrder=DESC');
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`📊 Production backend - Total bookings: ${result.total}`, 'success');
+                    
+                    if (result.bookings && result.bookings.length > 0) {
+                        result.bookings.forEach((booking, index) => {
+                            log(`📋 Booking ${index + 1}: ID=${booking.id}, Service="${booking.service_name}", Status=${booking.status}, Created=${booking.created_at}`, 'info');
+                        });
+                    }
+                    return result;
+                } else {
+                    // Try local
+                    const localResponse = await fetch('/api/bookings/enhanced?coupleId=1-2025-001&limit=10&sortBy=created_at&sortOrder=DESC');
+                    if (localResponse.ok) {
+                        const localResult = await localResponse.json();
+                        log(`📊 Local backend - Total bookings: ${localResult.total}`, 'success');
+                        return localResult;
+                    } else {
+                        log(`❌ Both backends failed to get bookings`, 'error');
+                        return null;
+                    }
+                }
+                
+            } catch (error) {
+                log(`💥 Exception: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        // Test complete flow
+        async function testCompleteFlow() {
+            log('🚀 Testing complete booking flow...', 'info');
+            
+            // Step 1: Get initial count
+            const initialBookings = await testGetBookings();
+            const initialCount = initialBookings ? initialBookings.total : 0;
+            log(`📊 Initial booking count: ${initialCount}`, 'info');
+            
+            // Step 2: Create new booking
+            const createdBooking = await testBookingCreation();
+            
+            if (createdBooking) {
+                // Step 3: Wait and check final count
+                log('⏳ Waiting 2 seconds then checking final count...', 'info');
+                
+                setTimeout(async () => {
+                    const finalBookings = await testGetBookings();
+                    const finalCount = finalBookings ? finalBookings.total : 0;
+                    log(`📊 Final booking count: ${finalCount}`, 'info');
+                    
+                    if (finalCount > initialCount) {
+                        log('🎉 SUCCESS: Booking count increased! The booking creation API is working correctly!', 'success');
+                        log('✅ This means the integer service ID fix resolved the issue.', 'success');
+                        
+                        // Now test if the frontend event system works
+                        log('📢 Testing frontend event dispatch...', 'info');
+                        const testEvent = new CustomEvent('bookingCreated', {
+                            detail: createdBooking
+                        });
+                        window.dispatchEvent(testEvent);
+                        log('📢 Dispatched bookingCreated event - check if IndividualBookings responds in console', 'info');
+                        
+                    } else {
+                        log('❌ ERROR: Booking count did not increase. Something is still wrong.', 'error');
+                    }
+                }, 2000);
+            } else {
+                log('❌ Could not create booking to test complete flow', 'error');
+            }
+        }
+        
+        // Auto-run basic tests
+        setTimeout(() => {
+            log('🏁 Auto-running initial tests...', 'info');
+            testGetBookings();
+        }, 1000);
+    </script>
+</body>
+</html>

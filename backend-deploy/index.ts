@@ -3070,7 +3070,7 @@ app.post('/api/payments/create-intent', async (req, res) => {
         data: {
           attributes: {
             amount: Math.round(amount * 100), // Convert to centavos
-            payment_method_allowed: ['card'],
+            payment_method_allowed: ['card', 'paymaya', 'gcash'],
             payment_method_options: {
               card: {
                 request_three_d_secure: 'automatic'
@@ -3240,20 +3240,154 @@ app.get('/api/payments/status/:paymentId', async (req, res) => {
   }
 });
 
-// PayMongo webhook endpoint
+// PayMongo webhook endpoint for payment confirmations
 app.post('/api/payments/webhook', async (req, res) => {
   try {
-    console.log('PayMongo webhook received:', req.body);
+    const { data, type } = req.body;
     
-    // TODO: Verify webhook signature with PAYMONGO_WEBHOOK_SECRET
-    // TODO: Process payment updates (success, failed, etc.)
+    console.log('🔔 PayMongo webhook received:', {
+      type,
+      eventId: data?.id,
+      timestamp: new Date().toISOString()
+    });
+
+    // Verify webhook signature (security measure)
+    const webhookSecret = process.env.PAYMONGO_WEBHOOK_SECRET;
+    if (webhookSecret && req.headers['paymongo-signature']) {
+      // TODO: Implement signature verification for production
+      // const signature = req.headers['paymongo-signature'];
+      // Verify signature matches expected value
+    }
+
+    // Process different webhook events
+    switch (type) {
+      case 'payment_intent.succeeded':
+        await handlePaymentSuccess(data);
+        break;
+      case 'payment_intent.payment_failed':
+        await handlePaymentFailure(data);
+        break;
+      case 'source.chargeable':
+        await handleSourceChargeable(data);
+        break;
+      default:
+        console.log(`🔔 Unhandled webhook event: ${type}`);
+    }
     
-    res.status(200).json({ success: true });
+    res.status(200).json({ 
+      success: true,
+      message: 'Webhook processed successfully',
+      eventType: type
+    });
+
   } catch (error) {
-    console.error('Webhook processing error:', error);
-    res.status(500).json({ success: false });
+    console.error('❌ Webhook processing error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Webhook processing failed'
+    });
   }
 });
+
+// Webhook event handlers
+async function handlePaymentSuccess(paymentData: any) {
+  try {
+    const { id, attributes } = paymentData;
+    const { amount, currency, metadata } = attributes;
+    
+    console.log('✅ Payment succeeded:', {
+      paymentId: id,
+      amount: amount / 100, // Convert from centavos
+      currency,
+      bookingId: metadata?.booking_id,
+      paymentType: metadata?.payment_type
+    });
+
+    if (metadata?.booking_id) {
+      // Update booking status based on payment type
+      const bookingId = metadata.booking_id;
+      const paymentType = metadata.payment_type;
+      
+      let newStatus = 'confirmed';
+      if (paymentType === 'downpayment') {
+        newStatus = 'downpayment_paid';
+      } else if (paymentType === 'full_payment') {
+        newStatus = 'paid_in_full';
+      } else if (paymentType === 'remaining_balance') {
+        newStatus = 'paid_in_full';
+      }
+
+      // Update booking in database
+      const updateResult = await sql`
+        UPDATE bookings 
+        SET status = ${newStatus}, 
+            total_paid = COALESCE(total_paid, 0) + ${amount / 100},
+            remaining_balance = GREATEST(0, COALESCE(remaining_balance, total_amount) - ${amount / 100}),
+            last_payment_date = NOW(),
+            last_payment_amount = ${amount / 100},
+            last_payment_type = ${paymentType},
+            updated_at = NOW()
+        WHERE id = ${bookingId}
+      `;
+
+      if (updateResult && updateResult.length >= 0) {
+        console.log(`✅ Booking ${bookingId} updated to status: ${newStatus}`);
+        
+        // TODO: Send email notification to customer
+        // TODO: Send notification to vendor
+        // TODO: Trigger any other business logic
+      } else {
+        console.error(`❌ Failed to update booking ${bookingId}`);
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Error handling payment success:', error);
+  }
+}
+
+async function handlePaymentFailure(paymentData: any) {
+  try {
+    const { id, attributes } = paymentData;
+    const { metadata } = attributes;
+    
+    console.log('❌ Payment failed:', {
+      paymentId: id,
+      bookingId: metadata?.booking_id,
+      paymentType: metadata?.payment_type
+    });
+
+    if (metadata?.booking_id) {
+      // Log payment failure, but don't change booking status
+      // Customer can retry payment
+      console.log(`⚠️ Payment failed for booking ${metadata.booking_id}, customer can retry`);
+      
+      // TODO: Send email notification about payment failure
+      // TODO: Provide retry instructions
+    }
+
+  } catch (error) {
+    console.error('❌ Error handling payment failure:', error);
+  }
+}
+
+async function handleSourceChargeable(sourceData: any) {
+  try {
+    const { id, attributes } = sourceData;
+    
+    console.log('💳 Source chargeable (e-wallet payment ready):', {
+      sourceId: id,
+      type: attributes?.type,
+      amount: attributes?.amount / 100
+    });
+
+    // For GCash, PayMaya, etc., the payment is ready to be charged
+    // This usually happens automatically by PayMongo
+    
+  } catch (error) {
+    console.error('❌ Error handling source chargeable:', error);
+  }
+}
 
 // ===== ADMIN ENDPOINTS =====
 

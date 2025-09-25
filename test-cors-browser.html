@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Test</title>
+</head>
+<body>
+    <h1>Testing CORS and API Connection</h1>
+    <button onclick="testSimpleGet()">Test Simple GET</button>
+    <button onclick="testPostRequest()">Test POST Request</button>
+    <div id="results"></div>
+
+    <script>
+        const API_URL = 'https://weddingbazaar-web.onrender.com';
+        const results = document.getElementById('results');
+
+        async function testSimpleGet() {
+            results.innerHTML = '<p>Testing simple GET request...</p>';
+            try {
+                console.log('Testing GET /api/health');
+                const response = await fetch(`${API_URL}/api/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('GET Response status:', response.status);
+                console.log('GET Response ok:', response.ok);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('GET Response data:', data);
+                    results.innerHTML = `<p style="color: green;">✅ GET test successful: ${JSON.stringify(data)}</p>`;
+                } else {
+                    results.innerHTML = `<p style="color: red;">❌ GET test failed: ${response.status}</p>`;
+                }
+            } catch (error) {
+                console.error('GET test error:', error);
+                results.innerHTML = `<p style="color: red;">❌ GET test error: ${error.message}</p>`;
+            }
+        }
+
+        async function testPostRequest() {
+            results.innerHTML = '<p>Testing POST request...</p>';
+            
+            const testData = {
+                vendor_id: '2-2025-002',
+                service_id: 'SRV-0013',
+                service_type: 'other',
+                service_name: 'Test Service',
+                event_date: '2025-12-31',
+                event_time: '12:00',
+                event_location: 'Test Location',
+                guest_count: 50,
+                contact_person: 'Test User',
+                contact_email: 'test@example.com',
+                contact_phone: '123-456-7890',
+                preferred_contact_method: 'email'
+            };
+
+            try {
+                console.log('Testing POST /api/bookings/request');
+                console.log('Request data:', testData);
+                
+                // Add a manual timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    console.log('Manual timeout triggered');
+                    controller.abort();
+                }, 15000); // 15 second timeout
+                
+                const response = await fetch(`${API_URL}/api/bookings/request`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-user-id': '1-2025-001'
+                    },
+                    body: JSON.stringify(testData),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                console.log('POST Response status:', response.status);
+                console.log('POST Response ok:', response.ok);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('POST Response data:', data);
+                    results.innerHTML = `<p style="color: green;">✅ POST test successful: Booking ID ${data.data?.id}</p>`;
+                } else {
+                    const errorText = await response.text();
+                    console.log('POST Error response:', errorText);
+                    results.innerHTML = `<p style="color: red;">❌ POST test failed: ${response.status} - ${errorText}</p>`;
+                }
+            } catch (error) {
+                console.error('POST test error:', error);
+                if (error.name === 'AbortError') {
+                    results.innerHTML = `<p style="color: orange;">⏰ POST request timed out after 15 seconds</p>`;
+                } else {
+                    results.innerHTML = `<p style="color: red;">❌ POST test error: ${error.message}</p>`;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -72,7 +72,7 @@ DATABASE_URL=postgresql://neondb_owner:npg_... (Connected)
 **Production Keys Ready**:
 ```env
 # Live Keys (for production deployment)
-VITE_PAYMONGO_PUBLIC_KEY_LIVE=pk_live_xaUkU97FxXX1od1Dg63NVWoR
+VITE_PAYMONGO_PUBLIC_KEY_LIVE=pk_live_[YOUR_LIVE_PUBLIC_KEY]
 VITE_PAYMONGO_SECRET_KEY_LIVE=sk_live_[REDACTED]
 ```
 

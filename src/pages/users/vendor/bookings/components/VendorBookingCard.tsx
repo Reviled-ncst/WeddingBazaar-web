@@ -202,13 +202,24 @@ export const VendorBookingCard: React.FC<VendorBookingCardProps> = ({
               {config.label}
             </span>
             <div className="text-right">
-              <span className="text-xs font-medium text-gray-600">
-                {new Date(booking.createdAt).toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric',
-                  year: '2-digit'
-                })}
-              </span>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-gray-600">
+                  Created: {new Date(booking.createdAt).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: '2-digit'
+                  })}
+                </span>
+                {booking.updatedAt && booking.updatedAt !== booking.createdAt && (
+                  <span className="text-xs font-medium text-blue-600">
+                    Updated: {new Date(booking.updatedAt).toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric',
+                      year: '2-digit'
+                    })}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

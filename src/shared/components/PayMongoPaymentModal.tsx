@@ -71,20 +71,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
   onPaymentSuccess,
   onPaymentError,
 }) => {
-  console.log('💳 PayMongoPaymentModal rendered with props:', {
-    isOpen,
-    amount,
-    currency,
-    paymentType,
-    hasSuccessCallback: !!onPaymentSuccess,
-    bookingId: booking?.id,
-    vendorName: booking?.vendorName
-  });
-  
-  console.log('💳 PayMongoPaymentModal state check:', {
-    isModalOpen: isOpen,
-    willRender: isOpen ? 'YES' : 'NO'
-  });
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'select' | 'card_form' | 'processing' | 'qr_code' | 'redirect' | 'bank_transfer_instructions' | 'success' | 'error'>('select');
@@ -119,46 +105,38 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
 
   // Update progress based on payment step
   useEffect(() => {
-    console.log('🔄 Payment step changed to:', paymentStep);
     switch (paymentStep) {
       case 'select':
         setCurrentProgress(1);
         setProgressMessage('Choose your payment method');
         setShowProgress(true);
-        console.log('📍 Progress: Step 1 - Payment Method Selection');
         break;
       case 'card_form':
       case 'redirect':
         setCurrentProgress(2);
         setProgressMessage('Enter your payment details');
         setShowProgress(true);
-        console.log('📍 Progress: Step 2 - Payment Details');
         break;
       case 'processing':
         setCurrentProgress(3);
         setProgressMessage('Processing your payment securely...');
         setShowProgress(true);
-        console.log('📍 Progress: Step 3 - Processing Payment');
         break;
       case 'qr_code':
         setCurrentProgress(3);
         setProgressMessage('Scan QR code to complete payment');
         setShowProgress(true);
-        console.log('📍 Progress: Step 3 - QR Code Payment');
         break;
       case 'success':
         setCurrentProgress(4);
         setProgressMessage('Payment completed successfully!');
         setShowProgress(true);
-        console.log('📍 Progress: Step 4 - Payment Success');
         break;
       case 'error':
         setShowProgress(false);
-        console.log('📍 Progress: Hidden due to error');
         break;
       default:
         setShowProgress(false);
-        console.log('📍 Progress: Hidden (unknown step)');
     }
   }, [paymentStep]);
 
@@ -353,7 +331,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
     setPaymentStep('processing');
 
     try {
-      console.log('💳 Processing card payment via backend...');
       
       // Prepare card details for backend
       const cardDetails = {
@@ -467,7 +444,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
     setErrorMessage('');
     
     try {
-        console.log(`💳 Processing ${formatAmount(amount)} payment via ${selectedMethod}`);
         console.log(`🔄 Currency: ${currency}, Amount: ${amount}`);
         
         const amountInCentavos = getAmountInPHPCentavos();
@@ -543,7 +519,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
             paymentType
           );
         } else if (selectedMethod === 'paymaya') {
-          console.log('💳 Creating PayMaya payment...');
           result = await paymongoService.createPayMayaPayment(
             booking.id,
             amount,
@@ -585,8 +560,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
       onPaymentError(errorMessage);
     }
   };
-
-  console.log('💳 PayMongoPaymentModal: Render called with isOpen:', isOpen);
 
   return (
     <AnimatePresence>
@@ -1237,8 +1210,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                                   if (!source?.id) {
                                     throw new Error('No source ID available for status checking');
                                   }
-                                  
-                                  console.log('🔄 Checking payment status immediately for source:', source.id);
                                   
                                   // Use improved polling with single attempt for immediate check
                                   const result = await paymongoService.pollPaymentStatus(source.id);

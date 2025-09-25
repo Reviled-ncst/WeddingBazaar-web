@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking API Test</title>
+</head>
+<body>
+    <h1>Wedding Bazaar - Booking API Test</h1>
+    
+    <div id="results"></div>
+    
+    <button id="testCreateBooking">Test Create Booking</button>
+    <button id="testGetBookings">Test Get Bookings</button>
+    
+    <script>
+        const results = document.getElementById('results');
+        
+        function log(message) {
+            results.innerHTML += '<div>' + message + '</div>';
+            console.log(message);
+        }
+        
+        // Test booking creation
+        document.getElementById('testCreateBooking').addEventListener('click', async () => {
+            log('🧪 Testing booking creation...');
+            
+            const payload = {
+                coupleId: '1-2025-001',
+                vendorId: 'VEND-0002',
+                serviceId: 'SRV-8154',
+                serviceType: 'photography',
+                serviceName: 'Wedding Photography Package',
+                eventDate: '2025-06-15',
+                eventTime: '14:00',
+                eventLocation: 'Makati City',
+                venueDetails: 'Grand Ballroom',
+                guestCount: 150,
+                specialRequests: 'Extra lighting setup needed',
+                contactPhone: '+639171234567',
+                preferredContactMethod: 'phone',
+                budgetRange: '₱80,000 - ₱120,000'
+            };
+            
+            try {
+                const response = await fetch('/api/bookings/enhanced', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                log('📡 Response status: ' + response.status);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    log('✅ Booking created: ' + JSON.stringify(result, null, 2));
+                } else {
+                    const error = await response.text();
+                    log('❌ Error: ' + error);
+                }
+            } catch (error) {
+                log('💥 Exception: ' + error.message);
+            }
+        });
+        
+        // Test getting bookings
+        document.getElementById('testGetBookings').addEventListener('click', async () => {
+            log('🔍 Testing get bookings...');
+            
+            try {
+                const response = await fetch('/api/bookings/enhanced?coupleId=1-2025-001&limit=10&sortBy=created_at&sortOrder=DESC');
+                
+                log('📡 Response status: ' + response.status);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    log('📊 Bookings found: ' + result.total);
+                    log('📋 Data: ' + JSON.stringify(result, null, 2));
+                } else {
+                    const error = await response.text();
+                    log('❌ Error: ' + error);
+                }
+            } catch (error) {
+                log('💥 Exception: ' + error.message);
+            }
+        });
+        
+        // Test the complete flow
+        async function testCompleteFlow() {
+            log('🚀 Testing complete booking flow...');
+            
+            // First, get current bookings count
+            const initialResponse = await fetch('/api/bookings/enhanced?coupleId=1-2025-001&limit=10');
+            const initialData = await initialResponse.json();
+            const initialCount = initialData.total || 0;
+            log('📊 Initial bookings count: ' + initialCount);
+            
+            // Create a new booking
+            const payload = {
+                coupleId: '1-2025-001',
+                vendorId: 'VEND-0002',
+                serviceId: 'SRV-8154',
+                serviceType: 'photography',
+                serviceName: 'Test Wedding Photography Package',
+                eventDate: '2025-07-20',
+                eventTime: '15:00',
+                eventLocation: 'Quezon City',
+                venueDetails: 'Reception Hall',
+                guestCount: 200,
+                specialRequests: 'Test booking created from browser',
+                contactPhone: '+639171234567',
+                preferredContactMethod: 'phone',
+                budgetRange: '₱100,000 - ₱150,000'
+            };
+            
+            const createResponse = await fetch('/api/bookings/enhanced', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (createResponse.ok) {
+                const createdBooking = await createResponse.json();
+                log('✅ Booking created with ID: ' + createdBooking.id);
+                
+                // Wait a moment then check if it appears in the list
+                setTimeout(async () => {
+                    const finalResponse = await fetch('/api/bookings/enhanced?coupleId=1-2025-001&limit=10');
+                    const finalData = await finalResponse.json();
+                    const finalCount = finalData.total || 0;
+                    
+                    log('📊 Final bookings count: ' + finalCount);
+                    
+                    if (finalCount > initialCount) {
+                        log('🎉 SUCCESS: Booking appears in user bookings list!');
+                        log('🎯 The booking flow is working correctly.');
+                    } else {
+                        log('❌ ERROR: Booking not found in user bookings list');
+                        log('🔍 This indicates the issue with the modal workflow');
+                    }
+                }, 1000);
+            } else {
+                const error = await createResponse.text();
+                log('❌ Failed to create booking: ' + error);
+            }
+        }
+        
+        // Auto-run the complete flow test
+        setTimeout(testCompleteFlow, 1000);
+    </script>
+</body>
+</html>

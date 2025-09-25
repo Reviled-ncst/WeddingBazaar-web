@@ -1,0 +1,109 @@
+// Test script to verify backend booking creation
+const testBackendBooking = async () => {
+  const backendUrl = 'http://localhost:3001';
+  
+  console.log('🧪 Testing backend booking creation...');
+  
+  // Test 1: Check if backend is running
+  try {
+    const healthResponse = await fetch(`${backendUrl}/api/health`);
+    if (healthResponse.ok) {
+      const health = await healthResponse.json();
+      console.log('✅ Backend is running:', health.status, health.timestamp);
+    } else {
+      console.error('❌ Backend health check failed');
+      return;
+    }
+  } catch (error) {
+    console.error('❌ Cannot connect to backend:', error.message);
+    return;
+  }
+  
+  // Test 2: Get current bookings count
+  try {
+    const getResponse = await fetch(`${backendUrl}/api/bookings/enhanced?coupleId=1-2025-001&limit=10`);
+    if (getResponse.ok) {
+      const currentBookings = await getResponse.json();
+      console.log('📊 Current bookings count:', currentBookings.total);
+    }
+  } catch (error) {
+    console.error('❌ Failed to get current bookings:', error.message);
+  }
+  
+  // Test 3: Create a new booking
+  const payload = {
+    coupleId: '1-2025-001',
+    vendorId: 'VEND-0002',
+    serviceId: 'SRV-8154',
+    serviceType: 'photography',
+    serviceName: 'Test Backend Photography',
+    eventDate: '2025-09-25',
+    eventTime: '18:00',
+    eventLocation: 'Backend Test Location',
+    venueDetails: 'Backend Test Venue',
+    guestCount: 200,
+    specialRequests: 'Backend test booking - automated',
+    contactPhone: '+639171234567',
+    preferredContactMethod: 'phone',
+    budgetRange: '₱100,000 - ₱150,000'
+  };
+  
+  try {
+    console.log('📤 Creating booking with payload:', payload);
+    
+    const createResponse = await fetch(`${backendUrl}/api/bookings/enhanced`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    console.log('📡 Create response status:', createResponse.status);
+    console.log('📡 Create response headers:', Object.fromEntries(createResponse.headers.entries()));
+    
+    if (createResponse.ok) {
+      const createdBooking = await createResponse.json();
+      console.log('✅ Booking created:', createdBooking);
+      
+      // Test 4: Verify booking appears in list
+      setTimeout(async () => {
+        try {
+          const verifyResponse = await fetch(`${backendUrl}/api/bookings/enhanced?coupleId=1-2025-001&limit=10&sortBy=created_at&sortOrder=DESC`);
+          if (verifyResponse.ok) {
+            const verifyBookings = await verifyResponse.json();
+            console.log('📊 New bookings count:', verifyBookings.total);
+            
+            if (verifyBookings.bookings && verifyBookings.bookings.length > 0) {
+              const latestBooking = verifyBookings.bookings[0];
+              console.log('📋 Latest booking:', {
+                id: latestBooking.id,
+                service_name: latestBooking.service_name,
+                vendor_name: latestBooking.vendor_name,
+                status: latestBooking.status
+              });
+              
+              if (latestBooking.id === createdBooking.id) {
+                console.log('🎉 SUCCESS: Backend booking creation and retrieval working!');
+              } else {
+                console.log('⚠️ WARNING: Latest booking ID doesn\'t match created booking ID');
+              }
+            }
+          }
+        } catch (error) {
+          console.error('❌ Failed to verify booking:', error.message);
+        }
+      }, 1000);
+      
+    } else {
+      const errorText = await createResponse.text();
+      console.error('❌ Failed to create booking:', createResponse.status, errorText);
+    }
+    
+  } catch (error) {
+    console.error('💥 Exception during booking creation:', error.message);
+  }
+};
+
+// Auto-run test
+testBackendBooking();

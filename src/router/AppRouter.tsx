@@ -40,6 +40,7 @@ import { ForYouPage } from '../pages/users/individual/foryou/ForYouPage';
 
 // Vendor Pages
 import { VendorDashboard } from '../pages/users/vendor/dashboard';
+import { VendorDashboardEnhanced } from '../pages/users/vendor/dashboard/VendorDashboardEnhanced';
 import { VendorBookings } from '../pages/users/vendor/bookings';
 import { VendorProfile } from '../pages/users/vendor/profile';
 import { VendorServices } from '../pages/users/vendor/services';
@@ -180,6 +181,11 @@ export const AppRouter: React.FC = () => {
             
             {/* Vendor specific pages */}
             <Route path="/vendor/dashboard" element={
+              <ProtectedRoute requireAuth={true}>
+                <VendorDashboardEnhanced />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/dashboard-classic" element={
               <ProtectedRoute requireAuth={true}>
                 <VendorDashboard />
               </ProtectedRoute>
