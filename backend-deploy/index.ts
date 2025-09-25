@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import bcrypt from 'bcrypt';
+// Force deployment - Services endpoint fix v2.1
 import { config } from 'dotenv';
 import { neon } from '@neondatabase/serverless';
 
