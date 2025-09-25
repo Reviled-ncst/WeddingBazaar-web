@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Camera, Music, Utensils, Car, Building, Heart, Users, ArrowRight, Star, X, MapPin, Clock } from 'lucide-react';
+import { Camera, Music, Utensils, Car, Building, Heart, Users, ArrowRight, Star, X, MapPin, Clock, Loader2 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useAuth } from '../../../shared/contexts/AuthContext';
 import { ServiceDetailsModal as EnhancedServiceModal } from '../../../modules/services/components/ServiceDetailsModal';
@@ -159,20 +159,57 @@ const ServiceDetailsModal: React.FC<{
           {/* Enhanced Modal Content */}
           <div className="p-8 overflow-y-auto max-h-[calc(95vh-140px)] bg-gradient-to-br from-white/50 via-rose-50/30 to-pink-50/20">
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="animate-pulse bg-white/80 rounded-3xl border border-white/50 overflow-hidden">
-                    <div className="bg-gradient-to-br from-gray-200 to-gray-300 h-64 relative">
-                      <div className="absolute bottom-4 left-4 w-24 h-6 bg-gray-300 rounded-full"></div>
-                      <div className="absolute top-4 right-4 w-16 h-6 bg-gray-300 rounded-full"></div>
+              <div className="relative">
+                {/* Enhanced Loading Background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-rose-50/50 via-pink-50/30 to-purple-50/20 rounded-2xl">
+                  <div className="absolute top-10 left-10 w-32 h-32 bg-rose-300/20 rounded-full blur-3xl animate-float" />
+                  <div className="absolute bottom-20 right-20 w-40 h-40 bg-pink-300/20 rounded-full blur-3xl animate-float-delayed" />
+                </div>
+                
+                <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="group relative">
+                      <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/60 overflow-hidden shadow-xl animate-pulse hover:shadow-2xl transition-all duration-500">
+                        {/* Enhanced Image Skeleton */}
+                        <div className="bg-gradient-to-br from-gray-200 via-gray-300 to-gray-200 h-64 relative overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] animate-shimmer" />
+                          <div className="absolute bottom-4 left-4 w-28 h-7 bg-gradient-to-r from-gray-300 to-gray-400 rounded-full animate-pulse" />
+                          <div className="absolute top-4 right-4 flex space-x-1">
+                            <div className="w-5 h-5 bg-gradient-to-r from-yellow-300 to-yellow-400 rounded-sm animate-pulse" />
+                            <div className="w-5 h-5 bg-gradient-to-r from-yellow-300 to-yellow-400 rounded-sm animate-pulse [animation-delay:100ms]" />
+                            <div className="w-5 h-5 bg-gradient-to-r from-yellow-300 to-yellow-400 rounded-sm animate-pulse [animation-delay:200ms]" />
+                          </div>
+                        </div>
+                        
+                        {/* Enhanced Content Skeleton */}
+                        <div className="p-6 space-y-4">
+                          <div className="space-y-3">
+                            <div className="w-full h-6 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded-lg animate-pulse" />
+                            <div className="w-3/4 h-5 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded-lg animate-pulse" />
+                            <div className="w-1/2 h-4 bg-gradient-to-r from-rose-200 via-pink-200 to-rose-200 rounded-lg animate-pulse" />
+                          </div>
+                          
+                          {/* Price and Button Skeletons */}
+                          <div className="flex items-center justify-between pt-4">
+                            <div className="w-20 h-6 bg-gradient-to-r from-green-200 to-green-300 rounded-full animate-pulse" />
+                            <div className="w-24 h-10 bg-gradient-to-r from-rose-200 to-pink-200 rounded-xl animate-pulse" />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Floating Glow Effect */}
+                      <div className={`absolute inset-0 bg-gradient-to-br from-rose-400/10 via-pink-400/5 to-purple-400/10 rounded-3xl blur-xl animate-pulse [animation-delay:${i * 200}ms]`} />
                     </div>
-                    <div className="p-6">
-                      <div className="bg-gray-200 rounded-lg h-6 mb-3"></div>
-                      <div className="bg-gray-200 rounded-lg h-4 w-3/4 mb-4"></div>
-                      <div className="bg-gray-200 rounded-xl h-12 w-full"></div>
-                    </div>
+                  ))}
+                </div>
+                
+                {/* Loading Status Text */}
+                <div className="text-center mt-12">
+                  <div className="inline-flex items-center bg-white/70 backdrop-blur-sm px-6 py-3 rounded-full border border-white/60 shadow-lg">
+                    <Loader2 className="h-5 w-5 animate-spin text-rose-500 mr-3" />
+                    <span className="text-gray-700 font-medium">Discovering amazing vendors...</span>
                   </div>
-                ))}
+                </div>
               </div>
             ) : services.length === 0 ? (
               <div className="text-center py-20">

@@ -146,8 +146,16 @@ export const Hero: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20"></div>
         </div>
         
+        {/* Floating Decorative Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-rose-300/20 rounded-full blur-3xl animate-float" />
+          <div className="absolute bottom-32 right-20 w-48 h-48 bg-pink-300/20 rounded-full blur-3xl animate-float-delayed" />
+          <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-purple-300/20 rounded-full blur-2xl animate-float-slow" />
+          <div className="absolute top-40 right-1/3 w-16 h-16 bg-rose-400/30 rounded-full blur-xl animate-bounce-gentle" />
+        </div>
+        
         <div className="relative z-10 container mx-auto px-4 text-center">
-          {/* Enhanced Floating Content Container */}
+          {/* Enhanced Floating Content Container with Advanced Glassmorphism */}
           <div className="max-w-6xl mx-auto bg-white/85 backdrop-blur-xl rounded-3xl shadow-2xl p-8 md:p-12 border border-white/30 relative overflow-hidden">
             {/* Decorative background pattern */}
             <div className="absolute inset-0 bg-gradient-to-br from-rose-50/50 via-white/30 to-pink-50/50"></div>

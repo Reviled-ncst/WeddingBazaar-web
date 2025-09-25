@@ -7,19 +7,48 @@ const Services = lazy(() => import('./components/Services').then(module => ({ de
 const FeaturedVendors = lazy(() => import('./components/FeaturedVendors').then(module => ({ default: module.FeaturedVendors })));
 const Testimonials = lazy(() => import('./components/Testimonials').then(module => ({ default: module.Testimonials })));
 
-// Enhanced loading component for suspense fallbacks
+// Advanced loading component for suspense fallbacks
 const SectionLoader: React.FC = () => (
-  <div className="flex items-center justify-center py-20 bg-gradient-to-r from-rose-50/50 to-pink-50/50">
-    <div className="flex flex-col items-center space-y-6 p-8 bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg border border-white/60">
+  <div className="flex items-center justify-center py-32 bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50/30 relative overflow-hidden">
+    {/* Floating Background Elements */}
+    <div className="absolute inset-0 opacity-20">
+      <div className="absolute top-10 left-10 w-32 h-32 bg-gradient-to-br from-rose-300 to-pink-300 rounded-full blur-3xl animate-float" />
+      <div className="absolute bottom-20 right-20 w-40 h-40 bg-gradient-to-br from-purple-300 to-rose-300 rounded-full blur-3xl animate-float-delayed" />
+      <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-gradient-to-br from-pink-300 to-rose-300 rounded-full blur-2xl animate-float-slow" />
+    </div>
+
+    <div className="relative z-10 flex flex-col items-center space-y-8 p-12 bg-white/70 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/40">
+      {/* Enhanced Spinner */}
       <div className="relative">
-        <Loader2 className="h-10 w-10 animate-spin text-rose-500" />
-        <div className="absolute inset-0 h-10 w-10 rounded-full border-2 border-rose-200 animate-pulse" />
+        <div className="absolute inset-0 h-16 w-16 rounded-full bg-gradient-to-r from-rose-400 to-pink-400 blur-lg opacity-60 animate-pulse-glow" />
+        <Loader2 className="relative h-16 w-16 animate-spin text-rose-500" />
+        <div className="absolute inset-2 h-12 w-12 rounded-full border-2 border-rose-200 animate-pulse" />
+        <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-white animate-bounce-gentle" />
       </div>
-      <p className="text-gray-600 text-base font-medium">Loading amazing content...</p>
-      <div className="flex space-x-1">
-        <div className="w-2 h-2 bg-rose-400 rounded-full animate-bounce [animation-delay:0ms]" />
-        <div className="w-2 h-2 bg-rose-400 rounded-full animate-bounce [animation-delay:150ms]" />
-        <div className="w-2 h-2 bg-rose-400 rounded-full animate-bounce [animation-delay:300ms]" />
+
+      {/* Enhanced Text */}
+      <div className="text-center space-y-3">
+        <h3 className="text-2xl font-bold bg-gradient-to-r from-rose-600 via-pink-600 to-purple-600 bg-clip-text text-transparent">
+          Creating Magic
+        </h3>
+        <p className="text-gray-600 text-lg font-medium">Loading amazing wedding content...</p>
+      </div>
+
+      {/* Enhanced Dots Animation */}
+      <div className="flex space-x-2">
+        <div className="w-3 h-3 bg-gradient-to-r from-rose-400 to-pink-400 rounded-full animate-bounce [animation-delay:0ms] shadow-lg" />
+        <div className="w-3 h-3 bg-gradient-to-r from-pink-400 to-purple-400 rounded-full animate-bounce [animation-delay:150ms] shadow-lg" />
+        <div className="w-3 h-3 bg-gradient-to-r from-purple-400 to-rose-400 rounded-full animate-bounce [animation-delay:300ms] shadow-lg" />
+      </div>
+
+      {/* Progress Bar */}
+      <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-full bg-gradient-to-r from-rose-500 to-pink-500 rounded-full animate-shimmer w-3/4" />
+      </div>
+
+      {/* Shimmer Effect */}
+      <div className="absolute inset-0 rounded-3xl overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] animate-shimmer" />
       </div>
     </div>
   </div>
