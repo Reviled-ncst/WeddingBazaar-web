@@ -793,7 +793,7 @@ app.get('/api/services', async (req, res) => {
   try {
     console.log('🚀 [API] /api/services endpoint called');
     
-    // Get services from database
+    // Get services from database - corrected column references
     const services = await sql`
       SELECT 
         s.id,
@@ -809,12 +809,10 @@ app.get('/api/services', async (req, res) => {
         s.created_at,
         s.updated_at,
         v.business_name as vendor_name,
-        v.rating,
-        v.review_count,
-        v.location,
-        v.contact_phone,
-        v.contact_email,
-        v.contact_website
+        v.average_rating as rating,
+        v.total_reviews as review_count,
+        v.service_areas,
+        v.website_url as contact_website
       FROM services s
       LEFT JOIN vendors v ON s.vendor_id = v.id
       WHERE s.is_active = true
@@ -822,33 +820,58 @@ app.get('/api/services', async (req, res) => {
     `;
 
     console.log(`✅ [API] Found ${services.length} services in database`);
+    if (services.length > 0) {
+      console.log(`📋 [API] Sample service:`, {
+        id: services[0].id,
+        title: services[0].title,
+        name: services[0].name,
+        category: services[0].category,
+        vendor_name: services[0].vendor_name
+      });
+    }
 
-    // Format services for frontend
-    const formattedServices = services.map(service => ({
-      id: service.id,
-      name: service.name || service.title,
-      category: service.category,
-      vendorId: service.vendor_id,
-      vendorName: service.vendor_name,
-      vendorImage: `https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400`, // Default vendor image
-      description: service.description,
-      priceRange: service.price ? `₱${parseFloat(service.price).toLocaleString()}` : '₱₱',
-      location: service.location || 'Philippines',
-      rating: parseFloat(service.rating || 4.5),
-      reviewCount: service.review_count || 0,
-      image: service.images && service.images.length > 0 
-        ? service.images[0] 
-        : `https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400`,
-      gallery: service.images || [],
-      features: [service.category],
-      availability: service.is_active,
-      featured: service.featured,
-      contactInfo: {
-        phone: service.contact_phone,
-        email: service.contact_email,
-        website: service.contact_website
-      }
-    }));
+    // Format services for frontend - use title if name is null
+    const formattedServices = services.map(service => {
+      const serviceName = service.name || service.title || 'Unnamed Service';
+      
+      return {
+        id: service.id,
+        name: serviceName,
+        category: service.category || 'General',
+        vendorId: service.vendor_id,
+        vendorName: service.vendor_name || 'Unknown Vendor',
+        vendorImage: `https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400`,
+        description: service.description || 'Professional wedding service',
+        priceRange: service.price ? `₱${parseFloat(service.price).toLocaleString()}` : '₱₱',
+        location: service.service_areas && Array.isArray(service.service_areas) && service.service_areas.length > 0 
+          ? service.service_areas[0] 
+          : 'Philippines',
+        rating: parseFloat(service.rating || '4.5'),
+        reviewCount: parseInt(service.review_count || '0'),
+        image: service.images && Array.isArray(service.images) && service.images.length > 0 
+          ? service.images[0] 
+          : `https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400`,
+        gallery: service.images || [],
+        features: [service.category || 'Wedding Service'],
+        availability: service.is_active,
+        featured: service.featured,
+        contactInfo: {
+          phone: null, // Phone not available in vendors table
+          email: null, // Email not available in vendors table
+          website: service.contact_website
+        }
+      };
+    });
+
+    console.log(`📋 [API] Formatted ${formattedServices.length} services for frontend`);
+    if (formattedServices.length > 0) {
+      console.log(`📋 [API] Sample formatted service:`, {
+        id: formattedServices[0].id,
+        name: formattedServices[0].name,
+        category: formattedServices[0].category,
+        vendorName: formattedServices[0].vendorName
+      });
+    }
 
     res.json({
       success: true,
@@ -858,13 +881,15 @@ app.get('/api/services', async (req, res) => {
 
   } catch (error) {
     console.error('❌ [API] Error fetching services:', error);
+    console.error('❌ [API] Error details:', error.message);
     
     // Return empty array on error so frontend doesn't break
     res.json({
       success: true,
       services: [],
       count: 0,
-      error: 'Database temporarily unavailable'
+      error: 'Database temporarily unavailable',
+      details: error.message
     });
   }
 });
@@ -879,12 +904,10 @@ app.get('/api/services/direct', async (req, res) => {
       SELECT 
         s.*,
         v.business_name,
-        v.rating,
-        v.review_count,
-        v.location,
-        v.contact_phone,
-        v.contact_email,
-        v.contact_website,
+        v.average_rating as rating,
+        v.total_reviews as review_count,
+        v.service_areas,
+        v.website_url as contact_website,
         v.portfolio_images
       FROM services s
       LEFT JOIN vendors v ON s.vendor_id = v.id
@@ -906,7 +929,9 @@ app.get('/api/services/direct', async (req, res) => {
         : `https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400`,
       description: service.description,
       priceRange: service.price ? `₱${parseFloat(service.price).toLocaleString()}` : '₱₱',
-      location: service.location || 'Philippines',
+      location: service.service_areas && Array.isArray(service.service_areas) && service.service_areas.length > 0 
+        ? service.service_areas[0] 
+        : 'Philippines',
       rating: parseFloat(service.rating || 4.5),
       reviewCount: service.review_count || 0,
       image: service.images && service.images.length > 0 
@@ -917,8 +942,8 @@ app.get('/api/services/direct', async (req, res) => {
       availability: service.is_active,
       featured: service.featured,
       contactInfo: {
-        phone: service.contact_phone,
-        email: service.contact_email,
+        phone: null, // Phone not available in vendors table
+        email: null, // Email not available in vendors table
         website: service.contact_website
       },
       createdAt: service.created_at,
