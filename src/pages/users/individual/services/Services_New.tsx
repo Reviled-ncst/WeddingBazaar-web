@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Search, 
   MapPin, 
@@ -6,8 +6,10 @@ import {
   Heart, 
   Grid,
   List,
+  SlidersHorizontal,
   X,
   MessageCircle,
+  ImageIcon,
   Phone,
   Mail,
   Globe
@@ -20,7 +22,7 @@ import { useUniversalMessaging } from '../../../../shared/contexts/UniversalMess
 // Service interface
 interface Service {
   id: string;
-  name: string;
+  name: string;;
   category: string;
   vendorId: string;
   vendorName: string;
@@ -240,316 +242,111 @@ export const Services: React.FC = () => {
   const [selectedPriceRange, setSelectedPriceRange] = useState('All Prices');
   const [selectedRating, setSelectedRating] = useState(0);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showFilters, setShowFilters] = useState(false);
   const [likedServices, setLikedServices] = useState<Set<string>>(new Set());
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   
   const { startConversationWith } = useUniversalMessaging();
 
-  // Load services - NEW APPROACH: Direct database services with enhanced mapping
+  // Load services with robust API handling
   useEffect(() => {
     const loadServices = async () => {
       setLoading(true);
-      console.log('� [Services] Loading REAL services from database...');
+      console.log('🔍 [Services] Loading services...');
 
       try {
         const API_BASE = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-        let realServices: Service[] = [];
+        let allServices: Service[] = [];
 
-        // Multiple endpoint strategy for better reliability
+        // Try loading from multiple endpoints
         const endpoints = [
-          `${API_BASE}/api/services/simple`,
+          `${API_BASE}/api/services/direct`,
           `${API_BASE}/api/services`,
-          `${API_BASE}/api/services/direct`
+          `${API_BASE}/api/vendors`
         ];
-
-        console.log('📡 [Services] Trying multiple endpoints for services...');
 
         for (const endpoint of endpoints) {
           try {
-            console.log(`🌐 [Services] Attempting: ${endpoint}`);
-            const response = await fetch(endpoint, {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache'
-              }
-            });
-
-            console.log(`📡 [Services] Response from ${endpoint}: ${response.status}`);
-
+            console.log(`🌐 [Services] Trying ${endpoint}...`);
+            const response = await fetch(endpoint);
+            
             if (response.ok) {
               const data = await response.json();
-              console.log(`📊 [Services] Data from ${endpoint}:`, data);
+              console.log(`✅ [Services] ${endpoint} response:`, data);
 
-              if (data.success && data.services && Array.isArray(data.services) && data.services.length > 0) {
-                console.log(`✅ [Services] Found ${data.services.length} services from ${endpoint}`);
-                
-                // Transform the real database services
-                realServices = data.services.map((service: any): Service => {
-                  // Extract service name from title (e.g., "Test Business - other Services" -> "Professional Other Services")
-                  const serviceName = service.name || service.title || 'Professional Wedding Service';
-                  const cleanName = serviceName.includes(' - ') 
-                    ? `Professional ${serviceName.split(' - ')[1]}` 
-                    : serviceName;
-
-                  // Map category properly
-                  const category = service.category === 'other' ? 'Wedding Services' : 
-                                 service.category === 'DJ' ? 'Music & DJ' : 
-                                 service.category || 'Wedding Services';
-
-                  // Generate appropriate images based on category
-                  const categoryImages = {
-                    'Photography': 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=600',
-                    'Videography': 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=600',
-                    'Catering': 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600',
-                    'Venues': 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600',
-                    'Flowers': 'https://images.unsplash.com/photo-1522673607200-164d1b6ce2d2?w=600',
-                    'Music & DJ': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600',
-                    'Wedding Planning': 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600',
-                    'Wedding Services': 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=600'
-                  };
-
-                  return {
-                    id: service.id,
-                    name: cleanName,
-                    category: category,
-                    vendorId: service.vendor_id,
-                    vendorName: serviceName.split(' - ')[0] || 'Wedding Professional',
-                    vendorImage: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-                    description: service.description || `Professional ${category.toLowerCase()} service for your special day`,
-                    priceRange: service.price ? `₱${parseFloat(service.price).toLocaleString()}` : 'Contact for pricing',
-                    location: 'Metro Manila, Philippines',
-                    rating: 4.5 + Math.random() * 0.4, // Random rating between 4.5-4.9
-                    reviewCount: Math.floor(Math.random() * 100) + 20, // Random reviews 20-120
-                    image: service.images?.[0] || categoryImages[category as keyof typeof categoryImages] || categoryImages['Wedding Services'],
-                    gallery: service.images || [categoryImages[category as keyof typeof categoryImages] || categoryImages['Wedding Services']],
-                    features: [
-                      category === 'Photography' ? 'Professional Photography' : 
-                      category === 'Music & DJ' ? 'Professional DJ Services' :
-                      category === 'Wedding Planning' ? 'Full Wedding Planning' :
-                      `Professional ${category}`,
-                      'Experienced Team',
-                      'Quality Service',
-                      'Customer Satisfaction'
-                    ],
-                    availability: service.is_active !== false,
-                    contactInfo: {
-                      phone: '+63917-123-4567',
-                      email: 'info@weddingservice.ph',
-                      website: 'https://weddingservice.ph'
-                    }
-                  };
-                });
-
-                console.log(`🎉 [Services] Successfully mapped ${realServices.length} real services!`);
-                console.log('📋 [Services] Sample mapped service:', realServices[0]);
-                break; // Exit loop on success
+              if (data.success && data.services && data.services.length > 0) {
+                // Convert services
+                allServices = data.services.map((service: any): Service => ({
+                  id: service.id || `service-${Date.now()}-${Math.random()}`,
+                  name: service.name || service.title || 'Wedding Service',
+                  category: service.category || 'General',
+                  vendorId: service.vendor_id || service.vendorId || 'unknown',
+                  vendorName: service.vendor_name || service.vendorName || 'Professional Vendor',
+                  vendorImage: service.vendor_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
+                  description: service.description || 'Professional wedding service',
+                  priceRange: service.price_range || service.priceRange || '₱₱',
+                  location: service.location || 'Metro Manila',
+                  rating: Number(service.rating) || 4.5,
+                  reviewCount: Number(service.review_count || service.reviewCount) || 0,
+                  image: service.image || service.main_image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=600',
+                  gallery: service.gallery || service.images || [],
+                  features: service.features || service.tags || [],
+                  availability: service.availability !== false,
+                  contactInfo: {
+                    phone: service.phone || service.contact_phone,
+                    email: service.email || service.contact_email,
+                    website: service.website
+                  }
+                }));
+                console.log(`✅ [Services] Found ${allServices.length} services from ${endpoint}`);
+                break;
+              } else if (data.success && data.vendors && data.vendors.length > 0) {
+                // Convert vendors to services
+                allServices = data.vendors.map((vendor: any): Service => ({
+                  id: vendor.id || `vendor-${Date.now()}-${Math.random()}`,
+                  name: vendor.name || vendor.business_name || 'Wedding Service',
+                  category: vendor.category || vendor.business_type || 'General',
+                  vendorId: vendor.id,
+                  vendorName: vendor.name || vendor.business_name,
+                  vendorImage: vendor.image || vendor.profile_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
+                  description: vendor.description || vendor.bio || 'Professional wedding service',
+                  priceRange: vendor.price_range || vendor.priceRange || '₱₱',
+                  location: vendor.location || vendor.address || 'Metro Manila',
+                  rating: Number(vendor.rating) || 4.5,
+                  reviewCount: Number(vendor.review_count || vendor.reviewCount) || 0,
+                  image: vendor.image || vendor.profile_image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=600',
+                  gallery: vendor.gallery || vendor.images || [],
+                  features: vendor.features || vendor.specialties || [],
+                  availability: vendor.availability !== false,
+                  contactInfo: {
+                    phone: vendor.phone || vendor.contact_phone,
+                    email: vendor.email || vendor.contact_email,
+                    website: vendor.website || vendor.business_website
+                  }
+                }));
+                console.log(`✅ [Services] Converted ${allServices.length} vendors to services from ${endpoint}`);
+                break;
               }
             }
           } catch (error) {
-            console.warn(`❌ [Services] Failed to load from ${endpoint}:`, error instanceof Error ? error.message : String(error));
+            console.warn(`❌ [Services] Failed to load from ${endpoint}:`, error);
           }
         }
 
-        // If no real services found, show clear message but don't fall back to vendors
-        if (realServices.length === 0) {
-          console.log('� [Services] No services returned from API - using enhanced fallback');
-          
-          // Create enhanced fallback services that look like real data
-          realServices = [
-            {
-              id: 'SRV-FALLBACK-1',
-              name: 'Professional Wedding Photography',
-              category: 'Photography',
-              vendorId: 'VENDOR-001',
-              vendorName: 'Elite Photography Studios',
-              vendorImage: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-              description: 'Capture your special moments with professional wedding photography services. High-quality images that tell your love story.',
-              priceRange: '₱45,000 - ₱85,000',
-              location: 'Metro Manila, Philippines',
-              rating: 4.8,
-              reviewCount: 127,
-              image: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=600',
-              gallery: ['https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=600'],
-              features: ['Professional Photography', 'Digital Gallery', 'Same Day Edit', 'Pre-wedding Shoot'],
-              availability: true,
-              contactInfo: { phone: '+63917-123-4567', email: 'info@photography.ph' }
-            },
-            {
-              id: 'SRV-FALLBACK-2',
-              name: 'Professional DJ Services',
-              category: 'Music & DJ',
-              vendorId: 'VENDOR-002',
-              vendorName: 'Sound Systems Pro',
-              vendorImage: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400',
-              description: 'Professional DJ services with state-of-the-art sound equipment and lighting for your wedding celebration.',
-              priceRange: '₱25,000 - ₱55,000',
-              location: 'Metro Manila, Philippines',
-              rating: 4.6,
-              reviewCount: 89,
-              image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600',
-              gallery: ['https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600'],
-              features: ['Professional DJ', 'Sound System', 'LED Lighting', 'MC Services'],
-              availability: true,
-              contactInfo: { phone: '+63917-234-5678', email: 'info@djservices.ph' }
-            },
-            {
-              id: 'SRV-FALLBACK-3',
-              name: 'Professional Wedding Planning',
-              category: 'Wedding Planning',
-              vendorId: 'VENDOR-003',
-              vendorName: 'Dream Wedding Planners',
-              vendorImage: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
-              description: 'Full-service wedding planning to make your dream wedding a reality with attention to every detail.',
-              priceRange: '₱60,000 - ₱150,000',
-              location: 'Metro Manila, Philippines',
-              rating: 4.9,
-              reviewCount: 156,
-              image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600',
-              gallery: ['https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600'],
-              features: ['Full Wedding Planning', 'Vendor Coordination', 'Timeline Management', 'Day-of Coordination'],
-              availability: true,
-              contactInfo: { phone: '+63917-345-6789', email: 'info@weddingplanning.ph' }
-            },
-            // Additional comprehensive services
-            {
-              id: 'SRV-FALLBACK-4',
-              name: 'Professional Wedding Videography',
-              category: 'Videography',
-              vendorId: 'VENDOR-004',
-              vendorName: 'Cinematic Wedding Films',
-              vendorImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
-              description: 'Cinematic wedding videography with professional editing and storytelling.',
-              priceRange: '₱55,000 - ₱120,000',
-              location: 'Taguig City, Metro Manila',
-              rating: 4.8,
-              reviewCount: 112,
-              image: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=600',
-              gallery: ['https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=600'],
-              features: ['Cinematic Style', 'Professional Editing', 'Drone Footage', 'Highlight Reel'],
-              availability: true,
-              contactInfo: { phone: '+63917-456-7890', email: 'films@cinematicwedding.ph' }
-            },
-            {
-              id: 'SRV-FALLBACK-5',
-              name: 'Bridal Florals & Bouquets',
-              category: 'Flowers',
-              vendorId: 'VENDOR-005',
-              vendorName: 'Blooming Elegance',
-              vendorImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400',
-              description: 'Beautiful bridal bouquets and ceremony florals with fresh, seasonal flowers.',
-              priceRange: '₱25,000 - ₱55,000',
-              location: 'Quezon City, Metro Manila',
-              rating: 4.8,
-              reviewCount: 134,
-              image: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce2d2?w=600',
-              gallery: ['https://images.unsplash.com/photo-1522673607200-164d1b6ce2d2?w=600'],
-              features: ['Bridal Bouquet', 'Ceremony Florals', 'Seasonal Flowers', 'Fresh Arrangements'],
-              availability: true,
-              contactInfo: { phone: '+63917-567-8901', email: 'orders@bloomingelegance.ph' }
-            },
-            {
-              id: 'SRV-FALLBACK-6',
-              name: 'Bridal Makeup & Hair',
-              category: 'Makeup & Hair',
-              vendorId: 'VENDOR-006',
-              vendorName: 'Glamour Beauty Studio',
-              vendorImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400',
-              description: 'Complete beauty package for bride with professional makeup and hair styling.',
-              priceRange: '₱25,000 - ₱45,000',
-              location: 'Makati City, Metro Manila',
-              rating: 4.9,
-              reviewCount: 187,
-              image: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600',
-              gallery: ['https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600'],
-              features: ['Bridal Makeup', 'Hair Styling', 'Touch-up Kit', 'Trial Session'],
-              availability: true,
-              contactInfo: { phone: '+63917-678-9012', email: 'book@glamourbeauty.ph' }
-            },
-            {
-              id: 'SRV-FALLBACK-7',
-              name: 'Wedding Catering Services',
-              category: 'Catering',
-              vendorId: 'VENDOR-007',
-              vendorName: 'Culinary Excellence',
-              vendorImage: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=400',
-              description: 'Professional wedding catering with diverse menu options and impeccable service.',
-              priceRange: '₱1,800 - ₱4,500 per person',
-              location: 'Pasig City, Metro Manila',
-              rating: 4.7,
-              reviewCount: 203,
-              image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600',
-              gallery: ['https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600'],
-              features: ['Custom Menu', 'Professional Staff', 'Setup & Cleanup', 'Multiple Courses'],
-              availability: true,
-              contactInfo: { phone: '+63917-789-0123', email: 'events@culinaryexcellence.ph' }
-            },
-            {
-              id: 'SRV-FALLBACK-8',
-              name: 'Garden Wedding Venues',
-              category: 'Venues',
-              vendorId: 'VENDOR-008',
-              vendorName: 'Paradise Gardens',
-              vendorImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-              description: 'Beautiful garden wedding venues with natural settings and elegant facilities.',
-              priceRange: '₱45,000 - ₱85,000',
-              location: 'Tagaytay City, Philippines',
-              rating: 4.8,
-              reviewCount: 145,
-              image: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600',
-              gallery: ['https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600'],
-              features: ['Garden Setting', 'Elegant Facilities', 'Catering Kitchen', 'Parking'],
-              availability: true,
-              contactInfo: { phone: '+63917-890-1234', email: 'venues@paradisegardens.ph' }
-            },
-            {
-              id: 'SRV-FALLBACK-9',
-              name: 'Wedding Transportation',
-              category: 'Transportation',
-              vendorId: 'VENDOR-009',
-              vendorName: 'Elite Wedding Cars',
-              vendorImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-              description: 'Luxury wedding transportation with premium vehicles and professional service.',
-              priceRange: '₱15,000 - ₱35,000',
-              location: 'Metro Manila',
-              rating: 4.7,
-              reviewCount: 89,
-              image: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=600',
-              gallery: ['https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=600'],
-              features: ['Luxury Vehicles', 'Professional Chauffeur', 'Wedding Decoration', 'Multiple Cars'],
-              availability: true,
-              contactInfo: { phone: '+63917-901-2345', email: 'cars@eliteweddingcars.ph' }
-            },
-            {
-              id: 'SRV-FALLBACK-10',
-              name: 'Wedding Officiants',
-              category: 'Officiant',
-              vendorId: 'VENDOR-010',
-              vendorName: 'Sacred Ceremonies',
-              vendorImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
-              description: 'Professional wedding officiants for traditional and custom ceremonies.',
-              priceRange: '₱15,000 - ₱30,000',
-              location: 'Metro Manila',
-              rating: 4.9,
-              reviewCount: 156,
-              image: 'https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=600',
-              gallery: ['https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=600'],
-              features: ['Traditional Ceremonies', 'Custom Vows', 'Interfaith Services', 'Certificate'],
-              availability: true,
-              contactInfo: { phone: '+63917-012-3456', email: 'ceremonies@sacred.ph' }
-            }
-          ];
+        // Use fallback services if no API data
+        if (allServices.length === 0) {
+          console.log('🎭 [Services] Using fallback services');
+          allServices = FALLBACK_SERVICES;
         }
 
-        setServices(realServices);
-        setFilteredServices(realServices);
-        console.log(`🎯 [Services] Final result: ${realServices.length} services loaded`);
+        setServices(allServices);
+        setFilteredServices(allServices);
+        console.log(`🎯 [Services] Final loaded services: ${allServices.length}`);
 
       } catch (error) {
-        console.error('❌ [Services] Critical error loading services:', error);
-        // Use minimal fallback on critical error
-        setServices(FALLBACK_SERVICES.slice(0, 3));
-        setFilteredServices(FALLBACK_SERVICES.slice(0, 3));
+        console.error('❌ [Services] Error loading services:', error);
+        setServices(FALLBACK_SERVICES);
+        setFilteredServices(FALLBACK_SERVICES);
       } finally {
         setLoading(false);
       }
@@ -730,7 +527,6 @@ export const Services: React.FC = () => {
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                aria-label="Select category"
               >
                 {CATEGORIES.map(category => (
                   <option key={category} value={category}>{category}</option>
@@ -742,7 +538,6 @@ export const Services: React.FC = () => {
                 value={selectedLocation}
                 onChange={(e) => setSelectedLocation(e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                aria-label="Select location"
               >
                 {LOCATIONS.map(location => (
                   <option key={location} value={location}>{location}</option>
@@ -754,7 +549,6 @@ export const Services: React.FC = () => {
                 value={selectedPriceRange}
                 onChange={(e) => setSelectedPriceRange(e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                aria-label="Select price range"
               >
                 {PRICE_RANGES.map(range => (
                   <option key={range} value={range}>{range}</option>
@@ -773,7 +567,6 @@ export const Services: React.FC = () => {
                         "p-1",
                         selectedRating >= rating ? "text-yellow-400" : "text-gray-300"
                       )}
-                      aria-label={`Filter by ${rating} stars`}
                     >
                       <Star className="h-4 w-4 fill-current" />
                     </button>
@@ -797,7 +590,6 @@ export const Services: React.FC = () => {
                     "p-2 rounded-lg transition-colors",
                     viewMode === 'grid' ? "bg-rose-100 text-rose-600" : "text-gray-400 hover:bg-gray-100"
                   )}
-                  aria-label="Grid view"
                 >
                   <Grid className="h-5 w-5" />
                 </button>
@@ -807,7 +599,6 @@ export const Services: React.FC = () => {
                     "p-2 rounded-lg transition-colors",
                     viewMode === 'list' ? "bg-rose-100 text-rose-600" : "text-gray-400 hover:bg-gray-100"
                   )}
-                  aria-label="List view"
                 >
                   <List className="h-5 w-5" />
                 </button>
@@ -873,7 +664,6 @@ export const Services: React.FC = () => {
                               ? "bg-rose-500 text-white"
                               : "bg-white/80 text-gray-600 hover:bg-white"
                           )}
-                          aria-label={likedServices.has(service.id) ? "Unlike service" : "Like service"}
                         >
                           <Heart className={cn(
                             "h-4 w-4",
@@ -975,7 +765,6 @@ export const Services: React.FC = () => {
                   <button
                     onClick={() => setSelectedService(null)}
                     className="absolute top-4 right-4 p-2 bg-white/80 rounded-full hover:bg-white"
-                    aria-label="Close modal"
                   >
                     <X className="h-5 w-5" />
                   </button>

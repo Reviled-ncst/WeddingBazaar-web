@@ -263,4 +263,61 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/services/simple - Simple services endpoint for frontend integration
+router.get('/simple', async (req: Request, res: Response) => {
+  try {
+    console.log('🚀 [API] /api/services/simple - Router version');
+    
+    const result = await pool.query('SELECT * FROM services WHERE is_active = true');
+    console.log(`📊 [API] Simple query returned: ${result.rows.length} services`);
+    
+    const formattedServices = result.rows.map(service => ({
+      id: service.id,
+      title: service.title || service.name || 'Wedding Service',
+      name: service.title || service.name || 'Wedding Service',
+      category: service.category || 'Wedding Services',
+      vendor_id: service.vendor_id,
+      vendorId: service.vendor_id,
+      vendorName: 'Wedding Professional',
+      description: service.description || 'Professional wedding service',
+      price: parseFloat(service.price || '50000'),
+      priceRange: `₱${parseFloat(service.price || '50000').toLocaleString()}`,
+      location: 'Metro Manila',
+      rating: 4.5 + Math.random() * 0.4,
+      reviewCount: Math.floor(Math.random() * 100) + 20,
+      image: service.images?.[0] || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=600',
+      images: service.images || [],
+      gallery: service.images || [],
+      features: ['Professional Service'],
+      is_active: service.is_active,
+      availability: true,
+      featured: service.featured || false,
+      created_at: service.created_at,
+      updated_at: service.updated_at,
+      contactInfo: {
+        phone: '',
+        email: '',
+        website: ''
+      }
+    }));
+    
+    console.log(`✅ [API] Returning ${formattedServices.length} simple services`);
+    
+    res.json({
+      success: true,
+      services: formattedServices,
+      total: formattedServices.length,
+      message: `Found ${formattedServices.length} services`
+    });
+    
+  } catch (error) {
+    console.error('❌ [API] /api/services/simple error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load simple services',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 export default router;
