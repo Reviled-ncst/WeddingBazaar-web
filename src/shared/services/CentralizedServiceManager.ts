@@ -275,11 +275,14 @@ export class CentralizedServiceManager {
     
     // Check cache first
     if (this.isValidCache(cacheKey)) {
+      console.log('📋 [ServiceManager] Returning cached services:', this.cache.get(cacheKey).total);
       return this.cache.get(cacheKey);
     }
 
     try {
-      console.log('🔄 [ServiceManager] Fetching REAL services from database with options:', options);
+      console.log('🔄 [ServiceManager] *** FETCHING REAL SERVICES FROM DATABASE ***');
+      console.log('🔧 [ServiceManager] API URL:', this.apiUrl);
+      console.log('🔧 [ServiceManager] Options:', options);
       
       // Direct API call to get real services - try multiple endpoints
       const endpoints = [
@@ -291,7 +294,8 @@ export class CentralizedServiceManager {
 
       for (const endpoint of endpoints) {
         try {
-          console.log(`📡 [ServiceManager] Trying ${endpoint}...`);
+          console.log(`📡 [ServiceManager] *** TRYING ENDPOINT: ${endpoint} ***`);
+          console.log(`📡 [ServiceManager] Full URL: ${this.apiUrl}${endpoint}`);
           const response = await fetch(`${this.apiUrl}${endpoint}`, {
             method: 'GET',
             headers: {
@@ -605,30 +609,52 @@ export class CentralizedServiceManager {
     const category = this.normalizeCategory(dbService.category);
     const categoryInfo = SERVICE_CATEGORIES.find(c => c.name === category);
 
+    // Handle both emergency endpoint format and regular API format
+    // Extract service name from description if name is null
+    let serviceName = dbService.name || dbService.title || dbService.service_name;
+    if (!serviceName && dbService.description) {
+      // Try to extract service name from description patterns like "Professional X services provided by Y"
+      const match = dbService.description.match(/Professional (.+?) services provided by/);
+      if (match) {
+        serviceName = `Professional ${match[1]} Service`;
+      }
+    }
+    serviceName = serviceName || `Professional ${category} Service`;
+    
+    const serviceId = dbService.id || dbService.service_id;
+    const vendorId = dbService.vendorId || dbService.vendor_id;
+    const serviceRating = parseFloat(dbService.rating) || (4.2 + Math.random() * 0.6); // Generate realistic rating
+    const serviceReviewCount = parseInt(dbService.reviewCount) || parseInt(dbService.review_count) || Math.floor(Math.random() * 80) + 15;
+    const serviceLocation = dbService.location || 'Metro Manila, Philippines';
+    const serviceDescription = dbService.description || `Professional ${category.toLowerCase()} service for your special day`;
+    const servicePrice = dbService.price;
+    const serviceImageUrl = dbService.imageUrl || dbService.image_url;
+    const isActive = dbService.isActive !== false && dbService.is_active !== false;
+
     return {
-      id: dbService.id,
-      title: dbService.title || dbService.name || 'Professional Wedding Service',
-      name: dbService.title || dbService.name || 'Professional Wedding Service',
+      id: serviceId,
+      title: serviceName,
+      name: serviceName,
       category: category,
-      vendor_id: dbService.vendor_id,
-      vendorId: dbService.vendor_id,
+      vendor_id: vendorId,
+      vendorId: vendorId,
       vendorName: dbService.vendor_name || 'Wedding Professional',
       vendorImage: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-      description: dbService.description || `Professional ${category.toLowerCase()} service for your special day`,
-      price: dbService.price,
-      priceRange: dbService.price ? `₱${parseFloat(dbService.price).toLocaleString()}` : categoryInfo?.average_price_range || 'Contact for pricing',
-      location: dbService.location || 'Metro Manila, Philippines',
-      rating: dbService.rating || (4.5 + Math.random() * 0.4),
-      reviewCount: dbService.review_count || Math.floor(Math.random() * 100) + 20,
-      image: dbService.images?.[0] || this.getCategoryImage(category),
-      images: dbService.images || [this.getCategoryImage(category)],
-      gallery: dbService.images || [this.getCategoryImage(category)],
+      description: serviceDescription,
+      price: servicePrice,
+      priceRange: servicePrice ? `₱${parseFloat(servicePrice).toLocaleString()}` : categoryInfo?.average_price_range || 'Contact for pricing',
+      location: serviceLocation,
+      rating: parseFloat(String(serviceRating)) || (4.5 + Math.random() * 0.4),
+      reviewCount: parseInt(String(serviceReviewCount)) || Math.floor(Math.random() * 100) + 20,
+      image: serviceImageUrl || this.getCategoryImage(category),
+      images: dbService.images || [serviceImageUrl || this.getCategoryImage(category)],
+      gallery: dbService.images || [serviceImageUrl || this.getCategoryImage(category)],
       features: dbService.features || categoryInfo?.popular_features || ['Professional Service', 'Quality Guaranteed'],
-      is_active: dbService.is_active !== false,
-      availability: dbService.is_active !== false,
+      is_active: isActive,
+      availability: isActive,
       featured: dbService.featured || false,
-      created_at: dbService.created_at || new Date().toISOString(),
-      updated_at: dbService.updated_at || new Date().toISOString(),
+      created_at: dbService.createdAt || dbService.created_at || new Date().toISOString(),
+      updated_at: dbService.updatedAt || dbService.updated_at || new Date().toISOString(),
       contactInfo: {
         phone: dbService.contact_phone || '+63917-XXX-XXXX',
         email: dbService.contact_email || 'info@vendor.ph',
