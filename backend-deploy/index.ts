@@ -789,11 +789,12 @@ function getCategoryIcon(category: string): string {
   return icons[category] || '💍';
 }
 
-// Services endpoint - Expose services table data
+// Services endpoint - Expose services table data - ENHANCED v2.2
 app.get('/api/services', async (req, res) => {
   try {
-    console.log('🚀 [API] /api/services endpoint called');
+    console.log('🚀 [API] /api/services endpoint called - ENHANCED v2.2');
     console.log('🔍 [API] Attempting to query services table...');
+    console.log('🌐 [API] Database URL exists:', !!process.env.DATABASE_URL);
     
     // First, check if services table exists
     const tableCheck = await sql`
@@ -810,9 +811,14 @@ app.get('/api/services', async (req, res) => {
         success: true,
         services: [],
         count: 0,
-        error: 'Services table does not exist'
+        error: 'Services table does not exist',
+        debug: 'Table check failed'
       });
     }
+    
+    // Get count first for debugging
+    const totalCount = await sql`SELECT COUNT(*) as count FROM services`;
+    console.log('📊 [API] Total services in database:', totalCount[0]?.count);
     
     // Get services from database - simplified query without vendor JOIN to avoid issues
     const services = await sql`
