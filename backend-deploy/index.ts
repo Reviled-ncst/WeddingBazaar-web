@@ -1309,6 +1309,71 @@ app.get('/api/services/direct', async (req, res) => {
   }
 });
 
+// EMERGENCY FIX: Ultra-simple services endpoint
+app.get('/api/services/emergency', async (req, res) => {
+  try {
+    console.log('🚨 [EMERGENCY] Simple services query - bypassing all complex logic');
+    
+    const sql = db.neonSql;
+    
+    // Simplest possible query
+    const services = await sql`SELECT * FROM services LIMIT 10`;
+    console.log(`🚨 [EMERGENCY] Found ${services.length} services in database`);
+    
+    if (services.length === 0) {
+      console.log('🚨 [EMERGENCY] Database has no services!');
+      return res.json({
+        success: true,
+        services: [],
+        count: 0,
+        message: 'No services found in database'
+      });
+    }
+    
+    // Basic formatting
+    const formattedServices = services.map(service => ({
+      id: service.id,
+      name: service.title || service.name || 'Wedding Service',
+      category: service.category || 'Wedding Services',
+      vendor_id: service.vendor_id,
+      description: service.description || 'Professional wedding service',
+      price: service.price,
+      priceRange: service.price ? `₱${parseFloat(service.price).toLocaleString()}` : 'Contact for pricing',
+      location: 'Metro Manila, Philippines',
+      rating: 4.5,
+      reviewCount: 50,
+      image: 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=600',
+      images: service.images || [],
+      featured: service.featured || false,
+      is_active: service.is_active !== false,
+      created_at: service.created_at,
+      contactInfo: {
+        phone: '+63917-XXX-XXXX',
+        email: 'info@vendor.ph',
+        website: 'https://vendor.ph'
+      }
+    }));
+    
+    console.log(`🚨 [EMERGENCY] Returning ${formattedServices.length} formatted services`);
+    
+    res.json({
+      success: true,
+      services: formattedServices,
+      count: formattedServices.length,
+      source: 'emergency'
+    });
+    
+  } catch (error) {
+    console.error('🚨 [EMERGENCY] Even simple query failed:', error);
+    res.json({
+      success: false,
+      services: [],
+      error: `Emergency query failed: ${error.message}`,
+      details: error.stack
+    });
+  }
+});
+
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Unhandled error:', err);

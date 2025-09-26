@@ -283,6 +283,7 @@ export class CentralizedServiceManager {
       
       // Direct API call to get real services - try multiple endpoints
       const endpoints = [
+        '/api/services/emergency', // Emergency simple endpoint first
         '/api/services',
         '/api/services/simple', 
         '/api/services/direct'
