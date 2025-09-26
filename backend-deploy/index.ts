@@ -793,6 +793,26 @@ function getCategoryIcon(category: string): string {
 app.get('/api/services', async (req, res) => {
   try {
     console.log('🚀 [API] /api/services endpoint called');
+    console.log('🔍 [API] Attempting to query services table...');
+    
+    // First, check if services table exists
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'services'
+      );
+    `;
+    console.log('📋 [API] Services table exists:', tableCheck[0]?.exists);
+    
+    if (!tableCheck[0]?.exists) {
+      console.log('❌ [API] Services table does not exist!');
+      return res.json({
+        success: true,
+        services: [],
+        count: 0,
+        error: 'Services table does not exist'
+      });
+    }
     
     // Get services from database - simplified query without vendor JOIN to avoid issues
     const services = await sql`
@@ -816,6 +836,12 @@ app.get('/api/services', async (req, res) => {
     console.log(`✅ [API] Raw services query result: ${services.length} services`);
     if (services.length > 0) {
       console.log(`📋 [API] First service raw data:`, services[0]);
+    } else {
+      console.log('⚠️ [API] No services found in database');
+      
+      // Debug: Check if ANY data exists
+      const totalCount = await sql`SELECT COUNT(*) as count FROM services`;
+      console.log('📊 [API] Total services in table:', totalCount[0]?.count);
     }
 
     console.log(`✅ [API] Found ${services.length} services in database`);
