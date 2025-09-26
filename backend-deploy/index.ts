@@ -810,7 +810,6 @@ app.get('/api/services', async (req, res) => {
         s.created_at,
         s.updated_at
       FROM services s
-      WHERE s.is_active = true
       ORDER BY s.featured DESC, s.created_at DESC
     `;
     
