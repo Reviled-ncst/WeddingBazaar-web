@@ -11,7 +11,7 @@
     "build:prod": "vite build --mode production",
     "build:backend": "echo 'Backend ready for deployment'",
     "build:full": "npm run build",
-    "start:backend": "tsx server/index.ts",
+    "start:backend": "tsx backend-deploy/index.ts",
     "start:prod": "NODE_ENV=production npm run start:backend",
     "lint": "eslint .",
     "preview": "vite preview",
