@@ -255,78 +255,103 @@ export const Services: React.FC = () => {
         const API_BASE = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
         let allServices: Service[] = [];
 
-        // Try loading from multiple endpoints
-        const endpoints = [
-          `${API_BASE}/api/services/direct`,
-          `${API_BASE}/api/services`,
-          `${API_BASE}/api/vendors`
-        ];
-
-        for (const endpoint of endpoints) {
-          try {
-            console.log(`🌐 [Services] Trying ${endpoint}...`);
-            const response = await fetch(endpoint);
+        console.log('🎯 [Services] PRIORITY: Loading from REAL services table (85 services available!)');
+        
+        // PRIORITY 1: Load REAL services from services table first
+        try {
+          console.log('🌐 [Services] Loading from /api/services (services table)...');
+          const servicesResponse = await fetch(`${API_BASE}/api/services`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            cache: 'no-cache' // Force fresh data
+          });
+          
+          console.log(`📡 [Services] Services response status: ${servicesResponse.status}`);
+          
+          if (servicesResponse.ok) {
+            const servicesData = await servicesResponse.json();
+            console.log('📊 [Services] Services table response:', servicesData);
+            console.log('📊 [Services] Services array length:', servicesData.services?.length || 0);
+            console.log('📊 [Services] Services array type:', typeof servicesData.services);
             
-            if (response.ok) {
-              const data = await response.json();
-              console.log(`✅ [Services] ${endpoint} response:`, data);
-
-              if (data.success && data.services && data.services.length > 0) {
-                // Convert services
-                allServices = data.services.map((service: any): Service => ({
-                  id: service.id || `service-${Date.now()}-${Math.random()}`,
-                  name: service.name || service.title || 'Wedding Service',
-                  category: service.category || 'General',
-                  vendorId: service.vendor_id || service.vendorId || 'unknown',
-                  vendorName: service.vendor_name || service.vendorName || 'Professional Vendor',
-                  vendorImage: service.vendor_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-                  description: service.description || 'Professional wedding service',
-                  priceRange: service.price_range || service.priceRange || '₱₱',
+            if (servicesData.success && servicesData.services) {
+              // Handle both array and object responses
+              let servicesArray = Array.isArray(servicesData.services) ? servicesData.services : [];
+              
+              // Check if services is an object that should be an array
+              if (!Array.isArray(servicesData.services) && typeof servicesData.services === 'object') {
+                console.log('🔧 [Services] Converting services object to array...');
+                servicesArray = Object.values(servicesData.services);
+              }
+              
+              if (servicesArray.length > 0) {
+                allServices = servicesArray.map((service: any): Service => ({
+                  id: service.id,
+                  name: service.name || service.title || 'Professional Wedding Service',
+                  category: service.category || 'Wedding Services',
+                  vendorId: service.vendorId || service.vendor_id,
+                  vendorName: service.vendorName || service.vendor_name || 'Wedding Professional',
+                  vendorImage: service.vendorImage || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
+                  description: service.description || 'Professional wedding service to make your day special',
+                  priceRange: service.priceRange || service.price ? `₱${parseFloat(service.price).toLocaleString()}` : '₱₱',
                   location: service.location || 'Metro Manila',
-                  rating: Number(service.rating) || 4.5,
-                  reviewCount: Number(service.review_count || service.reviewCount) || 0,
-                  image: service.image || service.main_image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=600',
+                  rating: parseFloat(service.rating || '4.5'),
+                  reviewCount: service.reviewCount || service.review_count || 0,
+                  image: service.image || service.images?.[0] || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=600',
                   gallery: service.gallery || service.images || [],
-                  features: service.features || service.tags || [],
-                  availability: service.availability !== false,
-                  contactInfo: {
-                    phone: service.phone || service.contact_phone,
-                    email: service.email || service.contact_email,
-                    website: service.website
-                  }
+                  features: service.features || [service.category || 'Wedding Service'],
+                  availability: service.availability !== false && service.is_active !== false,
+                  contactInfo: service.contactInfo || {}
                 }));
-                console.log(`✅ [Services] Found ${allServices.length} services from ${endpoint}`);
-                break;
-              } else if (data.success && data.vendors && data.vendors.length > 0) {
-                // Convert vendors to services
-                allServices = data.vendors.map((vendor: any): Service => ({
-                  id: vendor.id || `vendor-${Date.now()}-${Math.random()}`,
-                  name: vendor.name || vendor.business_name || 'Wedding Service',
-                  category: vendor.category || vendor.business_type || 'General',
+                
+                console.log(`🎉 [Services] SUCCESS! Loaded ${allServices.length} REAL services from services table!`);
+                console.log('📋 [Services] Sample service:', allServices[0]);
+              } else {
+                console.log('⚠️ [Services] Services table returned empty array (backend may still be deploying)');
+              }
+            }
+          } else {
+            console.log(`❌ [Services] Services endpoint failed: ${servicesResponse.status} (backend may still be deploying)`);
+          }
+        } catch (error) {
+          console.warn('❌ [Services] Failed to load from services table:', error);
+        }
+        
+        // FALLBACK: Only if services table failed, try vendors as backup
+        if (allServices.length === 0) {
+          console.log('🔄 [Services] Services table empty/failed, trying vendors as fallback...');
+          
+          try {
+            const vendorsResponse = await fetch(`${API_BASE}/api/vendors`);
+            if (vendorsResponse.ok) {
+              const vendorsData = await vendorsResponse.json();
+              if (vendorsData.success && vendorsData.vendors && vendorsData.vendors.length > 0) {
+                allServices = vendorsData.vendors.map((vendor: any): Service => ({
+                  id: `vendor-${vendor.id}`,
+                  name: `${vendor.name || vendor.business_name} Services`,
+                  category: vendor.category || vendor.business_type || 'Wedding Services',
                   vendorId: vendor.id,
                   vendorName: vendor.name || vendor.business_name,
-                  vendorImage: vendor.image || vendor.profile_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-                  description: vendor.description || vendor.bio || 'Professional wedding service',
-                  priceRange: vendor.price_range || vendor.priceRange || '₱₱',
-                  location: vendor.location || vendor.address || 'Metro Manila',
-                  rating: Number(vendor.rating) || 4.5,
-                  reviewCount: Number(vendor.review_count || vendor.reviewCount) || 0,
-                  image: vendor.image || vendor.profile_image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=600',
-                  gallery: vendor.gallery || vendor.images || [],
-                  features: vendor.features || vendor.specialties || [],
-                  availability: vendor.availability !== false,
-                  contactInfo: {
-                    phone: vendor.phone || vendor.contact_phone,
-                    email: vendor.email || vendor.contact_email,
-                    website: vendor.website || vendor.business_website
-                  }
+                  vendorImage: vendor.image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
+                  description: vendor.description || `Professional ${vendor.category || 'wedding'} services`,
+                  priceRange: '₱₱',
+                  location: vendor.location || 'Metro Manila',
+                  rating: parseFloat(vendor.rating || '4.5'),
+                  reviewCount: vendor.reviewCount || 0,
+                  image: vendor.image || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=600',
+                  gallery: [],
+                  features: [vendor.category || 'Wedding Services'],
+                  availability: true,
+                  contactInfo: {}
                 }));
-                console.log(`✅ [Services] Converted ${allServices.length} vendors to services from ${endpoint}`);
-                break;
+                
+                console.log(`✅ [Services] Loaded ${allServices.length} vendor services as fallback`);
               }
             }
           } catch (error) {
-            console.warn(`❌ [Services] Failed to load from ${endpoint}:`, error);
+            console.warn('❌ [Services] Vendor fallback failed:', error);
           }
         }
 
