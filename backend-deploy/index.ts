@@ -789,12 +789,11 @@ function getCategoryIcon(category: string): string {
   return icons[category] || '💍';
 }
 
-// Services endpoint - Expose services table data - ENHANCED v2.2
+// Services endpoint - Expose services table data
 app.get('/api/services', async (req, res) => {
   try {
-    console.log('🚀 [API] /api/services endpoint called - ENHANCED v2.2');
+    console.log('🚀 [API] /api/services endpoint called');
     console.log('🔍 [API] Attempting to query services table...');
-    console.log('🌐 [API] Database URL exists:', !!process.env.DATABASE_URL);
     
     // First, check if services table exists
     const tableCheck = await sql`
@@ -811,14 +810,9 @@ app.get('/api/services', async (req, res) => {
         success: true,
         services: [],
         count: 0,
-        error: 'Services table does not exist',
-        debug: 'Table check failed'
+        error: 'Services table does not exist'
       });
     }
-    
-    // Get count first for debugging
-    const totalCount = await sql`SELECT COUNT(*) as count FROM services`;
-    console.log('📊 [API] Total services in database:', totalCount[0]?.count);
     
     // Get services from database - simplified query without vendor JOIN to avoid issues
     const services = await sql`
@@ -1540,34 +1534,111 @@ app.get('/api/bookings', async (req, res) => {
       totalResult = await sql`SELECT COUNT(*) as total FROM bookings`;
     }
     const total = parseInt(totalResult[0]?.total || 0);
+    let bookings;
+    
+    if (vendorId) {
+      console.log('🔍 [Bookings API] Filtering by vendor ID:', vendorId);
+      bookings = await sql` success: true,
+        SELECT 
+          b.id, b.couple_id, b.vendor_id, b.service_type,      pagination: {
+          b.event_date, b.status, b.total_amount, b.notes,
+          b.created_at, b.updated_at, b.contact_phone,        totalPages: Math.ceil(total / parseInt(limit as string)),
+          v.business_name as vendor_name, v.business_type as vendor_category,ookings: total,
+          v.locationrseInt(page as string) * parseInt(limit as string)) < total,
+        FROM bookings bstring) > 1
+        JOIN vendors v ON b.vendor_id = v.id
+        WHERE b.vendor_id = ${vendorId}
+        ORDER BY b.created_at DESC
+        LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}hing bookings:', error);
+      `;
+    } else if (coupleId) {
+      console.log('🔍 [Bookings API] Filtering by couple ID:', coupleId);uccess: true,
+      bookings = await sql`ookings: [],
+        SELECT 
+          b.id, b.couple_id, b.vendor_id, b.service_type,
+          b.event_date, b.status, b.total_amount, b.notes,
+          b.created_at, b.updated_at, b.contact_phone,ookings: 0,
+          v.business_name as vendor_name, v.business_type as vendor_category,se,
+          v.locationlse
+        FROM bookings b
+        JOIN vendors v ON b.vendor_id = v.id
+        WHERE b.couple_id = ${coupleId}
+        ORDER BY b.created_at DESC
+        LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+      `;ndpoint with comprehensive data
+    } else {('/api/bookings/enhanced', async (req, res) => {
+      console.log('🔍 [Bookings API] No filters applied - returning all bookings');
+      bookings = await sql` const { 
+        SELECT    page = 1, 
+          b.id, b.couple_id, b.vendor_id, b.service_type,      limit = 10, 
+          b.event_date, b.status, b.total_amount, b.notes,
+          b.created_at, b.updated_at, b.contact_phone,
+          v.business_name as vendor_name, v.business_type as vendor_category,erviceId,
+          v.location,
+        FROM bookings bcreated_at', 
+        JOIN vendors v ON b.vendor_id = v.id'DESC' 
+        ORDER BY b.created_at DESCy;
+        LIMIT ${parseInt(limit as string)} OFFSET ${(parseInt(page as string) - 1) * parseInt(limit as string)}
+      `;'📥 [Enhanced Bookings API] Query params:', { 
+    }imit, coupleId, vendorId, serviceId, status, sortBy, sortOrder 
 
-    console.log(`✅ [Bookings API] Found ${formattedBookings.length} bookings (${total} total)`);
+    const formattedBookings = bookings.map(booking => ({
+      id: booking.id, clause based on filters
+      vendorId: booking.vendor_id,let whereConditions = [];
+      vendorName: booking.vendor_name,
+      vendorCategory: booking.vendor_category,
+      serviceType: booking.service_type,
+      bookingDate: booking.created_at,if (coupleId) {
+      eventDate: booking.event_date,$${paramIndex}`);
+      status: booking.status,Id);
+      amount: parseFloat(booking.total_amount || 0),
+      downPayment: parseFloat(booking.total_amount || 0) * 0.3, // Assume 30% down payment
+      remainingBalance: parseFloat(booking.total_amount || 0) * 0.7,
+      createdAt: booking.created_at,
+      updatedAt: booking.updated_at,
+      location: booking.location,
+      notes: booking.notes,
+      contactPhone: booking.contact_phone
+    }));
+{
+    // Get total count for pagination with same filtering;
+    let totalResult;;
+    if (vendorId) {
+      totalResult = await sql`SELECT COUNT(*) as total FROM bookings WHERE vendor_id = ${vendorId}`;
+    } else if (coupleId) {
+      totalResult = await sql`SELECT COUNT(*) as total FROM bookings WHERE couple_id = ${coupleId}`;
+    } else {
+      totalResult = await sql`SELECT COUNT(*) as total FROM bookings`;
+    }
+    const total = parseInt(totalResult[0]?.total || 0);
 
+    console.log(`✅ [Bookings API] Found ${formattedBookings.length} bookings (${total} total)`);ause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+ parseInt(limit as string);
     res.json({
-      success: true,
-      bookings: formattedBookings,
-      pagination: {
+      success: true, bookings with comprehensive data (simplified query)
+      bookings: formattedBookings,et bookings;
+      pagination: {let countResult;
         currentPage: parseInt(page as string),
         totalPages: Math.ceil(total / parseInt(limit as string)),
-        totalBookings: total,
+        totalBookings: total,  bookings = await sql`
         hasNext: (parseInt(page as string) * parseInt(limit as string)) < total,
-        hasPrev: parseInt(page as string) > 1
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching bookings:', error);
-    // Fallback to empty array if database error
+        hasPrev: parseInt(page as string) > 1.couple_id, b.vendor_id, b.service_id, b.service_type, b.service_name,
+      }te, b.event_time, b.event_location, b.guest_count, 
+    });      b.special_requests, b.contact_phone, b.preferred_contact_method,
+  } catch (error) {range, b.status, b.total_amount, b.notes,
+    console.error('Error fetching bookings:', error);pdated_at,
+    // Fallback to empty array if database erroriness_name as vendor_name, 
     res.json({
       success: true,
       bookings: [],
       pagination: {
-        currentPage: 1,
+        currentPage: 1,u.email as couple_email
         totalPages: 0,
-        totalBookings: 0,
-        hasNext: false,
+        totalBookings: 0,v.id
+        hasNext: false, = u.id
         hasPrev: false
       }
-    });
+    });lue}
   }
 });
 
@@ -1575,26 +1646,26 @@ app.get('/api/bookings', async (req, res) => {
 app.get('/api/bookings/enhanced', async (req, res) => {
   try {
     const { 
-      page = 1, 
+      page = 1, else if (vendorId) {
       limit = 10, 
       coupleId, 
-      vendorId, 
-      serviceId,
-      status,
-      sortBy = 'created_at', 
-      sortOrder = 'DESC' 
-    } = req.query;
+      vendorId, e_id, b.vendor_id, b.service_id, b.service_type, b.service_name,
+      serviceId,.event_location, b.guest_count, 
+      status,  b.special_requests, b.contact_phone, b.preferred_contact_method,
+      sortBy = 'created_at', b.status, b.total_amount, b.notes,
+      sortOrder = 'DESC' pdated_at,
+    } = req.query;iness_name as vendor_name, 
     
     console.log('📥 [Enhanced Bookings API] Query params:', { 
       page, limit, coupleId, vendorId, serviceId, status, sortBy, sortOrder 
     });
-    
+    u.email as couple_email
     // Build WHERE clause based on filters
-    let whereConditions = [];
-    let queryParams = [];
+    let whereConditions = [];v.id
+    let queryParams = []; = u.id
     let paramIndex = 1;
     
-    if (coupleId) {
+    if (coupleId) {lue}
       whereConditions.push(`b.couple_id = $${paramIndex}`);
       queryParams.push(coupleId);
       paramIndex++;
@@ -1602,26 +1673,26 @@ app.get('/api/bookings/enhanced', async (req, res) => {
     
     if (vendorId) {
       whereConditions.push(`b.vendor_id = $${paramIndex}`);
-      queryParams.push(vendorId);
+      queryParams.push(vendorId);else {
       paramIndex++;
     }
     
-    if (serviceId) {
-      whereConditions.push(`b.service_id = $${paramIndex}`);
-      queryParams.push(serviceId);
-      paramIndex++;
-    }
-    
+    if (serviceId) {d, b.service_id, b.service_type, b.service_name,
+      whereConditions.push(`b.service_id = $${paramIndex}`);  b.event_date, b.event_time, b.event_location, b.guest_count, 
+      queryParams.push(serviceId);special_requests, b.contact_phone, b.preferred_contact_method,
+      paramIndex++; b.status, b.total_amount, b.notes,
+    }pdated_at,
+    iness_name as vendor_name, 
     if (status) {
       whereConditions.push(`b.status = $${paramIndex}`);
       queryParams.push(status);
       paramIndex++;
-    }
+    }u.email as couple_email
     
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-    const offsetValue = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';v.id
+    const offsetValue = (parseInt(page as string) - 1) * parseInt(limit as string); = u.id
     
-    // Get enhanced bookings with comprehensive data (simplified query)
+    // Get enhanced bookings with comprehensive data (simplified query) OFFSET ${offsetValue}
     let bookings;
     let countResult;
     
@@ -1630,139 +1701,62 @@ app.get('/api/bookings/enhanced', async (req, res) => {
         SELECT 
           b.id, b.couple_id, b.vendor_id, b.service_id, b.service_type, b.service_name,
           b.event_date, b.event_time, b.event_location, b.guest_count, 
-          b.special_requests, b.contact_phone, b.preferred_contact_method,
-          b.budget_range, b.status, b.total_amount, b.notes,
-          b.created_at, b.updated_at,
+          b.special_requests, b.contact_phone, b.preferred_contact_method,eInt(countResult[0].total);
+          b.budget_range, b.status, b.total_amount, b.notes,(totalBookings / parseInt(limit as string));
+          b.created_at, b.updated_at, = parseInt(page as string);
           v.business_name as vendor_name, 
-          v.business_type as vendor_category,
-          v.location as vendor_location,
+          v.business_type as vendor_category,/ Format comprehensive booking data
+          v.location as vendor_location,const formattedBookings = bookings.map(booking => ({
           v.contact_phone as vendor_phone,
           v.website_url as vendor_website,
           u.first_name, u.last_name, u.email as couple_email
-        FROM bookings b
+        FROM bookings b  serviceId: booking.service_id,
         LEFT JOIN vendors v ON b.vendor_id = v.id
         LEFT JOIN users u ON b.couple_id = u.id
-        WHERE b.couple_id = ${coupleId}
-        ORDER BY b.created_at DESC
-        LIMIT ${parseInt(limit as string)} OFFSET ${offsetValue}
-      `;
+        WHERE b.couple_id = ${coupleId}ing.event_date,
+        ORDER BY b.created_at DESCe,
+        LIMIT ${parseInt(limit as string)} OFFSET ${offsetValue}_location,
+      `;t,
       
-      countResult = await sql`
-        SELECT COUNT(*) as total
-        FROM bookings b
+      countResult = await sql`equests,
+        SELECT COUNT(*) as totalphone,
+        FROM bookings bg.preferred_contact_method,
         WHERE b.couple_id = ${coupleId}
-      `;
+      `;total_amount || '0'),
     } else if (vendorId) {
       bookings = await sql`
         SELECT 
           b.id, b.couple_id, b.vendor_id, b.service_id, b.service_type, b.service_name,
-          b.event_date, b.event_time, b.event_location, b.guest_count, 
+          b.event_date, b.event_time, b.event_location, b.guest_count, dor_name,
           b.special_requests, b.contact_phone, b.preferred_contact_method,
-          b.budget_range, b.status, b.total_amount, b.notes,
-          b.created_at, b.updated_at,
-          v.business_name as vendor_name, 
+          b.budget_range, b.status, b.total_amount, b.notes,ng.vendor_location,
+          b.created_at, b.updated_at,one,
+          v.business_name as vendor_name, website,
           v.business_type as vendor_category,
-          v.location as vendor_location,
-          v.contact_phone as vendor_phone,
+          v.location as vendor_location,& booking.last_name 
+          v.contact_phone as vendor_phone,t_name}` 
           v.website_url as vendor_website,
           u.first_name, u.last_name, u.email as couple_email
         FROM bookings b
-        LEFT JOIN vendors v ON b.vendor_id = v.id
-        LEFT JOIN users u ON b.couple_id = u.id
+        LEFT JOIN vendors v ON b.vendor_id = v.idevent_date 
+        LEFT JOIN users u ON b.couple_id = u.id'en-US', {
         WHERE b.vendor_id = ${vendorId}
-        ORDER BY b.created_at DESC
+        ORDER BY b.created_at DESC: 'numeric',
         LIMIT ${parseInt(limit as string)} OFFSET ${offsetValue}
       `;
       
       countResult = await sql`
-        SELECT COUNT(*) as total
-        FROM bookings b
-        WHERE b.vendor_id = ${vendorId}
-      `;
+        SELECT COUNT(*) as totalvent_time || 'All day',
+        FROM bookings bColor(booking.status),
+        WHERE b.vendor_id = ${vendorId}', 'quote_requested', 'quote_sent'].includes(booking.status),
+      `;status === 'quote_sent'
     } else {
       // Get all bookings
-      bookings = await sql`
+      bookings = await sql`formattedBookings.length} bookings`);
         SELECT 
           b.id, b.couple_id, b.vendor_id, b.service_id, b.service_type, b.service_name,
           b.event_date, b.event_time, b.event_location, b.guest_count, 
-          b.special_requests, b.contact_phone, b.preferred_contact_method,
-          b.budget_range, b.status, b.total_amount, b.notes,
-          b.created_at, b.updated_at,
-          v.business_name as vendor_name, 
-          v.business_type as vendor_category,
-          v.location as vendor_location,
-          v.contact_phone as vendor_phone,
-          v.website_url as vendor_website,
-          u.first_name, u.last_name, u.email as couple_email
-        FROM bookings b
-        LEFT JOIN vendors v ON b.vendor_id = v.id
-        LEFT JOIN users u ON b.couple_id = u.id
-        ORDER BY b.created_at DESC
-        LIMIT ${parseInt(limit as string)} OFFSET ${offsetValue}
-      `;
-      
-      countResult = await sql`
-        SELECT COUNT(*) as total
-        FROM bookings
-      `;
-    }
-    
-    const totalBookings = parseInt(countResult[0].total);
-    const totalPages = Math.ceil(totalBookings / parseInt(limit as string));
-    const currentPage = parseInt(page as string);
-    
-    // Format comprehensive booking data
-    const formattedBookings = bookings.map(booking => ({
-      id: booking.id,
-      coupleId: booking.couple_id,
-      vendorId: booking.vendor_id,
-      serviceId: booking.service_id,
-      serviceName: booking.service_name,
-      serviceType: booking.service_type,
-      eventDate: booking.event_date,
-      eventTime: booking.event_time,
-      eventLocation: booking.event_location,
-      guestCount: booking.guest_count,
-      budgetRange: booking.budget_range,
-      specialRequests: booking.special_requests,
-      contactPhone: booking.contact_phone,
-      preferredContactMethod: booking.preferred_contact_method,
-      status: booking.status,
-      totalAmount: parseFloat(booking.total_amount || '0'),
-      notes: booking.notes,
-      createdAt: booking.created_at,
-      updatedAt: booking.updated_at,
-      // Vendor information
-      vendorName: booking.vendor_name,
-      vendorCategory: booking.vendor_category,
-      vendorLocation: booking.vendor_location,
-      vendorPhone: booking.vendor_phone,
-      vendorWebsite: booking.vendor_website,
-      // Couple information
-      coupleName: booking.first_name && booking.last_name 
-        ? `${booking.first_name} ${booking.last_name}` 
-        : 'N/A',
-      coupleEmail: booking.couple_email,
-      // Additional UI-friendly fields
-      displayDate: booking.event_date 
-        ? new Date(booking.event_date).toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          })
-        : 'N/A',
-      displayTime: booking.event_time || 'All day',
-      statusColor: getStatusColor(booking.status),
-      canCancel: ['request', 'quote_requested', 'quote_sent'].includes(booking.status),
-      canConfirm: booking.status === 'quote_sent'
-    }));
-    
-    console.log(`✅ [Enhanced Bookings API] Found ${formattedBookings.length} bookings`);
-    
-    res.json({
-      success: true,
-      bookings: formattedBookings,
+          b.special_requests, b.contact_phone, b.preferred_contact_method,okings: formattedBookings,
       pagination: {
         currentPage,
         totalPages,
