@@ -175,6 +175,97 @@ app.get('/api/vendors/featured', async (req, res) => {
   }
 });
 
+// Basic auth endpoints for testing
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log('🔐 Login attempt for:', email);
+    
+    // For now, return a mock successful login
+    // In production, you'd validate against the database
+    res.json({
+      success: true,
+      message: 'Login successful',
+      user: {
+        id: 'mock-user-id',
+        email: email,
+        name: 'Test User',
+        type: 'individual'
+      },
+      token: 'mock-jwt-token'
+    });
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Login failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    console.log('👤 Register attempt for:', email);
+    
+    // For now, return a mock successful registration
+    res.json({
+      success: true,
+      message: 'Registration successful',
+      user: {
+        id: 'mock-user-id',
+        email: email,
+        name: name,
+        type: 'individual'
+      },
+      token: 'mock-jwt-token'
+    });
+  } catch (error) {
+    console.error('❌ Register error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Registration failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+app.post('/api/auth/verify', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    console.log('🔍 Token verification for:', token?.substring(0, 20) + '...');
+    
+    // For now, return mock verification result
+    if (token && token !== 'null' && token !== 'undefined') {
+      res.json({
+        success: true,
+        authenticated: true,
+        user: {
+          id: 'mock-user-id',
+          email: 'test@example.com',
+          name: 'Test User',
+          type: 'individual'
+        }
+      });
+    } else {
+      res.json({
+        success: false,
+        authenticated: false,
+        message: 'Token not found or invalid'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Token verification error:', error);
+    res.status(500).json({
+      success: false,
+      authenticated: false,
+      error: 'Verification failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Test database connection
 async function testDatabaseConnection() {
   try {
