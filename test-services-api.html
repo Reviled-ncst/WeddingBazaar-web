@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Services API Test</title>
+</head>
+<body>
+    <h1>Testing Services API</h1>
+    <div id="results"></div>
+    
+    <script>
+        async function testAPI() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                console.log('Testing /api/services endpoint...');
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/services');
+                const data = await response.json();
+                
+                console.log('Services response:', data);
+                
+                resultsDiv.innerHTML = `
+                    <h2>Services API Response:</h2>
+                    <p><strong>Success:</strong> ${data.success}</p>
+                    <p><strong>Services Type:</strong> ${typeof data.services}</p>
+                    <p><strong>Services Length:</strong> ${Array.isArray(data.services) ? data.services.length : 'Not an array'}</p>
+                    <p><strong>Count:</strong> ${data.count}</p>
+                    <pre style="background: #f0f0f0; padding: 10px;">${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                resultsDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>

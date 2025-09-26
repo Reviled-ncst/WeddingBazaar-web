@@ -20,7 +20,7 @@ import { useUniversalMessaging } from '../../../../shared/contexts/UniversalMess
 // Service interface
 interface Service {
   id: string;
-  name: string;;
+  name: string;
   category: string;
   vendorId: string;
   vendorName: string;
@@ -257,6 +257,7 @@ export const Services: React.FC = () => {
 
         // Multiple endpoint strategy for better reliability
         const endpoints = [
+          `${API_BASE}/api/services/simple`,
           `${API_BASE}/api/services`,
           `${API_BASE}/api/services/direct`
         ];
@@ -320,8 +321,8 @@ export const Services: React.FC = () => {
                     location: 'Metro Manila, Philippines',
                     rating: 4.5 + Math.random() * 0.4, // Random rating between 4.5-4.9
                     reviewCount: Math.floor(Math.random() * 100) + 20, // Random reviews 20-120
-                    image: service.images?.[0] || categoryImages[category] || categoryImages['Wedding Services'],
-                    gallery: service.images || [categoryImages[category] || categoryImages['Wedding Services']],
+                    image: service.images?.[0] || categoryImages[category as keyof typeof categoryImages] || categoryImages['Wedding Services'],
+                    gallery: service.images || [categoryImages[category as keyof typeof categoryImages] || categoryImages['Wedding Services']],
                     features: [
                       category === 'Photography' ? 'Professional Photography' : 
                       category === 'Music & DJ' ? 'Professional DJ Services' :
@@ -346,7 +347,7 @@ export const Services: React.FC = () => {
               }
             }
           } catch (error) {
-            console.warn(`❌ [Services] Failed to load from ${endpoint}:`, error.message);
+            console.warn(`❌ [Services] Failed to load from ${endpoint}:`, error instanceof Error ? error.message : String(error));
           }
         }
 
