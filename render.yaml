@@ -4,8 +4,8 @@ services:
     name: weddingbazaar-backend
     env: node
     plan: free
-    buildCommand: npm install
-    startCommand: node backend-deploy/index.js
+    buildCommand: cd backend-deploy && npm install && npm run build
+    startCommand: cd backend-deploy && npm start
     envVars:
       - key: NODE_ENV
         value: production
