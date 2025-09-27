@@ -885,13 +885,13 @@ export class BookingApiService {
         metadata: bookingData.metadata
       };
 
-      // Force production API URL to match CentralizedServiceManager behavior
-      const apiBaseUrl = 'https://weddingbazaar-web.onrender.com';
+      // Use production backend API - now fully functional with comprehensive backend v2.0
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://weddingbazaar-web.onrender.com';
       const createBookingUrl = `${apiBaseUrl}/api/bookings/request`;
       
-      console.log('🔧 [BookingAPI] FORCED API URL:', apiBaseUrl);
-      console.log('🎯 [BookingAPI] ENV VITE_API_URL (ignored):', import.meta.env.VITE_API_URL);
-      console.log('🚨 [BookingAPI] FORCING PRODUCTION backend for booking requests');
+      console.log('🔧 [BookingAPI] Using production backend API URL:', apiBaseUrl);
+      console.log('🎯 [BookingAPI] Production backend v2.0 with all endpoints functional');
+      console.log('✅ [BookingAPI] Using PRODUCTION backend for booking requests');
       
       console.log('🌐 [BookingAPI] Making backend API call to:', createBookingUrl);
       console.log('🌐 [BookingAPI] Payload:', backendPayload);
@@ -1216,7 +1216,9 @@ export class BookingApiService {
     try {
       console.log('🔍 [CentralizedAPI] Fetching bookings for:', { userId, userType, options });
       
-      const apiBaseUrl = 'https://weddingbazaar-web.onrender.com'; // Force production URL
+      // Production API strategy: Use production backend v2.0 for all endpoints
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://weddingbazaar-web.onrender.com';
+      console.log('🔧 [CentralizedAPI] Using production booking API URL:', apiBaseUrl);
       
       // Build query parameters
       const queryParams = new URLSearchParams();
