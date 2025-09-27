@@ -189,9 +189,7 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
       console.log(`🔄 [UniversalMessaging] Loading conversations for ${currentUser.role}: ${currentUser.name}`);
       
       const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      const endpoint = currentUser.role === 'vendor' 
-        ? `${apiUrl}/api/conversations/conversations/${currentUser.id}`
-        : `${apiUrl}/api/conversations/individual/${currentUser.id}`;
+      const endpoint = `${apiUrl}/api/conversations/${currentUser.id}`;
       
       const response = await fetch(endpoint);
       
