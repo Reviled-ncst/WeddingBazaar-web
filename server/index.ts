@@ -1406,5 +1406,24 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
+// Debug endpoint to check database content
+app.get('/api/debug/conversations', async (req, res) => {
+  try {
+    const conversations = await db.executeQuery`SELECT * FROM conversations ORDER BY created_at DESC LIMIT 10`;
+    const messages = await db.executeQuery`SELECT * FROM messages ORDER BY created_at DESC LIMIT 20`;
+    
+    res.json({
+      conversations: conversations,
+      conversationCount: conversations.length,
+      messages: messages,
+      messageCount: messages.length,
+      conversationColumns: conversations.length > 0 ? Object.keys(conversations[0]) : [],
+      messageColumns: messages.length > 0 ? Object.keys(messages[0]) : []
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start the server
 startServer();

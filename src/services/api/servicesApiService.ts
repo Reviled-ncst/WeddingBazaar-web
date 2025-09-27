@@ -120,7 +120,8 @@ export class ServicesApiService {
 
   static async getServicesByVendor(vendorId: string): Promise<ApiService[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/vendors/${vendorId}/services`, {
+      console.log('📡 [ServicesApiService] Fetching services for vendor:', vendorId);
+      const response = await fetch(`${this.baseUrl}/api/services/vendor/${vendorId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -128,13 +129,19 @@ export class ServicesApiService {
         credentials: 'include'
       });
 
+      console.log('📡 [ServicesApiService] Response status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('📡 [ServicesApiService] Error response:', errorText);
         throw new Error(`Failed to fetch vendor services: ${response.status} ${response.statusText}. ${errorText}`);
       }
 
       const data = await response.json();
-      return data.services || [];
+      console.log('📡 [ServicesApiService] Response data:', data);
+      
+      // The backend returns services directly, not wrapped in a services property
+      return Array.isArray(data) ? data : (data.services || []);
     } catch (error) {
       console.error('ServicesApiService.getServicesByVendor error:', error);
       throw error;

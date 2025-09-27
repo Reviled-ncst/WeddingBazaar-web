@@ -62,6 +62,8 @@ interface ServiceFilters {
 }
 
 export function Services() {
+  console.log('🎯 [Services] *** SERVICES COMPONENT RENDERED ***');
+  
   const [services, setServices] = useState<Service[]>([]);
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,18 +82,26 @@ export function Services() {
 
   // Load services using centralized service manager
   useEffect(() => {
+    console.log('🚀 [Services] *** USEEFFECT TRIGGERED ***');
+    console.log('🔧 [Services] Component filters:', { selectedCategory, featuredOnly, ratingFilter });
+    
     const loadServices = async () => {
+      console.log('📋 [Services] *** CALLING LOADSERVICES FUNCTION ***');
       setLoading(true);
       console.log('🔄 [Services] Loading services with centralized manager...');
       
-      const filters: ServiceFilters = {
+      const filters = {
         category: selectedCategory !== 'All' ? selectedCategory : undefined,
         featured: featuredOnly || undefined,
         rating: ratingFilter || undefined,
         limit: 50
       };
 
+      console.log('🔧 [Services] *** ABOUT TO CALL SERVICEMANAGER ***');
+      console.log('🔧 [Services] Filters being passed:', filters);
+      
       try {
+        console.log('📡 [Services] *** CALLING serviceManager.getAllServices ***');
         const result = await serviceManager.getAllServices(filters);
         
         if (result.success && result.services.length > 0) {
