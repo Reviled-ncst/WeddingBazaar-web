@@ -301,6 +301,63 @@ app.get('/api/vendors/featured', async (req, res) => {
   }
 });
 
+// Vendors Categories endpoint - provides category-based vendor organization
+app.get('/api/vendors/categories', async (req, res) => {
+  try {
+    console.log('📂 [API] GET /api/vendors/categories called');
+    
+    // Group vendors by category
+    const categories = {};
+    mockVendors.forEach(vendor => {
+      const category = vendor.category || 'Other';
+      if (!categories[category]) {
+        categories[category] = [];
+      }
+      categories[category].push(vendor);
+    });
+    
+    // Convert to array format with category info
+    const categoryArray = Object.keys(categories).map(categoryName => ({
+      id: categoryName.toLowerCase().replace(/\s+/g, '-'),
+      name: categoryName,
+      count: categories[categoryName].length,
+      vendors: categories[categoryName],
+      description: `Professional ${categoryName.toLowerCase()} services for your wedding`,
+      image: getCategoryImage(categoryName)
+    }));
+    
+    res.json({
+      success: true,
+      categories: categoryArray,
+      total: categoryArray.length,
+      totalVendors: mockVendors.length,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [API] Vendor categories endpoint failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch vendor categories',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Helper function to get category images
+function getCategoryImage(category) {
+  const categoryImages = {
+    'Wedding Planning': 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&h=400&fit=crop',
+    'Photography': 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=600&h=400&fit=crop',
+    'DJ': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=400&fit=crop',
+    'Florist': 'https://images.unsplash.com/photo-1563241527-3004b7be0ffd?w=600&h=400&fit=crop',
+    'Venue': 'https://images.unsplash.com/photo-1519167758481-83f29b1fe9c2?w=600&h=400&fit=crop',
+    'Other': 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop'
+  };
+  return categoryImages[category] || categoryImages['Other'];
+}
+
 app.get('/api/vendors/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -991,6 +1048,7 @@ app.use('*', (req, res) => {
       vendors: {
         all: 'GET /api/vendors',
         featured: 'GET /api/vendors/featured',
+        categories: 'GET /api/vendors/categories',
         byId: 'GET /api/vendors/:id'
       },
       services: {
@@ -1049,6 +1107,7 @@ async function startServer() {
       console.log('   Ping: GET /api/ping');
       console.log('   Vendors: GET /api/vendors');
       console.log('   Featured Vendors: GET /api/vendors/featured');
+      console.log('   Vendor Categories: GET /api/vendors/categories');
       console.log('   Services: GET /api/services');
       console.log('   Auth Login: POST /api/auth/login');
       console.log('   Auth Register: POST /api/auth/register');
