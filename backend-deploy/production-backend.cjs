@@ -421,19 +421,24 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // Simple mock authentication
-    const user = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+    // Demo authentication - accept any valid email for testing
+    let user = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
     
+    // If user doesn't exist, create a demo user for any valid email
     if (!user) {
-      console.log('❌ [AUTH] User not found:', email);
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials',
-        timestamp: new Date().toISOString()
-      });
+      console.log('🔧 [AUTH] Creating demo user for:', email);
+      user = {
+        id: String(mockUsers.length + 1),
+        email: email.toLowerCase(),
+        password: 'demo-password',
+        firstName: 'Demo',
+        lastName: 'User',
+        role: 'couple'
+      };
+      mockUsers.push(user);
     }
 
-    // For demo purposes, accept any password for now
+    // For demo purposes, accept any password
     console.log('✅ [AUTH] Login successful for:', email);
     
     const token = 'mock-jwt-token-' + Date.now();
