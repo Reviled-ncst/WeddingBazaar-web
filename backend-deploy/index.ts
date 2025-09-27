@@ -354,6 +354,103 @@ app.get('/api/placeholder/:width/:height', (req, res) => {
 
 console.log('✅ All routes registered');
 
+// ============================================================================
+// CRITICAL INLINE ROUTES - Bypass import issues for essential endpoints
+// ============================================================================
+
+// Vendors endpoint - Critical for frontend homepage
+app.get('/api/vendors', async (req, res) => {
+  try {
+    console.log('🏪 [InlineAPI] GET /api/vendors called');
+    const vendors = await vendorService.getFeaturedVendors();
+    res.json({
+      success: true,
+      vendors: vendors,
+      total: vendors.length
+    });
+  } catch (error) {
+    console.error('❌ [InlineAPI] Vendors endpoint failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch vendors',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Featured vendors endpoint - Critical for frontend homepage
+app.get('/api/vendors/featured', async (req, res) => {
+  try {
+    console.log('⭐ [InlineAPI] GET /api/vendors/featured called');
+    const vendors = await vendorService.getFeaturedVendors();
+    res.json({
+      success: true,
+      vendors: vendors,
+      total: vendors.length
+    });
+  } catch (error) {
+    console.error('❌ [InlineAPI] Featured vendors endpoint failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch featured vendors',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Booking request endpoint - Critical for booking system
+app.post('/api/bookings/request', async (req, res) => {
+  try {
+    console.log('📝 [InlineAPI] POST /api/bookings/request called');
+    console.log('📦 [InlineAPI] Request body:', req.body);
+    
+    const bookingData = req.body;
+    
+    // Create booking using the booking service
+    const booking = await bookingService.createBooking(bookingData, bookingData.coupleId || 'default-couple');
+    
+    res.json({
+      success: true,
+      booking: booking,
+      message: 'Booking request submitted successfully'
+    });
+  } catch (error) {
+    console.error('❌ [InlineAPI] Booking request failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create booking request',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Couple bookings endpoint - Critical for user dashboard
+app.get('/api/bookings/couple/:coupleId', async (req, res) => {
+  try {
+    const { coupleId } = req.params;
+    console.log('👥 [InlineAPI] GET /api/bookings/couple/' + coupleId + ' called');
+    
+    const bookings = await bookingService.getBookingsByCouple(coupleId);
+    
+    res.json({
+      success: true,
+      bookings: bookings,
+      total: Array.isArray(bookings) ? bookings.length : 0
+    });
+  } catch (error) {
+    console.error('❌ [InlineAPI] Couple bookings failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch couple bookings',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+console.log('🚀 Critical inline routes registered successfully');
+
+// ============================================================================
+
 // Add a direct conversations endpoint for compatibility
 app.post('/api/conversations', async (req, res) => {
   try {
