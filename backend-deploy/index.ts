@@ -28,8 +28,12 @@ import paymentRoutes from '../backend/api/payment/routes';
 import dssRoutes from '../backend/api/dss/routes';
 
 // Debug imports
-console.log('📦 Enhanced booking routes import type:', typeof enhancedBookingRoutes);
-console.log('📦 Enhanced booking routes:', enhancedBookingRoutes ? 'Loaded' : 'Failed');
+console.log('📦 Vendor routes type:', typeof vendorRoutes);
+console.log('📦 Booking routes type:', typeof bookingRoutes);
+console.log('📦 Enhanced booking routes type:', typeof enhancedBookingRoutes);
+console.log('📦 Vendor routes:', vendorRoutes ? 'Loaded' : '❌ FAILED');
+console.log('📦 Booking routes:', bookingRoutes ? 'Loaded' : '❌ FAILED');
+console.log('📦 Enhanced booking routes:', enhancedBookingRoutes ? 'Loaded' : '❌ FAILED');
 
 // Load environment variables
 config();
@@ -276,13 +280,54 @@ app.get('/api/conversations/individual/:userId', async (req, res) => {
   }
 });
 
-app.use('/api/vendors', vendorRoutes);
-app.use('/api/dss', dssRoutes);
-app.use('/api/bookings/enhanced', enhancedBookingRoutes);
-app.use('/api/bookings', bookingRoutes);
-app.use('/api/conversations', messagingRoutes);
-app.use('/api/payment', paymentRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);
+try {
+  app.use('/api/vendors', vendorRoutes);
+  console.log('✅ Vendors routes registered at /api/vendors');
+} catch (error) {
+  console.error('❌ Failed to register vendor routes:', error);
+}
+
+try {
+  app.use('/api/dss', dssRoutes);
+  console.log('✅ DSS routes registered at /api/dss');
+} catch (error) {
+  console.error('❌ Failed to register DSS routes:', error);
+}
+
+try {
+  app.use('/api/bookings/enhanced', enhancedBookingRoutes);
+  console.log('✅ Enhanced booking routes registered at /api/bookings/enhanced');
+} catch (error) {
+  console.error('❌ Failed to register enhanced booking routes:', error);
+}
+
+try {
+  app.use('/api/bookings', bookingRoutes);
+  console.log('✅ Booking routes registered at /api/bookings');
+} catch (error) {
+  console.error('❌ Failed to register booking routes:', error);
+}
+
+try {
+  app.use('/api/conversations', messagingRoutes);
+  console.log('✅ Messaging routes registered at /api/conversations');
+} catch (error) {
+  console.error('❌ Failed to register messaging routes:', error);
+}
+
+try {
+  app.use('/api/payment', paymentRoutes);
+  console.log('✅ Payment routes registered at /api/payment');
+} catch (error) {
+  console.error('❌ Failed to register payment routes:', error);
+}
+
+try {
+  app.use('/api/subscriptions', subscriptionRoutes);
+  console.log('✅ Subscription routes registered at /api/subscriptions');
+} catch (error) {
+  console.error('❌ Failed to register subscription routes:', error);
+}
 
 // Image proxy route for handling CORS issues with external images
 app.get('/api/image-proxy', ImageProxyService.proxyImage);
