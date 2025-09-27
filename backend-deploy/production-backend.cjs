@@ -783,6 +783,185 @@ app.put('/api/bookings/:id/status', async (req, res) => {
 });
 
 // ================================
+// MESSAGING ENDPOINTS
+// ================================
+
+// In-memory storage for conversations
+let conversationsStorage = [];
+let messagesStorage = [];
+let conversationIdCounter = 1;
+let messageIdCounter = 1;
+
+app.get('/api/conversations', async (req, res) => {
+  try {
+    console.log('💬 [MESSAGING] GET /api/conversations called');
+    
+    res.json({
+      success: true,
+      conversations: conversationsStorage,
+      total: conversationsStorage.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ [MESSAGING] Get conversations failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch conversations',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+app.get('/api/conversations/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log('💬 [MESSAGING] GET /api/conversations/' + userId + ' called');
+    
+    // Filter conversations for specific user
+    const userConversations = conversationsStorage.filter(conv => 
+      conv.participants.includes(userId)
+    );
+    
+    res.json({
+      success: true,
+      conversations: userConversations,
+      total: userConversations.length,
+      userId: userId,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ [MESSAGING] Get user conversations failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user conversations',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+app.post('/api/conversations', async (req, res) => {
+  try {
+    console.log('💬 [MESSAGING] POST /api/conversations called');
+    console.log('📦 [MESSAGING] Request body:', req.body);
+    
+    const { participants, title, type } = req.body;
+    
+    if (!participants || participants.length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'At least 2 participants required',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const conversation = {
+      id: String(conversationIdCounter++),
+      participants: participants,
+      title: title || `Conversation ${conversationIdCounter}`,
+      type: type || 'direct',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastMessage: null,
+      unreadCount: 0
+    };
+    
+    conversationsStorage.push(conversation);
+    
+    res.status(201).json({
+      success: true,
+      conversation: conversation,
+      message: 'Conversation created successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ [MESSAGING] Create conversation failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create conversation',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+app.get('/api/conversations/:conversationId/messages', async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    console.log('💬 [MESSAGING] GET messages for conversation:', conversationId);
+    
+    const messages = messagesStorage.filter(msg => msg.conversationId === conversationId);
+    
+    res.json({
+      success: true,
+      messages: messages,
+      total: messages.length,
+      conversationId: conversationId,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ [MESSAGING] Get messages failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch messages',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+app.post('/api/conversations/:conversationId/messages', async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { senderId, content, type } = req.body;
+    
+    console.log('💬 [MESSAGING] POST message to conversation:', conversationId);
+    
+    if (!senderId || !content) {
+      return res.status(400).json({
+        success: false,
+        error: 'Sender ID and content are required',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const message = {
+      id: String(messageIdCounter++),
+      conversationId: conversationId,
+      senderId: senderId,
+      content: content,
+      type: type || 'text',
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+    
+    messagesStorage.push(message);
+    
+    // Update conversation's last message
+    const conversationIndex = conversationsStorage.findIndex(conv => conv.id === conversationId);
+    if (conversationIndex !== -1) {
+      conversationsStorage[conversationIndex].lastMessage = message;
+      conversationsStorage[conversationIndex].updatedAt = new Date().toISOString();
+    }
+    
+    res.status(201).json({
+      success: true,
+      message: message,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ [MESSAGING] Send message failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send message',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ================================
 // ERROR HANDLING & 404
 // ================================
 
@@ -829,6 +1008,13 @@ app.use('*', (req, res) => {
         getByCouple: 'GET /api/bookings/couple/:coupleId',
         getById: 'GET /api/bookings/:id',
         updateStatus: 'PUT /api/bookings/:id/status'
+      },
+      messaging: {
+        getAllConversations: 'GET /api/conversations',
+        getUserConversations: 'GET /api/conversations/:userId',
+        createConversation: 'POST /api/conversations',
+        getMessages: 'GET /api/conversations/:conversationId/messages',
+        sendMessage: 'POST /api/conversations/:conversationId/messages'
       }
     },
     timestamp: new Date().toISOString()

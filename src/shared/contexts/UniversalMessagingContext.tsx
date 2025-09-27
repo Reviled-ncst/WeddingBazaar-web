@@ -133,14 +133,22 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
       setCurrentUser(chatUser);
       console.log('✅ [UniversalMessaging] Current user initialized:', chatUser);
     } else {
-      // TEMPORARY: Create a test user for demo purposes
-      const testUser: ChatUser = {
+      // TEMPORARY: Create a test user for demo purposes based on current path
+      const isVendorPath = window.location.pathname.includes('/vendor');
+      const testUser: ChatUser = isVendorPath ? {
         id: '2-2025-003',
         name: 'Sarah Johnson Photography',
         role: 'vendor',
         avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
         businessName: 'Sarah Johnson Photography',
         serviceCategory: 'Photography'
+      } : {
+        id: '1-2025-001',
+        name: 'Demo User',
+        role: 'couple',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+        businessName: undefined,
+        serviceCategory: undefined
       };
       setCurrentUser(testUser);
       console.log('🧪 [UniversalMessaging] Using test user for demo:', testUser);
