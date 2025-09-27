@@ -1,12 +1,12 @@
 {
   "name": "wedding-bazaar-backend",
-  "version": "1.0.0",
-  "description": "Wedding Bazaar Backend API - Simple Version",
-  "main": "dist/standalone.js",
+  "version": "2.0.0",
+  "description": "Wedding Bazaar Backend API - Production Version",
+  "main": "production-backend.cjs",
   "scripts": {
-    "build": "tsc standalone.ts --outDir dist --target ES2020 --module commonjs --esModuleInterop --skipLibCheck",
-    "start": "node dist/standalone.js",
-    "dev": "ts-node standalone.ts"
+    "start": "node production-backend.cjs",
+    "dev": "node production-backend.cjs",
+    "test": "node production-backend.cjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.6.1",
