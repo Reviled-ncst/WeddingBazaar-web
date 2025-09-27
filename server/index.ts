@@ -802,7 +802,7 @@ app.get('/api/services', async (req, res) => {
       priceRange: dbService.price ? `$${Math.floor(dbService.price * 0.8)} - $${Math.floor(dbService.price * 1.2)}` : '$$',
       image: Array.isArray(dbService.images) && dbService.images.length > 0 
         ? dbService.images[0] 
-        : 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+        : 'https://images.unsplash.com/photo-1519741497674-611481863552?w=400',
       gallery: Array.isArray(dbService.images) && dbService.images.length > 1 
         ? dbService.images.slice(1) 
         : [],
@@ -1271,7 +1271,7 @@ app.get('/api/services/direct', async (req, res) => {
       priceRange: dbService.price < 500 ? '$' : dbService.price < 1500 ? '$$' : dbService.price < 3000 ? '$$$' : '$$$$',
       image: dbService.images && dbService.images.length > 0 
         ? dbService.images[0] 
-        : 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400',
+        : 'https://images.unsplash.com/photo-1519741497674-611481863552?w=400',
       gallery: dbService.images && dbService.images.length > 1 ? dbService.images.slice(1) : [],
       description: dbService.description || 'Professional wedding service',
       features: [dbService.category || 'Professional Service'],

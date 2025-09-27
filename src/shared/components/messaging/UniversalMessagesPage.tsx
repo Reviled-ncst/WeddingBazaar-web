@@ -49,18 +49,25 @@ export const UniversalMessagesPage: React.FC<UniversalMessagesPageProps> = ({
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState('');
 
-  // Filter conversations based on current filter
-  const filteredConversations = conversations.filter(conv => {
-    const matchesSearch = searchTerm === '' || 
-      conv.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      conv.participants.some(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesFilter = filter === 'all' || 
-                         (filter === 'unread' && conv.unreadCount > 0) ||
-                         (filter === 'archived' && conv.metadata?.status === 'archived');
-    
-    return matchesSearch && matchesFilter;
-  });
+  // Filter and sort conversations based on current filter (latest first)
+  const filteredConversations = conversations
+    .filter(conv => {
+      const matchesSearch = searchTerm === '' || 
+        conv.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        conv.participants.some(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesFilter = filter === 'all' || 
+                           (filter === 'unread' && conv.unreadCount > 0) ||
+                           (filter === 'archived' && conv.metadata?.status === 'archived');
+      
+      return matchesSearch && matchesFilter;
+    })
+    .sort((a, b) => {
+      // Sort by most recent activity (updatedAt) first, fallback to lastMessage timestamp
+      const aTime = a.lastMessage?.timestamp || a.updatedAt;
+      const bTime = b.lastMessage?.timestamp || b.updatedAt;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
+    });
 
   const handleConversationClick = (conversationId: string) => {
     setSelectedConversation(conversationId);
@@ -273,7 +280,12 @@ export const UniversalMessagesPage: React.FC<UniversalMessagesPageProps> = ({
                               
                               {conversation.lastMessage && (
                                 <p className="text-sm text-gray-600 truncate">
-                                  {conversation.lastMessage.senderRole === currentUser?.role ? 'You: ' : ''}
+                                  <span className="font-medium">
+                                    {conversation.lastMessage.senderRole === currentUser?.role 
+                                      ? 'You: ' 
+                                      : `${conversation.lastMessage.senderName}: `
+                                    }
+                                  </span>
                                   {conversation.lastMessage.content}
                                 </p>
                               )}

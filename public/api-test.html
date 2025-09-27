@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🧪 Wedding Bazaar API Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: #f5f5f5;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .info { color: #007bff; }
+        .warning { color: #ffc107; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 5px; 
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #007bff;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Wedding Bazaar API & CORS Test</h1>
+        <div id="results"></div>
+    </div>
+    
+    <script>
+    async function runAllTests() {
+        const resultsDiv = document.getElementById('results');
+        const apiUrl = 'http://localhost:3001';
+        
+        function createSection(title, content = '') {
+            const section = document.createElement('div');
+            section.className = 'test-section';
+            section.innerHTML = `<h3>${title}</h3>${content}`;
+            resultsDiv.appendChild(section);
+            return section;
+        }
+        
+        function addToSection(section, content, type = 'info') {
+            const p = document.createElement('p');
+            p.className = type;
+            p.innerHTML = content;
+            section.appendChild(p);
+        }
+        
+        // Header info
+        const headerSection = createSection('🔍 Test Configuration');
+        addToSection(headerSection, `<strong>Frontend Origin:</strong> ${window.location.origin}`, 'info');
+        addToSection(headerSection, `<strong>Backend URL:</strong> ${apiUrl}`, 'info');
+        addToSection(headerSection, `<strong>Browser:</strong> ${navigator.userAgent.split(')')[0]})`, 'info');
+        
+        // Test 1: Health Check
+        const healthSection = createSection('🧪 Test 1: Health Check');
+        try {
+            addToSection(healthSection, '⏳ Testing health endpoint...', 'info');
+            
+            const startTime = Date.now();
+            const response = await fetch(`${apiUrl}/api/health`, {
+                method: 'GET',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const duration = Date.now() - startTime;
+            
+            addToSection(healthSection, `⏱️ Response time: ${duration}ms`, 'info');
+            addToSection(healthSection, `📊 Status: ${response.status} ${response.statusText}`, 'info');
+            
+            if (response.ok) {
+                const data = await response.json();
+                addToSection(healthSection, '✅ Health check PASSED - CORS is working!', 'success');
+                addToSection(healthSection, `<pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+            } else {
+                addToSection(healthSection, `❌ Health check failed: ${response.status}`, 'error');
+            }
+        } catch (error) {
+            addToSection(healthSection, `❌ Health check error: ${error.message}`, 'error');
+            if (error.message.includes('Failed to fetch')) {
+                addToSection(healthSection, '🚫 CORS ERROR: Backend not allowing frontend origin!', 'error');
+            }
+        }
+        
+        // Test 2: Database Scan
+        const dbSection = createSection('🧪 Test 2: Database Scan');
+        try {
+            addToSection(dbSection, '⏳ Testing database scan...', 'info');
+            
+            const response = await fetch(`${apiUrl}/api/database/scan`, {
+                method: 'GET',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                addToSection(dbSection, '✅ Database scan PASSED', 'success');
+                addToSection(dbSection, `📊 Services found: <strong>${data.services?.length || 0}</strong>`, 'success');
+                
+                if (data.services && data.services.length > 0) {
+                    const categories = [...new Set(data.services.map(s => s.category))];
+                    addToSection(dbSection, `📂 Categories (${categories.length}): ${categories.join(', ')}`, 'success');
+                    
+                    const sample = data.services[0];
+                    addToSection(dbSection, `🔍 Sample service: ${sample.name || 'No name'} (${sample.category}) - ₱${sample.price}`, 'success');
+                }
+            } else {
+                addToSection(dbSection, `❌ Database scan failed: ${response.status}`, 'error');
+            }
+        } catch (error) {
+            addToSection(dbSection, `❌ Database scan error: ${error.message}`, 'error');
+        }
+        
+        // Test 3: Emergency Services
+        const emergencySection = createSection('🧪 Test 3: Emergency Services');
+        try {
+            addToSection(emergencySection, '⏳ Testing emergency services...', 'info');
+            
+            const response = await fetch(`${apiUrl}/api/services/emergency`, {
+                method: 'GET',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                addToSection(emergencySection, '✅ Emergency services PASSED', 'success');
+                addToSection(emergencySection, `📊 Services found: <strong>${data.services?.length || 0}</strong>`, 'success');
+            } else {
+                addToSection(emergencySection, `❌ Emergency services failed: ${response.status}`, 'error');
+            }
+        } catch (error) {
+            addToSection(emergencySection, `❌ Emergency services error: ${error.message}`, 'error');
+        }
+        
+        // Final Summary
+        const summarySection = createSection('🏁 Test Summary');
+        addToSection(summarySection, '<strong>✅ If all tests PASSED:</strong> The frontend should be able to load services!', 'success');
+        addToSection(summarySection, '<strong>❌ If tests FAILED:</strong> Check CORS configuration in backend', 'error');
+        addToSection(summarySection, '🔧 Next step: Refresh the Services page to see if services load', 'info');
+    }
+    
+    // Run all tests when page loads
+    runAllTests();
+    </script>
+</body>
+</html>

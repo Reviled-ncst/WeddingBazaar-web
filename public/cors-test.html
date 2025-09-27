@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🧪 Wedding Bazaar CORS Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .success { color: #22c55e; font-weight: bold; }
+        .error { color: #ef4444; font-weight: bold; }
+        .info { color: #3b82f6; }
+        .warning { color: #f59e0b; }
+        pre { 
+            background: #f8fafc; 
+            padding: 15px; 
+            border-radius: 8px; 
+            overflow-x: auto;
+            border-left: 4px solid #3b82f6;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .test-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Wedding Bazaar CORS & Services Test</h1>
+    
+    <div class="test-section">
+        <div class="test-header">🔍 Connection Information</div>
+        <p class="info"><strong>Frontend Origin:</strong> <span id="frontend-origin"></span></p>
+        <p class="info"><strong>Backend URL:</strong> http://localhost:3001</p>
+        <p class="info"><strong>Test Time:</strong> <span id="test-time"></span></p>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        // Set up page info
+        document.getElementById('frontend-origin').textContent = window.location.origin;
+        document.getElementById('test-time').textContent = new Date().toLocaleString();
+        
+        const resultsDiv = document.getElementById('results');
+        const apiUrl = 'http://localhost:3001';
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = message;
+            resultsDiv.appendChild(div);
+            console.log(message.replace(/<[^>]*>/g, '')); // Also log to console
+        }
+        
+        async function runTests() {
+            log('<div class="test-header">🚀 Running CORS and Services Tests...</div>');
+            
+            // Test 1: Health Check
+            try {
+                log('<div class="test-header">🧪 Test 1: Backend Health Check</div>');
+                
+                const startTime = performance.now();
+                const response = await fetch(`${apiUrl}/api/health`, {
+                    method: 'GET',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    mode: 'cors'
+                });
+                const endTime = performance.now();
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`<div class="test-header success">✅ Health Check PASSED</div>
+                         <p><strong>Response Time:</strong> ${Math.round(endTime - startTime)}ms</p>
+                         <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                         <pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+                } else {
+                    log(`<div class="test-header error">❌ Health Check FAILED</div>
+                         <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>`, 'error');
+                }
+            } catch (error) {
+                log(`<div class="test-header error">❌ Health Check ERROR</div>
+                     <p><strong>Error:</strong> ${error.message}</p>
+                     <p><strong>Type:</strong> ${error.name}</p>
+                     <p>This indicates a CORS or network connectivity issue.</p>`, 'error');
+            }
+            
+            // Test 2: Database Scan Endpoint
+            try {
+                log('<div class="test-header">🧪 Test 2: Database Scan Endpoint</div>');
+                
+                const startTime = performance.now();
+                const response = await fetch(`${apiUrl}/api/database/scan`, {
+                    method: 'GET',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    mode: 'cors'
+                });
+                const endTime = performance.now();
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`<div class="test-header success">✅ Database Scan PASSED</div>
+                         <p><strong>Response Time:</strong> ${Math.round(endTime - startTime)}ms</p>
+                         <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                         <p><strong>Services Found:</strong> ${data.services?.length || 0}</p>
+                         <p><strong>Success:</strong> ${data.success}</p>
+                         <p><strong>Endpoint:</strong> ${data.endpoint}</p>
+                         ${data.services && data.services.length > 0 ? 
+                           '<p><strong>Sample Service:</strong></p><pre>' + JSON.stringify(data.services[0], null, 2) + '</pre>' : 
+                           '<p class="warning">⚠️ No services in response</p>'}`, 'success');
+                } else {
+                    log(`<div class="test-header error">❌ Database Scan FAILED</div>
+                         <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>`, 'error');
+                }
+            } catch (error) {
+                log(`<div class="test-header error">❌ Database Scan ERROR</div>
+                     <p><strong>Error:</strong> ${error.message}</p>
+                     <p><strong>Type:</strong> ${error.name}</p>`, 'error');
+            }
+            
+            // Test 3: Emergency Services Endpoint
+            try {
+                log('<div class="test-header">🧪 Test 3: Emergency Services Endpoint</div>');
+                
+                const startTime = performance.now();
+                const response = await fetch(`${apiUrl}/api/services/emergency`, {
+                    method: 'GET',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    mode: 'cors'
+                });
+                const endTime = performance.now();
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`<div class="test-header success">✅ Emergency Services PASSED</div>
+                         <p><strong>Response Time:</strong> ${Math.round(endTime - startTime)}ms</p>
+                         <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                         <p><strong>Services Found:</strong> ${data.services?.length || 0}</p>
+                         <p><strong>Success:</strong> ${data.success}</p>
+                         <p><strong>Endpoint:</strong> ${data.endpoint}</p>
+                         ${data.services && data.services.length > 0 ? 
+                           '<p><strong>Sample Service:</strong></p><pre>' + JSON.stringify(data.services[0], null, 2) + '</pre>' : 
+                           '<p class="warning">⚠️ No services in response</p>'}`, 'success');
+                } else {
+                    log(`<div class="test-header error">❌ Emergency Services FAILED</div>
+                         <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>`, 'error');
+                }
+            } catch (error) {
+                log(`<div class="test-header error">❌ Emergency Services ERROR</div>
+                     <p><strong>Error:</strong> ${error.message}</p>
+                     <p><strong>Type:</strong> ${error.name}</p>`, 'error');
+            }
+            
+            // Test 4: Regular Services Endpoint
+            try {
+                log('<div class="test-header">🧪 Test 4: Regular Services Endpoint</div>');
+                
+                const startTime = performance.now();
+                const response = await fetch(`${apiUrl}/api/services`, {
+                    method: 'GET',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    mode: 'cors'
+                });
+                const endTime = performance.now();
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`<div class="test-header success">✅ Regular Services PASSED</div>
+                         <p><strong>Response Time:</strong> ${Math.round(endTime - startTime)}ms</p>
+                         <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                         <p><strong>Services Found:</strong> ${data.services?.length || 0}</p>
+                         <p><strong>Success:</strong> ${data.success}</p>
+                         ${data.services && data.services.length > 0 ? 
+                           '<p><strong>Sample Service:</strong></p><pre>' + JSON.stringify(data.services[0], null, 2) + '</pre>' : 
+                           '<p class="warning">⚠️ No services in response</p>'}`, 'success');
+                } else {
+                    log(`<div class="test-header error">❌ Regular Services FAILED</div>
+                         <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>`, 'error');
+                }
+            } catch (error) {
+                log(`<div class="test-header error">❌ Regular Services ERROR</div>
+                     <p><strong>Error:</strong> ${error.message}</p>
+                     <p><strong>Type:</strong> ${error.name}</p>`, 'error');
+            }
+            
+            log('<div class="test-header">🏁 All Tests Complete</div><p>Check the results above to verify CORS and service endpoints are working correctly.</p>');
+        }
+        
+        // Run tests immediately
+        runTests();
+    </script>
+</body>
+</html>

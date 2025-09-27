@@ -257,8 +257,13 @@ export class CentralizedServiceManager {
   private cache: Map<string, any> = new Map();
   private cacheExpiry: Map<string, number> = new Map();
 
-  constructor(apiUrl?: string) {
-    this.apiUrl = apiUrl || import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+  constructor(_apiUrl?: string) {
+    // Force use production backend to access all 80+ services (ignoring local/env vars)
+    this.apiUrl = 'https://weddingbazaar-web.onrender.com';
+    console.log('🔧 [ServiceManager] FORCED API URL:', this.apiUrl);
+    console.log('🎯 [ServiceManager] ENV VITE_API_URL (ignored):', import.meta.env.VITE_API_URL);
+    console.log('📊 [ServiceManager] FORCING PRODUCTION backend to access 80+ services');
+    console.log('🚨 [ServiceManager] This should connect to production with 85 services');
   }
 
   // Service Operations
@@ -283,38 +288,80 @@ export class CentralizedServiceManager {
       console.log('🔄 [ServiceManager] *** FETCHING REAL SERVICES FROM DATABASE ***');
       console.log('🔧 [ServiceManager] API URL:', this.apiUrl);
       console.log('🔧 [ServiceManager] Options:', options);
+      console.log('🔧 [ServiceManager] Window location:', window?.location?.href);
+      console.log('🔧 [ServiceManager] Running in environment:', typeof window !== 'undefined' ? 'browser' : 'node');
       
-      // Direct API call to get real services - try multiple endpoints
+      // Direct API call to get real services - try multiple endpoints with timeouts
       const endpoints = [
-        '/api/services/emergency', // Emergency simple endpoint first
-        '/api/services',
-        '/api/services/simple', 
-        '/api/services/direct'
+        '/api/database/scan',        // Comprehensive database scan (NEW)
+        '/api/services/emergency',   // Emergency simple endpoint
+        '/api/services',             // Regular services endpoint
+        '/api/services/simple',      // Simple services endpoint
+        '/api/services/direct'       // Direct services endpoint
       ];
 
       for (const endpoint of endpoints) {
         try {
           console.log(`📡 [ServiceManager] *** TRYING ENDPOINT: ${endpoint} ***`);
           console.log(`📡 [ServiceManager] Full URL: ${this.apiUrl}${endpoint}`);
-          const response = await fetch(`${this.apiUrl}${endpoint}`, {
+          
+          // Create abort controller for timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => {
+            console.warn(`⏰ [ServiceManager] ${endpoint} timeout after 10 seconds`);
+            controller.abort();
+          }, 10000);
+          
+          // LOG THE ACTUAL FETCH CALL WITH ENHANCED DEBUGGING
+          console.log('🚀 [ServiceManager] *** MAKING FETCH CALL ***', {
+            url: `${this.apiUrl}${endpoint}`,
             method: 'GET',
+            mode: 'cors',
+            origin: window.location.origin,
             headers: {
               'Content-Type': 'application/json',
-              'Cache-Control': 'no-cache'
+              'Cache-Control': 'no-cache',
+              'Accept': 'application/json'
             }
           });
+          
+          const response = await fetch(`${this.apiUrl}${endpoint}`, {
+            method: 'GET',
+            mode: 'cors', // Explicitly set CORS mode
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache',
+              'Accept': 'application/json'
+            },
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
 
+          console.log(`📡 [ServiceManager] Response status for ${endpoint}: ${response.status} ${response.statusText}`);
+          console.log(`📡 [ServiceManager] Response headers:`, [...response.headers.entries()]);
+          
           if (response.ok) {
             const data = await response.json();
-            console.log(`📊 [ServiceManager] Response from ${endpoint}:`, data);
+            console.log(`📊 [ServiceManager] RAW Response from ${endpoint}:`, JSON.stringify(data, null, 2).substring(0, 1000) + '...');
+            console.log(`🔍 [ServiceManager] Data structure check - success: ${data.success}, services: ${Array.isArray(data.services)}, length: ${data.services?.length}`);
 
             if (data.success && data.services && Array.isArray(data.services)) {
               console.log(`✅ [ServiceManager] Found ${data.services.length} real services from ${endpoint}`);
+              console.log(`🎯 [ServiceManager] First 3 services:`, data.services.slice(0, 3).map((s: any) => ({
+                id: s.id,
+                name: s.name,
+                category: s.category,
+                price: s.price
+              })));
               
               // Map database services to frontend format
               const mappedServices = data.services.map((service: any) => 
                 this.mapDatabaseServiceToFrontend(service)
               );
+
+              console.log(`🔄 [ServiceManager] Mapped ${mappedServices.length} services to frontend format`);
+              console.log(`🎯 [ServiceManager] First mapped service:`, mappedServices[0]);
 
               const result = {
                 services: mappedServices,
@@ -324,25 +371,67 @@ export class CentralizedServiceManager {
 
               // Cache result
               this.setCache(cacheKey, result);
+              console.log(`✅ [ServiceManager] *** RETURNING SUCCESS WITH ${result.services.length} SERVICES ***`);
               return result;
+            } else {
+              console.warn(`⚠️ [ServiceManager] ${endpoint} response validation failed:`, {
+                success: data.success,
+                hasServices: !!data.services,
+                isArray: Array.isArray(data.services),
+                length: data.services?.length,
+                dataKeys: Object.keys(data)
+              });
             }
+          } else {
+            console.error(`❌ [ServiceManager] ${endpoint} failed with status: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            console.error(`📄 [ServiceManager] Error response body:`, errorText.substring(0, 500));
           }
         } catch (endpointError) {
-          console.warn(`❌ [ServiceManager] ${endpoint} failed:`, endpointError);
+          if (endpointError instanceof Error && endpointError.name === 'AbortError') {
+            console.warn(`⏰ [ServiceManager] ${endpoint} request was aborted (timeout)`);
+          } else {
+            console.error(`❌ [ServiceManager] ${endpoint} threw error:`, endpointError);
+            console.error(`📋 [ServiceManager] Error details:`, {
+              name: endpointError instanceof Error ? endpointError.name : 'Unknown',
+              message: endpointError instanceof Error ? endpointError.message : String(endpointError),
+              endpoint: endpoint,
+              fullUrl: `${this.apiUrl}${endpoint}`,
+              type: typeof endpointError,
+              stack: endpointError instanceof Error ? endpointError.stack : 'No stack'
+            });
+          }
           continue;
         }
       }
 
-      // No fallback - return empty result if no real services found
-      console.warn('⚠️ [ServiceManager] No real services found from any endpoint');
+      // All endpoints failed - this shouldn't happen with local backend
+      console.error('❌ [ServiceManager] All endpoints failed! Check local backend server.');
+      console.error('🔧 [ServiceManager] Final API URL used:', this.apiUrl);
+      console.error('🔧 [ServiceManager] All endpoints tried:', endpoints);
+      
       return {
         services: [],
         total: 0,
         success: false
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [ServiceManager] Critical error fetching services:', error);
+      console.error('📋 [ServiceManager] Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      
+      // Enhanced error analysis
+      if (error.message?.includes('Failed to fetch')) {
+        console.error('🚫 [ServiceManager] CORS TROUBLESHOOTING:');
+        console.error('   Frontend Origin:', window.location.origin);
+        console.error('   Backend URL:', this.apiUrl);
+        console.error('   This is likely a CORS issue - check backend CORS configuration');
+        console.error('   Make sure backend allows origin:', window.location.origin);
+      }
       
       // No fallback - return empty result on error
       return {
@@ -695,10 +784,10 @@ export class CentralizedServiceManager {
       'Officiant': 'https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=600'
     };
 
-    return categoryImages[category] || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=600';
+    return categoryImages[category] || 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600';
   }
 
-  // Removed fallback services - working with real database data only
+  // Mock service generator removed - using real database services only
 
   // Cache Management
   private isValidCache(key: string): boolean {

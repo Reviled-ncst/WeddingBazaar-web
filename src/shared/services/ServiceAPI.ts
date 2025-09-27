@@ -441,7 +441,7 @@ export class ServiceAPI {
       'Officiant': 'https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=600'
     };
 
-    return categoryImages[category] || 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=600';
+    return categoryImages[category] || 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600';
   }
 
   private getDefaultFeatures(category: string): string[] {

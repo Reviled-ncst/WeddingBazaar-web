@@ -1,0 +1,66 @@
+/* Enhanced VendorServices UI Styles */
+.vendor-services-bg {
+  background: linear-gradient(135deg, #fdf2f8 0%, #ffffff 50%, #fef2f2 100%);
+}
+
+.bg-gradient-radial {
+  background: radial-gradient(circle, currentColor 0%, transparent 70%);
+}
+
+/* Improved card hover effects */
+.service-card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.service-card-hover:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Enhanced floating button animation */
+.floating-add-button {
+  animation: float 3s ease-in-out infinite;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.floating-add-button:hover {
+  animation-play-state: paused;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Glassmorphism effect for cards */
+.glass-card {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Enhanced search input focus effect */
+.search-input:focus {
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.1);
+  transform: scale(1.02);
+}
+
+/* Status badge animations */
+.status-badge {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .8;
+  }
+}

@@ -199,7 +199,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (data.success && data.user && data.token) {
         localStorage.setItem('auth_token', data.token);
         setUser(data.user);
-        console.log('✅ Login successful for:', data.user.email);
+        console.log('✅ Login successful for:', data.user.email, 'with role:', data.user.role);
         return data.user;
       } else {
         console.error('❌ Login response validation failed');

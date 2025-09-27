@@ -7,6 +7,7 @@ import { ProtectedRoute } from './ProtectedRoute';
 // Landing Pages
 import { Homepage } from '../pages/homepage/Homepage';
 import { IndividualLanding } from '../pages/users/individual/landing';
+import { VendorLanding } from '../pages/users/vendor/landing';
 import { AdminLanding } from '../pages/users/admin/landing';
 
 // Admin Pages  
@@ -98,7 +99,7 @@ export const AppRouter: React.FC = () => {
             } />
             <Route path="/vendor" element={
               <ProtectedRoute requireAuth={true}>
-                <Navigate to="/vendor/dashboard" replace />
+                <VendorLanding />
               </ProtectedRoute>
             } />
             <Route path="/admin" element={

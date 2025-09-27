@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Manager Browser Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug { background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .error { background: #ffe6e6; }
+        .success { background: #e6ffe6; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Service Manager Browser Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const results = document.getElementById('results');
+        
+        function log(message, type = 'debug') {
+            const div = document.createElement('div');
+            div.className = `debug ${type}`;
+            div.innerHTML = typeof message === 'object' ? 
+                `<pre>${JSON.stringify(message, null, 2)}</pre>` : 
+                message;
+            results.appendChild(div);
+            console.log(message);
+        }
+        
+        async function testServiceManager() {
+            log('🔧 Starting Service Manager Browser Test...', 'debug');
+            log(`🌍 Window location: ${window.location.href}`, 'debug');
+            log(`🔧 User agent: ${navigator.userAgent}`, 'debug');
+            
+            const API_URL = 'http://localhost:3001';
+            log(`📡 Testing API URL: ${API_URL}`, 'debug');
+            
+            try {
+                // Test the first endpoint that frontend tries
+                const endpoint = '/api/database/scan';
+                const fullUrl = `${API_URL}${endpoint}`;
+                
+                log(`📡 Making fetch request to: ${fullUrl}`, 'debug');
+                
+                const response = await fetch(fullUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+                
+                log(`📊 Response status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                log(`📋 Response headers:`, 'debug');
+                log(Object.fromEntries(response.headers.entries()), 'debug');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Response received successfully`, 'success');
+                    log(`🔍 Data structure:`, 'debug');
+                    log({
+                        success: data.success,
+                        servicesExists: !!data.services,
+                        isArray: Array.isArray(data.services),
+                        servicesCount: data.services?.length,
+                        totalField: data.total,
+                        endpointField: data.endpoint
+                    }, 'debug');
+                    
+                    if (data.success && data.services && Array.isArray(data.services)) {
+                        log(`🎯 SUCCESS! Found ${data.services.length} services`, 'success');
+                        log(`📋 First 3 services:`, 'debug');
+                        log(data.services.slice(0, 3).map(s => ({
+                            id: s.id,
+                            name: s.name,
+                            category: s.category,
+                            price: s.price,
+                            isActive: s.isActive
+                        })), 'debug');
+                        
+                        // Test what would happen in the Service Manager mapping
+                        log(`🔄 Testing Service Manager mapping...`, 'debug');
+                        const sampleService = data.services[0];
+                        const mapped = {
+                            id: sampleService.id,
+                            name: sampleService.name || sampleService.title || 'Unnamed Service',
+                            category: sampleService.category,
+                            price: parseFloat(sampleService.price) || 0,
+                            is_active: sampleService.isActive !== false
+                        };
+                        log(`✅ Mapped service:`, 'success');
+                        log(mapped, 'success');
+                        
+                        log(`🎊 CONCLUSION: The Service Manager should work perfectly in the browser!`, 'success');
+                        
+                    } else {
+                        log(`❌ Validation failed:`, 'error');
+                        log({
+                            success: data.success,
+                            hasServices: !!data.services,
+                            isArray: Array.isArray(data.services),
+                            length: data.services?.length
+                        }, 'error');
+                    }
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ HTTP Error: ${response.status}`, 'error');
+                    log(`Error body: ${errorText}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`💥 JavaScript Error:`, 'error');
+                log({
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                }, 'error');
+            }
+        }
+        
+        // Run the test when page loads
+        testServiceManager();
+    </script>
+</body>
+</html>

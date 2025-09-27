@@ -47,7 +47,7 @@ const getUserLandingPage = (role?: string): string => {
     case 'couple':
       return '/individual';
     case 'vendor':
-      return '/vendor/dashboard';
+      return '/vendor';
     case 'admin':
       return '/admin';
     default:

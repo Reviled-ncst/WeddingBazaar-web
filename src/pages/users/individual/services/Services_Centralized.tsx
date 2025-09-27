@@ -19,6 +19,53 @@ import { cn } from '../../../../utils/cn';
 import { CoupleHeader } from '../landing/CoupleHeader';
 import { useUniversalMessaging } from '../../../../shared/contexts/UniversalMessagingContext';
 import { serviceManager, SERVICE_CATEGORIES } from '../../../../shared/services/CentralizedServiceManager';
+import { BookingRequestModal } from '../../../../modules/services/components/BookingRequestModal';
+import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
+import type { Service as BookingService } from '../../../../modules/services/types';
+
+// Helper function to convert Service to BookingService format
+const convertToBookingService = (service: Service): BookingService => {
+  // Map string category to ServiceCategory
+  const categoryMap: Record<string, ServiceCategory> = {
+    'Photography': 'photography',
+    'Videography': 'videography',
+    'Catering': 'catering',
+    'Venue': 'venue',
+    'Music & DJ': 'music_dj',
+    'Flowers & Decor': 'flowers_decor',
+    'Wedding Planning': 'wedding_planning',
+    'Transportation': 'transportation',
+    'Makeup & Hair': 'makeup_hair',
+    'Wedding Cake': 'wedding_cake',
+    'Officiant': 'officiant',
+    'Entertainment': 'entertainment',
+    'Lighting': 'lighting',
+    'Security': 'security',
+    'Other': 'other'
+  };
+
+  const mappedCategory = categoryMap[service.category] || 'other';
+
+  return {
+    id: service.id,
+    vendorId: service.vendorId || service.vendor_id,
+    name: service.name,
+    category: mappedCategory,
+    description: service.description,
+    basePrice: service.price,
+    priceRange: service.priceRange,
+    image: service.image,
+    gallery: service.images || service.gallery || [service.image].filter(Boolean),
+    features: service.features || [],
+    availability: service.availability,
+    location: service.location,
+    rating: service.rating,
+    reviewCount: service.reviewCount,
+    vendorName: service.vendorName,
+    vendorImage: service.vendorImage,
+    contactInfo: service.contactInfo
+  };
+};
 
 // Local interface definitions to avoid module resolution issues
 interface Service {
@@ -77,8 +124,13 @@ export function Services() {
   const [ratingFilter, setRatingFilter] = useState(0);
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'rating' | 'price' | 'reviews'>('rating');
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<Service | null>(null);
   
-  const { startConversation } = useUniversalMessaging();
+  const { startConversationWith } = useUniversalMessaging();
 
   // Load services using centralized service manager
   useEffect(() => {
@@ -191,7 +243,20 @@ export function Services() {
 
   const handleEmailVendor = (service: Service) => {
     if (service.contactInfo.email) {
-      window.open(`mailto:${service.contactInfo.email}?subject=Wedding Service Inquiry - ${service.name}`, '_blank');
+      const subject = `Wedding Inquiry - ${service.name}`;
+      const body = `Hi ${service.vendorName},
+
+I'm interested in your ${service.name} service for my wedding. Could you please provide more details about:
+
+- Availability for my wedding date
+- Package options and pricing
+- What's included in your services
+
+Thank you!
+
+Best regards`;
+      
+      window.open(`mailto:${service.contactInfo.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
     }
   };
 
@@ -201,9 +266,123 @@ export function Services() {
     }
   };
 
-  const handleMessageVendor = (service: Service) => {
-    startConversation(service.vendorId, service.vendorName, service.name);
+  const handleBookingRequest = (service: Service) => {
+    console.log('📋 [Services] Opening booking request for service:', service.name);
+    setSelectedServiceForBooking(service);
+    setShowBookingModal(true);
   };
+
+  const openGalleryViewer = (images: string[], startIndex: number = 0) => {
+    setGalleryImages(images);
+    setCurrentImageIndex(startIndex);
+    setSelectedGalleryImage(images[startIndex]);
+  };
+
+  const closeGalleryViewer = () => {
+    setSelectedGalleryImage(null);
+    setGalleryImages([]);
+    setCurrentImageIndex(0);
+  };
+
+  const navigateGallery = (direction: 'prev' | 'next') => {
+    const newIndex = direction === 'next' 
+      ? (currentImageIndex + 1) % galleryImages.length
+      : (currentImageIndex - 1 + galleryImages.length) % galleryImages.length;
+    
+    setCurrentImageIndex(newIndex);
+    setSelectedGalleryImage(galleryImages[newIndex]);
+  };
+
+  const handleFavoriteService = (service: Service) => {
+    console.log('❤️ [Services] Adding service to favorites:', service.name);
+    // TODO: Implement favorites/wishlist functionality
+    // For now, show a success message
+    alert(`Added "${service.name}" to your favorites! 💕`);
+  };
+
+  const handleShareService = (service: Service) => {
+    console.log('📤 [Services] Sharing service:', service.name);
+    if (navigator.share) {
+      navigator.share({
+        title: `${service.name} - Wedding Service`,
+        text: `Check out this wedding service: ${service.name} by ${service.vendorName}`,
+        url: window.location.href
+      });
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(window.location.href);
+      alert('Service link copied to clipboard!');
+    }
+  };
+
+  const handleQuickContact = (service: Service, method: 'call' | 'email' | 'message') => {
+    console.log(`📞 [Services] Quick contact via ${method}:`, service.name);
+    switch (method) {
+      case 'call':
+        handleContactVendor(service);
+        break;
+      case 'email':
+        handleEmailVendor(service);
+        break;
+      case 'message':
+        handleMessageVendor(service);
+        break;
+    }
+  };
+
+  const handleCompareService = (service: Service) => {
+    console.log('🔍 [Services] Adding service to comparison:', service.name);
+    // TODO: Implement service comparison functionality
+    alert(`Added "${service.name}" to comparison! Use this feature to compare multiple vendors side-by-side.`);
+  };
+
+  const handleViewGallery = (service: Service) => {
+    console.log('🖼️ [Services] Opening gallery for:', service.name);
+    // Open service details modal which shows the gallery
+    handleServiceSelect(service);
+  };
+
+  const handleMessageVendor = async (service: Service) => {
+    console.log('🗨️ [Services] Starting conversation with vendor:', service.vendorName);
+    try {
+      const vendor = {
+        id: service.vendorId,
+        name: service.vendorName,
+        role: 'vendor' as const,
+        businessName: service.vendorName,
+        serviceCategory: service.category
+      };
+
+      // Detailed service information for conversation context
+      const serviceInfo = {
+        id: service.id,
+        name: service.name,
+        category: service.category,
+        description: service.description,
+        priceRange: service.priceRange,
+        location: service.location
+      };
+
+      await startConversationWith(vendor, serviceInfo);
+      console.log('✅ [Services] Conversation started successfully');
+    } catch (error) {
+      console.error('❌ [Services] Error starting conversation:', error);
+      // Fallback to basic conversation
+      const vendor = {
+        id: service.vendorId || `vendor-${Date.now()}`,
+        name: service.vendorName,
+        role: 'vendor' as const
+      };
+      
+      try {
+        await startConversationWith(vendor);
+      } catch (fallbackError) {
+        console.error('❌ [Services] Fallback conversation failed:', fallbackError);
+      }
+    }
+  };
+
+
 
   const getAvailableLocations = () => {
     const locations = Array.from(new Set(services.map(s => s.location)));
@@ -252,6 +431,7 @@ export function Services() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
       <CoupleHeader />
+      
       <div className="pt-24 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header Section */}
@@ -493,15 +673,17 @@ export function Services() {
                   ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
                   : 'grid-cols-1'
               )}
-            >
-              {filteredServices.map((service, index) => (
-                <ServiceCard 
+            >              {filteredServices.map((service, index) => (
+                <ServiceCard
                   key={service.id}
                   service={service}
                   viewMode={viewMode}
                   index={index}
                   onSelect={handleServiceSelect}
                   onMessage={handleMessageVendor}
+                  onFavorite={handleFavoriteService}
+                  onBookingRequest={handleBookingRequest}
+                  onShare={handleShareService}
                 />
               ))}
             </motion.div>
@@ -517,7 +699,77 @@ export function Services() {
         onEmail={handleEmailVendor}
         onWebsite={handleVisitWebsite}
         onMessage={handleMessageVendor}
+        onBookingRequest={handleBookingRequest}
+        onOpenGallery={openGalleryViewer}
       />
+
+      {/* Gallery Viewer Modal */}
+      {selectedGalleryImage && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+          <div className="relative max-w-4xl max-h-[90vh] w-full">
+            <img
+              src={selectedGalleryImage}
+              alt={`Gallery image ${currentImageIndex + 1}`}
+              className="w-full h-full object-contain rounded-lg"
+            />
+            
+            {/* Close button */}
+            <button
+              onClick={closeGalleryViewer}
+              className="absolute top-4 right-4 p-2 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
+              aria-label="Close gallery"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            
+            {/* Navigation buttons */}
+            {galleryImages.length > 1 && (
+              <>
+                <button
+                  onClick={() => navigateGallery('prev')}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
+                  aria-label="Previous image"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => navigateGallery('next')}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
+                  aria-label="Next image"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </>
+            )}
+            
+            {/* Image counter */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm">
+              {currentImageIndex + 1} of {galleryImages.length}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Booking Request Modal */}
+      {showBookingModal && selectedServiceForBooking && (
+        <BookingRequestModal
+          service={convertToBookingService(selectedServiceForBooking)}
+          isOpen={showBookingModal}
+          onClose={() => {
+            setShowBookingModal(false);
+            setSelectedServiceForBooking(null);
+          }}
+          onBookingCreated={(booking) => {
+            console.log('📅 [Services] Booking created:', booking);
+            setShowBookingModal(false);
+            setSelectedServiceForBooking(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -529,9 +781,12 @@ interface ServiceCardProps {
   index: number;
   onSelect: (service: Service) => void;
   onMessage: (service: Service) => void;
+  onFavorite: (service: Service) => void;
+  onBookingRequest: (service: Service) => void;
+  onShare?: (service: Service) => void;
 }
 
-function ServiceCard({ service, viewMode, index, onSelect, onMessage }: ServiceCardProps) {
+function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite, onBookingRequest, onShare }: ServiceCardProps) {
   if (viewMode === 'list') {
     return (
       <motion.div
@@ -542,20 +797,51 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage }: ServiceC
       >
         <div className="flex flex-col md:flex-row">
           <div className="md:w-1/3 relative">
-            <img
-              src={service.image}
-              alt={service.name}
-              className="w-full h-64 md:h-full object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=600';
-              }}
-            />
-            {service.featured && (
-              <div className="absolute top-4 left-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium">
-                Featured
+            {/* Main Image for List View */}
+            <div className="relative">
+              <img
+                src={service.image}
+                alt={service.name}
+                className="w-full h-64 md:h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600';
+                }}
+              />
+              {service.featured && (
+                <div className="absolute top-4 left-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                  Featured
+                </div>
+              )}
+            </div>
+            
+            {/* Small Gallery Row Below - Only for List View */}
+            {(service.gallery && service.gallery.length > 1) || (service.images && service.images.length > 1) ? (
+              <div className="absolute bottom-2 left-2 right-2">
+                <div className="flex gap-1 overflow-x-auto">
+                  {((service.gallery && service.gallery.length > 1) ? service.gallery.slice(1, 5) : service.images?.slice(1, 5) || []).map((img, idx) => (
+                    <div key={idx} className="flex-shrink-0 w-10 h-10 rounded-md overflow-hidden border border-white shadow-sm">
+                      <img
+                        src={img}
+                        alt={`${service.name} ${idx + 2}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=100';
+                        }}
+                      />
+                    </div>
+                  ))}
+                  {((service.gallery?.length || service.images?.length || 1) > 5) && (
+                    <div className="flex-shrink-0 w-10 h-10 rounded-md bg-black/60 border border-white shadow-sm flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">
+                        +{((service.gallery?.length || service.images?.length || 1) - 4)}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+            ) : null}
           </div>
           
           <div className="md:w-2/3 p-6 flex flex-col justify-between">
@@ -603,8 +889,35 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage }: ServiceC
               <button
                 onClick={() => onMessage(service)}
                 className="px-4 py-2 border-2 border-pink-600 text-pink-600 rounded-xl hover:bg-pink-50 transition-colors"
+                title="Message vendor"
               >
                 <MessageCircle className="h-5 w-5" />
+              </button>
+              {service.contactInfo.phone && (
+                <button
+                  onClick={() => window.open(`tel:${service.contactInfo.phone}`, '_self')}
+                  className="px-4 py-2 border-2 border-green-600 text-green-600 rounded-xl hover:bg-green-50 transition-colors"
+                  title="Call vendor"
+                >
+                  <Phone className="h-5 w-5" />
+                </button>
+              )}
+              <button
+                onClick={() => onFavorite(service)}
+                className="px-4 py-2 border-2 border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors"
+                title="Add to favorites"
+              >
+                <Heart className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => {
+                  console.log('📅 Request booking for:', service.name);
+                  onBookingRequest(service); // Open booking request modal
+                }}
+                className="px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-colors text-sm font-medium"
+                title="Request booking"
+              >
+                Book
               </button>
             </div>
           </div>
@@ -623,22 +936,58 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage }: ServiceC
     >
       <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-pink-100 group-hover:scale-105">
         <div className="relative">
+          {/* Main Image */}
           <img
             src={service.image}
             alt={service.name}
             className="w-full h-64 object-cover"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=600';
+              target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600';
             }}
           />
+          
+          {/* Gallery Preview - Show additional images if available */}
+          {(service.gallery && service.gallery.length > 1) || (service.images && service.images.length > 1) && (
+            <div className="absolute bottom-2 right-2 flex gap-1">
+              {((service.gallery && service.gallery.length > 1) ? service.gallery.slice(1, 4) : service.images?.slice(1, 4) || []).map((img, idx) => (
+                <div key={idx} className="w-12 h-12 rounded-lg overflow-hidden border-2 border-white shadow-sm">
+                  <img
+                    src={img}
+                    alt={`${service.name} ${idx + 2}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=100';
+                    }}
+                  />
+                </div>
+              ))}
+              {/* Show count if more images available */}
+              {((service.gallery?.length || service.images?.length || 1) > 4) && (
+                <div className="w-12 h-12 rounded-lg bg-black/60 backdrop-blur-sm border-2 border-white shadow-sm flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">
+                    +{((service.gallery?.length || service.images?.length || 1) - 3)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          
           {service.featured && (
             <div className="absolute top-4 left-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium">
               Featured
             </div>
           )}
           <div className="absolute top-4 right-4">
-            <button className="p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white/90 transition-colors">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onFavorite(service);
+              }}
+              className="p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white/90 transition-colors"
+              title="Add to favorites"
+            >
               <Heart className="h-5 w-5 text-gray-600 hover:text-pink-600" />
             </button>
           </div>
@@ -676,15 +1025,42 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage }: ServiceC
           
           <div className="flex items-center justify-between">
             <span className="font-semibold text-pink-600">{service.priceRange}</span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onMessage(service);
-              }}
-              className="p-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors"
-            >
-              <MessageCircle className="h-5 w-5" />
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMessage(service);
+                }}
+                className="p-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors"
+                title="Message vendor"
+              >
+                <MessageCircle className="h-5 w-5" />
+              </button>
+              {service.contactInfo.phone && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(`tel:${service.contactInfo.phone}`, '_self');
+                  }}
+                  className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
+                  title="Call vendor"
+                >
+                  <Phone className="h-5 w-5" />
+                </button>
+              )}
+              {onShare && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShare(service);
+                  }}
+                  className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                  title="Share service"
+                >
+                  <Globe className="h-5 w-5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -700,9 +1076,11 @@ interface ServiceDetailModalProps {
   onEmail: (service: Service) => void;
   onWebsite: (service: Service) => void;
   onMessage: (service: Service) => void;
+  onBookingRequest: (service: Service) => void;
+  onOpenGallery: (images: string[], startIndex: number) => void;
 }
 
-function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, onMessage }: ServiceDetailModalProps) {
+function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, onMessage, onBookingRequest, onOpenGallery }: ServiceDetailModalProps) {
   if (!service) return null;
 
   return (
@@ -728,7 +1106,7 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
               className="w-full h-80 object-cover rounded-t-3xl"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src = 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=800';
+                target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=800';
               }}
             />
             <button
@@ -797,29 +1175,94 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
               </div>
             </div>
             
-            {service.gallery && service.gallery.length > 1 && (
+            {((service.gallery && service.gallery.length > 1) || (service.images && service.images.length > 1)) && (
               <div className="mb-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">Gallery</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {service.gallery.slice(1, 7).map((image, index) => (
-                    <img
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                  Portfolio Gallery 
+                  <span className="text-sm font-normal text-gray-500 ml-2">
+                    ({(service.gallery?.length || service.images?.length || 1)} photos)
+                  </span>
+                </h3>
+                
+                {/* Enhanced Gallery Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {/* All available images */}
+                  {((service.gallery && service.gallery.length > 1) ? service.gallery : service.images || []).slice(0, 12).map((image, index) => (
+                    <motion.div
                       key={index}
-                      src={image}
-                      alt={`${service.name} gallery ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-xl"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'https://images.unsplash.com/photo-1519167758481-83f29c8498c5?w=400';
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="relative group cursor-pointer overflow-hidden rounded-xl"
+                      onClick={() => {
+                        const images = (service.gallery && service.gallery.length > 1) ? service.gallery : service.images || [service.image];
+                        onOpenGallery(images, index);
                       }}
-                    />
+                    >
+                      <img
+                        src={image}
+                        alt={`${service.name} portfolio ${index + 1}`}
+                        className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-110"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=400';
+                        }}
+                      />
+                      
+                      {/* Overlay on hover */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <div className="text-white text-sm font-medium bg-black/50 px-3 py-1 rounded-full">
+                          View Full Size
+                        </div>
+                      </div>
+                      
+                      {/* Image number indicator */}
+                      <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                        {index + 1}
+                      </div>
+                    </motion.div>
                   ))}
+                  
+                  {/* Show more button if there are additional images */}
+                  {((service.gallery?.length || service.images?.length || 0) > 12) && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 1.2 }}
+                      className="relative group cursor-pointer overflow-hidden rounded-xl bg-gray-100 flex items-center justify-center"
+                      onClick={() => {
+                        console.log('📸 View all images for:', service.name);
+                      }}
+                    >
+                      <div className="text-center p-4">
+                        <div className="text-2xl font-bold text-gray-600 mb-1">
+                          +{((service.gallery?.length || service.images?.length || 0) - 12)}
+                        </div>
+                        <div className="text-sm text-gray-500">More Photos</div>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+                
+                {/* Gallery Navigation Hint */}
+                <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+                  <span>💡 Click any image to view in full size</span>
+                  <span>{service.vendorName}'s Portfolio</span>
                 </div>
               </div>
             )}
             
-            <div className="bg-pink-50 rounded-2xl p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Contact Vendor</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Get Started with {service.vendorName}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <button
+                  onClick={() => onBookingRequest(service)}
+                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white py-3 px-4 rounded-xl hover:from-pink-700 hover:to-purple-700 transition-all duration-200 font-medium shadow-lg col-span-1 md:col-span-2 lg:col-span-1"
+                >
+                  <Star className="h-5 w-5" />
+                  Request Booking
+                </button>
+                
                 <button
                   onClick={() => onMessage(service)}
                   className="flex items-center justify-center gap-2 bg-pink-600 text-white py-3 px-4 rounded-xl hover:bg-pink-700 transition-colors font-medium"

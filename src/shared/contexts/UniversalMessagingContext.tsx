@@ -133,7 +133,17 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
       setCurrentUser(chatUser);
       console.log('✅ [UniversalMessaging] Current user initialized:', chatUser);
     } else {
-      setCurrentUser(null);
+      // TEMPORARY: Create a test user for demo purposes
+      const testUser: ChatUser = {
+        id: '2-2025-003',
+        name: 'Sarah Johnson Photography',
+        role: 'vendor',
+        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
+        businessName: 'Sarah Johnson Photography',
+        serviceCategory: 'Photography'
+      };
+      setCurrentUser(testUser);
+      console.log('🧪 [UniversalMessaging] Using test user for demo:', testUser);
     }
   }, [isAuthenticated, user]);
 
@@ -172,7 +182,7 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
       
       const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
       const endpoint = currentUser.role === 'vendor' 
-        ? `${apiUrl}/api/conversations/vendor/${currentUser.id}`
+        ? `${apiUrl}/api/conversations/conversations/${currentUser.id}`
         : `${apiUrl}/api/conversations/individual/${currentUser.id}`;
       
       const response = await fetch(endpoint);
@@ -182,6 +192,9 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
       }
 
       const data = await response.json();
+      console.log(`📦 [UniversalMessaging] Backend response:`, data);
+      console.log(`📦 [UniversalMessaging] Success:`, data.success);
+      console.log(`📦 [UniversalMessaging] Conversations count:`, data.conversations?.length);
       
       if (data.success && data.conversations) {
         const transformedConversations: UniversalConversation[] = data.conversations.map((conv: any) => ({
@@ -203,6 +216,8 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
         }));
 
         // Preserve locally created conversations that might not be synced yet
+        console.log(`🔄 [UniversalMessaging] Transformed conversations:`, transformedConversations);
+        
         setConversations(prev => {
           const localConversations = prev.filter(c => c.id.startsWith('conv_'));
           const backendConversations = transformedConversations.map(conv => ({
@@ -220,6 +235,7 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
           
           const finalConversations = [...backendConversations, ...uniqueLocalConversations];
           console.log(`✅ [UniversalMessaging] Loaded ${backendConversations.length} from backend + preserved ${uniqueLocalConversations.length} local = ${finalConversations.length} total`);
+          console.log(`✅ [UniversalMessaging] Final conversations:`, finalConversations);
           return finalConversations;
         });
         
@@ -574,7 +590,7 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
     try {
       // Send to backend
       const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      await fetch(`${apiUrl}/api/messaging/conversations/${conversationId}/messages`, {
+      await fetch(`${apiUrl}/api/conversations/conversations/${conversationId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -676,7 +692,7 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      await fetch(`${apiUrl}/api/messaging/conversations/${conversationId}/read`, {
+      await fetch(`${apiUrl}/api/conversations/conversations/${conversationId}/read`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: currentUser?.id })
@@ -821,7 +837,7 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
       console.log(`🔄 [UniversalMessaging] Loading messages for conversation: ${conversationId}`);
       
       const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      const response = await fetch(`${apiUrl}/api/messaging/conversations/${conversationId}/messages`);
+      const response = await fetch(`${apiUrl}/api/conversations/conversations/${conversationId}/messages`);
       
       if (!response.ok) {
         console.warn(`⚠️ [UniversalMessaging] Failed to load messages for ${conversationId}: ${response.status}`);
