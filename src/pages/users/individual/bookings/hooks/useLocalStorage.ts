@@ -38,19 +38,19 @@ export function useBookingPreferences() {
   const [sortBy, setSortBy] = useLocalStorage<string>('bookings-sort-by', 'created_at');
   const [sortOrder, setSortOrder] = useLocalStorage<'asc' | 'desc'>('bookings-sort-order', 'desc');
 
-  // Valid filter status values
+  // Valid filter status values - matching mapped UI statuses (after STATUS_MAPPING transformation)
   const validFilterStatuses: FilterStatus[] = [
-    'all', 'draft', 'quote_requested', 'quote_sent', 'quote_accepted', 
-    'quote_rejected', 'confirmed', 'downpayment_paid', 'paid_in_full', 
-    'in_progress', 'completed', 'cancelled', 'refunded', 'disputed'
+    'all', 'draft', 'quote_requested', 'confirmed', 'quote_sent', 'quote_accepted', 
+    'quote_rejected', 'downpayment_paid', 'paid_in_full', 'in_progress', 'completed', 
+    'cancelled', 'refunded', 'disputed'
   ];
 
-  // Validate and fix filter status if invalid - always default to 'all' for now
-  const filterStatus = 'all'; // Force 'all' to load all bookings
+  // Validate filter status and use valid value
+  const filterStatus = validFilterStatuses.includes(rawFilterStatus) ? rawFilterStatus : 'all';
   
   // Update localStorage if it was invalid
-  if (rawFilterStatus !== 'all') {
-    setRawFilterStatus('all');
+  if (rawFilterStatus !== filterStatus) {
+    setRawFilterStatus(filterStatus);
   }
   
   const setFilterStatus = (status: FilterStatus) => {

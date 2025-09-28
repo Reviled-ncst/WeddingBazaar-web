@@ -35,16 +35,20 @@ export type ServiceCategory =
 export type BookingStatus = 
   | 'draft'
   | 'request'
+  | 'approved'
   | 'quote_requested' 
   | 'quote_sent' 
   | 'quote_accepted' 
   | 'quote_rejected'
   | 'confirmed' 
-  | 'downpayment_paid' 
+  | 'downpayment_paid'
+  | 'downpayment'
   | 'paid_in_full' 
+  | 'fully_paid'
   | 'in_progress'
   | 'completed' 
   | 'cancelled' 
+  | 'declined'
   | 'refunded' 
   | 'disputed';
 

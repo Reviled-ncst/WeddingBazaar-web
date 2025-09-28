@@ -892,7 +892,7 @@ app.patch('/api/bookings/:bookingId/accept-quote', async (req, res) => {
   try {
     console.log('📊 [BOOKING] PATCH /api/bookings/:bookingId/accept-quote called');
     const { bookingId } = req.params;
-    const { status = 'confirmed', notes } = req.body;
+    const { status = 'approved', notes } = req.body;
     
     console.log('🔍 [BOOKING] Accept quote params:', { bookingId, status, notes });
     

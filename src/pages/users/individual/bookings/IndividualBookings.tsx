@@ -446,7 +446,7 @@ export const IndividualBookings: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          status: 'confirmed',
+          status: 'approved',
           notes: 'Quotation accepted by couple'
         })
       });
@@ -474,6 +474,10 @@ export const IndividualBookings: React.FC = () => {
 
   // Enhanced filter and sort function - memoized for performance
   const filteredAndSortedBookings = useMemo(() => {
+    console.log('🔍 [Filter Debug] Current filter status:', filterStatus);
+    console.log('🔍 [Filter Debug] Total bookings:', bookings.length);
+    console.log('🔍 [Filter Debug] Booking statuses:', bookings.map(b => b.status));
+    
     let filtered = bookings.filter(booking => {
       const matchesStatus = filterStatus === 'all' || booking.status === filterStatus;
       const query = debouncedSearchQuery.toLowerCase();
@@ -483,8 +487,11 @@ export const IndividualBookings: React.FC = () => {
         (booking.serviceType && booking.serviceType.toLowerCase().includes(query)) ||
         (booking.serviceName && booking.serviceName.toLowerCase().includes(query));
       
+      console.log('🔍 [Filter Debug] Booking:', booking.id, 'Status:', booking.status, 'Matches:', matchesStatus && matchesSearch);
       return matchesStatus && matchesSearch;
     });
+    
+    console.log('🔍 [Filter Debug] Filtered count:', filtered.length);
 
     // TEMPORARY: Add mock bookings for timeline testing if no real bookings exist
     if (filtered.length === 0 && !loading && !error) {
@@ -673,14 +680,16 @@ export const IndividualBookings: React.FC = () => {
                 aria-label="Filter by status"
               >
                 <option value="all">All Statuses</option>
-                <option value="inquiry_sent">Inquiry Sent</option>
-                <option value="quote_received">Quote Received</option>
+                <option value="quote_requested">Request Sent</option>
+                <option value="confirmed">Approved</option>
                 <option value="quote_sent">Quote Sent</option>
+                <option value="quote_accepted">Quote Accepted</option>
                 <option value="confirmed">Confirmed</option>
-                <option value="deposit_paid">Deposit Paid</option>
-                <option value="paid_in_full">Paid in Full</option>
+                <option value="downpayment_paid">Downpayment Paid</option>
+                <option value="paid_in_full">Fully Paid</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="quote_rejected">Declined</option>
               </select>
             </div>
 
@@ -995,7 +1004,7 @@ export const IndividualBookings: React.FC = () => {
 
                     {/* Action Buttons */}
                     <div className="flex flex-wrap gap-3">
-                      {booking.status === 'confirmed' && (
+                      {booking.status === 'approved' && (
                         <>
                           <button
                             onClick={() => handlePayment(booking, 'downpayment')}

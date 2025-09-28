@@ -11,17 +11,21 @@ export type { BookingRequest } from '../../../../../shared/types/comprehensive-b
 // Status config for BookingCard UI
 export const statusConfig: Record<BookingStatus, { label: string; color: string; icon: string }> = {
   draft: { label: 'Draft', color: 'bg-gray-100 text-gray-700 border-gray-300', icon: 'FileText' },
-  request: { label: 'Request Sent', color: 'bg-blue-100 text-blue-800 border-blue-300', icon: 'MessageSquare' }, // Add missing status
+  request: { label: 'Request Sent', color: 'bg-blue-100 text-blue-800 border-blue-300', icon: 'MessageSquare' },
+  approved: { label: 'Approved', color: 'bg-green-100 text-green-800 border-green-300', icon: 'CheckCircle' },
   quote_requested: { label: 'Quote Requested', color: 'bg-yellow-100 text-yellow-800 border-yellow-300', icon: 'AlertCircle' },
   quote_sent: { label: 'Quote Sent', color: 'bg-yellow-100 text-yellow-800 border-yellow-300', icon: 'AlertCircle' },
   quote_accepted: { label: 'Quote Accepted', color: 'bg-green-100 text-green-800 border-green-300', icon: 'CheckCircle' },
   quote_rejected: { label: 'Quote Rejected', color: 'bg-red-100 text-red-800 border-red-300', icon: 'XCircle' },
   confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-800 border-blue-300', icon: 'CheckCircle' },
   downpayment_paid: { label: 'Downpayment Paid', color: 'bg-pink-100 text-pink-800 border-pink-300', icon: 'CreditCard' },
+  downpayment: { label: 'Downpayment Paid', color: 'bg-pink-100 text-pink-800 border-pink-300', icon: 'CreditCard' },
   paid_in_full: { label: 'Paid in Full', color: 'bg-green-100 text-green-800 border-green-300', icon: 'CreditCard' },
+  fully_paid: { label: 'Fully Paid', color: 'bg-green-100 text-green-800 border-green-300', icon: 'CreditCard' },
   in_progress: { label: 'In Progress', color: 'bg-blue-100 text-blue-800 border-blue-300', icon: 'Clock' },
   completed: { label: 'Completed', color: 'bg-green-100 text-green-800 border-green-300', icon: 'CheckCircle' },
   cancelled: { label: 'Cancelled', color: 'bg-gray-100 text-gray-500 border-gray-300', icon: 'XCircle' },
+  declined: { label: 'Declined', color: 'bg-red-100 text-red-800 border-red-300', icon: 'XCircle' },
   refunded: { label: 'Refunded', color: 'bg-purple-100 text-purple-800 border-purple-300', icon: 'CreditCard' },
   disputed: { label: 'Disputed', color: 'bg-red-100 text-red-800 border-red-300', icon: 'AlertCircle' },
 };
