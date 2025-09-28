@@ -614,6 +614,7 @@ app.post('/api/auth/login', async (req, res) => {
       'events@gardengrove.com': '8',            // Elite Wedding Transport
       'demo@user.com': '1-2025-001',           // Map to existing user with messages
       'admin@wedding.com': '2-2025-003',       // Admin -> user with admin conversations
+      'couple1@gmail.com': '1-2025-001',       // Map couple1 to user with messages
     };
 
     // Dynamic user creation - accept any valid email and create real user profile
