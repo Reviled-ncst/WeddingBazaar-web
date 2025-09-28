@@ -578,21 +578,59 @@ app.get('/api/bookings/couple/:userId', async (req, res) => {
     
     console.log('🔍 [BOOKING] Query params:', { userId, page, limit, sortBy, sortOrder });
     
-    // For now, return empty bookings array - this endpoint needs to be implemented
-    // when the bookings table is created in the database
+    // Calculate offset for pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Query bookings for this couple_id
+    const bookingsQuery = `
+      SELECT 
+        id, service_id, service_name, vendor_id, vendor_name, couple_id, couple_name,
+        event_date, event_time, event_location, guest_count, service_type, budget_range,
+        special_requests, contact_phone, preferred_contact_method, status, total_amount,
+        deposit_amount, notes, contract_details, response_message, 
+        estimated_cost_min, estimated_cost_max, estimated_cost_currency,
+        created_at, updated_at
+      FROM bookings 
+      WHERE couple_id = $1
+      ORDER BY ${sortBy} ${sortOrder.toUpperCase()}
+      LIMIT $2 OFFSET $3
+    `;
+    
+    const countQuery = `SELECT COUNT(*) as total FROM bookings WHERE couple_id = $1`;
+    
+    const [bookingsResult, countResult] = await Promise.all([
+      sql(bookingsQuery, [userId, parseInt(limit), offset]),
+      sql(countQuery, [userId])
+    ]);
+    
+    const bookings = bookingsResult.map(booking => ({
+      ...booking,
+      // Convert dates to ISO strings for frontend compatibility
+      event_date: booking.event_date ? new Date(booking.event_date).toISOString() : null,
+      created_at: booking.created_at ? new Date(booking.created_at).toISOString() : null,
+      updated_at: booking.updated_at ? new Date(booking.updated_at).toISOString() : null,
+      // Convert numeric values
+      total_amount: booking.total_amount ? parseFloat(booking.total_amount) : 0,
+      deposit_amount: booking.deposit_amount ? parseFloat(booking.deposit_amount) : 0,
+      estimated_cost_min: booking.estimated_cost_min ? parseFloat(booking.estimated_cost_min) : 0,
+      estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost_max) : 0
+    }));
+    
+    const total = parseInt(countResult[0].total);
+    
     res.json({
       success: true,
-      bookings: [],
-      total: 0,
+      bookings,
+      total,
       page: parseInt(page),
       limit: parseInt(limit),
       sortBy,
       sortOrder,
-      message: 'Booking endpoints ready - waiting for bookings table implementation',
+      message: `Found ${bookings.length} bookings for couple ${userId}`,
       timestamp: new Date().toISOString()
     });
 
-    console.log('✅ [BOOKING] Couple bookings endpoint ready');
+    console.log(`✅ [BOOKING] Retrieved ${bookings.length} bookings for couple ${userId}`);
   } catch (error) {
     console.error('❌ [BOOKING] Error in couple bookings endpoint:', error);
     res.status(500).json({
@@ -612,21 +650,76 @@ app.get('/api/bookings/enhanced', async (req, res) => {
     
     console.log('🔍 [BOOKING] Enhanced query params:', { coupleId, vendorId, page, limit, sortBy, sortOrder });
     
-    // For now, return empty bookings array - this endpoint needs to be implemented
-    // when the bookings table is created in the database
+    // Calculate offset for pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    let whereClause = '';
+    let queryParams = [];
+    let paramIndex = 1;
+    
+    if (coupleId && vendorId) {
+      whereClause = `WHERE couple_id = $${paramIndex++} AND vendor_id = $${paramIndex++}`;
+      queryParams = [coupleId, vendorId];
+    } else if (coupleId) {
+      whereClause = `WHERE couple_id = $${paramIndex++}`;
+      queryParams = [coupleId];
+    } else if (vendorId) {
+      whereClause = `WHERE vendor_id = $${paramIndex++}`;
+      queryParams = [vendorId];
+    }
+    
+    // Add limit and offset params
+    queryParams.push(parseInt(limit), offset);
+    
+    const bookingsQuery = `
+      SELECT 
+        id, service_id, service_name, vendor_id, vendor_name, couple_id, couple_name,
+        event_date, event_time, event_location, guest_count, service_type, budget_range,
+        special_requests, contact_phone, preferred_contact_method, status, total_amount,
+        deposit_amount, notes, contract_details, response_message, 
+        estimated_cost_min, estimated_cost_max, estimated_cost_currency,
+        created_at, updated_at
+      FROM bookings 
+      ${whereClause}
+      ORDER BY ${sortBy} ${sortOrder.toUpperCase()}
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+    `;
+    
+    const countQuery = `SELECT COUNT(*) as total FROM bookings ${whereClause}`;
+    
+    const [bookingsResult, countResult] = await Promise.all([
+      sql(bookingsQuery, queryParams),
+      sql(countQuery, queryParams.slice(0, -2)) // Remove limit and offset for count
+    ]);
+    
+    const bookings = bookingsResult.map(booking => ({
+      ...booking,
+      // Convert dates to ISO strings for frontend compatibility
+      event_date: booking.event_date ? new Date(booking.event_date).toISOString() : null,
+      created_at: booking.created_at ? new Date(booking.created_at).toISOString() : null,
+      updated_at: booking.updated_at ? new Date(booking.updated_at).toISOString() : null,
+      // Convert numeric values
+      total_amount: booking.total_amount ? parseFloat(booking.total_amount) : 0,
+      deposit_amount: booking.deposit_amount ? parseFloat(booking.deposit_amount) : 0,
+      estimated_cost_min: booking.estimated_cost_min ? parseFloat(booking.estimated_cost_min) : 0,
+      estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost_max) : 0
+    }));
+    
+    const total = parseInt(countResult[0].total);
+    
     res.json({
       success: true,
-      bookings: [],
-      total: 0,
+      bookings,
+      total,
       page: parseInt(page),
       limit: parseInt(limit),
       sortBy,
       sortOrder,
-      message: 'Enhanced booking endpoint ready - waiting for bookings table implementation',
+      message: `Found ${bookings.length} enhanced bookings`,
       timestamp: new Date().toISOString()
     });
 
-    console.log('✅ [BOOKING] Enhanced bookings endpoint ready');
+    console.log(`✅ [BOOKING] Enhanced bookings retrieved: ${bookings.length}`);
   } catch (error) {
     console.error('❌ [BOOKING] Error in enhanced bookings endpoint:', error);
     res.status(500).json({
@@ -647,21 +740,59 @@ app.get('/api/bookings/vendor/:vendorId', async (req, res) => {
     
     console.log('🔍 [BOOKING] Vendor query params:', { vendorId, page, limit, sortBy, sortOrder });
     
-    // For now, return empty bookings array - this endpoint needs to be implemented
-    // when the bookings table is created in the database
+    // Calculate offset for pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Query bookings for this vendor_id
+    const bookingsQuery = `
+      SELECT 
+        id, service_id, service_name, vendor_id, vendor_name, couple_id, couple_name,
+        event_date, event_time, event_location, guest_count, service_type, budget_range,
+        special_requests, contact_phone, preferred_contact_method, status, total_amount,
+        deposit_amount, notes, contract_details, response_message, 
+        estimated_cost_min, estimated_cost_max, estimated_cost_currency,
+        created_at, updated_at
+      FROM bookings 
+      WHERE vendor_id = $1
+      ORDER BY ${sortBy} ${sortOrder.toUpperCase()}
+      LIMIT $2 OFFSET $3
+    `;
+    
+    const countQuery = `SELECT COUNT(*) as total FROM bookings WHERE vendor_id = $1`;
+    
+    const [bookingsResult, countResult] = await Promise.all([
+      sql(bookingsQuery, [vendorId, parseInt(limit), offset]),
+      sql(countQuery, [vendorId])
+    ]);
+    
+    const bookings = bookingsResult.map(booking => ({
+      ...booking,
+      // Convert dates to ISO strings for frontend compatibility
+      event_date: booking.event_date ? new Date(booking.event_date).toISOString() : null,
+      created_at: booking.created_at ? new Date(booking.created_at).toISOString() : null,
+      updated_at: booking.updated_at ? new Date(booking.updated_at).toISOString() : null,
+      // Convert numeric values
+      total_amount: booking.total_amount ? parseFloat(booking.total_amount) : 0,
+      deposit_amount: booking.deposit_amount ? parseFloat(booking.deposit_amount) : 0,
+      estimated_cost_min: booking.estimated_cost_min ? parseFloat(booking.estimated_cost_min) : 0,
+      estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost_max) : 0
+    }));
+    
+    const total = parseInt(countResult[0].total);
+    
     res.json({
       success: true,
-      bookings: [],
-      total: 0,
+      bookings,
+      total,
       page: parseInt(page),
       limit: parseInt(limit),
       sortBy,
       sortOrder,
-      message: 'Vendor booking endpoint ready - waiting for bookings table implementation',
+      message: `Found ${bookings.length} bookings for vendor ${vendorId}`,
       timestamp: new Date().toISOString()
     });
 
-    console.log('✅ [BOOKING] Vendor bookings endpoint ready');
+    console.log(`✅ [BOOKING] Retrieved ${bookings.length} bookings for vendor ${vendorId}`);
   } catch (error) {
     console.error('❌ [BOOKING] Error in vendor bookings endpoint:', error);
     res.status(500).json({
@@ -681,23 +812,70 @@ app.get('/api/bookings/stats', async (req, res) => {
     
     console.log('🔍 [BOOKING] Stats query params:', { userId, vendorId });
     
-    // For now, return empty stats - this endpoint needs to be implemented
-    // when the bookings table is created in the database
+    let whereClause = '';
+    let queryParams = [];
+    
+    if (userId && vendorId) {
+      whereClause = `WHERE couple_id = $1 AND vendor_id = $2`;
+      queryParams = [userId, vendorId];
+    } else if (userId) {
+      whereClause = `WHERE couple_id = $1`;
+      queryParams = [userId];
+    } else if (vendorId) {
+      whereClause = `WHERE vendor_id = $1`;
+      queryParams = [vendorId];
+    }
+    
+    // Get overall stats
+    const statsQuery = `
+      SELECT 
+        COUNT(*) as total_bookings,
+        COALESCE(SUM(total_amount), 0) as total_revenue,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_bookings,
+        COUNT(CASE WHEN status = 'request' THEN 1 END) as request_bookings,
+        COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed_bookings,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_bookings,
+        COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_bookings
+      FROM bookings 
+      ${whereClause}
+    `;
+    
+    // Get status breakdown
+    const statusQuery = `
+      SELECT status, COUNT(*) as count
+      FROM bookings 
+      ${whereClause}
+      GROUP BY status
+    `;
+    
+    const [statsResult, statusResult] = await Promise.all([
+      sql(statsQuery, queryParams),
+      sql(statusQuery, queryParams)
+    ]);
+    
+    const stats = statsResult[0];
+    const statusBreakdown = {};
+    statusResult.forEach(row => {
+      statusBreakdown[row.status] = parseInt(row.count);
+    });
+    
     res.json({
       success: true,
       stats: {
-        totalBookings: 0,
-        totalRevenue: 0,
-        pendingBookings: 0,
-        confirmedBookings: 0,
-        completedBookings: 0,
-        statusBreakdown: {}
+        totalBookings: parseInt(stats.total_bookings),
+        totalRevenue: parseFloat(stats.total_revenue),
+        pendingBookings: parseInt(stats.pending_bookings),
+        requestBookings: parseInt(stats.request_bookings),
+        confirmedBookings: parseInt(stats.confirmed_bookings),
+        completedBookings: parseInt(stats.completed_bookings),
+        cancelledBookings: parseInt(stats.cancelled_bookings),
+        statusBreakdown
       },
-      message: 'Booking stats endpoint ready - waiting for bookings table implementation',
+      message: `Retrieved booking statistics${userId ? ` for user ${userId}` : ''}${vendorId ? ` for vendor ${vendorId}` : ''}`,
       timestamp: new Date().toISOString()
     });
 
-    console.log('✅ [BOOKING] Booking stats endpoint ready');
+    console.log('✅ [BOOKING] Booking stats retrieved:', stats);
   } catch (error) {
     console.error('❌ [BOOKING] Error in booking stats endpoint:', error);
     res.status(500).json({
