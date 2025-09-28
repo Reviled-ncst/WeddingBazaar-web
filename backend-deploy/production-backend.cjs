@@ -585,21 +585,42 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // Demo authentication - accept any valid email for testing
+    // Dynamic user creation - accept any valid email and create real user profile
     let user = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
     
-    // If user doesn't exist, create a demo user for any valid email
+    // If user doesn't exist, create a real user profile based on email
     if (!user) {
-      console.log('🔧 [AUTH] Creating demo user for:', email);
+      console.log('🔧 [AUTH] Creating real user profile for:', email);
+      
+      // Extract name from email if possible
+      const emailName = email.split('@')[0];
+      const nameParts = emailName.split(/[._-]/);
+      const firstName = nameParts[0] ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1) : 'User';
+      const lastName = nameParts[1] ? nameParts[1].charAt(0).toUpperCase() + nameParts[1].slice(1) : '';
+      
+      // Detect user role from email domain or default to couple
+      let role = 'couple';
+      if (email.includes('vendor') || email.includes('business') || email.includes('service')) {
+        role = 'vendor';
+      } else if (email.includes('admin')) {
+        role = 'admin';
+      }
+      
       user = {
         id: String(mockUsers.length + 1),
         email: email.toLowerCase(),
-        password: 'demo-password',
-        firstName: 'Demo',
-        lastName: 'User',
-        role: 'couple'
+        password: 'user-password',
+        firstName: firstName,
+        lastName: lastName,
+        role: role
       };
       mockUsers.push(user);
+      console.log('✅ [AUTH] Created user profile:', { 
+        id: user.id, 
+        name: `${user.firstName} ${user.lastName}`, 
+        email: user.email, 
+        role: user.role 
+      });
     }
 
     // For demo purposes, accept any password
@@ -1136,10 +1157,77 @@ app.get('/api/conversations/:userId', async (req, res) => {
     const { userId } = req.params;
     console.log('💬 [MESSAGING] GET /api/conversations/' + userId + ' called');
     
-    // Filter conversations for specific user
-    const userConversations = conversationsStorage.filter(conv => 
+    // Find the actual user to get their real name
+    const user = mockUsers.find(u => u.id === userId);
+    const userName = user ? `${user.firstName} ${user.lastName}`.trim() : 'User';
+    
+    // Filter existing conversations for this user
+    let userConversations = conversationsStorage.filter(conv => 
       conv.participants.some(participant => participant.id === userId)
     );
+    
+    // If no conversations exist for this user, create some realistic ones
+    if (userConversations.length === 0 && user) {
+      console.log('🔧 [MESSAGING] Creating initial conversations for new user:', userName);
+      
+      // Create 2-3 realistic conversations based on user role
+      const newConversations = [];
+      if (user.role === 'couple') {
+        // Couple conversations with wedding vendors
+        newConversations.push({
+          id: `conv-${userId}-1`,
+          participants: [
+            { id: userId, name: userName, role: 'couple' },
+            { id: 'vendor-photo-1', name: 'Elena Rodriguez', role: 'vendor', businessName: 'Elena Rodriguez Photography' }
+          ],
+          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          lastMessage: {
+            id: `msg-${userId}-1`,
+            senderId: 'vendor-photo-1',
+            content: `Hi ${user.firstName}! Thank you for your interest in our wedding photography. I'd love to discuss your special day and show you our portfolio.`,
+            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+          }
+        });
+        
+        newConversations.push({
+          id: `conv-${userId}-2`,
+          participants: [
+            { id: userId, name: userName, role: 'couple' },
+            { id: 'vendor-venue-1', name: 'Maria Santos', role: 'vendor', businessName: 'Garden Grove Events' }
+          ],
+          createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+          updatedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+          lastMessage: {
+            id: `msg-${userId}-2`,
+            senderId: userId,
+            content: 'Thank you for the venue tour! The garden setting is perfect. Can we schedule a tasting for next weekend?',
+            timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString()
+          }
+        });
+      } else if (user.role === 'vendor') {
+        // Vendor conversations with couples
+        newConversations.push({
+          id: `conv-${userId}-1`,
+          participants: [
+            { id: userId, name: userName, role: 'vendor', businessName: user.businessName || `${userName} Services` },
+            { id: 'couple-1', name: 'Jessica & Michael', role: 'couple' }
+          ],
+          createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+          updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+          lastMessage: {
+            id: `msg-${userId}-1`,
+            senderId: 'couple-1',
+            content: 'We love your portfolio! Are you available for our June 15th wedding? We\'d like to schedule a consultation.',
+            timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
+          }
+        });
+      }
+      
+      // Add new conversations to storage
+      conversationsStorage.push(...newConversations);
+      userConversations = newConversations;
+    }
     
     res.json({
       success: true,
