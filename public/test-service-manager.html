@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Service Manager Test</title>
+</head>
+<body>
+    <h1>Testing Centralized Service Manager</h1>
+    <div id="results"></div>
+    
+    <script type="module">
+        // Test the centralized service manager directly
+        import { serviceManager } from '/src/shared/services/CentralizedServiceManager.ts';
+        
+        const resultsDiv = document.getElementById('results');
+        
+        async function testServiceManager() {
+            resultsDiv.innerHTML = '<p>Testing centralized service manager...</p>';
+            
+            try {
+                const result = await serviceManager.getAllServices();
+                
+                if (result.success && result.services.length > 0) {
+                    resultsDiv.innerHTML = `
+                        <h2>✅ SUCCESS: Found ${result.services.length} real services</h2>
+                        <h3>First 3 services:</h3>
+                        <ul>
+                            ${result.services.slice(0, 3).map(service => `
+                                <li>
+                                    <strong>${service.name}</strong> (${service.category})<br>
+                                    Image: ${service.image}<br>
+                                    Vendor: ${service.vendorName}
+                                </li>
+                            `).join('')}
+                        </ul>
+                        <h3>API URL used:</h3>
+                        <p>${serviceManager.apiUrl || 'Unknown'}</p>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <h2>⚠️ No services found</h2>
+                        <p>Success: ${result.success}</p>
+                        <p>Services length: ${result.services.length}</p>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <h2>❌ ERROR</h2>
+                    <p>${error.message}</p>
+                    <pre>${error.stack}</pre>
+                `;
+            }
+        }
+        
+        // Run the test
+        testServiceManager();
+    </script>
+</body>
+</html>

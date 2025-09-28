@@ -972,161 +972,11 @@ app.put('/api/bookings/:id/status', async (req, res) => {
 // ================================
 
 // In-memory storage for conversations with sample data
-let conversationsStorage = [
-  // Demo User conversations (ID: 1-2025-001)
-  {
-    id: 'conv-1',
-    participants: [
-      { id: '1-2025-001', name: 'Demo User', role: 'couple' },
-      { id: '2-2025-003', name: 'Sarah Johnson Photography', role: 'vendor', businessName: 'Sarah Johnson Photography' }
-    ],
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-    lastMessage: {
-      id: 'msg-1',
-      senderId: '2-2025-003',
-      content: 'Thank you for your interest in our wedding photography services! I\'d love to discuss your special day.',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-    }
-  },
-  {
-    id: 'conv-2',
-    participants: [
-      { id: '1-2025-001', name: 'Demo User', role: 'couple' },
-      { id: '1', name: 'Perfect Weddings Co.', role: 'vendor', businessName: 'Perfect Weddings Co.' }
-    ],
-    createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(), // 2 days ago
-    updatedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
-    lastMessage: {
-      id: 'msg-2',
-      senderId: '1',
-      content: 'We have availability for your wedding date! Let me send you our package details.',
-      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
-    }
-  },
-  // Real authenticated user conversations (Sarah Johnson, ID: 1)
-  {
-    id: 'conv-3',
-    participants: [
-      { id: '1', name: 'Sarah Johnson', role: 'couple' },
-      { id: '10', name: 'David Martinez', role: 'vendor', businessName: 'Elite Wedding Photography' }
-    ],
-    createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
-    updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago
-    lastMessage: {
-      id: 'msg-3',
-      senderId: '10',
-      content: 'Hi! I saw your inquiry about wedding photography. We specialize in outdoor ceremonies and have great packages available for your date.',
-      timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
-    }
-  },
-  {
-    id: 'conv-4',
-    participants: [
-      { id: '1', name: 'Sarah Johnson', role: 'couple' },
-      { id: '11', name: 'Jennifer Thompson', role: 'vendor', businessName: 'Garden Grove Venue' }
-    ],
-    createdAt: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(), // 36 hours ago
-    updatedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
-    lastMessage: {
-      id: 'msg-4',
-      senderId: '1',
-      content: 'Thank you for the venue tour! The garden setting is exactly what we\'re looking for. Can we schedule a tasting?',
-      timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString()
-    }
-  },
-  {
-    id: 'conv-5',
-    participants: [
-      { id: '1', name: 'Sarah Johnson', role: 'couple' },
-      { id: '12', name: 'Maria Garcia', role: 'vendor', businessName: 'Harmony Catering' }
-    ],
-    createdAt: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(), // 3 days ago
-    updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-    lastMessage: {
-      id: 'msg-5',
-      senderId: '12',
-      content: 'We\'d be happy to cater your wedding! Our farm-to-table menu would be perfect for your outdoor celebration. Let\'s discuss the details.',
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
-    }
-  }
-];
+// Start with empty conversations - all conversations will be created dynamically for real users
+let conversationsStorage = [];
 
-let messagesStorage = [
-  // Demo User messages
-  {
-    id: 'msg-1',
-    conversationId: 'conv-1',
-    senderId: '2-2025-003',
-    senderName: 'Sarah Johnson Photography',
-    content: 'Thank you for your interest in our wedding photography services! I\'d love to discuss your special day.',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    type: 'text',
-    read: false
-  },
-  {
-    id: 'msg-2',
-    conversationId: 'conv-2',
-    senderId: '1',
-    senderName: 'Perfect Weddings Co.',
-    content: 'We have availability for your wedding date! Let me send you our package details.',
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-    type: 'text',
-    read: false
-  },
-  // Real authenticated user messages (Test User conversations)
-  {
-    id: 'msg-3',
-    conversationId: 'conv-3',
-    senderId: '10',
-    senderName: 'David Martinez',
-    content: 'Hi! I saw your inquiry about wedding photography. We specialize in outdoor ceremonies and have great packages available for your date.',
-    timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-    type: 'text',
-    read: false
-  },
-  {
-    id: 'msg-4',
-    conversationId: 'conv-4',
-    senderId: '1',
-    senderName: 'Sarah Johnson',
-    content: 'Thank you for the venue tour! The garden setting is exactly what we\'re looking for. Can we schedule a tasting?',
-    timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-    type: 'text',
-    read: true
-  },
-  {
-    id: 'msg-5',
-    conversationId: 'conv-5',
-    senderId: '12',
-    senderName: 'Maria Garcia',
-    content: 'We\'d be happy to cater your wedding! Our farm-to-table menu would be perfect for your outdoor celebration. Let\'s discuss the details.',
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    type: 'text',
-    read: false
-  },
-  // Additional messages for realistic conversation history
-  {
-    id: 'msg-6',
-    conversationId: 'conv-3',
-    senderId: '1',
-    senderName: 'Sarah Johnson',
-    content: 'Your portfolio is amazing! We\'re having our ceremony at Garden Grove. Would you be available for June 15th?',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    type: 'text',
-    read: true
-  },
-  {
-    id: 'msg-7',
-    conversationId: 'conv-4',
-    senderId: '11',
-    senderName: 'Jennifer Thompson',
-    content: 'Of course! We\'d love to have you for a tasting. How about next Saturday at 2 PM? We can show you our menu options and discuss decor.',
-    timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-    type: 'text',
-    read: false
-  }
-];
+// Empty messages storage - all messages will be created dynamically for real users
+let messagesStorage = [];
 
 let conversationIdCounter = 6;
 let messageIdCounter = 8;
@@ -1170,55 +1020,51 @@ app.get('/api/conversations/:userId', async (req, res) => {
     if (userConversations.length === 0 && user) {
       console.log('🔧 [MESSAGING] Creating initial conversations for new user:', userName);
       
-      // Create 2-3 realistic conversations based on user role
+      // Create realistic conversations using REAL vendors from database
       const newConversations = [];
       if (user.role === 'couple') {
-        // Couple conversations with wedding vendors
-        newConversations.push({
-          id: `conv-${userId}-1`,
-          participants: [
-            { id: userId, name: userName, role: 'couple' },
-            { id: 'vendor-photo-1', name: 'Elena Rodriguez', role: 'vendor', businessName: 'Elena Rodriguez Photography' }
-          ],
-          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          lastMessage: {
-            id: `msg-${userId}-1`,
-            senderId: 'vendor-photo-1',
-            content: `Hi ${user.firstName}! Thank you for your interest in our wedding photography. I'd love to discuss your special day and show you our portfolio.`,
-            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+        // Get real vendors from database for couple conversations
+        try {
+          const realVendors = await pool.query('SELECT id, name, category, rating, reviews FROM vendors LIMIT 2');
+          
+          if (realVendors.rows.length > 0) {
+            realVendors.rows.forEach((vendor, index) => {
+              newConversations.push({
+                id: `conv-${userId}-${index + 1}`,
+                participants: [
+                  { id: userId, name: userName, role: 'couple' },
+                  { id: `vendor-${vendor.id}`, name: vendor.name, role: 'vendor', businessName: vendor.name }
+                ],
+                createdAt: new Date(Date.now() - (24 + index * 12) * 60 * 60 * 1000).toISOString(),
+                updatedAt: new Date(Date.now() - (2 + index) * 60 * 60 * 1000).toISOString(),
+                lastMessage: {
+                  id: `msg-${userId}-${index + 1}`,
+                  senderId: `vendor-${vendor.id}`,
+                  content: `Hi ${user.firstName || 'there'}! Thank you for your interest in our ${vendor.category.toLowerCase()} services. We'd love to discuss your wedding plans!`,
+                  timestamp: new Date(Date.now() - (2 + index) * 60 * 60 * 1000).toISOString()
+                }
+              });
+            });
           }
-        });
-        
-        newConversations.push({
-          id: `conv-${userId}-2`,
-          participants: [
-            { id: userId, name: userName, role: 'couple' },
-            { id: 'vendor-venue-1', name: 'Maria Santos', role: 'vendor', businessName: 'Garden Grove Events' }
-          ],
-          createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-          updatedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-          lastMessage: {
-            id: `msg-${userId}-2`,
-            senderId: userId,
-            content: 'Thank you for the venue tour! The garden setting is perfect. Can we schedule a tasting for next weekend?',
-            timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString()
-          }
-        });
+        } catch (dbError) {
+          console.warn('⚠️ [MESSAGING] Could not fetch real vendors for conversations:', dbError.message);
+          // No fallback - just leave conversations empty until user creates them
+        }
       } else if (user.role === 'vendor') {
-        // Vendor conversations with couples
+        // For vendors, create conversations with sample couples (based on their actual inquiries)
+        // We'll create one sample conversation for now
         newConversations.push({
           id: `conv-${userId}-1`,
           participants: [
             { id: userId, name: userName, role: 'vendor', businessName: user.businessName || `${userName} Services` },
-            { id: 'couple-1', name: 'Jessica & Michael', role: 'couple' }
+            { id: `couple-${Date.now()}`, name: 'Wedding Planning Couple', role: 'couple' }
           ],
           createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
           updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
           lastMessage: {
             id: `msg-${userId}-1`,
-            senderId: 'couple-1',
-            content: 'We love your portfolio! Are you available for our June 15th wedding? We\'d like to schedule a consultation.',
+            senderId: `couple-${Date.now()}`,
+            content: `Hi! We're interested in your ${user.businessName || 'wedding services'}. Are you available for consultation?`,
             timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
           }
         });

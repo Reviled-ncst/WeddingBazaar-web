@@ -258,12 +258,17 @@ export class CentralizedServiceManager {
   private cacheExpiry: Map<string, number> = new Map();
 
   constructor(_apiUrl?: string) {
-    // Force use production backend to access all 80+ services (ignoring local/env vars)
-    this.apiUrl = 'https://weddingbazaar-web.onrender.com';
-    console.log('🔧 [ServiceManager] FORCED API URL:', this.apiUrl);
-    console.log('🎯 [ServiceManager] ENV VITE_API_URL (ignored):', import.meta.env.VITE_API_URL);
-    console.log('📊 [ServiceManager] FORCING PRODUCTION backend to access 80+ services');
-    console.log('🚨 [ServiceManager] This should connect to production with 85 services');
+    // Use environment variable or fallback to production
+    this.apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+    console.log('🔧 [ServiceManager] API URL:', this.apiUrl);
+    console.log('🎯 [ServiceManager] ENV VITE_API_URL:', import.meta.env.VITE_API_URL);
+    console.log('📊 [ServiceManager] Using configured backend for services');
+    
+    if (this.apiUrl.includes('localhost')) {
+      console.log('🏠 [ServiceManager] LOCAL BACKUP SERVER - Full functionality available');
+    } else {
+      console.log('🌐 [ServiceManager] PRODUCTION BACKEND - 90+ services available');
+    }
   }
 
   // Service Operations

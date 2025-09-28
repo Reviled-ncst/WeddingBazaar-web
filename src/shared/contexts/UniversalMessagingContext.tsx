@@ -119,42 +119,23 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
 
   // Initialize current user from auth context
   useEffect(() => {
-    console.log('🔍 [UniversalMessaging] Auth state check:', { isAuthenticated, user, userExists: !!user });
-    
     if (isAuthenticated && user) {
       const chatUser: ChatUser = {
-        id: user.id || user.email || '1-authenticated',
+        id: user.id,
         name: user.firstName && user.lastName 
           ? `${user.firstName} ${user.lastName}`.trim()
-          : user.email?.split('@')[0] || (user as any).name || 'User',
+          : user.email || 'User',
         role: user.role || detectUserRole(),
-        avatar: (user as any).avatar || generateAvatarUrl(user.email || user.id || 'default'),
+        avatar: (user as any).avatar || generateAvatarUrl(user.email || user.id),
         businessName: (user as any).businessName,
         serviceCategory: (user as any).serviceCategory
       };
       setCurrentUser(chatUser);
       console.log('✅ [UniversalMessaging] Current user initialized:', chatUser);
-      console.log('✅ [UniversalMessaging] User name will be:', chatUser.name);
     } else {
-      // TEMPORARY: Create a test user for demo purposes based on current path
-      const isVendorPath = window.location.pathname.includes('/vendor');
-      const testUser: ChatUser = isVendorPath ? {
-        id: '2-2025-003',
-        name: 'Sarah Johnson Photography',
-        role: 'vendor',
-        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-        businessName: 'Sarah Johnson Photography',
-        serviceCategory: 'Photography'
-      } : {
-        id: '1-2025-001',
-        name: 'Demo User',
-        role: 'couple',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-        businessName: undefined,
-        serviceCategory: undefined
-      };
-      setCurrentUser(testUser);
-      console.log('🧪 [UniversalMessaging] Using test user for demo:', testUser);
+      // User not authenticated - don't create any mock/demo users
+      setCurrentUser(null);
+      console.log('⚠️ [UniversalMessaging] User not authenticated - no messaging available');
     }
   }, [isAuthenticated, user]);
 
@@ -260,10 +241,7 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
       console.error('❌ [UniversalMessaging] Failed to load conversations:', error);
       setError(error instanceof Error ? error.message : 'Failed to load conversations');
       
-      // Provide demo conversations for development
-      if (import.meta.env.DEV) {
-        setConversations(generateDemoConversations());
-      }
+      // No fallback conversations - users start with empty inbox until they create conversations
     } finally {
       setIsLoading(false);
     }
@@ -384,110 +362,7 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
     }
   };
 
-  // Generate demo conversations for development
-  const generateDemoConversations = (): UniversalConversation[] => {
-    if (!currentUser) return [];
-
-    const now = new Date();
-    
-    if (currentUser.role === 'vendor') {
-      return [
-        {
-          id: 'demo-vendor-conv-1',
-          participants: [
-            {
-              id: 'couple-demo-1',
-              name: 'Sarah & Mike Johnson',
-              role: 'couple',
-              avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100'
-            }
-          ],
-          messages: [
-            {
-              id: 'demo-msg-1',
-              conversationId: 'demo-vendor-conv-1',
-              senderId: 'couple-demo-1',
-              senderName: 'Sarah Johnson',
-              senderRole: 'couple',
-              content: 'Hi! We\'re interested in your photography services for our June wedding.',
-              timestamp: new Date(now.getTime() - 30 * 60 * 1000),
-              type: 'text',
-              isRead: false
-            }
-          ],
-          lastMessage: {
-            id: 'demo-msg-1',
-            conversationId: 'demo-vendor-conv-1',
-            senderId: 'couple-demo-1',
-            senderName: 'Sarah Johnson',
-            senderRole: 'couple',
-            content: 'Hi! We\'re interested in your photography services for our June wedding.',
-            timestamp: new Date(now.getTime() - 30 * 60 * 1000),
-            type: 'text',
-            isRead: false
-          },
-          unreadCount: 1,
-          createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000),
-          updatedAt: new Date(now.getTime() - 30 * 60 * 1000),
-          title: 'Sarah & Mike Johnson',
-          serviceInfo: {
-            id: 'photo-service-1',
-            name: 'Wedding Photography',
-            category: 'Photography'
-          }
-        }
-      ];
-    } else {
-      return [
-        {
-          id: 'demo-couple-conv-1',
-          participants: [
-            {
-              id: 'vendor-demo-1',
-              name: 'Perfect Weddings Photography',
-              role: 'vendor',
-              avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
-              businessName: 'Perfect Weddings Photography',
-              serviceCategory: 'Photography'
-            }
-          ],
-          messages: [
-            {
-              id: 'demo-msg-2',
-              conversationId: 'demo-couple-conv-1',
-              senderId: 'vendor-demo-1',
-              senderName: 'Perfect Weddings Photography',
-              senderRole: 'vendor',
-              content: 'Thank you for your interest! I\'d love to discuss your special day. When is your wedding date?',
-              timestamp: new Date(now.getTime() - 15 * 60 * 1000),
-              type: 'text',
-              isRead: false
-            }
-          ],
-          lastMessage: {
-            id: 'demo-msg-2',
-            conversationId: 'demo-couple-conv-1',
-            senderId: 'vendor-demo-1',
-            senderName: 'Perfect Weddings Photography',
-            senderRole: 'vendor',
-            content: 'Thank you for your interest! I\'d love to discuss your special day. When is your wedding date?',
-            timestamp: new Date(now.getTime() - 15 * 60 * 1000),
-            type: 'text',
-            isRead: false
-          },
-          unreadCount: 1,
-          createdAt: new Date(now.getTime() - 1 * 60 * 60 * 1000),
-          updatedAt: new Date(now.getTime() - 15 * 60 * 1000),
-          title: 'Perfect Weddings Photography',
-          serviceInfo: {
-            id: 'photo-service-1',
-            name: 'Wedding Photography',
-            category: 'Photography'
-          }
-        }
-      ];
-    }
-  };
+  // Demo conversations removed - all conversations now come from real API data only
 
   // Create new conversation
   const createConversation = async (participants: UniversalParticipant[], serviceInfo?: any): Promise<string> => {

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Service Count Test</title>
+</head>
+<body>
+    <h1>Testing Service Count After API URL Fix</h1>
+    <div id="results">Loading...</div>
+    
+    <script type="module">
+        // Test the service manager directly
+        import { serviceManager } from '/src/shared/services/CentralizedServiceManager.ts';
+        
+        const resultsDiv = document.getElementById('results');
+        
+        async function testServiceCount() {
+            try {
+                console.log('🧪 Testing service manager API URL...');
+                const result = await serviceManager.getAllServices();
+                
+                resultsDiv.innerHTML = `
+                    <h2>✅ Service Manager Test Results</h2>
+                    <p><strong>Total Services Found:</strong> ${result.services.length}</p>
+                    <p><strong>Success:</strong> ${result.success}</p>
+                    <p><strong>Expected:</strong> 80+ services from production</p>
+                    <p><strong>Status:</strong> ${result.services.length >= 80 ? '✅ SUCCESS' : '❌ STILL USING LOCAL'}</p>
+                    <h3>Sample Services:</h3>
+                    <ul>
+                        ${result.services.slice(0, 5).map(s => `<li><strong>${s.name}</strong> - ${s.category} (${s.vendorName})</li>`).join('')}
+                    </ul>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `<p>❌ Error: ${error.message}</p>`;
+                console.error('Test error:', error);
+            }
+        }
+        
+        testServiceCount();
+    </script>
+</body>
+</html>
