@@ -584,7 +584,7 @@ const mockUsers = [
     role: 'couple'
   },
   {
-    id: '1-2025-001',  // Map to existing participant ID with messages
+    id: '2-2025-001',  // Map to existing participant ID that OWNS conversations
     email: 'couple1@gmail.com',
     password: '$2a$10$rX8V6QOJJmKqV9V9V9V9V.rX8V6QOJJmKqV9V9V9V9rX8V6QOJJ',
     firstName: 'couple1',
@@ -622,7 +622,7 @@ app.post('/api/auth/login', async (req, res) => {
       'events@gardengrove.com': '8',            // Elite Wedding Transport
       'demo@user.com': '1-2025-001',           // Map to existing user with messages
       'admin@wedding.com': '2-2025-003',       // Admin -> user with admin conversations
-      'couple1@gmail.com': '1-2025-001',       // Map couple1 to user with messages
+      'couple1@gmail.com': '2-2025-001',       // Map couple1 to user that OWNS conversations
     };
 
     // Dynamic user creation - accept any valid email and create real user profile
