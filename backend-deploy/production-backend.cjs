@@ -582,6 +582,14 @@ const mockUsers = [
     firstName: 'Demo',
     lastName: 'User',
     role: 'couple'
+  },
+  {
+    id: '1-2025-001',  // Map to existing participant ID with messages
+    email: 'couple1@gmail.com',
+    password: '$2a$10$rX8V6QOJJmKqV9V9V9V9V.rX8V6QOJJmKqV9V9V9V9rX8V6QOJJ',
+    firstName: 'couple1',
+    lastName: 'one',
+    role: 'couple'
   }
 ];
 
