@@ -132,6 +132,7 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
       };
       setCurrentUser(chatUser);
       console.log('✅ [UniversalMessaging] Current user initialized:', chatUser);
+      console.log('🔧 [UniversalMessaging] VERSION CHECK: 2025-09-28-v2 - Demo user logic completely removed');
     } else {
       // User not authenticated - don't create any mock/demo users
       setCurrentUser(null);
