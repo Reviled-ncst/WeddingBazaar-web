@@ -191,7 +191,13 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
           id: conv.id,
           participants: transformParticipants(conv.participants || [], conv),
           messages: [], // Initialize empty messages array - will be loaded separately
-          lastMessage: conv.lastMessage ? transformMessage(conv.lastMessage) : undefined,
+          lastMessage: (conv.lastMessage || conv.last_message) ? transformMessage({
+            content: conv.last_message || conv.lastMessage?.content,
+            timestamp: conv.last_message_time || conv.lastMessage?.timestamp,
+            sender_name: 'System', // Default sender for last message preview
+            sender_id: 'system',
+            sender_type: 'system'
+          }) : undefined,
           unreadCount: conv.unreadCount || 0,
           createdAt: new Date(conv.createdAt || Date.now()),
           updatedAt: new Date(conv.updatedAt || Date.now()),
@@ -325,41 +331,43 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
   const generateConversationTitle = (conv: any): string => {
     if (conv.title) return conv.title;
     
-    // Prioritize service information for context
-    if (conv.serviceInfo?.name) {
-      if (currentUser?.role === 'vendor') {
-        // For vendors: "Customer Name - Service Name"
-        const customerName = conv.coupleName || conv.customerName || 'Customer';
-        return `${customerName} - ${conv.serviceInfo.name}`;
-      } else {
-        // For couples: "Service Name - Vendor Name"
-        const vendorName = conv.vendorName || conv.businessName || 
-                          conv.participants?.[0]?.name || conv.participants?.[0]?.businessName || 'Vendor';
-        return `${conv.serviceInfo.name} - ${vendorName}`;
-      }
+    // Use service name from API response (service_name field)
+    const serviceName = conv.service_name || conv.serviceName || conv.serviceInfo?.name;
+    if (serviceName) {
+      return serviceName;
     }
     
-    // Fallback: Use participant or vendor information
-    if (currentUser?.role === 'vendor') {
-      return conv.coupleName || conv.customerName || 'Customer Inquiry';
-    } else {
-      // For couples, show vendor name (even if it's something like "asdlkjsalkdj")
-      const vendorName = conv.vendorName || conv.businessName || 
-                        conv.participants?.[0]?.name || conv.participants?.[0]?.businessName;
-      
-      if (vendorName) {
-        // If there's a service category, include it
-        const serviceCategory = conv.serviceName || conv.serviceCategory || 
-                               conv.participants?.[0]?.serviceCategory;
-        if (serviceCategory && serviceCategory !== 'other') {
-          return `${vendorName} - ${serviceCategory}`;
-        }
-        return vendorName;
-      }
-      
-      // Final fallback
-      return 'Wedding Service';
+    // Use participant name if available
+    const participantName = conv.participant_name || conv.participantName;
+    if (participantName && !participantName.startsWith('Participant ')) {
+      return participantName;
     }
+    
+    // Try to get vendor/business name from various fields
+    const vendorName = conv.vendor_name || conv.vendorName || conv.business_name || 
+                      conv.businessName || conv.participants?.[0]?.name || 
+                      conv.participants?.[0]?.businessName;
+    
+    if (vendorName && !vendorName.startsWith('Participant ')) {
+      const serviceCategory = conv.service_category || conv.serviceName || conv.serviceCategory;
+      if (serviceCategory && serviceCategory !== 'other') {
+        return `${vendorName} - ${serviceCategory}`;
+      }
+      return vendorName;
+    }
+    
+    // Use conversation type or service category
+    const serviceCategory = conv.service_category || conv.serviceName || conv.serviceCategory;
+    if (serviceCategory && serviceCategory !== 'other') {
+      return serviceCategory;
+    }
+    
+    // Final fallback with conversation ID info
+    if (conv.id && conv.id.includes('to-')) {
+      return `Inquiry ${conv.id.split('-').pop()}`;
+    }
+    
+    return 'Wedding Service';
   };
 
   // Demo conversations removed - all conversations now come from real API data only
@@ -595,8 +603,9 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
     
     // Load messages for the conversation if not already loaded
     const conversation = conversations.find(c => c.id === conversationId);
-    if (conversation && conversation.messages.length === 0 && conversation.lastMessage) {
-      // Only load if we have a lastMessage but no messages array (indicating messages not loaded from DB)
+    if (conversation && conversation.messages.length === 0) {
+      // Always try to load messages if array is empty (real conversations should have messages)
+      console.log(`🔄 [UniversalMessaging] Auto-loading messages for conversation: ${conversationId}`);
       loadMessagesForConversation(conversationId);
     }
     
@@ -721,7 +730,7 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
       console.log(`🔄 [UniversalMessaging] Loading messages for conversation: ${conversationId}`);
       
       const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      const response = await fetch(`${apiUrl}/api/conversations/conversations/${conversationId}/messages`);
+      const response = await fetch(`${apiUrl}/api/conversations/${conversationId}/messages`);
       
       if (!response.ok) {
         console.warn(`⚠️ [UniversalMessaging] Failed to load messages for ${conversationId}: ${response.status}`);
