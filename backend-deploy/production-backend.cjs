@@ -528,7 +528,7 @@ app.get('/api/services/category/:category', async (req, res) => {
 const mockUsers = [
   // Couple users
   {
-    id: '1',
+    id: '2-2025-003',  // Map to existing participant ID with 5 conversations
     email: 'sarah.johnson@email.com',
     password: '$2a$10$rX8V6QOJJmKqV9V9V9V9V.rX8V6QOJJmKqV9V9V9V9rX8V6QOJJ', // "password123"
     firstName: 'Sarah',
@@ -576,7 +576,7 @@ const mockUsers = [
   },
   // Test/demo users (for fallback)
   {
-    id: '100',
+    id: '2-2025-001',  // Map to existing participant ID with conversations
     email: 'test@example.com',
     password: '$2a$10$rX8V6QOJJmKqV9V9V9V9V.rX8V6QOJJmKqV9V9V9V9rX8V6QOJJ',
     firstName: 'Demo',
@@ -605,6 +605,17 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
+    // Create mapping between auth emails and real database participant IDs
+    const userIdMapping = {
+      'sarah.johnson@email.com': '2-2025-003',  // Sarah Johnson -> user with 5 conversations
+      'test@example.com': '2-2025-001',         // Demo user -> user with 1 conversation  
+      'emily.davis@email.com': '2-2025-002',    // Emily Davis -> another user
+      'contact@elitephotography.com': 'vendor-1', // PhotoMagic Studios
+      'events@gardengrove.com': '8',            // Elite Wedding Transport
+      'demo@user.com': '1-2025-001',           // Map to existing user with messages
+      'admin@wedding.com': '2-2025-003',       // Admin -> user with admin conversations
+    };
+
     // Dynamic user creation - accept any valid email and create real user profile
     let user = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
     
@@ -626,8 +637,11 @@ app.post('/api/auth/login', async (req, res) => {
         role = 'admin';
       }
       
+      // Use mapped messaging database ID if available, otherwise create sequential ID
+      const messagingId = userIdMapping[email.toLowerCase()] || `new-user-${mockUsers.length + 1}`;
+      
       user = {
-        id: String(mockUsers.length + 1),
+        id: messagingId,  // Use database-compatible ID
         email: email.toLowerCase(),
         password: 'user-password',
         firstName: firstName,
@@ -639,7 +653,8 @@ app.post('/api/auth/login', async (req, res) => {
         id: user.id, 
         name: `${user.firstName} ${user.lastName}`, 
         email: user.email, 
-        role: user.role 
+        role: user.role,
+        messagingId: messagingId
       });
     }
 
