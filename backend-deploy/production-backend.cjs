@@ -2,7 +2,11 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const { neon } = require('@neondatabase/serverless');
 require('dotenv').config();
+
+// Real Neon database connection
+const sql = neon(process.env.DATABASE_URL);
 
 // Production Wedding Bazaar Backend (CommonJS Version)
 // Comprehensive backend with all working endpoints for production
@@ -62,14 +66,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// Database connection (simplified mock for now)
+// Real database connection test
 const testDatabaseConnection = async () => {
   try {
-    // Mock database connection test
-    console.log('🔍 [DB] Testing database connection...');
+    console.log('🔍 [DB] Testing Neon database connection...');
+    const result = await sql`SELECT 1 as test`;
+    console.log('✅ [DB] Neon database connected successfully');
     return true;
   } catch (error) {
-    console.error('❌ [DB] Database connection failed:', error);
+    console.error('❌ [DB] Neon database connection failed:', error);
     return false;
   }
 };
@@ -983,12 +988,23 @@ let messageIdCounter = 8;
 
 app.get('/api/conversations', async (req, res) => {
   try {
-    console.log('💬 [MESSAGING] GET /api/conversations called');
+    console.log('💬 [MESSAGING] GET /api/conversations called - using REAL database');
+    
+    // Get real conversations from database
+    const conversations = await sql`
+      SELECT id, participant_name, conversation_type, last_message, 
+             last_message_time, unread_count, service_name, service_category,
+             created_at, updated_at
+      FROM conversations 
+      ORDER BY last_message_time DESC NULLS LAST, created_at DESC
+    `;
+    
+    console.log(`📊 [MESSAGING] Found ${conversations.length} real conversations in database`);
     
     res.json({
       success: true,
-      conversations: conversationsStorage,
-      total: conversationsStorage.length,
+      conversations: conversations,
+      total: conversations.length,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -1005,88 +1021,80 @@ app.get('/api/conversations', async (req, res) => {
 app.get('/api/conversations/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log('💬 [MESSAGING] GET /api/conversations/' + userId + ' called');
+    console.log('💬 [MESSAGING] GET /api/conversations/' + userId + ' called - using REAL database');
     
-    // Find the actual user to get their real name (check mockUsers first, then create default)
-    let user = mockUsers.find(u => u.id === userId);
-    let userName = 'User';
-    let userRole = 'couple'; // Default role
+    // Get user's conversations from REAL database
+    let userConversations = await sql`
+      SELECT id, participant_id, participant_name, conversation_type, last_message, 
+             last_message_time, unread_count, service_name, service_category,
+             created_at, updated_at
+      FROM conversations 
+      WHERE participant_id = ${userId}
+      ORDER BY last_message_time DESC NULLS LAST, created_at DESC
+    `;
     
-    if (user) {
-      userName = `${user.firstName} ${user.lastName}`.trim();
-      userRole = user.role || 'couple';
-    } else {
-      // For authenticated users not in mockUsers, create a basic user profile
-      // This handles real authenticated users from JWT tokens
-      userName = `User ${userId}`;
-      userRole = 'couple'; // Default to couple for new users
-      console.log('🔧 [MESSAGING] Creating conversations for authenticated user not in mockUsers:', userId);
-    }
+    console.log(`� [MESSAGING] Found ${userConversations.length} real conversations for user ${userId}`);
     
-    // Filter existing conversations for this user
-    let userConversations = conversationsStorage.filter(conv => 
-      conv.participants.some(participant => participant.id === userId)
-    );
-    
-    // If no conversations exist for this user, create some realistic ones (for ANY user, not just mockUsers)
+    // If no conversations exist, create initial conversations with real vendors from database
     if (userConversations.length === 0) {
-      console.log('🔧 [MESSAGING] Creating initial conversations for new user:', userName);
+      console.log('🔧 [MESSAGING] Creating initial real conversations for new user');
       
-      // Create realistic conversations using REAL vendors from database
-      const newConversations = [];
-      if (userRole === 'couple') {
-        // Get real vendors from mockVendors array (since database pool is not set up)
-        try {
-          console.log('🔍 [MESSAGING] Using mockVendors for conversation creation...');
-          const realVendors = mockVendors.slice(0, 2); // Get first 2 vendors
-          console.log(`📊 [MESSAGING] Found ${realVendors.length} vendors in mockVendors`);
+      try {
+        // Get real vendors from database
+        const vendors = await sql`SELECT id, name, category FROM vendors LIMIT 2`;
+        console.log(`📊 [MESSAGING] Found ${vendors.length} real vendors in database`);
+        
+        if (vendors.length > 0) {
+          // Create conversations with each vendor
+          for (const [index, vendor] of vendors.entries()) {
+            const conversationId = `conv-${userId}-${Date.now()}-${index}`;
+            
+            // Insert conversation into database
+            await sql`
+              INSERT INTO conversations (
+                id, participant_id, participant_name, participant_type, 
+                creator_id, creator_type, conversation_type,
+                last_message, last_message_time, unread_count,
+                service_name, service_category, created_at, updated_at
+              ) VALUES (
+                ${conversationId}, ${userId}, ${'User'}, 'couple',
+                ${`vendor-${vendor.id}`}, 'vendor', 'direct',
+                ${'Hi! Thank you for your interest in our ' + vendor.category.toLowerCase() + ' services. We would love to discuss your wedding plans!'},
+                ${new Date()}, 1,
+                ${vendor.category + ' Services'}, ${vendor.category},
+                ${new Date()}, ${new Date()}
+              )
+            `;
+            
+            // Insert initial message into database
+            await sql`
+              INSERT INTO messages (
+                id, conversation_id, sender_id, sender_name, sender_type,
+                content, message_type, timestamp, is_read, created_at
+              ) VALUES (
+                ${`msg-${conversationId}-1`}, ${conversationId}, 
+                ${`vendor-${vendor.id}`}, ${vendor.name}, 'vendor',
+                ${'Hi! Thank you for your interest in our ' + vendor.category.toLowerCase() + ' services. We would love to discuss your wedding plans!'},
+                'text', ${new Date()}, false, ${new Date()}
+              )
+            `;
+          }
           
-          if (realVendors.length > 0) {
-            realVendors.forEach((vendor, index) => {
-              newConversations.push({
-                id: `conv-${userId}-${index + 1}`,
-                participants: [
-                  { id: userId, name: userName, role: 'couple' },
-                  { id: `vendor-${vendor.id}`, name: vendor.name, role: 'vendor', businessName: vendor.name }
-                ],
-                createdAt: new Date(Date.now() - (24 + index * 12) * 60 * 60 * 1000).toISOString(),
-                updatedAt: new Date(Date.now() - (2 + index) * 60 * 60 * 1000).toISOString(),
-                lastMessage: {
-                  id: `msg-${userId}-${index + 1}`,
-                  senderId: `vendor-${vendor.id}`,
-                  content: `Hi there! Thank you for your interest in our ${vendor.category.toLowerCase()} services. We'd love to discuss your wedding plans!`,
-                  timestamp: new Date(Date.now() - (2 + index) * 60 * 60 * 1000).toISOString()
-                }
-              });
-            });
-          }
-        } catch (error) {
-          console.warn('⚠️ [MESSAGING] Could not create vendor conversations:', error.message);
-          // Continue without vendor conversations
+          // Fetch the newly created conversations
+          userConversations = await sql`
+            SELECT id, participant_id, participant_name, conversation_type, last_message, 
+                   last_message_time, unread_count, service_name, service_category,
+                   created_at, updated_at
+            FROM conversations 
+            WHERE participant_id = ${userId}
+            ORDER BY created_at DESC
+          `;
+          
+          console.log(`✅ [MESSAGING] Created ${userConversations.length} real conversations in database`);
         }
-      } else if (userRole === 'vendor') {
-        // For vendors, create conversations with sample couples (based on their actual inquiries)
-        // We'll create one sample conversation for now
-        newConversations.push({
-          id: `conv-${userId}-1`,
-          participants: [
-            { id: userId, name: userName, role: 'vendor', businessName: `${userName} Services` },
-            { id: `couple-${Date.now()}`, name: 'Wedding Planning Couple', role: 'couple' }
-          ],
-          createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-          updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-          lastMessage: {
-            id: `msg-${userId}-1`,
-            senderId: `couple-${Date.now()}`,
-            content: `Hi! We're interested in your wedding services. Are you available for consultation?`,
-            timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
-          }
-        });
+      } catch (dbError) {
+        console.error('❌ [MESSAGING] Failed to create conversations in database:', dbError);
       }
-      
-      // Add new conversations to storage
-      conversationsStorage.push(...newConversations);
-      userConversations = newConversations;
     }
     
     res.json({
@@ -1155,9 +1163,19 @@ app.post('/api/conversations', async (req, res) => {
 app.get('/api/conversations/:conversationId/messages', async (req, res) => {
   try {
     const { conversationId } = req.params;
-    console.log('💬 [MESSAGING] GET messages for conversation:', conversationId);
+    console.log('💬 [MESSAGING] GET messages for conversation:', conversationId, '- using REAL database');
     
-    const messages = messagesStorage.filter(msg => msg.conversationId === conversationId);
+    // Get real messages from database
+    const messages = await sql`
+      SELECT id, conversation_id, sender_id, sender_name, sender_type,
+             content, message_type, timestamp, is_read, reactions,
+             service_data, created_at
+      FROM messages 
+      WHERE conversation_id = ${conversationId}
+      ORDER BY timestamp ASC, created_at ASC
+    `;
+    
+    console.log(`📊 [MESSAGING] Found ${messages.length} real messages for conversation ${conversationId}`);
     
     res.json({
       success: true,
