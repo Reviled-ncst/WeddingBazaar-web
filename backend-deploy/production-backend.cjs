@@ -31,6 +31,7 @@ const activeTokenSessions = {};
 console.log('🚀 Wedding Bazaar Backend Starting...');
 console.log('📊 Environment:', process.env.NODE_ENV || 'development');
 console.log('🔗 Database:', process.env.DATABASE_URL ? 'Connected' : 'Not configured');
+console.log('🔄 Filter Fix Deployment:', new Date().toISOString());
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
@@ -49,7 +50,7 @@ app.get('/api/health', async (req, res) => {
         error: ''
       },
       environment: process.env.NODE_ENV || 'production',
-      version: '2.1.0-FIXED',
+      version: '2.1.1-FILTER-FIX-DEPLOYED',
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       endpoints: {
