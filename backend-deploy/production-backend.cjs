@@ -525,6 +525,9 @@ app.get('/api/services/category/:category', async (req, res) => {
 // ================================
 
 // Mock user storage
+// Active token sessions for proper user mapping
+const activeTokenSessions = {};
+
 const mockUsers = [
   // Couple users
   {
@@ -672,6 +675,17 @@ app.post('/api/auth/login', async (req, res) => {
     
     const token = 'mock-jwt-token-' + Date.now();
     
+    // Store user session for token verification
+    activeTokenSessions[token] = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role
+    };
+    
+    console.log(`🔐 [AUTH] Created session for token: ${user.email} (${user.firstName} ${user.lastName})`);
+    
     res.json({
       success: true,
       token: token,
@@ -744,6 +758,17 @@ app.post('/api/auth/register', async (req, res) => {
     
     const token = 'mock-jwt-token-' + Date.now();
     
+    // Store user session for token verification
+    activeTokenSessions[token] = {
+      id: newUser.id,
+      email: newUser.email,
+      firstName: newUser.firstName,
+      lastName: newUser.lastName,
+      role: newUser.role
+    };
+    
+    console.log(`🔐 [AUTH] Created session for new user: ${newUser.email} (${newUser.firstName} ${newUser.lastName})`);
+    
     res.status(201).json({
       success: true,
       user: {
@@ -781,22 +806,35 @@ app.post('/api/auth/verify', async (req, res) => {
       });
     }
 
-    // Mock token verification
+    // Mock token verification with proper user mapping
     if (token.startsWith('mock-jwt-token-')) {
-      const mockUser = mockUsers[0]; // Return first user for demo
-      res.json({
-        success: true,
-        authenticated: true,
-        user: {
-          id: mockUser.id,
-          email: mockUser.email,
-          firstName: mockUser.firstName,
-          lastName: mockUser.lastName,
-          role: mockUser.role
-        },
-        message: 'Token valid',
-        timestamp: new Date().toISOString()
-      });
+      // Look up user from active sessions (stored when tokens are created)
+      const sessionUser = activeTokenSessions[token];
+      
+      if (sessionUser) {
+        console.log(`🔐 [AUTH] Token verification found session: ${sessionUser.email} (${sessionUser.firstName} ${sessionUser.lastName})`);
+        res.json({
+          success: true,
+          authenticated: true,
+          user: {
+            id: sessionUser.id,
+            email: sessionUser.email,
+            firstName: sessionUser.firstName,
+            lastName: sessionUser.lastName,
+            role: sessionUser.role
+          },
+          message: 'Token valid',
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        console.log(`🔐 [AUTH] Token verification failed - no session found for token`);
+        res.json({
+          success: false,
+          authenticated: false,
+          message: 'Invalid token - session not found',
+          timestamp: new Date().toISOString()
+        });
+      }
     } else {
       res.json({
         success: false,

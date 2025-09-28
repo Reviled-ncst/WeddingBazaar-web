@@ -119,6 +119,14 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
 
   // Initialize current user from auth context
   useEffect(() => {
+    console.log('🔄 [UniversalMessaging] Auth state changed:', { 
+      isAuthenticated, 
+      hasUser: !!user, 
+      userEmail: user?.email,
+      userFirstName: user?.firstName,
+      userLastName: user?.lastName 
+    });
+    
     if (isAuthenticated && user) {
       const chatUser: ChatUser = {
         id: user.id,
@@ -130,9 +138,17 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
         businessName: (user as any).businessName,
         serviceCategory: (user as any).serviceCategory
       };
+      
+      // ⚠️ SECURITY CHECK: Ensure no demo data is being used
+      if (chatUser.name?.includes('Demo') || chatUser.name?.includes('Sarah Johnson')) {
+        console.error('🚨 [CRITICAL] Demo user detected in production! User:', chatUser);
+        console.error('🚨 Original auth user:', user);
+      }
       setCurrentUser(chatUser);
       console.log('✅ [UniversalMessaging] Current user initialized:', chatUser);
-      console.log('🔧 [UniversalMessaging] VERSION CHECK: 2025-09-28-v2 - Demo user logic completely removed');
+      console.log('🔧 [UniversalMessaging] VERSION CHECK: 2025-09-28-FINAL-v4 - Fixed API endpoints and error handling');
+      console.log('🔧 [UniversalMessaging] DEPLOYED VERSION: This should show REAL user names only!');
+      console.log('🔧 [UniversalMessaging] API ENDPOINTS FIXED: Correct conversation and message loading URLs');
     } else {
       // User not authenticated - don't create any mock/demo users
       setCurrentUser(null);
@@ -179,36 +195,46 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
       const response = await fetch(endpoint);
       
       if (!response.ok) {
-        throw new Error(`Failed to load conversations: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`❌ [UniversalMessaging] API Error ${response.status}:`, errorText);
+        throw new Error(`Failed to load conversations (${response.status}): ${errorText.substring(0, 100)}`);
       }
 
       const data = await response.json();
       console.log(`📦 [UniversalMessaging] Backend response:`, data);
       console.log(`📦 [UniversalMessaging] Success:`, data.success);
       console.log(`📦 [UniversalMessaging] Conversations count:`, data.conversations?.length);
+      console.log(`📦 [UniversalMessaging] First conversation sample:`, data.conversations?.[0]);
       
       if (data.success && data.conversations) {
         const transformedConversations: UniversalConversation[] = data.conversations.map((conv: any) => ({
           id: conv.id,
           participants: transformParticipants(conv.participants || [], conv),
           messages: [], // Initialize empty messages array - will be loaded separately
-          lastMessage: (conv.lastMessage || conv.last_message) ? transformMessage({
-            content: conv.last_message || conv.lastMessage?.content,
-            timestamp: conv.last_message_time || conv.lastMessage?.timestamp,
-            sender_name: 'System', // Default sender for last message preview
-            sender_id: 'system',
-            sender_type: 'system'
+          lastMessage: conv.last_message ? transformMessage({
+            id: `last-${conv.id}`,
+            content: conv.last_message,
+            timestamp: conv.last_message_time,
+            sender_name: conv.participant_name || 'System',
+            sender_id: conv.participant_id || 'system',
+            sender_type: 'system',
+            conversation_id: conv.id
           }) : undefined,
-          unreadCount: conv.unreadCount || 0,
-          createdAt: new Date(conv.createdAt || Date.now()),
-          updatedAt: new Date(conv.updatedAt || Date.now()),
+          unreadCount: conv.unread_count || 0,
+          createdAt: new Date(conv.created_at || Date.now()),
+          updatedAt: new Date(conv.updated_at || Date.now()),
           title: generateConversationTitle(conv),
-          serviceInfo: conv.serviceInfo || conv.service,
+          serviceInfo: conv.service_name ? {
+            id: conv.id,
+            name: conv.service_name,
+            category: conv.service_category || 'service',
+            description: `${conv.service_category} service`
+          } : undefined,
           metadata: {
-            vendorId: conv.vendorId || conv.vendor_id,
-            coupleId: conv.coupleId || conv.couple_id,
-            serviceId: conv.serviceId || conv.service_id,
-            status: conv.status || 'active'
+            vendorId: conv.vendor_id,
+            coupleId: conv.couple_id,
+            serviceId: conv.service_id,
+            status: 'active'
           }
         }));
 
@@ -483,7 +509,7 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
     try {
       // Send to backend
       const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      await fetch(`${apiUrl}/api/conversations/conversations/${conversationId}/messages`, {
+      await fetch(`${apiUrl}/api/conversations/${conversationId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -585,7 +611,7 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      await fetch(`${apiUrl}/api/conversations/conversations/${conversationId}/read`, {
+      await fetch(`${apiUrl}/api/conversations/${conversationId}/read`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: currentUser?.id })
@@ -734,11 +760,13 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
       const response = await fetch(`${apiUrl}/api/conversations/${conversationId}/messages`);
       
       if (!response.ok) {
-        console.warn(`⚠️ [UniversalMessaging] Failed to load messages for ${conversationId}: ${response.status}`);
+        const errorText = await response.text();
+        console.warn(`⚠️ [UniversalMessaging] Failed to load messages for ${conversationId}: ${response.status} - ${errorText.substring(0, 100)}`);
         return;
       }
 
       const data = await response.json();
+      console.log(`📦 [UniversalMessaging] Messages API response for ${conversationId}:`, data);
       
       if (data.success && data.messages) {
         const transformedMessages: UniversalMessage[] = data.messages.map((msg: any) => transformMessage(msg));
