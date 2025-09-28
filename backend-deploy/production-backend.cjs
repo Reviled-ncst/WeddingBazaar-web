@@ -1007,28 +1007,42 @@ app.get('/api/conversations/:userId', async (req, res) => {
     const { userId } = req.params;
     console.log('💬 [MESSAGING] GET /api/conversations/' + userId + ' called');
     
-    // Find the actual user to get their real name
-    const user = mockUsers.find(u => u.id === userId);
-    const userName = user ? `${user.firstName} ${user.lastName}`.trim() : 'User';
+    // Find the actual user to get their real name (check mockUsers first, then create default)
+    let user = mockUsers.find(u => u.id === userId);
+    let userName = 'User';
+    let userRole = 'couple'; // Default role
+    
+    if (user) {
+      userName = `${user.firstName} ${user.lastName}`.trim();
+      userRole = user.role || 'couple';
+    } else {
+      // For authenticated users not in mockUsers, create a basic user profile
+      // This handles real authenticated users from JWT tokens
+      userName = `User ${userId}`;
+      userRole = 'couple'; // Default to couple for new users
+      console.log('🔧 [MESSAGING] Creating conversations for authenticated user not in mockUsers:', userId);
+    }
     
     // Filter existing conversations for this user
     let userConversations = conversationsStorage.filter(conv => 
       conv.participants.some(participant => participant.id === userId)
     );
     
-    // If no conversations exist for this user, create some realistic ones
-    if (userConversations.length === 0 && user) {
+    // If no conversations exist for this user, create some realistic ones (for ANY user, not just mockUsers)
+    if (userConversations.length === 0) {
       console.log('🔧 [MESSAGING] Creating initial conversations for new user:', userName);
       
       // Create realistic conversations using REAL vendors from database
       const newConversations = [];
-      if (user.role === 'couple') {
-        // Get real vendors from database for couple conversations
+      if (userRole === 'couple') {
+        // Get real vendors from mockVendors array (since database pool is not set up)
         try {
-          const realVendors = await pool.query('SELECT id, name, category, rating, reviews FROM vendors LIMIT 2');
+          console.log('🔍 [MESSAGING] Using mockVendors for conversation creation...');
+          const realVendors = mockVendors.slice(0, 2); // Get first 2 vendors
+          console.log(`📊 [MESSAGING] Found ${realVendors.length} vendors in mockVendors`);
           
-          if (realVendors.rows.length > 0) {
-            realVendors.rows.forEach((vendor, index) => {
+          if (realVendors.length > 0) {
+            realVendors.forEach((vendor, index) => {
               newConversations.push({
                 id: `conv-${userId}-${index + 1}`,
                 participants: [
@@ -1040,23 +1054,23 @@ app.get('/api/conversations/:userId', async (req, res) => {
                 lastMessage: {
                   id: `msg-${userId}-${index + 1}`,
                   senderId: `vendor-${vendor.id}`,
-                  content: `Hi ${user.firstName || 'there'}! Thank you for your interest in our ${vendor.category.toLowerCase()} services. We'd love to discuss your wedding plans!`,
+                  content: `Hi there! Thank you for your interest in our ${vendor.category.toLowerCase()} services. We'd love to discuss your wedding plans!`,
                   timestamp: new Date(Date.now() - (2 + index) * 60 * 60 * 1000).toISOString()
                 }
               });
             });
           }
-        } catch (dbError) {
-          console.warn('⚠️ [MESSAGING] Could not fetch real vendors for conversations:', dbError.message);
-          // No fallback - just leave conversations empty until user creates them
+        } catch (error) {
+          console.warn('⚠️ [MESSAGING] Could not create vendor conversations:', error.message);
+          // Continue without vendor conversations
         }
-      } else if (user.role === 'vendor') {
+      } else if (userRole === 'vendor') {
         // For vendors, create conversations with sample couples (based on their actual inquiries)
         // We'll create one sample conversation for now
         newConversations.push({
           id: `conv-${userId}-1`,
           participants: [
-            { id: userId, name: userName, role: 'vendor', businessName: user.businessName || `${userName} Services` },
+            { id: userId, name: userName, role: 'vendor', businessName: `${userName} Services` },
             { id: `couple-${Date.now()}`, name: 'Wedding Planning Couple', role: 'couple' }
           ],
           createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
@@ -1064,7 +1078,7 @@ app.get('/api/conversations/:userId', async (req, res) => {
           lastMessage: {
             id: `msg-${userId}-1`,
             senderId: `couple-${Date.now()}`,
-            content: `Hi! We're interested in your ${user.businessName || 'wedding services'}. Are you available for consultation?`,
+            content: `Hi! We're interested in your wedding services. Are you available for consultation?`,
             timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
           }
         });
