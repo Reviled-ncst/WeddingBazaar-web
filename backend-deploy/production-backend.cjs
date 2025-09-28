@@ -567,6 +567,148 @@ app.post('/api/bookings/request', async (req, res) => {
   }
 });
 
+// ================== BOOKING ENDPOINTS ==================
+
+// Get bookings for a couple/individual user
+app.get('/api/bookings/couple/:userId', async (req, res) => {
+  try {
+    console.log('📊 [BOOKING] GET /api/bookings/couple/:userId called');
+    const { userId } = req.params;
+    const { page = 1, limit = 10, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    
+    console.log('🔍 [BOOKING] Query params:', { userId, page, limit, sortBy, sortOrder });
+    
+    // For now, return empty bookings array - this endpoint needs to be implemented
+    // when the bookings table is created in the database
+    res.json({
+      success: true,
+      bookings: [],
+      total: 0,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sortBy,
+      sortOrder,
+      message: 'Booking endpoints ready - waiting for bookings table implementation',
+      timestamp: new Date().toISOString()
+    });
+
+    console.log('✅ [BOOKING] Couple bookings endpoint ready');
+  } catch (error) {
+    console.error('❌ [BOOKING] Error in couple bookings endpoint:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch couple bookings',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Enhanced bookings endpoint for compatibility
+app.get('/api/bookings/enhanced', async (req, res) => {
+  try {
+    console.log('📊 [BOOKING] GET /api/bookings/enhanced called');
+    const { coupleId, vendorId, page = 1, limit = 10, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    
+    console.log('🔍 [BOOKING] Enhanced query params:', { coupleId, vendorId, page, limit, sortBy, sortOrder });
+    
+    // For now, return empty bookings array - this endpoint needs to be implemented
+    // when the bookings table is created in the database
+    res.json({
+      success: true,
+      bookings: [],
+      total: 0,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sortBy,
+      sortOrder,
+      message: 'Enhanced booking endpoint ready - waiting for bookings table implementation',
+      timestamp: new Date().toISOString()
+    });
+
+    console.log('✅ [BOOKING] Enhanced bookings endpoint ready');
+  } catch (error) {
+    console.error('❌ [BOOKING] Error in enhanced bookings endpoint:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch enhanced bookings',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get bookings for a vendor
+app.get('/api/bookings/vendor/:vendorId', async (req, res) => {
+  try {
+    console.log('📊 [BOOKING] GET /api/bookings/vendor/:vendorId called');
+    const { vendorId } = req.params;
+    const { page = 1, limit = 10, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    
+    console.log('🔍 [BOOKING] Vendor query params:', { vendorId, page, limit, sortBy, sortOrder });
+    
+    // For now, return empty bookings array - this endpoint needs to be implemented
+    // when the bookings table is created in the database
+    res.json({
+      success: true,
+      bookings: [],
+      total: 0,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sortBy,
+      sortOrder,
+      message: 'Vendor booking endpoint ready - waiting for bookings table implementation',
+      timestamp: new Date().toISOString()
+    });
+
+    console.log('✅ [BOOKING] Vendor bookings endpoint ready');
+  } catch (error) {
+    console.error('❌ [BOOKING] Error in vendor bookings endpoint:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch vendor bookings',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get booking statistics
+app.get('/api/bookings/stats', async (req, res) => {
+  try {
+    console.log('📊 [BOOKING] GET /api/bookings/stats called');
+    const { userId, vendorId } = req.query;
+    
+    console.log('🔍 [BOOKING] Stats query params:', { userId, vendorId });
+    
+    // For now, return empty stats - this endpoint needs to be implemented
+    // when the bookings table is created in the database
+    res.json({
+      success: true,
+      stats: {
+        totalBookings: 0,
+        totalRevenue: 0,
+        pendingBookings: 0,
+        confirmedBookings: 0,
+        completedBookings: 0,
+        statusBreakdown: {}
+      },
+      message: 'Booking stats endpoint ready - waiting for bookings table implementation',
+      timestamp: new Date().toISOString()
+    });
+
+    console.log('✅ [BOOKING] Booking stats endpoint ready');
+  } catch (error) {
+    console.error('❌ [BOOKING] Error in booking stats endpoint:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch booking stats',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('❌ [ERROR] Unhandled error:', err);
