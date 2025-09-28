@@ -506,11 +506,60 @@ app.get('/api/services/category/:category', async (req, res) => {
 
 // Mock user storage
 const mockUsers = [
+  // Couple users
   {
     id: '1',
-    email: 'test@example.com',
+    email: 'sarah.johnson@email.com',
     password: '$2a$10$rX8V6QOJJmKqV9V9V9V9V.rX8V6QOJJmKqV9V9V9V9rX8V6QOJJ', // "password123"
-    firstName: 'Test',
+    firstName: 'Sarah',
+    lastName: 'Johnson',
+    role: 'couple',
+    weddingDate: '2025-06-15',
+    fianceFirstName: 'Michael',
+    fianceLastName: 'Chen',
+    location: 'San Francisco, CA'
+  },
+  {
+    id: '2',
+    email: 'emily.davis@email.com', 
+    password: '$2a$10$rX8V6QOJJmKqV9V9V9V9V.rX8V6QOJJmKqV9V9V9V9rX8V6QOJJ',
+    firstName: 'Emily',
+    lastName: 'Davis',
+    role: 'couple',
+    weddingDate: '2025-08-22',
+    fianceFirstName: 'James',
+    fianceLastName: 'Rodriguez',
+    location: 'Los Angeles, CA'
+  },
+  // Vendor users
+  {
+    id: '10',
+    email: 'contact@elitephotography.com',
+    password: '$2a$10$rX8V6QOJJmKqV9V9V9V9V.rX8V6QOJJmKqV9V9V9V9rX8V6QOJJ',
+    firstName: 'David',
+    lastName: 'Martinez',
+    role: 'vendor',
+    businessName: 'Elite Wedding Photography',
+    serviceCategory: 'Photography',
+    location: 'Bay Area, CA'
+  },
+  {
+    id: '11',
+    email: 'events@gardengrove.com',
+    password: '$2a$10$rX8V6QOJJmKqV9V9V9V9V.rX8V6QOJJmKqV9V9V9V9rX8V6QOJJ',
+    firstName: 'Jennifer',
+    lastName: 'Thompson',
+    role: 'vendor',
+    businessName: 'Garden Grove Venue',
+    serviceCategory: 'Venue',
+    location: 'Napa Valley, CA'
+  },
+  // Test/demo users (for fallback)
+  {
+    id: '100',
+    email: 'test@example.com',
+    password: '$2a$10$rX8V6QOJJmKqV9V9V9V9V.rX8V6QOJJmKqV9V9V9V9rX8V6QOJJ',
+    firstName: 'Demo',
     lastName: 'User',
     role: 'couple'
   }
@@ -934,18 +983,18 @@ let conversationsStorage = [
       timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
     }
   },
-  // Real authenticated user conversations (Test User, ID: 1)
+  // Real authenticated user conversations (Sarah Johnson, ID: 1)
   {
     id: 'conv-3',
     participants: [
-      { id: '1', name: 'Test User', role: 'couple' },
-      { id: '2', name: 'Elite Wedding Photography', role: 'vendor', businessName: 'Elite Wedding Photography' }
+      { id: '1', name: 'Sarah Johnson', role: 'couple' },
+      { id: '10', name: 'David Martinez', role: 'vendor', businessName: 'Elite Wedding Photography' }
     ],
     createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
     updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago
     lastMessage: {
       id: 'msg-3',
-      senderId: '2',
+      senderId: '10',
       content: 'Hi! I saw your inquiry about wedding photography. We specialize in outdoor ceremonies and have great packages available for your date.',
       timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
     }
@@ -953,8 +1002,8 @@ let conversationsStorage = [
   {
     id: 'conv-4',
     participants: [
-      { id: '1', name: 'Test User', role: 'couple' },
-      { id: '3', name: 'Garden Grove Venue', role: 'vendor', businessName: 'Garden Grove Venue' }
+      { id: '1', name: 'Sarah Johnson', role: 'couple' },
+      { id: '11', name: 'Jennifer Thompson', role: 'vendor', businessName: 'Garden Grove Venue' }
     ],
     createdAt: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(), // 36 hours ago
     updatedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
@@ -968,14 +1017,14 @@ let conversationsStorage = [
   {
     id: 'conv-5',
     participants: [
-      { id: '1', name: 'Test User', role: 'couple' },
-      { id: '4', name: 'Harmony Catering', role: 'vendor', businessName: 'Harmony Catering' }
+      { id: '1', name: 'Sarah Johnson', role: 'couple' },
+      { id: '12', name: 'Maria Garcia', role: 'vendor', businessName: 'Harmony Catering' }
     ],
     createdAt: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(), // 3 days ago
     updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
     lastMessage: {
       id: 'msg-5',
-      senderId: '4',
+      senderId: '12',
       content: 'We\'d be happy to cater your wedding! Our farm-to-table menu would be perfect for your outdoor celebration. Let\'s discuss the details.',
       timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
     }
@@ -1008,8 +1057,8 @@ let messagesStorage = [
   {
     id: 'msg-3',
     conversationId: 'conv-3',
-    senderId: '2',
-    senderName: 'Elite Wedding Photography',
+    senderId: '10',
+    senderName: 'David Martinez',
     content: 'Hi! I saw your inquiry about wedding photography. We specialize in outdoor ceremonies and have great packages available for your date.',
     timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
     type: 'text',
@@ -1019,7 +1068,7 @@ let messagesStorage = [
     id: 'msg-4',
     conversationId: 'conv-4',
     senderId: '1',
-    senderName: 'Test User',
+    senderName: 'Sarah Johnson',
     content: 'Thank you for the venue tour! The garden setting is exactly what we\'re looking for. Can we schedule a tasting?',
     timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
     type: 'text',
@@ -1028,8 +1077,8 @@ let messagesStorage = [
   {
     id: 'msg-5',
     conversationId: 'conv-5',
-    senderId: '4',
-    senderName: 'Harmony Catering',
+    senderId: '12',
+    senderName: 'Maria Garcia',
     content: 'We\'d be happy to cater your wedding! Our farm-to-table menu would be perfect for your outdoor celebration. Let\'s discuss the details.',
     timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
     type: 'text',
@@ -1040,7 +1089,7 @@ let messagesStorage = [
     id: 'msg-6',
     conversationId: 'conv-3',
     senderId: '1',
-    senderName: 'Test User',
+    senderName: 'Sarah Johnson',
     content: 'Your portfolio is amazing! We\'re having our ceremony at Garden Grove. Would you be available for June 15th?',
     timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     type: 'text',
@@ -1049,8 +1098,8 @@ let messagesStorage = [
   {
     id: 'msg-7',
     conversationId: 'conv-4',
-    senderId: '3',
-    senderName: 'Garden Grove Venue',
+    senderId: '11',
+    senderName: 'Jennifer Thompson',
     content: 'Of course! We\'d love to have you for a tasting. How about next Saturday at 2 PM? We can show you our menu options and discuss decor.',
     timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
     type: 'text',
