@@ -903,6 +903,7 @@ app.put('/api/bookings/:id/status', async (req, res) => {
 
 // In-memory storage for conversations with sample data
 let conversationsStorage = [
+  // Demo User conversations (ID: 1-2025-001)
   {
     id: 'conv-1',
     participants: [
@@ -932,10 +933,57 @@ let conversationsStorage = [
       content: 'We have availability for your wedding date! Let me send you our package details.',
       timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
     }
+  },
+  // Real authenticated user conversations (Test User, ID: 1)
+  {
+    id: 'conv-3',
+    participants: [
+      { id: '1', name: 'Test User', role: 'couple' },
+      { id: '2', name: 'Elite Wedding Photography', role: 'vendor', businessName: 'Elite Wedding Photography' }
+    ],
+    createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+    updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago
+    lastMessage: {
+      id: 'msg-3',
+      senderId: '2',
+      content: 'Hi! I saw your inquiry about wedding photography. We specialize in outdoor ceremonies and have great packages available for your date.',
+      timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
+    }
+  },
+  {
+    id: 'conv-4',
+    participants: [
+      { id: '1', name: 'Test User', role: 'couple' },
+      { id: '3', name: 'Garden Grove Venue', role: 'vendor', businessName: 'Garden Grove Venue' }
+    ],
+    createdAt: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(), // 36 hours ago
+    updatedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
+    lastMessage: {
+      id: 'msg-4',
+      senderId: '1',
+      content: 'Thank you for the venue tour! The garden setting is exactly what we\'re looking for. Can we schedule a tasting?',
+      timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    }
+  },
+  {
+    id: 'conv-5',
+    participants: [
+      { id: '1', name: 'Test User', role: 'couple' },
+      { id: '4', name: 'Harmony Catering', role: 'vendor', businessName: 'Harmony Catering' }
+    ],
+    createdAt: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(), // 3 days ago
+    updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+    lastMessage: {
+      id: 'msg-5',
+      senderId: '4',
+      content: 'We\'d be happy to cater your wedding! Our farm-to-table menu would be perfect for your outdoor celebration. Let\'s discuss the details.',
+      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
+    }
   }
 ];
 
 let messagesStorage = [
+  // Demo User messages
   {
     id: 'msg-1',
     conversationId: 'conv-1',
@@ -955,11 +1003,63 @@ let messagesStorage = [
     timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     type: 'text',
     read: false
+  },
+  // Real authenticated user messages (Test User conversations)
+  {
+    id: 'msg-3',
+    conversationId: 'conv-3',
+    senderId: '2',
+    senderName: 'Elite Wedding Photography',
+    content: 'Hi! I saw your inquiry about wedding photography. We specialize in outdoor ceremonies and have great packages available for your date.',
+    timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    type: 'text',
+    read: false
+  },
+  {
+    id: 'msg-4',
+    conversationId: 'conv-4',
+    senderId: '1',
+    senderName: 'Test User',
+    content: 'Thank you for the venue tour! The garden setting is exactly what we\'re looking for. Can we schedule a tasting?',
+    timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    type: 'text',
+    read: true
+  },
+  {
+    id: 'msg-5',
+    conversationId: 'conv-5',
+    senderId: '4',
+    senderName: 'Harmony Catering',
+    content: 'We\'d be happy to cater your wedding! Our farm-to-table menu would be perfect for your outdoor celebration. Let\'s discuss the details.',
+    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+    type: 'text',
+    read: false
+  },
+  // Additional messages for realistic conversation history
+  {
+    id: 'msg-6',
+    conversationId: 'conv-3',
+    senderId: '1',
+    senderName: 'Test User',
+    content: 'Your portfolio is amazing! We\'re having our ceremony at Garden Grove. Would you be available for June 15th?',
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    type: 'text',
+    read: true
+  },
+  {
+    id: 'msg-7',
+    conversationId: 'conv-4',
+    senderId: '3',
+    senderName: 'Garden Grove Venue',
+    content: 'Of course! We\'d love to have you for a tasting. How about next Saturday at 2 PM? We can show you our menu options and discuss decor.',
+    timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+    type: 'text',
+    read: false
   }
 ];
 
-let conversationIdCounter = 3;
-let messageIdCounter = 3;
+let conversationIdCounter = 6;
+let messageIdCounter = 8;
 
 app.get('/api/conversations', async (req, res) => {
   try {
