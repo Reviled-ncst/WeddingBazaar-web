@@ -477,18 +477,18 @@ export const IndividualBookings: React.FC = () => {
 
   // Enhanced filter and sort function - using useEffect for better debugging
   useEffect(() => {
-    console.log('🔥 [CRITICAL FILTER DEBUG] ===== FILTER EXECUTION START =====');
-    console.log('🔥 [CRITICAL FILTER DEBUG] Current filter status:', filterStatus);
-    console.log('🔥 [CRITICAL FILTER DEBUG] Filter type:', typeof filterStatus);
-    console.log('🔥 [CRITICAL FILTER DEBUG] Total bookings:', bookings.length);
-    console.log('🔥 [CRITICAL FILTER DEBUG] Search query:', debouncedSearchQuery);
-    
+    console.log('� [CRITICAL FILTER DEBUG] ===== FILTER EXECUTION START =====');
+    console.log('� [CRITICAL FILTER DEBUG] Current filter status:', filterStatus);
+    console.log('� [CRITICAL FILTER DEBUG] Filter type:', typeof filterStatus);
+    console.log('� [CRITICAL FILTER DEBUG] Total bookings:', bookings.length);
+    console.log('� [CRITICAL FILTER DEBUG] Search query:', debouncedSearchQuery);
+
     if (bookings.length === 0) {
       console.log('⚠️ [CRITICAL FILTER DEBUG] No bookings to filter - setting empty array');
       setFilteredAndSortedBookings([]);
       return;
     }
-    
+
     // First, let's see all booking statuses
     const allStatuses = bookings.map(b => ({ id: b.id, status: b.status }));
     console.log('🔥 [CRITICAL FILTER DEBUG] All booking statuses:', allStatuses);
@@ -501,21 +501,21 @@ export const IndividualBookings: React.FC = () => {
         (booking.vendorName && booking.vendorName.toLowerCase().includes(query)) ||
         (booking.serviceType && booking.serviceType.toLowerCase().includes(query)) ||
         (booking.serviceName && booking.serviceName.toLowerCase().includes(query));
-      
+
       if (!matchesStatus) {
-        console.log('🔥 [FILTER MISMATCH] Booking', booking.id, 'status:', `"${booking.status}"`, 'vs filter:', `"${filterStatus}"`, '-> EXCLUDED');
+        console.log('� [FILTER MISMATCH] Booking', booking.id, 'status:', `"${booking.status}"`, 'vs filter:', `"${filterStatus}"`, '-> EXCLUDED');
       } else {
         console.log('✅ [FILTER MATCH] Booking', booking.id, 'status:', `"${booking.status}"`, 'vs filter:', `"${filterStatus}"`, '-> INCLUDED');
       }
       
       return matchesStatus && matchesSearch;
     });
-    
-    console.log('🔥 [CRITICAL FILTER DEBUG] Filtered count:', filtered.length, 'out of', bookings.length);
-    console.log('🔥 [CRITICAL FILTER DEBUG] Filtered booking IDs:', filtered.map(b => b.id));
+
+    console.log('� [CRITICAL FILTER DEBUG] Filtered count:', filtered.length, 'out of', bookings.length);
+    console.log('� [CRITICAL FILTER DEBUG] Filtered booking IDs:', filtered.map(b => b.id));
     console.log('🔥 [CRITICAL FILTER DEBUG] Setting filtered bookings state...');
     setFilteredAndSortedBookings(filtered);
-    console.log('🔥 [CRITICAL FILTER DEBUG] ===== FILTER EXECUTION END =====');
+    console.log('� [CRITICAL FILTER DEBUG] ===== FILTER EXECUTION END =====');
   }, [bookings, filterStatus, debouncedSearchQuery]);
 
   // Debug: Track filteredAndSortedBookings state changes
