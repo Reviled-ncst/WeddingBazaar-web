@@ -976,9 +976,9 @@ app.put('/api/bookings/:id/status', async (req, res) => {
 // MESSAGING ENDPOINTS
 // ================================
 
-// In-memory storage for conversations with sample data
-// Start with empty conversations - all conversations will be created dynamically for real users
-let conversationsStorage = [];
+// In-memory storage for conversations - CLEARED to force fresh conversations
+// All conversations will be created fresh with real vendor data
+let conversationsStorage = []; // Always empty to prevent caching
 
 // Empty messages storage - all messages will be created dynamically for real users
 let messagesStorage = [];
@@ -1035,9 +1035,12 @@ app.get('/api/conversations/:userId', async (req, res) => {
     
     console.log(`� [MESSAGING] Found ${userConversations.length} real conversations for user ${userId}`);
     
-    // If no conversations exist, create initial conversations with real vendors
-    if (userConversations.length === 0) {
-      console.log('🔧 [MESSAGING] Creating initial conversations for new user:', userId);
+    // FORCE FRESH CONVERSATIONS: Always create new ones (ignore cache/database)
+    console.log('🔥 [MESSAGING] FORCING fresh conversations for ALL users - no caching');
+    userConversations = []; // Clear any existing conversations
+    
+    if (true) { // Always create fresh conversations
+      console.log('🔧 [MESSAGING] Creating fresh real vendor conversations for user:', userId);
       
       // IMMEDIATE FIX: Create conversations using mockVendors (guaranteed to work)
       console.log('🔄 [MESSAGING] Creating conversations with mockVendors...');
