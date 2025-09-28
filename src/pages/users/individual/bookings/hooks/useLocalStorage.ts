@@ -48,16 +48,26 @@ export function useBookingPreferences() {
   // Validate filter status and use valid value
   const filterStatus = validFilterStatuses.includes(rawFilterStatus) ? rawFilterStatus : 'all';
   
+  // Debug logging for filter status
+  console.log('🔍 [useBookingPreferences Debug] Raw filter status:', rawFilterStatus);
+  console.log('🔍 [useBookingPreferences Debug] Final filter status:', filterStatus);
+  console.log('🔍 [useBookingPreferences Debug] Valid statuses:', validFilterStatuses);
+  
   // Update localStorage if it was invalid
   if (rawFilterStatus !== filterStatus) {
     setRawFilterStatus(filterStatus);
   }
   
   const setFilterStatus = (status: FilterStatus) => {
+    console.log('🎯 [FilterStatus Debug] Setting filter status:', status);
+    console.log('🎯 [FilterStatus Debug] Valid statuses:', validFilterStatuses);
+    console.log('🎯 [FilterStatus Debug] Is valid:', validFilterStatuses.includes(status));
+    
     if (validFilterStatuses.includes(status)) {
+      console.log('✅ [FilterStatus Debug] Status is valid, setting to:', status);
       setRawFilterStatus(status);
     } else {
-      console.warn(`Invalid filter status: ${status}, resetting to 'all'`);
+      console.warn(`❌ [FilterStatus Debug] Invalid filter status: ${status}, resetting to 'all'`);
       setRawFilterStatus('all');
     }
   };

@@ -87,19 +87,51 @@ Write-Host "3. Check: Services page shows 86+ services (not 5)" -ForegroundColor
 Write-Host "4. Check: Messaging shows real conversations (no demo users)" -ForegroundColor Gray
 Write-Host "5. Verify: Browser console shows 'Loaded services from centralized manager: 86'" -ForegroundColor Gray
 
-Write-Host "`n5. Testing Booking API..." -ForegroundColor Cyan
+Write-Host "`n5. Testing Frontend Deployment Status..." -ForegroundColor Cyan
+try {
+    # Check if the fix is deployed by looking for a specific indicator
+    $frontendCheck = Invoke-WebRequest -Uri "https://weddingbazaarph.web.app" -UseBasicParsing -TimeoutSec 10
+    $deployTime = $frontendCheck.Headers.'Last-Modified'
+    Write-Host "   ✅ Frontend: ACCESSIBLE" -ForegroundColor Green
+    Write-Host "   � Last Modified: $deployTime" -ForegroundColor White
+    Write-Host "   � Status: Auto-deploy from GitHub should be complete" -ForegroundColor White
+} catch {
+    Write-Host "   ❌ Frontend: NOT ACCESSIBLE" -ForegroundColor Red
+}
+
+Write-Host "`n6. Testing Booking Filter Fix..." -ForegroundColor Cyan
 try {
     $bookingResponse = Invoke-RestMethod -Uri 'https://weddingbazaar-web.onrender.com/api/bookings/couple/1-2025-001' -Method Get -TimeoutSec 10
     Write-Host "   ✅ Booking API: SUCCESS" -ForegroundColor Green
-    Write-Host "   📊 Booking Response: $($bookingResponse.success)" -ForegroundColor White
+    Write-Host "   📊 Total Bookings: $($bookingResponse.total)" -ForegroundColor White
+    Write-Host "   📋 Returned: $($bookingResponse.bookings.Length)" -ForegroundColor White
+    
+    if ($bookingResponse.bookings -and $bookingResponse.bookings.Length -gt 0) {
+        $uniqueStatuses = $bookingResponse.bookings | Select-Object -ExpandProperty status -Unique
+        Write-Host "   🎯 Database Statuses: $($uniqueStatuses -join ', ')" -ForegroundColor White
+        
+        # Check if we have the expected 'request' status that should map to 'quote_requested'
+        if ($uniqueStatuses -contains 'request') {
+            Write-Host "   ✅ FILTER FIX STATUS: Should work with 'quote_requested' filter" -ForegroundColor Green
+        } else {
+            Write-Host "   ⚠️  FILTER FIX STATUS: Different statuses than expected" -ForegroundColor Yellow
+        }
+    }
+    
     Write-Host "   📝 Message: $($bookingResponse.message)" -ForegroundColor White
 } catch {
     Write-Host "   ❌ Booking API: FAILED" -ForegroundColor Red
     Write-Host "   Error: $($_.Exception.Message)" -ForegroundColor Red
 }
 
+Write-Host "`n🔧 BOOKING FILTER FIX STATUS:" -ForegroundColor Yellow
+Write-Host "- Fixed STATUS_MAPPING mismatch (request → quote_requested)" -ForegroundColor White
+Write-Host "- Removed mock data fallback causing confusion" -ForegroundColor White
+Write-Host "- Updated filter dropdown to use correct UI statuses" -ForegroundColor White
+Write-Host "- Deployed via GitHub push → Firebase auto-deploy" -ForegroundColor White
+
 Write-Host "`n✅ CENTRALIZED BOOKING API:" -ForegroundColor Green
 Write-Host "- Created CentralizedBookingAPI.ts service" -ForegroundColor White
 Write-Host "- Added missing backend endpoints" -ForegroundColor White
 Write-Host "- Updated all booking components" -ForegroundColor White
-Write-Host "- Ready for booking management" -ForegroundColor White
+Write-Host "- Ready for booking management"

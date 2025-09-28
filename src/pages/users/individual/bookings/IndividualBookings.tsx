@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CoupleHeader } from '../landing/CoupleHeader';
 
 // Import modular components
@@ -472,11 +472,22 @@ export const IndividualBookings: React.FC = () => {
     }
   };
 
-  // Enhanced filter and sort function - memoized for performance
-  const filteredAndSortedBookings = useMemo(() => {
+  // State for filtered bookings
+  const [filteredAndSortedBookings, setFilteredAndSortedBookings] = useState<EnhancedBooking[]>([]);
+
+  // Enhanced filter and sort function - using useEffect for better debugging
+  useEffect(() => {
+    console.log('🔍 [Filter Debug] ===== FILTER EXECUTION =====');
     console.log('🔍 [Filter Debug] Current filter status:', filterStatus);
+    console.log('🔍 [Filter Debug] Filter type:', typeof filterStatus);
     console.log('🔍 [Filter Debug] Total bookings:', bookings.length);
     console.log('🔍 [Filter Debug] Booking statuses:', bookings.map(b => b.status));
+    
+    if (bookings.length === 0) {
+      console.log('⚠️ [Filter Debug] No bookings to filter - setting empty array');
+      setFilteredAndSortedBookings([]);
+      return;
+    }
     
     let filtered = bookings.filter(booking => {
       const matchesStatus = filterStatus === 'all' || booking.status === filterStatus;
@@ -487,131 +498,26 @@ export const IndividualBookings: React.FC = () => {
         (booking.serviceType && booking.serviceType.toLowerCase().includes(query)) ||
         (booking.serviceName && booking.serviceName.toLowerCase().includes(query));
       
-      console.log('🔍 [Filter Debug] Booking:', booking.id, 'Status:', booking.status, 'Matches:', matchesStatus && matchesSearch);
+      console.log('🔍 [Filter Debug] Booking:', booking.id, 
+        'Status:', `"${booking.status}"`, 
+        'FilterStatus:', `"${filterStatus}"`,
+        'StatusMatches:', matchesStatus, 
+        'SearchMatches:', matchesSearch,
+        'OverallMatch:', matchesStatus && matchesSearch);
       return matchesStatus && matchesSearch;
     });
     
     console.log('🔍 [Filter Debug] Filtered count:', filtered.length);
-
-    // TEMPORARY: Add mock bookings for timeline testing if no real bookings exist
-    if (filtered.length === 0 && !loading && !error) {
-      const mockBookings: EnhancedBooking[] = [
-        {
-          id: 'mock-1',
-          vendorId: 'vendor-1',
-          coupleId: 'couple-1',
-          vendorName: 'Perfect Moments Photography',
-          vendorBusinessName: 'Perfect Moments Photography',
-          serviceName: 'Wedding Photography Package',
-          serviceType: 'photography',
-          eventDate: '2025-11-15',
-          eventLocation: 'Manila Cathedral, Intramuros',
-          totalAmount: 75000,
-          status: 'downpayment_paid' as BookingStatus,
-          specialRequests: 'Include engagement photos and reception coverage with drone shots',
-          vendorRating: 4.8,
-          bookingReference: 'WB-PHOTO001',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'mock-2',
-          vendorId: 'vendor-2',
-          coupleId: 'couple-1',
-          vendorName: 'Divine Catering Services',
-          vendorBusinessName: 'Divine Catering Services',
-          serviceName: 'Premium Wedding Catering',
-          serviceType: 'catering',
-          eventDate: '2025-11-15',
-          eventLocation: 'Makati Shangri-La Hotel',
-          totalAmount: 120000,
-          status: 'confirmed' as BookingStatus,
-          specialRequests: 'Vegetarian options, wine pairing, and late-night snacks for 150 guests',
-          vendorRating: 4.9,
-          bookingReference: 'WB-CATER002',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'mock-3',
-          vendorId: 'vendor-3',
-          coupleId: 'couple-1',
-          vendorName: 'Harmony Wedding Planners',
-          vendorBusinessName: 'Harmony Wedding Planners',
-          serviceName: 'Full Wedding Planning Service',
-          serviceType: 'planning',
-          eventDate: '2025-11-15',
-          eventLocation: 'The Peninsula Manila',
-          totalAmount: 80000,
-          status: 'quote_sent' as BookingStatus,
-          specialRequests: 'Need help with timeline, vendor coordination, and day-of management',
-          vendorRating: 4.7,
-          bookingReference: 'WB-PLAN003',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'mock-4',
-          vendorId: 'vendor-4',
-          coupleId: 'couple-1',
-          vendorName: 'Enchanted Sounds DJ',
-          vendorBusinessName: 'Enchanted Sounds DJ',
-          serviceName: 'Wedding DJ & Sound System',
-          serviceType: 'music_dj',
-          eventDate: '2025-11-15',
-          eventLocation: 'Manila Cathedral, Intramuros',
-          totalAmount: 45000,
-          status: 'request' as BookingStatus,
-          specialRequests: 'Mix of contemporary and classic wedding songs, wireless microphones for ceremony',
-          vendorRating: 4.6,
-          bookingReference: 'WB-DJ004',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'mock-5',
-          vendorId: 'vendor-5',
-          coupleId: 'couple-1',
-          vendorName: 'Elegant Floral Designs',
-          vendorBusinessName: 'Elegant Floral Designs',
-          serviceName: 'Bridal Bouquet & Decorations',
-          serviceType: 'florals',
-          eventDate: '2025-11-15',
-          eventLocation: 'Manila Cathedral, Intramuros',
-          totalAmount: 35000,
-          status: 'paid_in_full' as BookingStatus,
-          specialRequests: 'White roses and baby\'s breath theme with cascading greenery',
-          vendorRating: 4.8,
-          bookingReference: 'WB-FLORAL005',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'mock-6',
-          vendorId: 'vendor-6',
-          coupleId: 'couple-1',
-          vendorName: 'Grand Ballroom Events',
-          vendorBusinessName: 'Grand Ballroom Events',
-          serviceName: 'Wedding Venue Rental',
-          serviceType: 'venue',
-          eventDate: '2025-11-15',
-          eventLocation: 'Quezon City',
-          totalAmount: 150000,
-          status: 'completed' as BookingStatus,
-          specialRequests: 'Need setup for 200 guests with stage area and photo booth space',
-          vendorRating: 4.5,
-          bookingReference: 'WB-VENUE006',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
-      
-      console.log('🎭 [MOCK DATA] Using mock bookings for grid layout testing');
-      return mockBookings;
-    }
-
-    return filtered;
+    console.log('🔍 [Filter Debug] Setting filtered bookings state...');
+    setFilteredAndSortedBookings(filtered);
+    console.log('🔍 [Filter Debug] ===== END FILTER EXECUTION =====');
   }, [bookings, filterStatus, debouncedSearchQuery, loading, error]);
+
+  // Debug: Track filterStatus changes
+  useEffect(() => {
+    console.log('🔍 [FILTER STATE DEBUG] filterStatus changed to:', filterStatus);
+    console.log('🔍 [FILTER STATE DEBUG] Type:', typeof filterStatus);
+  }, [filterStatus]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -626,7 +532,10 @@ export const IndividualBookings: React.FC = () => {
               <p className="text-gray-600 mt-1">
                 {loading ? 'Loading...' : `${filteredAndSortedBookings.length} booking${filteredAndSortedBookings.length !== 1 ? 's' : ''} found`}
               </p>
-
+              {/* DEBUG: Show current filter status */}
+              <p className="text-xs text-red-600 mt-1">
+                DEBUG: Current filter = "{filterStatus}" | Total bookings = {bookings.length}
+              </p>
             </div>
             
             <div className="flex gap-2">
@@ -675,16 +584,22 @@ export const IndividualBookings: React.FC = () => {
             <div className="lg:w-64">
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as BookingStatus | 'all')}
+                onChange={(e) => {
+                  console.log('🎯 [DROPDOWN DEBUG] Filter dropdown changed!');
+                  console.log('🎯 [DROPDOWN DEBUG] Old value:', filterStatus);
+                  console.log('🎯 [DROPDOWN DEBUG] New value:', e.target.value);
+                  console.log('🎯 [DROPDOWN DEBUG] Calling setFilterStatus...');
+                  setFilterStatus(e.target.value as BookingStatus | 'all');
+                  console.log('🎯 [DROPDOWN DEBUG] setFilterStatus called!');
+                }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors bg-white"
                 aria-label="Filter by status"
               >
                 <option value="all">All Statuses</option>
                 <option value="quote_requested">Request Sent</option>
-                <option value="confirmed">Approved</option>
+                <option value="confirmed">Approved/Confirmed</option>
                 <option value="quote_sent">Quote Sent</option>
                 <option value="quote_accepted">Quote Accepted</option>
-                <option value="confirmed">Confirmed</option>
                 <option value="downpayment_paid">Downpayment Paid</option>
                 <option value="paid_in_full">Fully Paid</option>
                 <option value="completed">Completed</option>
