@@ -473,53 +473,70 @@ export const IndividualBookings: React.FC = () => {
   };
 
   // State for filtered bookings
-  const [filteredAndSortedBookings, setFilteredAndSortedBookings] = useState<EnhancedBooking[]>([]);
+  const [filteredAndSortedBookings, setFilteredAndSortedBookings] = useState<EnhancedBooking[]>(
+    []
+  );
 
-  // PRODUCTION FILTER FIX - Clean implementation for hosting
+  // CLEAN FILTER IMPLEMENTATION - PRODUCTION READY
   useEffect(() => {
-    console.log('[PRODUCTION FILTER] ===== FILTER START =====');
-    console.log('[PRODUCTION FILTER] Filter Status:', filterStatus);
-    console.log('[PRODUCTION FILTER] Total Bookings:', bookings.length);
+    console.log('[CLEAN FILTER] ===== FILTER START =====');
+    console.log('[CLEAN FILTER] Filter Status:', filterStatus);
+    console.log('[CLEAN FILTER] Total Bookings:', bookings.length);
 
-    if (bookings.length === 0) {
-      console.log('âš ¸ [CRITICAL FILTER DEBUG] No bookings to filter - setting empty array');
+    if (!bookings || bookings.length === 0) {
+      console.log('[CLEAN FILTER] No bookings available');
       setFilteredAndSortedBookings([]);
       return;
     }
 
-    // First, let's see all booking statuses
-    const allStatuses = bookings.map(b => ({ id: b.id, status: b.status }));
-    console.log('ðŸ”¥ [CRITICAL FILTER DEBUG] All booking statuses:', allStatuses);
+    // Show status distribution for debugging
+    const statusCounts = bookings.reduce((acc, booking) => {
+      acc[booking.status] = (acc[booking.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log('[CLEAN FILTER] Status Distribution:', statusCounts);
     
-    let filtered = bookings.filter(booking => {
+    // Apply filtering logic
+    const filtered = bookings.filter(booking => {
+      // Status filtering
       const matchesStatus = filterStatus === 'all' || booking.status === filterStatus;
-      const query = debouncedSearchQuery.toLowerCase();
-      const matchesSearch = !query || 
-        (booking.vendorBusinessName && booking.vendorBusinessName.toLowerCase().includes(query)) ||
-        (booking.vendorName && booking.vendorName.toLowerCase().includes(query)) ||
-        (booking.serviceType && booking.serviceType.toLowerCase().includes(query)) ||
-        (booking.serviceName && booking.serviceName.toLowerCase().includes(query));
+      
+      // Search filtering
+      const query = debouncedSearchQuery.toLowerCase().trim();
+      const searchableFields = [
+        booking.vendorBusinessName,
+        booking.vendorName,
+        booking.serviceType,
+        booking.serviceName,
+        booking.eventLocation
+      ].filter(Boolean);
+      
+      const matchesSearch = !query || searchableFields.some(field => 
+        field && field.toLowerCase().includes(query)
+      );
 
-      if (!matchesStatus) {
-        console.log('¿½ [FILTER MISMATCH] Booking', booking.id, 'status:', `"${booking.status}"`, 'vs filter:', `"${filterStatus}"`, '-> EXCLUDED');
-      } else {
-        console.log('âœ… [FILTER MATCH] Booking', booking.id, 'status:', `"${booking.status}"`, 'vs filter:', `"${filterStatus}"`, '-> INCLUDED');
+      // Debug individual filtering
+      const shouldInclude = matchesStatus && matchesSearch;
+      if (filterStatus !== 'all') {
+        console.log(`[CLEAN FILTER CHECK] ID:${booking.id} Status:"${booking.status}" vs Filter:"${filterStatus}" = ${shouldInclude}`);
       }
       
-      return matchesStatus && matchesSearch;
+      return shouldInclude;
     });
 
-    console.log('¿½ [CRITICAL FILTER DEBUG] Filtered count:', filtered.length, 'out of', bookings.length);
-    console.log('¿½ [CRITICAL FILTER DEBUG] Filtered booking IDs:', filtered.map(b => b.id));
-    console.log('ðŸ”¥ [CRITICAL FILTER DEBUG] Setting filtered bookings state...');
-    setFilteredAndSortedBookings(filtered);
-    console.log('¿½ [CRITICAL FILTER DEBUG] ===== FILTER EXECUTION END =====');
+    console.log('[CLEAN FILTER] Filtered Results:', filtered.length, 'out of', bookings.length);
+    console.log('[CLEAN FILTER] Filtered IDs:', filtered.map(b => b.id));
+    
+    // Update state with new array reference to force re-render
+    setFilteredAndSortedBookings([...filtered]);
+    
+    console.log('[CLEAN FILTER] ===== FILTER END =====');
   }, [bookings, filterStatus, debouncedSearchQuery]);
 
   // Debug: Track filteredAndSortedBookings state changes
   useEffect(() => {
-    console.log('ðŸŽ¯ [FILTERED STATE DEBUG] filteredAndSortedBookings changed to:', filteredAndSortedBookings.length, 'bookings');
-    console.log('ðŸŽ¯ [FILTERED STATE DEBUG] IDs:', filteredAndSortedBookings.map(b => b.id));
+    console.log('[FILTERED STATE] filteredAndSortedBookings changed to:', filteredAndSortedBookings.length, 'bookings');
+    console.log('[FILTERED STATE] IDs:', filteredAndSortedBookings.map(b => b.id));
   }, [filteredAndSortedBookings]);
 
   return (
