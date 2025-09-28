@@ -281,10 +281,25 @@ let bookingIdCounter = 1;
 app.get('/api/health', async (req, res) => {
   try {
     const dbConnected = await testDatabaseConnection();
+    
+    // Test actual database queries
+    let dbStats = { conversations: 0, messages: 0, error: null };
+    try {
+      const convResult = await sql`SELECT COUNT(*) as count FROM conversations`;
+      dbStats.conversations = parseInt(convResult[0].count);
+      
+      const msgResult = await sql`SELECT COUNT(*) as count FROM messages`;
+      dbStats.messages = parseInt(msgResult[0].count);
+    } catch (dbErr) {
+      dbStats.error = dbErr.message;
+      console.error('❌ [HEALTH] Database query failed:', dbErr.message);
+    }
+    
     const healthStatus = {
       status: 'OK',
       timestamp: new Date().toISOString(),
       database: dbConnected ? 'Connected' : 'Disconnected',
+      databaseStats: dbStats,
       environment: process.env.NODE_ENV || 'development',
       version: '2.0.0',
       uptime: process.uptime(),
@@ -1105,8 +1120,18 @@ app.get('/api/conversations/:userId', async (req, res) => {
       }
       
     } catch (dbError) {
-      console.error('❌ [MESSAGING] Database error, falling back to empty conversations:', dbError.message);
+      console.error('❌ [MESSAGING] Database error for user', userId, ':', dbError.message);
+      console.error('❌ [MESSAGING] Database stack trace:', dbError.stack);
       userConversations = [];
+      
+      // Return error info in response for debugging
+      return res.status(500).json({
+        success: false,
+        error: 'Database connection failed',
+        details: dbError.message,
+        userId: userId,
+        timestamp: new Date().toISOString()
+      });
     }
     
     res.json({
