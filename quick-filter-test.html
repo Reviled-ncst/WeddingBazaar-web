@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wedding Bazaar Filter Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Wedding Bazaar Booking Filter Test</h1>
+    <p><strong>Testing Production Site:</strong> <a href="https://weddingbazaarph.web.app/individual/bookings" target="_blank">https://weddingbazaarph.web.app/individual/bookings</a></p>
+    
+    <h2>Manual Test Instructions:</h2>
+    <ol>
+        <li><strong>Login:</strong> Use demo account (test@example.com / password123)</li>
+        <li><strong>Navigate:</strong> Go to Individual → Bookings</li>
+        <li><strong>Check Console:</strong> Open DevTools → Console</li>
+        <li><strong>Test Filter:</strong> Try changing the status dropdown</li>
+    </ol>
+
+    <h2>Expected Behavior:</h2>
+    <div class="status success">✅ Console should show "[PRODUCTION FILTER]" logs (no corrupted Unicode)</div>
+    <div class="status success">✅ Filter dropdown should trigger onChange with clean debug logs</div>
+    <div class="status success">✅ Selecting "Request Sent" should show only quote_requested bookings</div>
+    <div class="status success">✅ Selecting "All Statuses" should show all bookings</div>
+    <div class="status success">✅ No mock/fallback data should be present</div>
+
+    <h2>Debug Information to Check:</h2>
+    <div class="status info">🔍 Look for "[PRODUCTION FILTER] Status Distribution" in console</div>
+    <div class="status info">🔍 Check "[DROPDOWN] Filter changed from X to Y" messages</div>
+    <div class="status info">🔍 Verify filtered results count matches expected</div>
+
+    <h2>Current Deployment Status:</h2>
+    <div class="status success">✅ Frontend: https://weddingbazaarph.web.app (Firebase)</div>
+    <div class="status success">✅ Backend: https://weddingbazaar-web.onrender.com (Render)</div>
+    <div class="status success">✅ Latest changes deployed with clean filter logs</div>
+
+    <script>
+        // Auto-test API connectivity
+        async function testAPI() {
+            try {
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/health');
+                const data = await response.json();
+                document.getElementById('api-status').className = 'status success';
+                document.getElementById('api-status').innerHTML = '✅ Backend API: Connected (' + data.status + ')';
+            } catch (error) {
+                document.getElementById('api-status').className = 'status error';
+                document.getElementById('api-status').innerHTML = '❌ Backend API: Failed to connect';
+            }
+        }
+        
+        setTimeout(testAPI, 1000);
+    </script>
+    
+    <div id="api-status" class="status info">🔄 Testing API connectivity...</div>
+</body>
+</html>

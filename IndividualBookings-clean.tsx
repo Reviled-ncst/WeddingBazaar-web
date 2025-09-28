@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CoupleHeader } from '../landing/CoupleHeader';
 
 // Import modular components
@@ -101,7 +101,7 @@ export const IndividualBookings: React.FC = () => {
       effectiveUserId = '1-2025-001'; // User with 2 bookings for testing
     }
     
-    console.log('ðŸ‘¤ [IndividualBookings] Loading bookings for user:', effectiveUserId);
+    console.log(' [IndividualBookings] Loading bookings for user:', effectiveUserId);
     
     try {
       setLoading(true);
@@ -115,11 +115,11 @@ export const IndividualBookings: React.FC = () => {
         sortOrder
       });
 
-      console.log('ðŸ”¥ [CRITICAL DEBUG] Raw API response:', response);
-      console.log('ðŸ“Š [IndividualBookings] API response:', 'Count:', response.bookings?.length, 'Total:', response.total);
+      console.log(' [CRITICAL DEBUG] Raw API response:', response);
+      console.log(' [IndividualBookings] API response:', 'Count:', response.bookings?.length, 'Total:', response.total);
 
       if (response.bookings && response.bookings.length > 0) {
-        console.log('ðŸ” [IndividualBookings] Sample raw booking:', {
+        console.log(' [IndividualBookings] Sample raw booking:', {
           id: (response.bookings[0] as any).id,
           vendor_name: (response.bookings[0] as any).vendor_name,
           couple_name: (response.bookings[0] as any).couple_name,
@@ -134,20 +134,20 @@ export const IndividualBookings: React.FC = () => {
         );
 
         setBookings(enhancedBookings);
-        console.log('âœ… [IndividualBookings] Bookings loaded successfully:', enhancedBookings);
-        console.log('ðŸ“ [IndividualBookings] Updated bookings state with', enhancedBookings.length, 'bookings');
+        console.log(' [IndividualBookings] Bookings loaded successfully:', enhancedBookings);
+        console.log(' [IndividualBookings] Updated bookings state with', enhancedBookings.length, 'bookings');
       } else {
-        console.log('âš ¸ [IndividualBookings] No bookings found');
+        console.log(' [IndividualBookings] No bookings found');
         setBookings([]);
-        console.log('ðŸ“ [IndividualBookings] Updated bookings state to empty array');
+        console.log(' [IndividualBookings] Updated bookings state to empty array');
       }
     } catch (error) {
       setError('Failed to load bookings. Please try again.');
       setBookings([]);
-      console.log('ðŸ“ [IndividualBookings] Updated bookings state to empty array due to error');
+      console.log(' [IndividualBookings] Updated bookings state to empty array due to error');
     } finally {
       setLoading(false);
-      console.log('ðŸ [IndividualBookings] loadBookings completed');
+      console.log(' [IndividualBookings] loadBookings completed');
     }
   }, [user?.id, sortBy, sortOrder]);
 
@@ -159,23 +159,23 @@ export const IndividualBookings: React.FC = () => {
   // Listen for booking creation events from BookingRequestModal
   useEffect(() => {
     const handleBookingCreated = (event: CustomEvent) => {
-      console.log('ðŸ“¢ [IndividualBookings] Received bookingCreated event:', event.detail);
+      console.log(' [IndividualBookings] Received bookingCreated event:', event.detail);
       
       // Add a small delay to ensure backend has processed the booking
       setTimeout(() => {
-        console.log('â³ [IndividualBookings] Calling loadBookings after delay...');
+        console.log(' [IndividualBookings] Calling loadBookings after delay...');
         loadBookings();
       }, 500);
     };
 
-    console.log('ðŸ‘‚ [IndividualBookings] Setting up bookingCreated event listener');
+    console.log(' [IndividualBookings] Setting up bookingCreated event listener');
     
     // Add event listener
     window.addEventListener('bookingCreated', handleBookingCreated as EventListener);
 
     // Cleanup
     return () => {
-      console.log('ðŸ§¹ [IndividualBookings] Cleaning up bookingCreated event listener');
+      console.log(' [IndividualBookings] Cleaning up bookingCreated event listener');
       window.removeEventListener('bookingCreated', handleBookingCreated as EventListener);
     };
   }, [loadBookings]);
@@ -193,9 +193,9 @@ export const IndividualBookings: React.FC = () => {
 
   // Commented out unused handler
   // const handlePayBalance = (booking: EnhancedBooking) => {
-  //   console.log('ðŸ’° [PayBalance] Button clicked for booking:', booking.id);
-  //   console.log('ðŸ’° [PayBalance] Booking status:', booking.status);
-  //   console.log('ðŸ’° [PayBalance] Booking data:', {
+  //   console.log(' [PayBalance] Button clicked for booking:', booking.id);
+  //   console.log(' [PayBalance] Booking status:', booking.status);
+  //   console.log(' [PayBalance] Booking data:', {
   //     totalAmount: booking.totalAmount,
   //     remainingBalance: booking.remainingBalance,
   //     amount: (booking as any).amount
@@ -235,9 +235,9 @@ export const IndividualBookings: React.FC = () => {
 
   // Enhanced PayMongo payment success handler with proper status updates
   const handlePayMongoPaymentSuccess = useCallback(async (paymentData: any) => {
-    console.log('ðŸŽ‰ [PAYMENT SUCCESS TRIGGERED] Handler called!');
+    console.log(' [PAYMENT SUCCESS TRIGGERED] Handler called!');
 
-    console.log('ðŸ” [PAYMENT DEBUG] Full payment modal state:', {
+    console.log(' [PAYMENT DEBUG] Full payment modal state:', {
       isOpen: paymentModal.isOpen,
       hasBooking: !!paymentModal.booking,
       paymentType: paymentModal.paymentType,
@@ -254,7 +254,7 @@ export const IndividualBookings: React.FC = () => {
 
     const amount = paymentData.amount || paymentData.original_amount || 0;
     
-    console.log('ðŸ”’ [SECURE REFERENCES] Stored local references:', {
+    console.log(' [SECURE REFERENCES] Stored local references:', {
       bookingId: booking.id,
       paymentType: paymentType,
       amount: amount
@@ -262,7 +262,7 @@ export const IndividualBookings: React.FC = () => {
 
     try {
       
-      console.log('ðŸ’° [PAYMENT DETAILS]', {
+      console.log(' [PAYMENT DETAILS]', {
         bookingId: booking.id,
         paymentType,
         amount,
@@ -300,11 +300,11 @@ export const IndividualBookings: React.FC = () => {
           paymentProgressPercentage = 100;
           totalPaid = currentTotalPaid + amount;
           remainingBalance = 0;
-          console.log('ðŸ’° [BALANCE PAYMENT] Status updated to paid_in_full');
+          console.log(' [BALANCE PAYMENT] Status updated to paid_in_full');
           break;
 
         default:
-          console.warn('âš ¸ [PAYMENT WARNING] Unknown payment type:', paymentType);
+          console.warn(' [PAYMENT WARNING] Unknown payment type:', paymentType);
           newStatus = 'downpayment_paid';
           paymentProgressPercentage = 30;
           totalPaid = currentTotalPaid + amount;
@@ -313,13 +313,13 @@ export const IndividualBookings: React.FC = () => {
 
       // Update booking status optimistically in the UI
 
-      console.log('ðŸ“‹ [BEFORE UPDATE] Current bookings count:', bookings.length);
-      console.log('ðŸ“‹ [BEFORE UPDATE] Booking to update found:', !!bookings.find(b => b.id === booking.id));
+      console.log(' [BEFORE UPDATE] Current bookings count:', bookings.length);
+      console.log(' [BEFORE UPDATE] Booking to update found:', !!bookings.find(b => b.id === booking.id));
 
       setBookings(prev => {
         const updated = prev.map(currentBooking => {
           if (currentBooking.id === booking.id) {
-            console.log('âœ… [FOUND BOOKING] Updating booking:', currentBooking.id);
+            console.log(' [FOUND BOOKING] Updating booking:', currentBooking.id);
             return { 
               ...currentBooking, 
               status: newStatus,
@@ -334,7 +334,7 @@ export const IndividualBookings: React.FC = () => {
           }
           return currentBooking;
         });
-        console.log('âœ… [UPDATE COMPLETE] Returning updated bookings');
+        console.log(' [UPDATE COMPLETE] Returning updated bookings');
         return updated;
       });
 
@@ -345,7 +345,7 @@ export const IndividualBookings: React.FC = () => {
         remaining_balance: 'Balance payment successful! Your booking is now fully paid.'
       };
 
-      console.log('âœ… [PAYMENT SUCCESS]', successMessages[paymentType] || 'Payment completed successfully!');
+      console.log(' [PAYMENT SUCCESS]', successMessages[paymentType] || 'Payment completed successfully!');
 
       // TODO: Send payment confirmation to backend API
       // This would typically call:
@@ -357,13 +357,13 @@ export const IndividualBookings: React.FC = () => {
       //   status: 'completed'
       // });
 
-      console.log('ðŸŽ‰ [PAYMENT COMPLETE] Booking status updated successfully');
+      console.log(' [PAYMENT COMPLETE] Booking status updated successfully');
 
       const notification = document.createElement('div');
       notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 transform transition-all duration-300';
       notification.innerHTML = `
         <div class="flex items-center gap-3">
-          <div class="text-2xl">ðŸŽ‰</div>
+          <div class="text-2xl"></div>
           <div>
             <div class="font-semibold">Payment Successful!</div>
             <div class="text-sm opacity-90">${successMessages[paymentType] || 'Payment completed successfully!'}</div>
@@ -383,7 +383,7 @@ export const IndividualBookings: React.FC = () => {
 
       // Close modal with a small delay to ensure state update completes
       setTimeout(() => {
-        console.log('ðŸšª [MODAL CLOSE] Closing payment modal...');
+        console.log(' [MODAL CLOSE] Closing payment modal...');
         setPaymentModal({ 
           isOpen: false, 
           booking: null, 
@@ -463,9 +463,9 @@ export const IndividualBookings: React.FC = () => {
       // Show success message
       alert('Quotation accepted successfully! You can now proceed with payment.');
       
-      console.log('âœ… [AcceptQuotation] Successfully accepted quotation for booking:', booking.id);
+      console.log(' [AcceptQuotation] Successfully accepted quotation for booking:', booking.id);
     } catch (error) {
-      console.error('âŒ [AcceptQuotation] Error accepting quotation:', error);
+      console.error(' [AcceptQuotation] Error accepting quotation:', error);
       alert('Failed to accept quotation. Please try again.');
     } finally {
       setLoading(false);
@@ -473,71 +473,53 @@ export const IndividualBookings: React.FC = () => {
   };
 
   // State for filtered bookings
-  const [filteredAndSortedBookings, setFilteredAndSortedBookings] = useState<EnhancedBooking[]>(
-    []
-  );
+  const [filteredAndSortedBookings, setFilteredAndSortedBookings] = useState<EnhancedBooking[]>([]);
 
-  // CLEAN FILTER IMPLEMENTATION v2.0 - PRODUCTION READY - FORCED UPDATE
+  // Enhanced filter and sort function - using useEffect for better debugging
   useEffect(() => {
-    console.log('[CLEAN FILTER v2.0] ===== FILTER START =====');
-    console.log('[CLEAN FILTER v2.0] DEPLOYED VERSION:', new Date().toISOString());
-    console.log('[CLEAN FILTER v2.0] Filter Status:', filterStatus);
-    console.log('[CLEAN FILTER v2.0] Total Bookings:', bookings.length);
+    console.log('[PRODUCTION FILTER] ===== FILTER START =====');
+    console.log('[PRODUCTION FILTER] Filter Status:', filterStatus);
+    console.log('[PRODUCTION FILTER] Total Bookings:', bookings.length);
 
-    if (!bookings || bookings.length === 0) {
-      console.log('[CLEAN FILTER] No bookings available');
+    if (bookings.length === 0) {
+      console.log(' [CRITICAL FILTER DEBUG] No bookings to filter - setting empty array');
       setFilteredAndSortedBookings([]);
       return;
     }
 
-    // Show status distribution for debugging
-    const statusCounts = bookings.reduce((acc, booking) => {
-      acc[booking.status] = (acc[booking.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    console.log('[CLEAN FILTER v2.0] Status Distribution:', statusCounts);
+    // First, let's see all booking statuses
+    const allStatuses = bookings.map(b => ({ id: b.id, status: b.status }));
+    console.log(' [CRITICAL FILTER DEBUG] All booking statuses:', allStatuses);
     
-    // Apply filtering logic
-    const filtered = bookings.filter(booking => {
-      // Status filtering
+    let filtered = bookings.filter(booking => {
       const matchesStatus = filterStatus === 'all' || booking.status === filterStatus;
-      
-      // Search filtering
-      const query = debouncedSearchQuery.toLowerCase().trim();
-      const searchableFields = [
-        booking.vendorBusinessName,
-        booking.vendorName,
-        booking.serviceType,
-        booking.serviceName,
-        booking.eventLocation
-      ].filter(Boolean);
-      
-      const matchesSearch = !query || searchableFields.some(field => 
-        field && field.toLowerCase().includes(query)
-      );
+      const query = debouncedSearchQuery.toLowerCase();
+      const matchesSearch = !query || 
+        (booking.vendorBusinessName && booking.vendorBusinessName.toLowerCase().includes(query)) ||
+        (booking.vendorName && booking.vendorName.toLowerCase().includes(query)) ||
+        (booking.serviceType && booking.serviceType.toLowerCase().includes(query)) ||
+        (booking.serviceName && booking.serviceName.toLowerCase().includes(query));
 
-      // Debug individual filtering
-      const shouldInclude = matchesStatus && matchesSearch;
-      if (filterStatus !== 'all') {
-        console.log(`[CLEAN FILTER v2.0 CHECK] ID:${booking.id} Status:"${booking.status}" vs Filter:"${filterStatus}" = ${shouldInclude}`);
+      if (!matchesStatus) {
+        console.log(' [FILTER MISMATCH] Booking', booking.id, 'status:', `"${booking.status}"`, 'vs filter:', `"${filterStatus}"`, '-> EXCLUDED');
+      } else {
+        console.log(' [FILTER MATCH] Booking', booking.id, 'status:', `"${booking.status}"`, 'vs filter:', `"${filterStatus}"`, '-> INCLUDED');
       }
       
-      return shouldInclude;
+      return matchesStatus && matchesSearch;
     });
 
-    console.log('[CLEAN FILTER v2.0] Filtered Results:', filtered.length, 'out of', bookings.length);
-    console.log('[CLEAN FILTER v2.0] Filtered IDs:', filtered.map(b => b.id));
-    
-    // Update state with new array reference to force re-render
-    setFilteredAndSortedBookings([...filtered]);
-    
-    console.log('[CLEAN FILTER v2.0] ===== FILTER END =====');
+    console.log(' [CRITICAL FILTER DEBUG] Filtered count:', filtered.length, 'out of', bookings.length);
+    console.log(' [CRITICAL FILTER DEBUG] Filtered booking IDs:', filtered.map(b => b.id));
+    console.log(' [CRITICAL FILTER DEBUG] Setting filtered bookings state...');
+    setFilteredAndSortedBookings(filtered);
+    console.log(' [CRITICAL FILTER DEBUG] ===== FILTER EXECUTION END =====');
   }, [bookings, filterStatus, debouncedSearchQuery]);
 
   // Debug: Track filteredAndSortedBookings state changes
   useEffect(() => {
-    console.log('[FILTERED STATE] filteredAndSortedBookings changed to:', filteredAndSortedBookings.length, 'bookings');
-    console.log('[FILTERED STATE] IDs:', filteredAndSortedBookings.map(b => b.id));
+    console.log(' [FILTERED STATE DEBUG] filteredAndSortedBookings changed to:', filteredAndSortedBookings.length, 'bookings');
+    console.log(' [FILTERED STATE DEBUG] IDs:', filteredAndSortedBookings.map(b => b.id));
   }, [filteredAndSortedBookings]);
 
   return (
@@ -606,9 +588,8 @@ export const IndividualBookings: React.FC = () => {
               <select
                 value={filterStatus}
                 onChange={(e) => {
-                  console.log('[DROPDOWN v2.0]', new Date().toISOString(), 'Filter changed from', filterStatus, 'to', e.target.value);
+                  console.log('[DROPDOWN] Filter changed from', filterStatus, 'to', e.target.value);
                   setFilterStatus(e.target.value as BookingStatus | 'all');
-                  console.log('[DROPDOWN v2.0] setFilterStatus called, should trigger useEffect');
                 }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors bg-white"
                 aria-label="Filter by status"
@@ -671,7 +652,7 @@ export const IndividualBookings: React.FC = () => {
                     className="ml-2 inline-flex items-center justify-center w-4 h-4 rounded-full text-pink-400 hover:bg-pink-200 hover:text-pink-600"
                     aria-label="Remove status filter"
                   >
-                    Ã—
+                    
                   </button>
                 </span>
               )}
@@ -683,7 +664,7 @@ export const IndividualBookings: React.FC = () => {
                     className="ml-2 inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:bg-blue-200 hover:text-blue-600"
                     aria-label="Remove search filter"
                   >
-                    Ã—
+                    
                   </button>
                 </span>
               )}
@@ -739,13 +720,13 @@ export const IndividualBookings: React.FC = () => {
             {filteredAndSortedBookings.map((booking) => {
               // Timeline steps configuration
               const timelineSteps = [
-                { key: 'request', label: 'Initial Request', icon: 'ðŸ“', description: 'Request sent to vendor' },
-                { key: 'quote_requested', label: 'Quote Requested', icon: 'ðŸ’°', description: 'Waiting for price quote' },
-                { key: 'quote_sent', label: 'Quote Received', icon: 'ðŸ“‹', description: 'Review vendor quote' },
-                { key: 'confirmed', label: 'Booking Confirmed', icon: 'âœ…', description: 'Ready for payment' },
-                { key: 'downpayment_paid', label: 'Deposit Paid', icon: 'ðŸ’³', description: 'Initial payment made' },
-                { key: 'paid_in_full', label: 'Fully Paid', icon: 'ðŸ’¯', description: 'Payment complete' },
-                { key: 'completed', label: 'Service Complete', icon: 'ðŸŽ‰', description: 'Event finished' }
+                { key: 'request', label: 'Initial Request', icon: '', description: 'Request sent to vendor' },
+                { key: 'quote_requested', label: 'Quote Requested', icon: '', description: 'Waiting for price quote' },
+                { key: 'quote_sent', label: 'Quote Received', icon: '', description: 'Review vendor quote' },
+                { key: 'confirmed', label: 'Booking Confirmed', icon: '', description: 'Ready for payment' },
+                { key: 'downpayment_paid', label: 'Deposit Paid', icon: '', description: 'Initial payment made' },
+                { key: 'paid_in_full', label: 'Fully Paid', icon: '', description: 'Payment complete' },
+                { key: 'completed', label: 'Service Complete', icon: '', description: 'Event finished' }
               ];
 
               // Find current step index
@@ -760,12 +741,12 @@ export const IndividualBookings: React.FC = () => {
                       <div className="flex items-center gap-4">
                         <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
                           <span className="text-2xl">
-                            {booking.serviceType === 'photography' ? 'ðŸ“¸' :
-                             booking.serviceType === 'catering' ? 'ðŸ½¸' :
-                             booking.serviceType === 'planning' ? 'ðŸ“‹' :
-                             booking.serviceType === 'florals' ? 'ðŸŒ¸' :
-                             booking.serviceType === 'venue' ? 'ðŸ›¸' :
-                             booking.serviceType === 'music_dj' ? 'ðŸŽµ' : 'ðŸ’'}
+                            {booking.serviceType === 'photography' ? '' :
+                             booking.serviceType === 'catering' ? '' :
+                             booking.serviceType === 'planning' ? '' :
+                             booking.serviceType === 'florals' ? '' :
+                             booking.serviceType === 'venue' ? '' :
+                             booking.serviceType === 'music_dj' ? '' : ''}
                           </span>
                         </div>
                         
@@ -777,7 +758,7 @@ export const IndividualBookings: React.FC = () => {
                       </div>
                       
                       <div className="text-right">
-                        <div className="text-2xl font-bold text-gray-900">â‚±{booking.totalAmount?.toLocaleString() || '0'}</div>
+                        <div className="text-2xl font-bold text-gray-900">{booking.totalAmount?.toLocaleString() || '0'}</div>
                         <div className="text-sm text-gray-500">Total Amount</div>
                       </div>
                     </div>
@@ -834,13 +815,13 @@ export const IndividualBookings: React.FC = () => {
                             {booking.status === 'paid_in_full' ? 'Fully Paid' : 'Deposit Paid'}
                           </span>
                           <span>
-                            â‚±{booking.status === 'paid_in_full' 
+                            {booking.status === 'paid_in_full' 
                               ? (booking.totalAmount?.toLocaleString() || '0')
                               : (Math.round((booking.totalAmount || 0) * 0.3)).toLocaleString()
                             } 
                             {booking.status !== 'paid_in_full' && (
                               <span className="text-gray-400">
-                                {' '}/ â‚±{booking.totalAmount?.toLocaleString() || '0'}
+                                {' '}/ {booking.totalAmount?.toLocaleString() || '0'}
                               </span>
                             )}
                           </span>
@@ -889,7 +870,7 @@ export const IndividualBookings: React.FC = () => {
                                 isCurrent && "bg-gradient-to-br from-pink-500 to-purple-600 text-white scale-110 animate-pulse",
                                 isUpcoming && "bg-gray-100 text-gray-400 border-2 border-gray-200"
                               )}>
-                                {isCompleted ? 'âœ“' : step.icon}
+                                {isCompleted ? '' : step.icon}
                               </div>
                               
                               {/* Step Label */}
@@ -1063,17 +1044,17 @@ export const IndividualBookings: React.FC = () => {
               const serviceType = booking.serviceType || '';
               switch (serviceType) {
                 case 'Security & Guest Management':
-                  amount = 15000; // â‚±15,000 downpayment for â‚±50,000 service
+                  amount = 15000; // 15,000 downpayment for 50,000 service
                   break;
                 case 'photography':
-                  amount = 22500; // â‚±22,500 downpayment for â‚±75,000 service
+                  amount = 22500; // 22,500 downpayment for 75,000 service
                   break;
                 default:
-                  amount = 13500; // â‚±13,500 downpayment for â‚±45,000 service
+                  amount = 13500; // 13,500 downpayment for 45,000 service
               }
             }
             
-            return Math.max(amount, 1000); // Minimum â‚±1,000 
+            return Math.max(amount, 1000); // Minimum 1,000 
           } else if (paymentModal.paymentType === 'full_payment') {
             // Full payment calculation (100% of total)
             let amount = 0;
@@ -1091,32 +1072,32 @@ export const IndividualBookings: React.FC = () => {
               const serviceType = booking.serviceType || '';
               switch (serviceType) {
                 case 'Security & Guest Management':
-                  amount = 50000; // â‚±50,000 total
+                  amount = 50000; // 50,000 total
                   break;
                 case 'photography':
-                  amount = 75000; // â‚±75,000 total
+                  amount = 75000; // 75,000 total
                   break;
                 case 'catering':
-                  amount = 120000; // â‚±120,000 total
+                  amount = 120000; // 120,000 total
                   break;
                 case 'planning':
-                  amount = 80000; // â‚±80,000 total
+                  amount = 80000; // 80,000 total
                   break;
                 case 'music_dj':
-                  amount = 45000; // â‚±45,000 total
+                  amount = 45000; // 45,000 total
                   break;
                 case 'florals':
-                  amount = 35000; // â‚±35,000 total
+                  amount = 35000; // 35,000 total
                   break;
                 case 'venue':
-                  amount = 150000; // â‚±150,000 total
+                  amount = 150000; // 150,000 total
                   break;
                 default:
-                  amount = 45000; // â‚±45,000 default total
+                  amount = 45000; // 45,000 default total
               }
             }
             
-            return Math.max(amount, 1000); // Minimum â‚±1,000
+            return Math.max(amount, 1000); // Minimum 1,000
           } else {
             // Balance payment calculation
             let amount = 0;
@@ -1133,18 +1114,18 @@ export const IndividualBookings: React.FC = () => {
               const serviceType = booking.serviceType || '';
               switch (serviceType) {
                 case 'Security & Guest Management':
-                  amount = 35000; // â‚±35,000 balance for â‚±50,000 service
+                  amount = 35000; // 35,000 balance for 50,000 service
                   break;
                 case 'Photography':
-                  amount = 52500; // â‚±52,500 balance for â‚±75,000 service
+                  amount = 52500; // 52,500 balance for 75,000 service
                   break;
                 default:
-                  amount = 31500; // â‚±31,500 balance for â‚±45,000 service
+                  amount = 31500; // 31,500 balance for 45,000 service
               }
-              console.log('ðŸ’° Using service-based fallback balance:', amount);
+              console.log(' Using service-based fallback balance:', amount);
             }
             
-            console.log('ðŸ’° PayBalance amount calculation result:', { 
+            console.log(' PayBalance amount calculation result:', { 
               remainingBalance: booking.remainingBalance,
               totalAmount: booking.totalAmount,
               amount: booking.amount,
@@ -1153,11 +1134,11 @@ export const IndividualBookings: React.FC = () => {
               isValid: amount > 0
             });
             
-            return Math.max(amount, 1000); // Minimum â‚±1,000
+            return Math.max(amount, 1000); // Minimum 1,000
           }
         })()}
         currency="PHP"
-        currencySymbol="â‚±"
+        currencySymbol=""
         onPaymentSuccess={handlePayMongoPaymentSuccess}
         onPaymentError={(error) => {
           console.error('Payment error:', error);
@@ -1174,7 +1155,7 @@ export const IndividualBookings: React.FC = () => {
           if (!booking?.id) return;
           
           try {
-            console.log('âœ… [IndividualBookings] Accepting quote for booking:', booking.id);
+            console.log(' [IndividualBookings] Accepting quote for booking:', booking.id);
             const updatedBooking = await bookingApiService.updateBookingStatus(booking.id, 'confirmed');
             
             if (updatedBooking) {
@@ -1189,7 +1170,7 @@ export const IndividualBookings: React.FC = () => {
             }
             
             setShowQuoteDetails(false);
-            console.log('âœ… [IndividualBookings] Quote accepted successfully');
+            console.log(' [IndividualBookings] Quote accepted successfully');
           } catch (error) {
             // TODO: Show error message to user
           }
@@ -1198,7 +1179,7 @@ export const IndividualBookings: React.FC = () => {
           if (!booking?.id) return;
           
           try {
-            console.log('âŒ [IndividualBookings] Rejecting quote for booking:', booking.id);
+            console.log(' [IndividualBookings] Rejecting quote for booking:', booking.id);
             const updatedBooking = await bookingApiService.updateBookingStatus(booking.id, 'cancelled');
             
             if (updatedBooking) {
@@ -1213,7 +1194,7 @@ export const IndividualBookings: React.FC = () => {
             }
             
             setShowQuoteDetails(false);
-            console.log('âœ… [IndividualBookings] Quote rejected successfully');
+            console.log(' [IndividualBookings] Quote rejected successfully');
           } catch (error) {
             // TODO: Show error message to user
           }
@@ -1236,7 +1217,7 @@ export const IndividualBookings: React.FC = () => {
             }
             
             setShowQuoteDetails(false);
-            console.log('âœ… [IndividualBookings] Modification request sent successfully');
+            console.log(' [IndividualBookings] Modification request sent successfully');
           } catch (error) {
             // TODO: Show error message to user
           }

@@ -473,71 +473,53 @@ export const IndividualBookings: React.FC = () => {
   };
 
   // State for filtered bookings
-  const [filteredAndSortedBookings, setFilteredAndSortedBookings] = useState<EnhancedBooking[]>(
-    []
-  );
+  const [filteredAndSortedBookings, setFilteredAndSortedBookings] = useState<EnhancedBooking[]>([]);
 
-  // CLEAN FILTER IMPLEMENTATION v2.0 - PRODUCTION READY - FORCED UPDATE
+  // Enhanced filter and sort function - using useEffect for better debugging
   useEffect(() => {
-    console.log('[CLEAN FILTER v2.0] ===== FILTER START =====');
-    console.log('[CLEAN FILTER v2.0] DEPLOYED VERSION:', new Date().toISOString());
-    console.log('[CLEAN FILTER v2.0] Filter Status:', filterStatus);
-    console.log('[CLEAN FILTER v2.0] Total Bookings:', bookings.length);
+    console.log('[PRODUCTION FILTER] ===== FILTER START =====');
+    console.log('[PRODUCTION FILTER] Filter Status:', filterStatus);
+    console.log('[PRODUCTION FILTER] Total Bookings:', bookings.length);
 
-    if (!bookings || bookings.length === 0) {
-      console.log('[CLEAN FILTER] No bookings available');
+    if (bookings.length === 0) {
+      console.log('âš ¸ [CRITICAL FILTER DEBUG] No bookings to filter - setting empty array');
       setFilteredAndSortedBookings([]);
       return;
     }
 
-    // Show status distribution for debugging
-    const statusCounts = bookings.reduce((acc, booking) => {
-      acc[booking.status] = (acc[booking.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    console.log('[CLEAN FILTER v2.0] Status Distribution:', statusCounts);
+    // First, let's see all booking statuses
+    const allStatuses = bookings.map(b => ({ id: b.id, status: b.status }));
+    console.log('ðŸ”¥ [CRITICAL FILTER DEBUG] All booking statuses:', allStatuses);
     
-    // Apply filtering logic
-    const filtered = bookings.filter(booking => {
-      // Status filtering
+    let filtered = bookings.filter(booking => {
       const matchesStatus = filterStatus === 'all' || booking.status === filterStatus;
-      
-      // Search filtering
-      const query = debouncedSearchQuery.toLowerCase().trim();
-      const searchableFields = [
-        booking.vendorBusinessName,
-        booking.vendorName,
-        booking.serviceType,
-        booking.serviceName,
-        booking.eventLocation
-      ].filter(Boolean);
-      
-      const matchesSearch = !query || searchableFields.some(field => 
-        field && field.toLowerCase().includes(query)
-      );
+      const query = debouncedSearchQuery.toLowerCase();
+      const matchesSearch = !query || 
+        (booking.vendorBusinessName && booking.vendorBusinessName.toLowerCase().includes(query)) ||
+        (booking.vendorName && booking.vendorName.toLowerCase().includes(query)) ||
+        (booking.serviceType && booking.serviceType.toLowerCase().includes(query)) ||
+        (booking.serviceName && booking.serviceName.toLowerCase().includes(query));
 
-      // Debug individual filtering
-      const shouldInclude = matchesStatus && matchesSearch;
-      if (filterStatus !== 'all') {
-        console.log(`[CLEAN FILTER v2.0 CHECK] ID:${booking.id} Status:"${booking.status}" vs Filter:"${filterStatus}" = ${shouldInclude}`);
+      if (!matchesStatus) {
+        console.log('¿½ [FILTER MISMATCH] Booking', booking.id, 'status:', `"${booking.status}"`, 'vs filter:', `"${filterStatus}"`, '-> EXCLUDED');
+      } else {
+        console.log('âœ… [FILTER MATCH] Booking', booking.id, 'status:', `"${booking.status}"`, 'vs filter:', `"${filterStatus}"`, '-> INCLUDED');
       }
       
-      return shouldInclude;
+      return matchesStatus && matchesSearch;
     });
 
-    console.log('[CLEAN FILTER v2.0] Filtered Results:', filtered.length, 'out of', bookings.length);
-    console.log('[CLEAN FILTER v2.0] Filtered IDs:', filtered.map(b => b.id));
-    
-    // Update state with new array reference to force re-render
-    setFilteredAndSortedBookings([...filtered]);
-    
-    console.log('[CLEAN FILTER v2.0] ===== FILTER END =====');
+    console.log('¿½ [CRITICAL FILTER DEBUG] Filtered count:', filtered.length, 'out of', bookings.length);
+    console.log('¿½ [CRITICAL FILTER DEBUG] Filtered booking IDs:', filtered.map(b => b.id));
+    console.log('ðŸ”¥ [CRITICAL FILTER DEBUG] Setting filtered bookings state...');
+    setFilteredAndSortedBookings(filtered);
+    console.log('¿½ [CRITICAL FILTER DEBUG] ===== FILTER EXECUTION END =====');
   }, [bookings, filterStatus, debouncedSearchQuery]);
 
   // Debug: Track filteredAndSortedBookings state changes
   useEffect(() => {
-    console.log('[FILTERED STATE] filteredAndSortedBookings changed to:', filteredAndSortedBookings.length, 'bookings');
-    console.log('[FILTERED STATE] IDs:', filteredAndSortedBookings.map(b => b.id));
+    console.log('ðŸŽ¯ [FILTERED STATE DEBUG] filteredAndSortedBookings changed to:', filteredAndSortedBookings.length, 'bookings');
+    console.log('ðŸŽ¯ [FILTERED STATE DEBUG] IDs:', filteredAndSortedBookings.map(b => b.id));
   }, [filteredAndSortedBookings]);
 
   return (
@@ -606,9 +588,8 @@ export const IndividualBookings: React.FC = () => {
               <select
                 value={filterStatus}
                 onChange={(e) => {
-                  console.log('[DROPDOWN v2.0]', new Date().toISOString(), 'Filter changed from', filterStatus, 'to', e.target.value);
+                  console.log('[DROPDOWN] Filter changed from', filterStatus, 'to', e.target.value);
                   setFilterStatus(e.target.value as BookingStatus | 'all');
-                  console.log('[DROPDOWN v2.0] setFilterStatus called, should trigger useEffect');
                 }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors bg-white"
                 aria-label="Filter by status"
