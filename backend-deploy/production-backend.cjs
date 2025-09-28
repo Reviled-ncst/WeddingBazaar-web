@@ -1100,22 +1100,60 @@ app.get('/api/conversations/:userId', async (req, res) => {
     const { userId } = req.params;
     console.log('💬 [MESSAGING] GET /api/conversations/' + userId + ' called - using REAL database');
     
-    // Get user's conversations from REAL database
+    // FIXED QUERY: Find conversations where user has sent messages
+    // Based on database analysis: user sends messages as sender_id in messages table
     let userConversations = await sql`
-      SELECT id, participant_id, participant_name, conversation_type, last_message, 
-             last_message_time, unread_count, service_name, service_category,
-             created_at, updated_at
-      FROM conversations 
-      WHERE participant_id = ${userId}
-      ORDER BY last_message_time DESC NULLS LAST, created_at DESC
+      SELECT DISTINCT 
+        c.id,
+        c.participant_id,
+        c.participant_name, 
+        c.participant_type,
+        c.conversation_type,
+        c.last_message,
+        c.last_message_time,
+        c.unread_count,
+        c.service_name,
+        c.service_category,
+        c.service_price,
+        c.service_description,
+        c.created_at,
+        c.updated_at,
+        c.creator_id,
+        c.creator_type
+      FROM conversations c
+      INNER JOIN messages m ON c.id = m.conversation_id
+      WHERE m.sender_id = ${userId}
+      ORDER BY c.last_message_time DESC NULLS LAST, c.created_at DESC
     `;
     
     console.log(`� [MESSAGING] Found ${userConversations.length} real conversations for user ${userId}`);
     
-    // USE YOUR REAL DATABASE DATA - not fake mock conversations!
-    console.log('🔥 [MESSAGING] Reading YOUR REAL conversations from database for user:', userId);
+    if (userConversations.length > 0) {
+      console.log('📋 [MESSAGING] Conversation details:');
+      userConversations.forEach((conv, i) => {
+        console.log(`  ${i + 1}. ${conv.id} - ${conv.service_name || 'No service'}`);
+      });
+    } else {
+      console.log('⚠️ [MESSAGING] No conversations found for this user');
+    }
     
-    try {
+    res.json({
+      success: true,
+      conversations: userConversations,
+      count: userConversations.length,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [MESSAGING] Error fetching conversations:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch conversations',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
       // Get user's REAL conversations from YOUR database
       userConversations = await sql`
         SELECT id, participant_id, participant_name, conversation_type, last_message, 
@@ -1176,43 +1214,7 @@ app.get('/api/conversations/:userId', async (req, res) => {
           FROM conversations 
           WHERE participant_id = ${userId}
           ORDER BY created_at DESC
-        `;
-        
-        console.log(`✅ [MESSAGING] Created ${userConversations.length} new conversations in YOUR REAL database`);
-      }
-      
-    } catch (dbError) {
-      console.error('❌ [MESSAGING] Database error for user', userId, ':', dbError.message);
-      console.error('❌ [MESSAGING] Database stack trace:', dbError.stack);
-      userConversations = [];
-      
-      // Return error info in response for debugging
-      return res.status(500).json({
-        success: false,
-        error: 'Database connection failed',
-        details: dbError.message,
-        userId: userId,
-        timestamp: new Date().toISOString()
-      });
-    }
-    
-    res.json({
-      success: true,
-      conversations: userConversations,
-      total: userConversations.length,
-      userId: userId,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('❌ [MESSAGING] Get user conversations failed:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch user conversations',
-      message: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
+
 
 app.post('/api/conversations', async (req, res) => {
   try {
