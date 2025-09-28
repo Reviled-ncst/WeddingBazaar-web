@@ -475,13 +475,11 @@ export const IndividualBookings: React.FC = () => {
   // State for filtered bookings
   const [filteredAndSortedBookings, setFilteredAndSortedBookings] = useState<EnhancedBooking[]>([]);
 
-  // Enhanced filter and sort function - using useEffect for better debugging
+  // PRODUCTION FILTER FIX - Clean implementation for hosting
   useEffect(() => {
-    console.log('¿½ [CRITICAL FILTER DEBUG] ===== FILTER EXECUTION START =====');
-    console.log('¿½ [CRITICAL FILTER DEBUG] Current filter status:', filterStatus);
-    console.log('¿½ [CRITICAL FILTER DEBUG] Filter type:', typeof filterStatus);
-    console.log('¿½ [CRITICAL FILTER DEBUG] Total bookings:', bookings.length);
-    console.log('¿½ [CRITICAL FILTER DEBUG] Search query:', debouncedSearchQuery);
+    console.log('[PRODUCTION FILTER] ===== FILTER START =====');
+    console.log('[PRODUCTION FILTER] Filter Status:', filterStatus);
+    console.log('[PRODUCTION FILTER] Total Bookings:', bookings.length);
 
     if (bookings.length === 0) {
       console.log('âš ¸ [CRITICAL FILTER DEBUG] No bookings to filter - setting empty array');
@@ -590,12 +588,8 @@ export const IndividualBookings: React.FC = () => {
               <select
                 value={filterStatus}
                 onChange={(e) => {
-                  console.log('ðŸŽ¯ [DROPDOWN DEBUG] Filter dropdown changed!');
-                  console.log('ðŸŽ¯ [DROPDOWN DEBUG] Old value:', filterStatus);
-                  console.log('ðŸŽ¯ [DROPDOWN DEBUG] New value:', e.target.value);
-                  console.log('ðŸŽ¯ [DROPDOWN DEBUG] Calling setFilterStatus...');
+                  console.log('[DROPDOWN] Filter changed from', filterStatus, 'to', e.target.value);
                   setFilterStatus(e.target.value as BookingStatus | 'all');
-                  console.log('ðŸŽ¯ [DROPDOWN DEBUG] setFilterStatus called!');
                 }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors bg-white"
                 aria-label="Filter by status"
