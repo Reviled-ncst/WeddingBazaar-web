@@ -423,22 +423,66 @@ app.get('/api/services', async (req, res) => {
     
     console.log(`✅ [SERVICES] Found ${services.length} services`);
     
-    // Add default image and format for frontend
-    const formattedServices = services.map(service => ({
-      ...service,
-      image: service.image_url || 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600',
-      images: [service.image_url || 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600'],
-      vendorName: `Vendor ${service.vendor_id}`,
-      rating: 4.5,
-      reviewCount: 25,
-      location: 'Multiple locations',
-      features: ['Professional service', 'Experienced team'],
-      contactInfo: {
-        phone: '(555) 123-4567',
-        email: 'info@vendor.com',
-        website: 'https://vendor.com'
-      }
-    }));
+    // Category-specific images for better visual variety
+    const getCategoryImage = (category) => {
+      const categoryImages = {
+        'Wedding Planner': 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600',
+        'Wedding Planning': 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600',
+        'Photographer & Videographer': 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=600',
+        'Photography': 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=600',
+        'Videography': 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=600',
+        'Florist': 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=600',
+        'Flowers': 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=600',
+        'Caterer': 'https://images.unsplash.com/photo-1555244162-803834f70033?w=600',
+        'Catering': 'https://images.unsplash.com/photo-1555244162-803834f70033?w=600',
+        'DJ/Band': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600',
+        'DJ': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600',
+        'Band': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600',
+        'Officiant': 'https://images.unsplash.com/photo-1464207687429-7505649dae38?w=600',
+        'Hair & Makeup Artists': 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600',
+        'Makeup': 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600',
+        'Venue Coordinator': 'https://images.unsplash.com/photo-1519167758481-83f29c759c47?w=600',
+        'Venue': 'https://images.unsplash.com/photo-1519167758481-83f29c759c47?w=600',
+        'Event Rentals': 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=600',
+        'Rentals': 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=600',
+        'Transportation Services': 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=600',
+        'Transportation': 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=600',
+        'Cake Designer': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600',
+        'Cake': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600',
+        'Dress Designer/Tailor': 'https://images.unsplash.com/photo-1594736797933-d0d3e5753960?w=600',
+        'Dress': 'https://images.unsplash.com/photo-1594736797933-d0d3e5753960?w=600',
+        'Stationery Designer': 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=600',
+        'Stationery': 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=600',
+        'Sounds & Lights': 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600',
+        'Audio': 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600',
+        'Lighting': 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600',
+        'Security & Guest Management': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600',
+        'Security': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600',
+        'other': 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600'
+      };
+      
+      return categoryImages[category] || categoryImages['other'];
+    };
+
+    // Add category-specific images and format for frontend
+    const formattedServices = services.map(service => {
+      const categoryImage = getCategoryImage(service.category);
+      return {
+        ...service,
+        image: service.images && service.images.length > 0 ? service.images[0] : categoryImage,
+        images: service.images && service.images.length > 0 ? service.images : [categoryImage],
+        vendorName: `Vendor ${service.vendor_id}`,
+        rating: 4.5,
+        reviewCount: 25,
+        location: 'Multiple locations',
+        features: ['Professional service', 'Experienced team'],
+        contactInfo: {
+          phone: '(555) 123-4567',
+          email: 'info@vendor.com',
+          website: 'https://vendor.com'
+        }
+      };
+    });
     
     res.json({
       success: true,
