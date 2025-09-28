@@ -293,11 +293,9 @@ export class CentralizedServiceManager {
       
       // Direct API call to get real services - try multiple endpoints with timeouts
       const endpoints = [
-        '/api/database/scan',        // Comprehensive database scan (NEW)
-        '/api/services/emergency',   // Emergency simple endpoint
         '/api/services',             // Regular services endpoint
-        '/api/services/simple',      // Simple services endpoint
-        '/api/services/direct'       // Direct services endpoint
+        '/api/vendors/featured',     // Featured vendors endpoint
+        '/api/vendors/categories'    // Vendor categories endpoint
       ];
 
       for (const endpoint of endpoints) {
@@ -305,12 +303,12 @@ export class CentralizedServiceManager {
           console.log(`📡 [ServiceManager] *** TRYING ENDPOINT: ${endpoint} ***`);
           console.log(`📡 [ServiceManager] Full URL: ${this.apiUrl}${endpoint}`);
           
-          // Create abort controller for timeout
+          // Create abort controller for timeout - increased to 30 seconds for Render free tier wakeup
           const controller = new AbortController();
           const timeoutId = setTimeout(() => {
-            console.warn(`⏰ [ServiceManager] ${endpoint} timeout after 10 seconds`);
+            console.warn(`⏰ [ServiceManager] ${endpoint} timeout after 30 seconds`);
             controller.abort();
-          }, 10000);
+          }, 30000);
           
           // LOG THE ACTUAL FETCH CALL WITH ENHANCED DEBUGGING
           console.log('🚀 [ServiceManager] *** MAKING FETCH CALL ***', {
@@ -328,10 +326,12 @@ export class CentralizedServiceManager {
           const response = await fetch(`${this.apiUrl}${endpoint}`, {
             method: 'GET',
             mode: 'cors', // Explicitly set CORS mode
+            credentials: 'omit', // Don't send credentials to avoid CORS issues
             headers: {
               'Content-Type': 'application/json',
               'Cache-Control': 'no-cache',
-              'Accept': 'application/json'
+              'Accept': 'application/json',
+              'Origin': window.location.origin
             },
             signal: controller.signal
           });
@@ -346,19 +346,33 @@ export class CentralizedServiceManager {
             console.log(`📊 [ServiceManager] RAW Response from ${endpoint}:`, JSON.stringify(data, null, 2).substring(0, 1000) + '...');
             console.log(`🔍 [ServiceManager] Data structure check - success: ${data.success}, services: ${Array.isArray(data.services)}, length: ${data.services?.length}`);
 
-            if (data.success && data.services && Array.isArray(data.services)) {
-              console.log(`✅ [ServiceManager] Found ${data.services.length} real services from ${endpoint}`);
-              console.log(`🎯 [ServiceManager] First 3 services:`, data.services.slice(0, 3).map((s: any) => ({
-                id: s.id,
-                name: s.name,
-                category: s.category,
-                price: s.price
-              })));
+            // Handle different response formats from different endpoints
+            let servicesArray = [];
+            if (data.success) {
+              if (data.services && Array.isArray(data.services)) {
+                servicesArray = data.services;
+                console.log(`✅ [ServiceManager] Found ${servicesArray.length} services from ${endpoint}`);
+              } else if (data.vendors && Array.isArray(data.vendors)) {
+                servicesArray = data.vendors;
+                console.log(`✅ [ServiceManager] Found ${servicesArray.length} vendors from ${endpoint}`);
+              } else if (data.categories && Array.isArray(data.categories)) {
+                // Flatten categories to get all vendors
+                servicesArray = data.categories.flatMap((cat: any) => cat.vendors || []);
+                console.log(`✅ [ServiceManager] Found ${servicesArray.length} vendors from categories in ${endpoint}`);
+              }
               
-              // Map database services to frontend format
-              const mappedServices = data.services.map((service: any) => 
-                this.mapDatabaseServiceToFrontend(service)
-              );
+              if (servicesArray.length > 0) {
+                console.log(`🎯 [ServiceManager] First 3 items:`, servicesArray.slice(0, 3).map((s: any) => ({
+                  id: s.id,
+                  name: s.name || s.business_name,
+                  category: s.category || s.business_type,
+                  price: s.price || s.price_range
+                })));
+                
+                // Map services/vendors to frontend format
+                const mappedServices = servicesArray.map((service: any) => 
+                  this.mapDatabaseServiceToFrontend(service)
+                );
 
               console.log(`🔄 [ServiceManager] Mapped ${mappedServices.length} services to frontend format`);
               console.log(`🎯 [ServiceManager] First mapped service:`, mappedServices[0]);
@@ -373,12 +387,13 @@ export class CentralizedServiceManager {
               this.setCache(cacheKey, result);
               console.log(`✅ [ServiceManager] *** RETURNING SUCCESS WITH ${result.services.length} SERVICES ***`);
               return result;
+              }
             } else {
               console.warn(`⚠️ [ServiceManager] ${endpoint} response validation failed:`, {
                 success: data.success,
                 hasServices: !!data.services,
-                isArray: Array.isArray(data.services),
-                length: data.services?.length,
+                hasVendors: !!data.vendors,
+                hasCategories: !!data.categories,
                 dataKeys: Object.keys(data)
               });
             }
@@ -389,7 +404,8 @@ export class CentralizedServiceManager {
           }
         } catch (endpointError) {
           if (endpointError instanceof Error && endpointError.name === 'AbortError') {
-            console.warn(`⏰ [ServiceManager] ${endpoint} request was aborted (timeout)`);
+            console.warn(`⏰ [ServiceManager] ${endpoint} request was aborted (timeout after 30 seconds)`);
+            console.warn(`💡 [ServiceManager] This might be normal for Render free tier - backend needs time to wake up`);
           } else {
             console.error(`❌ [ServiceManager] ${endpoint} threw error:`, endpointError);
             console.error(`📋 [ServiceManager] Error details:`, {
@@ -398,15 +414,56 @@ export class CentralizedServiceManager {
               endpoint: endpoint,
               fullUrl: `${this.apiUrl}${endpoint}`,
               type: typeof endpointError,
-              stack: endpointError instanceof Error ? endpointError.stack : 'No stack'
+              stack: endpointError instanceof Error ? endpointError.stack?.substring(0, 200) : 'No stack'
             });
+            
+            // Check for specific error types
+            if (endpointError instanceof TypeError && endpointError.message.includes('Failed to fetch')) {
+              console.error(`🚫 [ServiceManager] Network error - possible CORS issue or backend unavailable`);
+            }
           }
           continue;
         }
       }
 
-      // All endpoints failed - this shouldn't happen with local backend
-      console.error('❌ [ServiceManager] All endpoints failed! Check local backend server.');
+      // All endpoints failed - try one more direct attempt with different settings
+      console.warn('⚠️ [ServiceManager] All standard endpoints failed - trying direct fallback...');
+      
+      try {
+        console.log('🔄 [ServiceManager] *** FALLBACK ATTEMPT: Direct /api/services call ***');
+        const fallbackResponse = await fetch(`${this.apiUrl}/api/services`, {
+          method: 'GET',
+          mode: 'no-cors', // Try no-cors mode as fallback
+          cache: 'no-cache'
+        });
+        
+        console.log('📡 [ServiceManager] Fallback response received:', fallbackResponse.status);
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          console.log('✅ [ServiceManager] Fallback succeeded with data:', fallbackData.services?.length || 0, 'services');
+          
+          if (fallbackData.success && fallbackData.services?.length > 0) {
+            const mappedServices = fallbackData.services.map((service: any) => 
+              this.mapDatabaseServiceToFrontend(service)
+            );
+            
+            const result = {
+              services: mappedServices,
+              total: mappedServices.length,
+              success: true
+            };
+            
+            this.setCache(cacheKey, result);
+            console.log('🎯 [ServiceManager] *** FALLBACK SUCCESS: Returning', result.services.length, 'services ***');
+            return result;
+          }
+        }
+      } catch (fallbackError) {
+        console.error('❌ [ServiceManager] Fallback also failed:', fallbackError);
+      }
+      
+      // Truly all endpoints failed
+      console.error('❌ [ServiceManager] All endpoints AND fallback failed! Backend may be down or unreachable.');
       console.error('🔧 [ServiceManager] Final API URL used:', this.apiUrl);
       console.error('🔧 [ServiceManager] All endpoints tried:', endpoints);
       

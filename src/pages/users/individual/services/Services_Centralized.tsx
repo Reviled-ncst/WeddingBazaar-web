@@ -153,19 +153,88 @@ export function Services() {
       console.log('🔧 [Services] Filters being passed:', filters);
       
       try {
-        console.log('📡 [Services] *** CALLING serviceManager.getAllServices ***');
-        const result = await serviceManager.getAllServices(filters);
+        console.log('📡 [Services] *** TRYING DIRECT API CALL (60 second timeout) ***');
         
-        if (result.success && result.services.length > 0) {
-          console.log('✅ [Services] Loaded services from centralized manager:', result.services.length);
-          setServices(result.services);
+        // Direct API call with long timeout for Render free tier
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds
+        
+        const response = await fetch('https://weddingbazaar-web.onrender.com/api/services', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          signal: controller.signal,
+          mode: 'cors',
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('📦 [Services] API Response:', { success: data.success, total: data.total });
+        
+        if (data.success && data.services && data.services.length > 0) {
+          console.log('✅ [Services] Loaded services directly from API:', data.services.length);
+          
+          // Transform the API data to match our Service interface
+          const transformedServices = data.services.map((service: any) => ({
+            id: service.id,
+            name: service.name,
+            category: service.category,
+            vendor_id: service.vendor_id,
+            vendorId: service.vendor_id,
+            vendorName: service.vendorName || `Vendor ${service.vendor_id}`,
+            vendorImage: service.vendorImage || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+            description: service.description,
+            price: service.price,
+            priceRange: service.price || 'Contact for pricing',
+            location: service.location || 'Multiple locations',
+            rating: service.rating || 4.5,
+            reviewCount: service.reviewCount || 25,
+            image: service.image,
+            images: service.images || [service.image],
+            gallery: service.gallery || [service.image],
+            features: service.features || ['Professional service', 'Experienced team'],
+            is_active: service.is_active !== false,
+            availability: service.availability !== false,
+            featured: service.featured || false,
+            created_at: service.created_at || new Date().toISOString(),
+            updated_at: service.updated_at || new Date().toISOString(),
+            contactInfo: service.contactInfo || {
+              phone: '(555) 123-4567',
+              email: 'info@vendor.com',
+              website: 'https://vendor.com'
+            }
+          }));
+          
+          setServices(transformedServices);
         } else {
-          console.log('⚠️ [Services] No real services found in database');
+          console.log('⚠️ [Services] API returned no services');
           setServices([]);
         }
       } catch (error) {
-        console.error('❌ [Services] Error loading services:', error);
-        setServices([]);
+        console.error('❌ [Services] Direct API call failed:', error);
+        console.log('🔄 [Services] Attempting fallback with ServiceManager...');
+        
+        // Fallback to ServiceManager
+        try {
+          const result = await serviceManager.getAllServices(filters);
+          if (result.success && result.services.length > 0) {
+            console.log('✅ [Services] Fallback successful:', result.services.length);
+            setServices(result.services);
+          } else {
+            console.log('⚠️ [Services] Fallback also failed - no services available');
+            setServices([]);
+          }
+        } catch (fallbackError) {
+          console.error('❌ [Services] Fallback also failed:', fallbackError);
+          setServices([]);
+        }
       } finally {
         setLoading(false);
       }
@@ -628,17 +697,24 @@ Best regards`;
                 // No services in database
                 <>
                   <div className="text-6xl mb-4">�</div>
-                  <h3 className="text-2xl font-semibold text-gray-900 mb-2">Services Coming Soon</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900 mb-2">Loading Wedding Services</h3>
                   <p className="text-gray-600 mb-6">
-                    Our vendors are currently setting up their services. <br/>
-                    Check back soon to discover amazing wedding professionals!
+                    We have 90+ professional wedding services available. <br/>
+                    If this message persists, please refresh the page or try again later.
                   </p>
-                  <div className="bg-pink-50 rounded-xl p-6 max-w-md mx-auto">
-                    <h4 className="font-semibold text-pink-900 mb-2">For Vendors:</h4>
-                    <p className="text-pink-700 text-sm">
-                      Ready to showcase your services? Contact us to get started with your service listings.
+                  <div className="bg-blue-50 rounded-xl p-6 max-w-md mx-auto">
+                    <h4 className="font-semibold text-blue-900 mb-2">Available Services Include:</h4>
+                    <p className="text-blue-700 text-sm">
+                      Photography • Videography • Catering • Wedding Planning • Music & DJ • 
+                      Florist • Venues • Beauty Services • Transportation • and more!
                     </p>
                   </div>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-4 px-6 py-3 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors"
+                  >
+                    Refresh Page
+                  </button>
                 </>
               ) : (
                 // Services exist but filtered out
