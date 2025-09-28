@@ -146,9 +146,10 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
       }
       setCurrentUser(chatUser);
       console.log('✅ [UniversalMessaging] Current user initialized:', chatUser);
-      console.log('🔧 [UniversalMessaging] VERSION CHECK: 2025-09-28-FINAL-v4 - Fixed API endpoints and error handling');
+      console.log('🔧 [UniversalMessaging] VERSION CHECK: 2025-09-28-FINAL-v6 - AUTO-LOAD ALL MESSAGES');
       console.log('🔧 [UniversalMessaging] DEPLOYED VERSION: This should show REAL user names only!');
       console.log('🔧 [UniversalMessaging] API ENDPOINTS FIXED: Correct conversation and message loading URLs');
+      console.log('🔧 [UniversalMessaging] AUTHENTICATION FIXED: Token verification returns correct user data');
     } else {
       // User not authenticated - don't create any mock/demo users
       setCurrentUser(null);
@@ -188,9 +189,11 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
 
     try {
       console.log(`🔄 [UniversalMessaging] Loading conversations for ${currentUser.role}: ${currentUser.name}`);
+      console.log(`🔄 [UniversalMessaging] User ID for API call: ${currentUser.id}`);
       
       const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
       const endpoint = `${apiUrl}/api/conversations/${currentUser.id}`;
+      console.log(`🔄 [UniversalMessaging] API endpoint: ${endpoint}`);
       
       const response = await fetch(endpoint);
       
@@ -262,6 +265,13 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
           return finalConversations;
         });
         
+        // Auto-load messages for all conversations
+        console.log(`🔄 [UniversalMessaging] Auto-loading messages for ${transformedConversations.length} conversations`);
+        transformedConversations.forEach(conv => {
+          console.log(`🔄 [UniversalMessaging] Loading messages for conversation: ${conv.id}`);
+          loadMessagesForConversation(conv.id);
+        });
+
         // Auto-select first conversation if none selected
         if (!activeConversationId && transformedConversations.length > 0) {
           setActiveConversationId(transformedConversations[0].id);
