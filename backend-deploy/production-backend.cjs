@@ -935,7 +935,7 @@ app.get('/api/conversations/:userId', async (req, res) => {
     
     // Filter conversations for specific user
     const userConversations = conversationsStorage.filter(conv => 
-      conv.participants.includes(userId)
+      conv.participants.some(participant => participant.id === userId)
     );
     
     res.json({
