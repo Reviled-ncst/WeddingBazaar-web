@@ -887,6 +887,73 @@ app.get('/api/bookings/stats', async (req, res) => {
   }
 });
 
+// Accept quotation endpoint
+app.patch('/api/bookings/:bookingId/accept-quote', async (req, res) => {
+  try {
+    console.log('📊 [BOOKING] PATCH /api/bookings/:bookingId/accept-quote called');
+    const { bookingId } = req.params;
+    const { status = 'confirmed', notes } = req.body;
+    
+    console.log('🔍 [BOOKING] Accept quote params:', { bookingId, status, notes });
+    
+    // Update booking status and add notes
+    const updateQuery = `
+      UPDATE bookings 
+      SET 
+        status = $1,
+        notes = COALESCE(notes, '') || $2,
+        updated_at = NOW()
+      WHERE id = $3
+      RETURNING *
+    `;
+    
+    const updatedBooking = await sql(updateQuery, [
+      status,
+      notes ? `\n[${new Date().toISOString()}] ${notes}` : '',
+      bookingId
+    ]);
+    
+    if (updatedBooking.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found',
+        message: `No booking found with ID ${bookingId}`,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const booking = updatedBooking[0];
+    
+    res.json({
+      success: true,
+      booking: {
+        ...booking,
+        // Convert dates to ISO strings for frontend compatibility
+        event_date: booking.event_date ? new Date(booking.event_date).toISOString() : null,
+        created_at: booking.created_at ? new Date(booking.created_at).toISOString() : null,
+        updated_at: booking.updated_at ? new Date(booking.updated_at).toISOString() : null,
+        // Convert numeric values
+        total_amount: booking.total_amount ? parseFloat(booking.total_amount) : 0,
+        deposit_amount: booking.deposit_amount ? parseFloat(booking.deposit_amount) : 0,
+        estimated_cost_min: booking.estimated_cost_min ? parseFloat(booking.estimated_cost_min) : 0,
+        estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost_max) : 0
+      },
+      message: `Quotation accepted successfully for booking ${bookingId}`,
+      timestamp: new Date().toISOString()
+    });
+
+    console.log(`✅ [BOOKING] Quotation accepted for booking ${bookingId}, status updated to ${status}`);
+  } catch (error) {
+    console.error('❌ [BOOKING] Error accepting quotation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to accept quotation',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('❌ [ERROR] Unhandled error:', err);

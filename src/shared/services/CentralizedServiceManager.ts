@@ -508,25 +508,158 @@ export class CentralizedServiceManager {
     const cacheKey = `vendor_services_${vendorId}`;
     
     if (this.isValidCache(cacheKey)) {
+      console.log('📋 [ServiceManager] Returning cached vendor services for:', vendorId);
       return this.cache.get(cacheKey);
     }
 
     try {
-      // Use ServiceAPI for data fetching
-      const { serviceAPI } = await import('./ServiceAPI');
-      const result = await serviceAPI.getVendorServices(vendorId);
+      console.log('🔄 [ServiceManager] *** FETCHING VENDOR SERVICES FROM DATABASE ***');
+      console.log('🆔 [ServiceManager] Vendor ID:', vendorId);
+      console.log('🔧 [ServiceManager] API URL:', this.apiUrl);
       
-      if (result.success) {
-        const mappedResult = {
-          services: result.services || [],
-          success: true
-        };
-        
-        this.setCache(cacheKey, mappedResult);
-        return mappedResult;
+      // Try multiple endpoints for vendor-specific services
+      const endpoints = [
+        `/api/services/vendor/${vendorId}`,  // Vendor-specific services endpoint
+        `/api/services?vendorId=${vendorId}`, // Services with vendor filter
+        `/api/vendors/${vendorId}/services`   // Alternative vendor services endpoint
+      ];
+
+      // Also try the general services endpoint and filter client-side as fallback
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`📡 [ServiceManager] *** TRYING VENDOR ENDPOINT: ${endpoint} ***`);
+          console.log(`📡 [ServiceManager] Full URL: ${this.apiUrl}${endpoint}`);
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => {
+            console.warn(`⏰ [ServiceManager] ${endpoint} timeout after 30 seconds`);
+            controller.abort();
+          }, 30000);
+          
+          const response = await fetch(`${this.apiUrl}${endpoint}`, {
+            method: 'GET',
+            mode: 'cors',
+            credentials: 'omit',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache',
+              'Accept': 'application/json',
+              'Origin': window.location.origin
+            },
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+
+          console.log(`📡 [ServiceManager] Vendor response status for ${endpoint}: ${response.status} ${response.statusText}`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log(`📊 [ServiceManager] Vendor RAW Response from ${endpoint}:`, JSON.stringify(data, null, 2).substring(0, 500) + '...');
+
+            let servicesArray = [];
+            if (data.success) {
+              if (data.services && Array.isArray(data.services)) {
+                servicesArray = data.services;
+                console.log(`✅ [ServiceManager] Found ${servicesArray.length} vendor services from ${endpoint}`);
+              } else if (Array.isArray(data)) {
+                servicesArray = data;
+                console.log(`✅ [ServiceManager] Found ${servicesArray.length} vendor services (direct array) from ${endpoint}`);
+              }
+              
+              if (servicesArray.length > 0) {
+                // Map services to frontend format
+                const mappedServices = servicesArray.map((service: any) => 
+                  this.mapDatabaseServiceToFrontend(service)
+                );
+
+                console.log(`🔄 [ServiceManager] Mapped ${mappedServices.length} vendor services to frontend format`);
+                console.log(`🎯 [ServiceManager] First mapped vendor service:`, mappedServices[0]);
+
+                const result = {
+                  services: mappedServices,
+                  success: true
+                };
+
+                // Cache result
+                this.setCache(cacheKey, result);
+                console.log(`✅ [ServiceManager] *** RETURNING VENDOR SUCCESS WITH ${result.services.length} SERVICES ***`);
+                return result;
+              }
+            }
+          } else {
+            console.error(`❌ [ServiceManager] Vendor ${endpoint} failed with status: ${response.status} ${response.statusText}`);
+          }
+        } catch (endpointError) {
+          if (endpointError instanceof Error && endpointError.name === 'AbortError') {
+            console.warn(`⏰ [ServiceManager] Vendor ${endpoint} request was aborted (timeout)`);
+          } else {
+            console.error(`❌ [ServiceManager] Vendor ${endpoint} threw error:`, endpointError);
+          }
+          continue;
+        }
       }
 
-      return { services: [], success: false };
+      // FALLBACK: Get all services and filter by vendorId client-side
+      console.log('⚠️ [ServiceManager] Vendor-specific endpoints failed - trying fallback with client-side filtering...');
+      
+      try {
+        console.log('🔄 [ServiceManager] *** FALLBACK: Get all services and filter by vendor ***');
+        const allServicesResponse = await fetch(`${this.apiUrl}/api/services`, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'omit',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (allServicesResponse.ok) {
+          const allServicesData = await allServicesResponse.json();
+          console.log('📡 [ServiceManager] All services response:', allServicesData.services?.length || 0, 'total services');
+          
+          if (allServicesData.success && allServicesData.services?.length > 0) {
+            // Filter services by vendorId
+            const vendorServices = allServicesData.services.filter((service: any) => {
+              const serviceVendorId = service.vendorId || service.vendor_id || service.created_by;
+              const matches = serviceVendorId === vendorId;
+              if (matches) {
+                console.log('🎯 [ServiceManager] Found matching service:', service.name || service.title, 'for vendor:', vendorId);
+              }
+              return matches;
+            });
+            
+            console.log(`✅ [ServiceManager] Filtered ${vendorServices.length} services for vendor ${vendorId}`);
+            
+            if (vendorServices.length > 0) {
+              const mappedServices = vendorServices.map((service: any) => 
+                this.mapDatabaseServiceToFrontend(service)
+              );
+              
+              const result = {
+                services: mappedServices,
+                success: true
+              };
+              
+              this.setCache(cacheKey, result);
+              console.log('🎯 [ServiceManager] *** FALLBACK SUCCESS: Returning', result.services.length, 'vendor services ***');
+              return result;
+            } else {
+              console.log('⚠️ [ServiceManager] No services found for vendor after filtering');
+              return { services: [], success: true }; // Empty but successful
+            }
+          }
+        }
+      } catch (fallbackError) {
+        console.error('❌ [ServiceManager] Vendor services fallback also failed:', fallbackError);
+      }
+      
+      // No services found for this vendor
+      console.log('⚠️ [ServiceManager] No vendor services found for:', vendorId);
+      return { services: [], success: true }; // Empty but successful
+
     } catch (error) {
       console.error('❌ [ServiceManager] Error fetching vendor services:', error);
       return { services: [], success: false };

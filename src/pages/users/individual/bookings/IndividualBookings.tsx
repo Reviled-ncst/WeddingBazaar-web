@@ -14,7 +14,7 @@ import { PayMongoPaymentModal } from '../../../../shared/components/PayMongoPaym
 import { useAuth } from '../../../../shared/contexts/AuthContext';
 
 // Import booking API service
-import { bookingApiService } from '../../../../services/api/bookingApiService';
+import { centralizedBookingAPI as bookingApiService } from '../../../../services/api/CentralizedBookingAPI';
 
 // Import unified mapping utilities
 import { mapToEnhancedBooking } from '../../../../shared/utils/booking-data-mapping';
@@ -432,6 +432,44 @@ export const IndividualBookings: React.FC = () => {
   const handleViewQuoteDetails = (booking: EnhancedBooking) => {
     setSelectedBooking(booking);
     setShowQuoteDetails(true);
+  };
+
+  // Handle accepting quotation
+  const handleAcceptQuotation = async (booking: EnhancedBooking) => {
+    try {
+      setLoading(true);
+      
+      // Call backend API to accept the quotation
+      const response = await fetch(`https://weddingbazaar-web.onrender.com/api/bookings/${booking.id}/accept-quote`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'confirmed',
+          notes: 'Quotation accepted by couple'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to accept quotation');
+      }
+
+      const updatedBooking = await response.json();
+      
+      // Refresh bookings to show updated status
+      await loadBookings();
+      
+      // Show success message
+      alert('Quotation accepted successfully! You can now proceed with payment.');
+      
+      console.log('✅ [AcceptQuotation] Successfully accepted quotation for booking:', booking.id);
+    } catch (error) {
+      console.error('❌ [AcceptQuotation] Error accepting quotation:', error);
+      alert('Failed to accept quotation. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Enhanced filter and sort function - memoized for performance
@@ -981,6 +1019,19 @@ export const IndividualBookings: React.FC = () => {
                         </>
                       )}
                       
+                      {/* Accept Quotation Button for bookings with 'request' status that have quotation details */}
+                      {booking.status === 'request' && (booking.totalAmount || booking.responseMessage) && (
+                        <button
+                          onClick={() => handleAcceptQuotation(booking)}
+                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Accept Quotation
+                        </button>
+                      )}
+                      
                       {booking.status === 'quote_sent' && (
                         <button
                           onClick={() => handleViewQuoteDetails(booking)}
@@ -1229,7 +1280,7 @@ export const IndividualBookings: React.FC = () => {
           if (!booking?.id) return;
           
           try {
-            const updatedBooking = await bookingApiService.updateBookingStatus(booking.id, 'pending');
+            const updatedBooking = await bookingApiService.updateBookingStatus(booking.id, 'request');
             
             if (updatedBooking) {
               // Update local state

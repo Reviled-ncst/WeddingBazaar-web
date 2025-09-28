@@ -17,7 +17,7 @@ import { SendQuoteModal } from './components/SendQuoteModal';
 import { formatPHP } from '../../../../utils/currency';
 
 // Import comprehensive booking API and types
-import { bookingApiService } from '../../../../services/api/bookingApiService';
+import { centralizedBookingAPI as bookingApiService } from '../../../../services/api/CentralizedBookingAPI';
 import type { 
   BookingStatus
 } from '../../../../shared/types/comprehensive-booking.types';

@@ -30,7 +30,7 @@ import type { Service } from '../types';
 type ContactMethod = 'email' | 'phone' | 'message';
 
 // Import comprehensive booking API service
-import { bookingApiService } from '../../../services/api/bookingApiService';
+import { centralizedBookingAPI as bookingApiService } from '../../../services/api/CentralizedBookingAPI';
 
 // Import auth context and components
 import { useAuth } from '../../../shared/contexts/AuthContext';

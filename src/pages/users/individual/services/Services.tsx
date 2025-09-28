@@ -21,6 +21,7 @@ import { CoupleHeader } from '../landing/CoupleHeader';
 import { useUniversalMessaging } from '../../../../shared/contexts/UniversalMessagingContext';
 import { ServiceDetailsModal } from '../../../../modules/services/components/ServiceDetailsModal';
 import { DecisionSupportSystem } from './dss/DecisionSupportSystem';
+import { serviceManager } from '../../../../shared/services/CentralizedServiceManager';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 
 // Service interface
@@ -231,55 +232,33 @@ export const Services: React.FC = () => {
     ratings: [5, 4, 3, 2, 1]
   };
 
-  // Load services from real API - ENHANCED with robust multi-strategy fetching (same as VendorServices)
+  // Load services using centralized service manager for consistency
   useEffect(() => {
     const loadServices = async () => {
       try {
         setLoading(true);
         
-        // Use the production API URL directly
-        const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+        console.log('🔄 [IndividualServices] Loading ALL services from ALL vendors using centralized manager...');
         
-        let allServicesData: Service[] = [];
+        // Use centralized service manager to get all services
+        const CentralizedServiceManager = (await import('../../../shared/services/CentralizedServiceManager')).CentralizedServiceManager;
+        const serviceManager = CentralizedServiceManager.getInstance();
         
-        // Enhanced helper function to convert vendor to service format with better image handling
-        const convertVendorToService = (vendor: any, prefix = 'vendor') => {
-          // Handle image URL with category-specific fallback logic
-          let imageUrl = vendor.image || vendor.profile_image || vendor.main_image || vendor.avatar;
+        const result = await serviceManager.getAllServices();
+        
+        if (result.success && result.services.length > 0) {
+          console.log('✅ [IndividualServices] Loaded services from centralized manager:', result.services.length);
           
-          // If no image, use category-specific fallback
-          if (!imageUrl) {
-            const categoryImages = {
-              'Photography': 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=600&h=400&fit=crop&auto=format',
-              'Videography': 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=600&h=400&fit=crop&auto=format',
-              'Wedding Planning': 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&h=400&fit=crop&auto=format',
-              'Catering': 'https://images.unsplash.com/photo-1555244162-803834f70033?w=600&h=400&fit=crop&auto=format',
-              'Flowers': 'https://images.unsplash.com/photo-1460978812857-470ed1c77af0?w=600&h=400&fit=crop&auto=format',
-              'Music & DJ': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=400&fit=crop&auto=format',
-              'Venues': 'https://images.unsplash.com/photo-1519167758481-83f29b1fe9c2?w=600&h=400&fit=crop&auto=format',
-              'Makeup & Hair': 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600&h=400&fit=crop&auto=format',
-              'Transportation': 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=600&h=400&fit=crop&auto=format',
-              'Other': 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop&auto=format'
-            };
-            
-            const category = vendor.category || vendor.business_type || 'Other';
-            imageUrl = categoryImages[category as keyof typeof categoryImages] || categoryImages['Other'];
-          }
-          
-          // Ensure proper image URL formatting
-          if (imageUrl && !imageUrl.startsWith('http')) {
-            imageUrl = imageUrl.startsWith('/') ? `${apiUrl}${imageUrl}` : `${apiUrl}/${imageUrl}`;
-          }
-          
-          const converted = {
-            id: vendor.id || `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            name: vendor.name || vendor.business_name || 'Unnamed Service',
-            category: vendor.category || vendor.business_type || 'General',
-            vendorId: vendor.id || vendor.vendor_id,
-            vendorName: vendor.name || vendor.business_name,
-            vendorImage: vendor.image || vendor.profile_image || vendor.avatar || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-            description: vendor.description || vendor.bio || `Professional ${vendor.category || vendor.business_type || 'wedding'} services`,
-            priceRange: vendor.price_range || vendor.priceRange || '₱₱',
+          // Map centralized service format to component's interface
+          const mappedServices = result.services.map((service: any) => ({
+            id: service.id,
+            name: service.name || service.title,
+            category: service.category,
+            vendorId: service.vendorId || service.vendor_id,
+            vendorName: service.vendorName,
+            vendorImage: service.vendorImage,
+            description: service.description,
+            priceRange: service.priceRange,
             location: vendor.location || vendor.address || 'Philippines',
             rating: typeof vendor.rating === 'number' ? vendor.rating : parseFloat(vendor.rating) || 4.5,
             reviewCount: vendor.review_count || vendor.reviewCount || vendor.reviews_count || 0,
