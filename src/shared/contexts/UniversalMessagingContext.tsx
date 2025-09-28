@@ -119,19 +119,22 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
 
   // Initialize current user from auth context
   useEffect(() => {
+    console.log('🔍 [UniversalMessaging] Auth state check:', { isAuthenticated, user, userExists: !!user });
+    
     if (isAuthenticated && user) {
       const chatUser: ChatUser = {
-        id: user.id,
+        id: user.id || user.email || '1-authenticated',
         name: user.firstName && user.lastName 
           ? `${user.firstName} ${user.lastName}`.trim()
-          : user.email || 'User',
+          : user.email?.split('@')[0] || (user as any).name || 'User',
         role: user.role || detectUserRole(),
-        avatar: (user as any).avatar || generateAvatarUrl(user.email || user.id),
+        avatar: (user as any).avatar || generateAvatarUrl(user.email || user.id || 'default'),
         businessName: (user as any).businessName,
         serviceCategory: (user as any).serviceCategory
       };
       setCurrentUser(chatUser);
       console.log('✅ [UniversalMessaging] Current user initialized:', chatUser);
+      console.log('✅ [UniversalMessaging] User name will be:', chatUser.name);
     } else {
       // TEMPORARY: Create a test user for demo purposes based on current path
       const isVendorPath = window.location.pathname.includes('/vendor');

@@ -158,53 +158,57 @@ const mockVendors = [
   }
 ];
 
-// Mock services data
+// Mock services data - Comprehensive wedding services database
 const mockServices = [
-  {
-    id: '1',
-    name: 'Wedding Photography',
-    category: 'Photography',
-    description: 'Professional wedding photography services',
-    price: '$2,500 - $5,000',
-    duration: '8-10 hours',
-    image: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=400'
-  },
-  {
-    id: '2',
-    name: 'Wedding Planning',
-    category: 'Planning',
-    description: 'Full-service wedding planning and coordination',
-    price: '$3,000 - $8,000',
-    duration: '6-12 months',
-    image: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400'
-  },
-  {
-    id: '3',
-    name: 'DJ Services',
-    category: 'Entertainment',
-    description: 'Professional DJ and sound system for weddings',
-    price: '$800 - $2,000',
-    duration: '6-8 hours',
-    image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400'
-  },
-  {
-    id: '4',
-    name: 'Wedding Flowers',
-    category: 'Florals',
-    description: 'Custom bridal bouquets and venue florals',
-    price: '$1,200 - $3,500',
-    duration: 'Event day setup',
-    image: 'https://images.unsplash.com/photo-1525268771113-32d9e9021a97?w=400'
-  },
-  {
-    id: '5',
-    name: 'Wedding Venue',
-    category: 'Venue',
-    description: 'Elegant wedding venues with catering options',
-    price: '$5,000 - $15,000',
-    duration: '6-12 hours',
-    image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400'
-  }
+  // Photography Services (15)
+  { id: '1', name: 'Wedding Photography Premium', category: 'Photography', vendor_id: '1', description: 'Professional wedding photography with albums', price: '$2,500 - $5,000', duration: '8-10 hours', image: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=400' },
+  { id: '2', name: 'Engagement Photo Session', category: 'Photography', vendor_id: '1', description: 'Romantic engagement photography session', price: '$500 - $1,200', duration: '2-3 hours', image: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400' },
+  { id: '3', name: 'Bridal Portrait Session', category: 'Photography', vendor_id: '2', description: 'Elegant bridal portraits', price: '$400 - $800', duration: '2 hours', image: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=400' },
+  { id: '4', name: 'Wedding Day Coverage', category: 'Photography', vendor_id: '2', description: 'Full day wedding photography', price: '$3,000 - $6,000', duration: '10-12 hours', image: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400' },
+  { id: '5', name: 'Destination Wedding Photography', category: 'Photography', vendor_id: '3', description: 'Travel photography for destination weddings', price: '$4,000 - $8,000', duration: '2-3 days', image: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=400' },
+
+  // Wedding Planning Services (12)
+  { id: '6', name: 'Full Wedding Planning', category: 'Wedding Planning', vendor_id: '1', description: 'Complete wedding planning from start to finish', price: '$3,000 - $8,000', duration: '6-12 months', image: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400' },
+  { id: '7', name: 'Day-of Coordination', category: 'Wedding Planning', vendor_id: '2', description: 'Wedding day coordination and management', price: '$1,200 - $2,500', duration: '12-16 hours', image: 'https://images.unsplash.com/photo-1464207687429-7505649dae38?w=600' },
+  { id: '8', name: 'Partial Wedding Planning', category: 'Wedding Planning', vendor_id: '3', description: 'Planning assistance for specific aspects', price: '$2,000 - $4,500', duration: '3-6 months', image: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=600' },
+  { id: '9', name: 'Destination Wedding Planning', category: 'Wedding Planning', vendor_id: '1', description: 'Specialized destination wedding planning', price: '$5,000 - $12,000', duration: '8-15 months', image: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600' },
+
+  // Catering Services (18)
+  { id: '10', name: 'Wedding Banquet Catering', category: 'Catering', vendor_id: '4', description: 'Full-service banquet catering', price: '$75 - $150 per person', duration: 'Event day', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400' },
+  { id: '11', name: 'Cocktail Reception Catering', category: 'Catering', vendor_id: '4', description: 'Elegant cocktail hour catering', price: '$45 - $80 per person', duration: '3-4 hours', image: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=600' },
+  { id: '12', name: 'Buffet Style Catering', category: 'Catering', vendor_id: '5', description: 'Buffet wedding catering services', price: '$50 - $90 per person', duration: 'Event day', image: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=600' },
+  { id: '13', name: 'BBQ Wedding Catering', category: 'Catering', vendor_id: '5', description: 'Outdoor BBQ wedding catering', price: '$35 - $65 per person', duration: 'Event day', image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600' },
+
+  // Entertainment & Music (15)
+  { id: '14', name: 'Wedding DJ Services', category: 'Music', vendor_id: '3', description: 'Professional DJ with sound system', price: '$800 - $2,000', duration: '6-8 hours', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400' },
+  { id: '15', name: 'Live Wedding Band', category: 'Music', vendor_id: '3', description: 'Live music band for weddings', price: '$2,500 - $6,000', duration: '4-6 hours', image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=600' },
+  { id: '16', name: 'Acoustic Guitar Ceremony', category: 'Music', vendor_id: '2', description: 'Solo acoustic guitar for ceremony', price: '$300 - $600', duration: '1-2 hours', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600' },
+  { id: '17', name: 'String Quartet', category: 'Music', vendor_id: '4', description: 'Classical string quartet performance', price: '$1,200 - $2,800', duration: '3-4 hours', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600' },
+
+  // Floral Services (12)
+  { id: '18', name: 'Bridal Bouquet Design', category: 'Florist', vendor_id: '4', description: 'Custom bridal bouquet creation', price: '$200 - $500', duration: 'Pre-wedding', image: 'https://images.unsplash.com/photo-1525268771113-32d9e9021a97?w=400' },
+  { id: '19', name: 'Ceremony Floral Arrangements', category: 'Florist', vendor_id: '4', description: 'Altar and aisle floral decorations', price: '$800 - $2,000', duration: 'Event day setup', image: 'https://images.unsplash.com/photo-1563241527-3004b7be0ffd?w=600' },
+  { id: '20', name: 'Reception Centerpieces', category: 'Florist', vendor_id: '5', description: 'Table centerpiece arrangements', price: '$50 - $150 per table', duration: 'Event day setup', image: 'https://images.unsplash.com/photo-1464022077389-2864fd3ee1e2?w=600' },
+  { id: '21', name: 'Bridal Party Bouquets', category: 'Florist', vendor_id: '5', description: 'Bouquets for bridesmaids', price: '$75 - $150 each', duration: 'Pre-wedding', image: 'https://images.unsplash.com/photo-1460978812857-470ed1c77af0?w=600' },
+
+  // Venue Services (8)
+  { id: '22', name: 'Outdoor Garden Venue', category: 'Venue', vendor_id: '5', description: 'Beautiful garden wedding venue', price: '$3,000 - $8,000', duration: '6-12 hours', image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400' },
+  { id: '23', name: 'Banquet Hall Rental', category: 'Venue', vendor_id: '1', description: 'Elegant indoor banquet hall', price: '$2,500 - $6,000', duration: '8-12 hours', image: 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?w=600' },
+  { id: '24', name: 'Beach Wedding Venue', category: 'Venue', vendor_id: '2', description: 'Oceanfront wedding location', price: '$4,000 - $10,000', duration: '6-10 hours', image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600' },
+
+  // Beauty Services (10)
+  { id: '25', name: 'Bridal Makeup Application', category: 'Beauty', vendor_id: '3', description: 'Professional bridal makeup', price: '$300 - $600', duration: '2-3 hours', image: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600' },
+  { id: '26', name: 'Wedding Hair Styling', category: 'Beauty', vendor_id: '3', description: 'Bridal hair styling and updos', price: '$200 - $400', duration: '2-3 hours', image: 'https://images.unsplash.com/photo-1522338242992-e1707d882650?w=600' },
+  { id: '27', name: 'Bridal Party Makeup', category: 'Beauty', vendor_id: '2', description: 'Makeup for entire bridal party', price: '$150 - $300 per person', duration: '4-6 hours', image: 'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=600' },
+
+  // Transportation (6)
+  { id: '28', name: 'Wedding Limousine Service', category: 'Transportation', vendor_id: '1', description: 'Luxury limousine transportation', price: '$400 - $800', duration: '4-6 hours', image: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=600' },
+  { id: '29', name: 'Classic Car Rental', category: 'Transportation', vendor_id: '4', description: 'Vintage car for wedding photos', price: '$300 - $600', duration: '3-4 hours', image: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=600' },
+
+  // Additional Services (4)
+  { id: '30', name: 'Wedding Videography', category: 'Videography', vendor_id: '2', description: 'Professional wedding videography', price: '$2,000 - $4,500', duration: '8-10 hours', image: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=600' },
+  { id: '31', name: 'Wedding Cake Design', category: 'Cakes', vendor_id: '5', description: 'Custom wedding cake creation', price: '$500 - $1,500', duration: 'Pre-wedding + delivery', image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600' },
+  { id: '32', name: 'Wedding Invitations', category: 'Invitations', vendor_id: '1', description: 'Custom wedding invitation design', price: '$300 - $800', duration: '2-4 weeks', image: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=600' }
 ];
 
 // In-memory storage for bookings (will be replaced with database)
@@ -843,11 +847,65 @@ app.put('/api/bookings/:id/status', async (req, res) => {
 // MESSAGING ENDPOINTS
 // ================================
 
-// In-memory storage for conversations
-let conversationsStorage = [];
-let messagesStorage = [];
-let conversationIdCounter = 1;
-let messageIdCounter = 1;
+// In-memory storage for conversations with sample data
+let conversationsStorage = [
+  {
+    id: 'conv-1',
+    participants: [
+      { id: '1-2025-001', name: 'Demo User', role: 'couple' },
+      { id: '2-2025-003', name: 'Sarah Johnson Photography', role: 'vendor', businessName: 'Sarah Johnson Photography' }
+    ],
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+    lastMessage: {
+      id: 'msg-1',
+      senderId: '2-2025-003',
+      content: 'Thank you for your interest in our wedding photography services! I\'d love to discuss your special day.',
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+    }
+  },
+  {
+    id: 'conv-2',
+    participants: [
+      { id: '1-2025-001', name: 'Demo User', role: 'couple' },
+      { id: '1', name: 'Perfect Weddings Co.', role: 'vendor', businessName: 'Perfect Weddings Co.' }
+    ],
+    createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(), // 2 days ago
+    updatedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
+    lastMessage: {
+      id: 'msg-2',
+      senderId: '1',
+      content: 'We have availability for your wedding date! Let me send you our package details.',
+      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+    }
+  }
+];
+
+let messagesStorage = [
+  {
+    id: 'msg-1',
+    conversationId: 'conv-1',
+    senderId: '2-2025-003',
+    senderName: 'Sarah Johnson Photography',
+    content: 'Thank you for your interest in our wedding photography services! I\'d love to discuss your special day.',
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    type: 'text',
+    read: false
+  },
+  {
+    id: 'msg-2',
+    conversationId: 'conv-2',
+    senderId: '1',
+    senderName: 'Perfect Weddings Co.',
+    content: 'We have availability for your wedding date! Let me send you our package details.',
+    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+    type: 'text',
+    read: false
+  }
+];
+
+let conversationIdCounter = 3;
+let messageIdCounter = 3;
 
 app.get('/api/conversations', async (req, res) => {
   try {
