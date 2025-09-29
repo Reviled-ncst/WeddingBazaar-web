@@ -228,7 +228,7 @@ export const Services: React.FC = () => {
       'New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 
       'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose'
     ],
-    priceRanges: ['$', '$$', '$$$', '$$$$'],
+    priceRanges: ['₱', '₱₱', '₱₱₱', '₱₱₱₱'],
     ratings: [5, 4, 3, 2, 1]
   };
 

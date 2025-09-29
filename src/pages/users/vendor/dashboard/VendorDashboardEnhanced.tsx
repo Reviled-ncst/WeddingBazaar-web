@@ -438,7 +438,7 @@ export const VendorDashboard: React.FC = () => {
             />
             <StatCard
               title="Monthly Revenue"
-              value={`$${metrics.monthlyRevenue.toLocaleString()}`}
+              value={`₱${metrics.monthlyRevenue.toLocaleString()}`}
               change="+8%"
               trend="up"
               icon={DollarSign}

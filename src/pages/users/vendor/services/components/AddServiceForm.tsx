@@ -93,10 +93,10 @@ const SERVICE_CATEGORIES = [
 ];
 
 const PRICE_RANGES = [
-  { value: '$', label: '$ - Budget Friendly (Under $500)', color: 'bg-green-100 text-green-800' },
-  { value: '$$', label: '$$ - Moderate ($500 - $1,500)', color: 'bg-blue-100 text-blue-800' },
-  { value: '$$$', label: '$$$ - Premium ($1,500 - $3,000)', color: 'bg-purple-100 text-purple-800' },
-  { value: '$$$$', label: '$$$$ - Luxury ($3,000+)', color: 'bg-gold-100 text-gold-800' }
+  { value: '₱', label: '₱ - Budget Friendly (Under ₱25,000)', color: 'bg-green-100 text-green-800' },
+  { value: '₱₱', label: '₱₱ - Moderate (₱25,000 - ₱75,000)', color: 'bg-blue-100 text-blue-800' },
+  { value: '₱₱₱', label: '₱₱₱ - Premium (₱75,000 - ₱150,000)', color: 'bg-purple-100 text-purple-800' },
+  { value: '₱₱₱₱', label: '₱₱₱₱ - Luxury (₱150,000+)', color: 'bg-gold-100 text-gold-800' }
 ];
 
 const PLACEHOLDER_IMAGES = [
