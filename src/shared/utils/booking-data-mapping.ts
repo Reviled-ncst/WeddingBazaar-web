@@ -527,7 +527,11 @@ export function mapToEnhancedBooking(booking: any): any {
     serviceGallery: ['https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400'],
     serviceId: booking.service_id || booking.serviceId,
     eventCoordinates: { lat: 14.5995, lng: 120.9842 },
-    formattedEventDate: booking.eventDate ? new Date(booking.eventDate).toLocaleDateString() : '',
+    formattedEventDate: booking.eventDate ? new Date(booking.eventDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }) : '',
     formattedEventTime: booking.eventTime || '14:00',
     daysUntilEvent: booking.eventDate ? Math.ceil((new Date(booking.eventDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0,
     vendorRating: booking.vendorRating || 4.5,

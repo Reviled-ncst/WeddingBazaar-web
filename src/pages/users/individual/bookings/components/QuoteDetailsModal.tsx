@@ -97,18 +97,93 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
     setError(null);
     
     try {
+      // First check if booking already has mock quote data from our simulation
+      if ((booking as any)?.quoteData) {
+        console.log('📋 [QuoteModal] Using mock quote data from booking:', (booking as any).quoteData);
+        const mockData = (booking as any).quoteData;
+        
+        // Transform mock data to match expected QuoteData interface
+        const transformedQuoteData = {
+          quoteNumber: `QT-${booking.id?.slice(-6)?.toUpperCase() || '000001'}`,
+          issueDate: new Date().toLocaleDateString(),
+          validUntil: new Date(mockData.validUntil).toLocaleDateString(),
+          serviceItems: [
+            {
+              id: 1,
+              service: booking.serviceName || 'Wedding Service',
+              description: mockData.notes || 'Complete wedding service package',
+              quantity: 1,
+              unitPrice: mockData.quotedPrice || booking.totalAmount || 50000,
+              total: mockData.quotedPrice || booking.totalAmount || 50000
+            }
+          ],
+          additionalCosts: mockData.breakdown?.map((item: any, index: number) => ({
+            id: index + 1,
+            item: item.item,
+            amount: item.amount,
+            optional: false
+          })) || [],
+          paymentTerms: {
+            downpayment: booking.downpaymentAmount || (mockData.quotedPrice || 50000) * 0.3,
+            downpaymentPercentage: 30,
+            finalPayment: (mockData.quotedPrice || 50000) * 0.7,
+            paymentSchedule: [
+              {
+                stage: 'Booking Confirmation',
+                percentage: 30,
+                amount: (mockData.quotedPrice || 50000) * 0.3
+              },
+              {
+                stage: 'Final Payment',
+                percentage: 70,
+                amount: (mockData.quotedPrice || 50000) * 0.7
+              }
+            ],
+            paymentMethods: ['Credit Card', 'Bank Transfer', 'PayMongo', 'Cash']
+          },
+          inclusions: [
+            booking.serviceName || 'Wedding Service',
+            'Professional consultation',
+            'Premium package features',
+            'Same-day coordination'
+          ],
+          exclusions: [
+            'Travel expenses beyond 20km',
+            'Additional overtime charges',
+            'Third-party vendor fees'
+          ],
+          termsAndConditions: [
+            mockData.paymentTerms || '30% deposit required to confirm booking',
+            'Final payment due 7 days before event',
+            'Cancellation policy applies as per contract',
+            'All services subject to availability'
+          ],
+          vendorContact: {
+            name: booking.vendorName || 'Vendor',
+            email: booking.vendorEmail || 'vendor@example.com',
+            phone: booking.vendorPhone || '+63 912 345 6789',
+            businessAddress: booking.eventLocation || 'Metro Manila'
+          }
+        };
+        
+        setQuoteData(transformedQuoteData);
+        setLoading(false);
+        return;
+      }
+
+      // Try to fetch from API if no mock data exists
       const response = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${booking.id}/quote`);
       const data = await response.json();
       
       if (data.success) {
         setQuoteData(data.quote);
       } else {
-        // Fallback to mock data if no real quote exists
+        // Fallback to generated mock data if no real quote exists
         setQuoteData(generateMockQuoteData(booking));
       }
     } catch (err) {
       console.error('Error fetching quote data:', err);
-      // Fallback to mock data on error
+      // Fallback to generated mock data on error
       setQuoteData(generateMockQuoteData(booking));
     } finally {
       setLoading(false);

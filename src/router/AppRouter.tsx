@@ -70,6 +70,9 @@ import { UniversalMessagingProvider } from '../shared/contexts/UniversalMessagin
 import { UniversalFloatingChat } from '../shared/components/messaging/UniversalFloatingChat';
 import { UniversalFloatingChatButton } from '../shared/components/messaging/UniversalFloatingChatButton';
 
+// Debug component
+import { RoleDebugger } from '../components/RoleDebugger';
+
 export const AppRouter: React.FC = () => {
   return (
     <AuthProvider>
@@ -77,6 +80,7 @@ export const AppRouter: React.FC = () => {
         <UniversalMessagingProvider>
         <Router>
           <div className="min-h-screen flex flex-col">
+            <RoleDebugger />
             <Routes>
               {/* Public Homepage - redirect to user's landing page if authenticated */}
               <Route path="/" element={

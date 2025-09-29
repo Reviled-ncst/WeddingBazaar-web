@@ -1,20 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import {
-  Calendar,
-  CheckCircle,
-  AlertCircle,
-  Search,
-  Download,
-  Loader2,
-  TrendingUp,
-  Package
-} from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
-import { VendorBookingCard } from './components/VendorBookingCard';
 import { VendorBookingDetailsModal } from './components/VendorBookingDetailsModal';
 import { SendQuoteModal } from './components/SendQuoteModal';
-import { formatPHP } from '../../../../utils/currency';
+
+// Import enhanced booking components
+import { 
+  EnhancedBookingList, 
+  EnhancedBookingStats,
+  type EnhancedBooking
+} from '../../../../shared/components/bookings';
 
 // Import comprehensive booking API and types
 import { centralizedBookingAPI as bookingApiService } from '../../../../services/api/CentralizedBookingAPI';

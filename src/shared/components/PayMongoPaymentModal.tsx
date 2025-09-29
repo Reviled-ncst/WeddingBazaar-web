@@ -53,7 +53,7 @@ export interface PayMongoPaymentModalProps {
 
 interface PaymentMethod {
   id: string;
-  type: 'card' | 'gcash' | 'paymaya' | 'grab_pay' | 'bank_transfer';
+  type: 'card' | 'gcash' | 'paymaya' | 'grab_pay' | 'bank_transfer' | 'demo';
   name: string;
   icon: React.ReactNode;
   description: string;
@@ -392,6 +392,14 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
 
   const paymentMethods: PaymentMethod[] = [
     {
+      id: 'demo_payment',
+      type: 'demo',
+      name: 'Demo Payment (Test)',
+      icon: <Zap className="h-6 w-6" />,
+      description: 'Instant payment simulation for testing',
+      available: true,
+    },
+    {
       id: 'card',
       type: 'card',
       name: 'Credit/Debit Card',
@@ -466,7 +474,42 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
         
         console.log(`🔗 Redirect URLs - Success: ${successUrl}, Failed: ${failedUrl}`);
 
-      if (selectedMethod === 'card') {
+      if (selectedMethod === 'demo_payment') {
+        // Demo payment simulation
+        console.log('🧪 [DEMO PAYMENT] Starting instant payment simulation...');
+        setPaymentStep('processing');
+        
+        // Simulate payment processing delay
+        setTimeout(() => {
+          console.log('🎉 [DEMO PAYMENT] Payment simulation completed successfully!');
+          
+          const demoPaymentData = {
+            source_id: `demo_${booking.id}_${Date.now()}`,
+            payment_id: `demo_payment_${Date.now()}`,
+            amount: amount,
+            currency: currency,
+            status: 'succeeded',
+            payment_method: 'demo_payment',
+            original_currency: currency,
+            original_amount: amount,
+            display_amount: formatAmount(amount),
+            transaction_id: `demo_txn_${Date.now()}`,
+            method: 'demo',
+            formattedAmount: formatAmount(amount)
+          };
+          
+          console.log('🧪 [DEMO PAYMENT] Calling success handler with data:', demoPaymentData);
+          
+          // Call the success handler
+          onPaymentSuccess(demoPaymentData);
+          
+          // Set success state
+          setPaymentStep('success');
+        }, 2000); // 2 second delay to simulate processing
+        
+        return;
+
+      } else if (selectedMethod === 'card') {
         // For card payments, show card form first
         setPaymentStep('card_form');
         setLoading(false);
@@ -915,7 +958,7 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                       transition={{ delay: 0.3 }}
                       className="text-2xl font-bold text-gray-900 mb-3"
                     >
-                      Processing Payment
+                      {selectedMethod === 'demo_payment' ? 'Simulating Payment' : 'Processing Payment'}
                     </motion.h3>
                     
                     <motion.p 
@@ -924,8 +967,21 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                       transition={{ delay: 0.4 }}
                       className="text-gray-600 mb-6"
                     >
-                      Please wait while we securely process your payment...
+                      {selectedMethod === 'demo_payment' 
+                        ? 'Running payment simulation for testing...' 
+                        : 'Please wait while we securely process your payment...'}
                     </motion.p>
+                    
+                    {selectedMethod === 'demo_payment' && (
+                      <motion.p 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                        className="text-sm text-blue-600 bg-blue-50 px-4 py-2 rounded-lg"
+                      >
+                        🧪 This is a demo payment - no real money will be charged
+                      </motion.p>
+                    )}
                     
                     <motion.div 
                       initial={{ opacity: 0 }}

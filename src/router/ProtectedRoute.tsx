@@ -34,7 +34,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // If route is public but user is authenticated, redirect to their landing page
   if (!requireAuth && isAuthenticated) {
+    console.log('🔄 ProtectedRoute: User is authenticated, redirecting from public route');
+    console.log('🔄 User object:', user);
+    console.log('🔄 User role:', JSON.stringify(user?.role));
     const userRedirect = redirectTo || getUserLandingPage(user?.role);
+    console.log('🔄 Final redirect URL:', userRedirect);
     return <Navigate to={userRedirect} replace />;
   }
 
@@ -43,14 +47,20 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
 // Helper function to get the appropriate landing page based on user role
 const getUserLandingPage = (role?: string): string => {
+  console.log('🚦 getUserLandingPage called with role:', JSON.stringify(role), 'type:', typeof role);
+  
   switch (role) {
     case 'couple':
+      console.log('✅ Routing to /individual for couple');
       return '/individual';
     case 'vendor':
+      console.log('✅ Routing to /vendor for vendor');
       return '/vendor';
     case 'admin':
+      console.log('✅ Routing to /admin for admin');
       return '/admin';
     default:
+      console.log('⚠️ Unknown role, defaulting to /individual. Role was:', JSON.stringify(role));
       return '/individual';
   }
 };
