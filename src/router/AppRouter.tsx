@@ -67,6 +67,9 @@ import { SubscriptionProvider } from '../shared/contexts/SubscriptionContext';
 
 // Universal Messaging System
 import { UniversalMessagingProvider } from '../shared/contexts/UniversalMessagingContext';
+
+// Notification System
+import { NotificationProvider } from '../shared/components/notifications/NotificationProvider';
 import { UniversalFloatingChat } from '../shared/components/messaging/UniversalFloatingChat';
 import { UniversalFloatingChatButton } from '../shared/components/messaging/UniversalFloatingChatButton';
 
@@ -77,8 +80,9 @@ export const AppRouter: React.FC = () => {
   return (
     <AuthProvider>
       <SubscriptionProvider>
-        <UniversalMessagingProvider>
-        <Router>
+        <NotificationProvider>
+          <UniversalMessagingProvider>
+          <Router>
           <div className="min-h-screen flex flex-col">
             <RoleDebugger />
             <Routes>
@@ -367,8 +371,9 @@ export const AppRouter: React.FC = () => {
           <UniversalFloatingChat />
         </div>
       </Router>
-    </UniversalMessagingProvider>
-    </SubscriptionProvider>
+          </UniversalMessagingProvider>
+        </NotificationProvider>
+      </SubscriptionProvider>
     </AuthProvider>
   );
 };

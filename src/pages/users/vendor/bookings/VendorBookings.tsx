@@ -65,6 +65,9 @@ import { formatPHP } from '../../../../utils/currency';
 // Import notification system
 import { useNotifications } from '../../../../shared/components/notifications/NotificationProvider';
 
+// Import debug panel
+import { NotificationDebugPanel } from './components/NotificationDebugPanel';
+
 type FilterStatus = 'all' | BookingStatus;
 
 // Notification types for vendor bookings
@@ -102,6 +105,8 @@ export const VendorBookings: React.FC = () => {
   
   // Notification system
   const { showSuccess, showError, showInfo, showWarning } = useNotifications();
+  
+  console.log('🔧 [VendorBookings] NotificationProvider context is working!');
   
   const [bookings, setBookings] = useState<UIBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -323,13 +328,14 @@ export const VendorBookings: React.FC = () => {
   // Load notifications for the vendor
   const loadNotifications = async () => {
     try {
+      console.log('📡 [VendorBookings] Loading notifications. Current count:', notifications.length);
       // In production, this would fetch from API
-      // For now, we'll simulate with mock data if no existing notifications
-      if (notifications.length === 0) {
-        const mockNotifications = generateMockNotifications();
-        setNotifications(mockNotifications);
-        setUnreadCount(mockNotifications.filter(n => !n.read).length);
-      }
+      // For now, we'll always generate mock data for testing
+      const mockNotifications = generateMockNotifications();
+      console.log('📡 [VendorBookings] Generated mock notifications:', mockNotifications.length, mockNotifications);
+      setNotifications(mockNotifications);
+      setUnreadCount(mockNotifications.filter(n => !n.read).length);
+      console.log('📡 [VendorBookings] Set notifications. New count:', mockNotifications.length);
     } catch (error) {
       console.error('💥 [VendorBookings] Error loading notifications:', error);
     }
@@ -340,10 +346,18 @@ export const VendorBookings: React.FC = () => {
     const mockNotifications = generateMockNotifications();
     const mockActivities = generateMockActivities();
     
+    console.log('🔔 [VendorBookings] Initializing mock notifications:', mockNotifications);
     setNotifications(mockNotifications);
     setLiveActivities(mockActivities);
     setUnreadCount(mockNotifications.filter(n => !n.read).length);
+    console.log('📊 [VendorBookings] Set notifications count:', mockNotifications.length, 'unread:', mockNotifications.filter(n => !n.read).length);
   };
+
+  // Force immediate initialization of mock data
+  useEffect(() => {
+    console.log('🚀 [VendorBookings] Component mounted. Initializing mock data immediately...');
+    initializeMockData();
+  }, []); // Empty dependency array = run once on mount
 
   // Generate mock notifications
   const generateMockNotifications = (): BookingNotification[] => {
@@ -633,7 +647,14 @@ export const VendorBookings: React.FC = () => {
                 
                 <div className="relative">
                   <button
-                    onClick={() => setShowNotifications(!showNotifications)}
+                    onClick={() => {
+                      console.log('🔔 [VendorBookings] Notification button clicked. Current state:');
+                      console.log('- Notifications count:', notifications.length);
+                      console.log('- Notifications:', notifications);
+                      console.log('- Unread count:', unreadCount);
+                      console.log('- Show notifications:', showNotifications);
+                      setShowNotifications(!showNotifications);
+                    }}
                     className="relative flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-xl hover:bg-rose-50 transition-all duration-300 shadow-lg"
                     title="View notifications"
                   >
@@ -686,6 +707,7 @@ export const VendorBookings: React.FC = () => {
                             <div className="p-8 text-center text-gray-500">
                               <Bell className="h-8 w-8 mx-auto mb-3 text-gray-300" />
                               <p>No notifications yet</p>
+                              <p className="text-xs mt-2">Debug: {notifications.length} notifications loaded</p>
                             </div>
                           ) : (
                             notifications.map((notification) => (
@@ -749,6 +771,14 @@ export const VendorBookings: React.FC = () => {
               </div>
             </div>
           </motion.div>
+
+          {/* Debug Panel */}
+          <NotificationDebugPanel
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onMarkAsRead={markNotificationAsRead}
+            onMarkAllAsRead={markAllNotificationsAsRead}
+          />
 
           {/* Live Activity Feed */}
           {liveActivities.length > 0 && (
