@@ -149,7 +149,7 @@ app.post('/api/auth/login', async (req, res) => {
       email: user.email,
       firstName: user.first_name,
       lastName: user.last_name,
-      role: user.role || 'couple',
+      role: user.user_type || 'couple',
       businessName: user.business_name
     };
     
@@ -163,7 +163,7 @@ app.post('/api/auth/login', async (req, res) => {
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,
-        role: user.role || 'couple',
+        role: user.user_type || 'couple',
         businessName: user.business_name
       },
       message: 'Login successful',
