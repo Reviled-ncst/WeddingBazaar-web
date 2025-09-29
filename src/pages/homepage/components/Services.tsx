@@ -839,7 +839,7 @@ export const Services: React.FC = () => {
       location: ['Los Angeles, CA', 'New York, NY', 'Miami, FL', 'Chicago, IL', 'Austin, TX'][index % 5],
       rating: parseFloat((4.0 + Math.random() * 1.0).toFixed(1)),
       review_count: Math.floor(Math.random() * 100) + 10,
-      price_range: ['$', '$$', '$$$', '$$$$'][Math.floor(Math.random() * 4)],
+      price_range: ['₱', '₱₱', '₱₱₱', '₱₱₱₱'][Math.floor(Math.random() * 4)],
       image: sampleImages[index % sampleImages.length],
       gallery: [
         sampleImages[index % sampleImages.length],
