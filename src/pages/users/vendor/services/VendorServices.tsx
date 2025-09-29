@@ -872,171 +872,207 @@ export const VendorServices: React.FC = () => {
             ))}
             </div>
           ) : (
-            /* Table View */
-            <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-white/30 shadow-xl overflow-hidden mb-8">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gradient-to-r from-rose-50 to-pink-50 border-b border-rose-100">
-                    <tr>
-                      <th className="text-left p-6 font-semibold text-gray-900">Service</th>
-                      <th className="text-left p-6 font-semibold text-gray-900">Category</th>
-                      <th className="text-left p-6 font-semibold text-gray-900">Price</th>
-                      <th className="text-left p-6 font-semibold text-gray-900">Status</th>
-                      <th className="text-left p-6 font-semibold text-gray-900">Rating</th>
-                      <th className="text-left p-6 font-semibold text-gray-900">Featured</th>
-                      <th className="text-center p-6 font-semibold text-gray-900">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredServices.map((service, index) => (
-                      <motion.tr
-                        key={service.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="border-b border-gray-100 hover:bg-rose-50/50 transition-colors"
-                      >
-                        {/* Service Info */}
-                        <td className="p-6">
-                          <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0">
-                              {service.imageUrl || (service.images && service.images[0]) ? (
-                                <img
-                                  src={service.imageUrl || service.images?.[0] || 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop&auto=format'}
-                                  alt={service.name || service.title || 'Service'}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    const fallbackUrl = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop&auto=format';
-                                    if (e.currentTarget.src !== fallbackUrl) {
-                                      e.currentTarget.src = fallbackUrl;
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-gradient-to-br from-rose-100 to-pink-100 flex items-center justify-center">
-                                  <Grid className="h-6 w-6 text-rose-300" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-semibold text-gray-900 truncate">
-                                {service.name || service.title || 'Untitled Service'}
-                              </h3>
-                              <p className="text-sm text-gray-600 truncate">
-                                {service.description || 'No description'}
-                              </p>
-                            </div>
+            /* Enhanced List View */
+            <div className="space-y-4 mb-8">
+              {filteredServices.map((service, index) => (
+                <motion.div
+                  key={service.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="group bg-white/90 backdrop-blur-md rounded-2xl border border-white/40 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden hover:-translate-y-1"
+                >
+                  <div className="flex">
+                    {/* Service Image */}
+                    <div className="relative w-80 h-48 flex-shrink-0 overflow-hidden">
+                      {service.imageUrl || (service.images && service.images[0]) ? (
+                        <img
+                          src={service.imageUrl || service.images?.[0]}
+                          alt={service.name || service.title || 'Service'}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          onError={(e) => {
+                            // Category-specific fallback images
+                            const categoryImages = {
+                              'Cake Designer': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&h=400&fit=crop&auto=format',
+                              'Caterer': 'https://images.unsplash.com/photo-1555244162-803834f70033?w=600&h=400&fit=crop&auto=format',
+                              'Photographer & Videographer': 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=600&h=400&fit=crop&auto=format',
+                              'Wedding Planner': 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&h=400&fit=crop&auto=format',
+                              'Florist': 'https://images.unsplash.com/photo-1460978812857-470ed1c77af0?w=600&h=400&fit=crop&auto=format'
+                            };
+                            
+                            const fallbackUrl = categoryImages[service.category as keyof typeof categoryImages] || 
+                                               'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop&auto=format';
+                            
+                            if (e.currentTarget.src !== fallbackUrl) {
+                              e.currentTarget.src = fallbackUrl;
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-rose-100 via-pink-50 to-purple-100 flex items-center justify-center">
+                          <div className="text-center">
+                            <Grid className="h-16 w-16 text-rose-300 mx-auto mb-2" />
+                            <p className="text-sm text-rose-400 font-medium">No Image</p>
                           </div>
-                        </td>
-
-                        {/* Category */}
-                        <td className="p-6">
-                          <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-lg text-sm font-medium">
-                            {service.category}
+                        </div>
+                      )}
+                      
+                      {/* Overlay with gradient */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent"></div>
+                      
+                      {/* Status and Featured Badges */}
+                      <div className="absolute top-4 left-4 flex flex-col gap-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm ${
+                          (service.isActive ?? service.is_active)
+                            ? 'bg-green-500/90 text-white'
+                            : 'bg-red-500/90 text-white'
+                        }`}>
+                          {(service.isActive ?? service.is_active) ? '● AVAILABLE' : '● UNAVAILABLE'}
+                        </span>
+                        
+                        {service.featured && (
+                          <span className="bg-yellow-500/90 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm flex items-center gap-1">
+                            <Star className="h-3 w-3 fill-current" />
+                            FEATURED
                           </span>
-                        </td>
+                        )}
+                      </div>
 
-                        {/* Price */}
-                        <td className="p-6">
-                          <span className="text-lg font-bold text-rose-600">
+                      {/* Price Badge */}
+                      <div className="absolute bottom-4 left-4">
+                        <div className="bg-white/95 backdrop-blur-sm text-rose-600 px-4 py-2 rounded-xl shadow-lg">
+                          <span className="text-2xl font-bold">
                             ₱{typeof service.price === 'string' ? parseFloat(service.price).toLocaleString() : service.price?.toLocaleString() || '0'}
                           </span>
-                        </td>
+                        </div>
+                      </div>
+                    </div>
 
-                        {/* Status */}
-                        <td className="p-6">
-                          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                            (service.isActive ?? service.is_active)
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {(service.isActive ?? service.is_active) ? 'Available' : 'Unavailable'}
-                          </span>
-                        </td>
-
-                        {/* Rating */}
-                        <td className="p-6">
-                          <div className="flex items-center gap-1">
-                            <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                            <span className="font-medium">{service.rating || 4.5}</span>
-                            <span className="text-sm text-gray-500">({service.reviewCount || 0})</span>
-                          </div>
-                        </td>
-
-                        {/* Featured */}
-                        <td className="p-6">
-                          {service.featured ? (
-                            <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1 w-fit">
-                              <Star className="h-3 w-3 fill-current" />
-                              Featured
+                    {/* Service Content */}
+                    <div className="flex-1 p-8">
+                      {/* Header Section */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-2xl font-bold text-gray-900 group-hover:text-rose-600 transition-colors">
+                              {service.name || service.title || 'Untitled Service'}
+                            </h3>
+                            <span className="bg-gradient-to-r from-rose-100 to-pink-100 text-rose-700 px-3 py-1 rounded-lg text-sm font-semibold border border-rose-200">
+                              {service.category}
                             </span>
-                          ) : (
-                            <span className="text-gray-400 text-sm">Not featured</span>
-                          )}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="p-6">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => editService(service)}
-                              className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors"
-                              title="Edit service"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => toggleServiceAvailability(service)}
-                              className={`p-2 rounded-lg transition-colors ${
-                                (service.isActive ?? service.is_active)
-                                  ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
-                                  : 'bg-green-50 text-green-600 hover:bg-green-100'
-                              }`}
-                              title={`${(service.isActive ?? service.is_active) ? 'Make unavailable' : 'Make available'}`}
-                            >
-                              {(service.isActive ?? service.is_active) ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
-                            <button
-                              onClick={() => toggleServiceFeatured(service)}
-                              className={`p-2 rounded-lg transition-colors ${
-                                service.featured
-                                  ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                              }`}
-                              title={`${service.featured ? 'Remove from featured' : 'Add to featured'}`}
-                            >
-                              <Star className={`h-4 w-4 ${service.featured ? 'fill-current' : ''}`} />
-                            </button>
-                            <button
-                              onClick={() => {
-                                const duplicatedService = {
-                                  ...service,
-                                  id: `temp-${Date.now()}`,
-                                  name: `${service.name} (Copy)`,
-                                  title: `${service.title || service.name} (Copy)`
-                                };
-                                setEditingService(duplicatedService);
-                                setIsCreating(true);
-                              }}
-                              className="p-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
-                              title="Duplicate service"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => deleteService(service.id)}
-                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                              title="Delete service"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
                           </div>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          
+                          {/* Rating */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="flex items-center gap-1 bg-yellow-50 px-3 py-1 rounded-lg">
+                              <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                              <span className="font-semibold text-yellow-700">{service.rating || 4.5}</span>
+                              <span className="text-sm text-yellow-600">({service.reviewCount || 0} reviews)</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-gray-600 text-lg leading-relaxed mb-6 line-clamp-3">
+                        {service.description || 'Professional service with attention to detail and customer satisfaction.'}
+                      </p>
+
+                      {/* Features Tags */}
+                      {service.features && service.features.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-6">
+                          {service.features.slice(0, 4).map((feature, idx) => (
+                            <span
+                              key={idx}
+                              className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium border border-blue-200"
+                            >
+                              {feature}
+                            </span>
+                          ))}
+                          {service.features.length > 4 && (
+                            <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">
+                              +{service.features.length - 4} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                        {/* Primary Actions */}
+                        <button
+                          onClick={() => editService(service)}
+                          className="group flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105"
+                        >
+                          <Edit size={18} className="group-hover:rotate-12 transition-transform duration-200" />
+                          Edit Service
+                        </button>
+                        
+                        <button
+                          onClick={() => toggleServiceAvailability(service)}
+                          className={`group flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 ${
+                            (service.isActive ?? service.is_active)
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700'
+                              : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
+                          }`}
+                        >
+                          {(service.isActive ?? service.is_active) ? (
+                            <>
+                              <EyeOff size={18} className="group-hover:scale-110 transition-transform duration-200" />
+                              Make Unavailable
+                            </>
+                          ) : (
+                            <>
+                              <Eye size={18} className="group-hover:scale-110 transition-transform duration-200" />
+                              Make Available
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => toggleServiceFeatured(service)}
+                          className={`group flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 ${
+                            service.featured
+                              ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white hover:from-yellow-600 hover:to-amber-700'
+                              : 'bg-gradient-to-r from-gray-500 to-slate-600 text-white hover:from-gray-600 hover:to-slate-700'
+                          }`}
+                        >
+                          <Star size={18} className={`group-hover:scale-110 transition-transform duration-200 ${service.featured ? 'fill-current' : ''}`} />
+                          {service.featured ? 'Remove Feature' : 'Make Featured'}
+                        </button>
+
+                        {/* Secondary Actions */}
+                        <div className="flex items-center gap-2 ml-auto">
+                          <button
+                            onClick={() => {
+                              const duplicatedService = {
+                                ...service,
+                                id: `temp-${Date.now()}`,
+                                name: `${service.name} (Copy)`,
+                                title: `${service.title || service.name} (Copy)`
+                              };
+                              setEditingService(duplicatedService);
+                              setIsCreating(true);
+                            }}
+                            className="group p-3 bg-gradient-to-r from-purple-100 to-violet-100 text-purple-600 rounded-xl hover:from-purple-200 hover:to-violet-200 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
+                            title="Duplicate Service"
+                          >
+                            <Copy size={18} className="group-hover:scale-110 transition-transform duration-200" />
+                          </button>
+                          
+                          <button
+                            onClick={() => deleteService(service.id)}
+                            className="group p-3 bg-gradient-to-r from-red-100 to-pink-100 text-red-600 rounded-xl hover:from-red-200 hover:to-pink-200 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
+                            title="Delete Service"
+                          >
+                            <Trash2 size={18} className="group-hover:scale-110 transition-transform duration-200" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           )}
 
