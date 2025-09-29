@@ -80,7 +80,7 @@ export const AdminLanding: React.FC = () => {
             {[
               { icon: Users, number: "12,543", label: "Total Users", change: "+12.5%", color: "from-blue-500 to-cyan-500" },
               { icon: Activity, number: "1,845", label: "Active Vendors", change: "+8.2%", color: "from-green-500 to-emerald-500" },
-              { icon: TrendingUp, number: "$145K", label: "Monthly Revenue", change: "+15.7%", color: "from-purple-500 to-violet-500" },
+              { icon: TrendingUp, number: "₱7.83M", label: "Monthly Revenue", change: "+15.7%", color: "from-purple-500 to-violet-500" },
               { icon: FileText, number: "3,291", label: "Total Bookings", change: "+22.1%", color: "from-rose-500 to-pink-500" }
             ].map((metric, index) => (
               <div key={index} className="group">

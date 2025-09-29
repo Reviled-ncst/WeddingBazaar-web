@@ -1137,12 +1137,12 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                               onChange={(e) => setPriceRange([0, parseInt(e.target.value)])}
                               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                               title="Adjust maximum budget"
-                              aria-label={`Budget range: $0 to $${priceRange[1].toLocaleString()}`}
+                              aria-label={`Budget range: ₱0 to ₱${priceRange[1].toLocaleString()}`}
                             />
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs sm:text-sm text-gray-600 min-w-0">
-                              $0 - ${priceRange[1].toLocaleString()}
+                              ₱0 - ₱{priceRange[1].toLocaleString()}
                             </span>
                             <div className="px-2 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium">
                               {Math.round((priceRange[1] / budget) * 100)}%

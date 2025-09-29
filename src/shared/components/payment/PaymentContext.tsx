@@ -24,7 +24,7 @@ const initialState: PaymentState = {
   step: 'select',
   selectedMethod: '',
   amount: 0,
-  currency: { code: 'USD', symbol: '$', rate: 1 },
+  currency: { code: 'PHP', symbol: '₱', rate: 1 },
   booking: {
     id: '',
     vendorName: '',

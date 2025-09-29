@@ -145,7 +145,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     id: 'premium',
     name: 'Premium',
     description: 'Great for growing wedding businesses',
-    price: 5,
+    price: 275,
     billing_cycle: 'monthly',
     tier: 'premium',
     popular: true,
@@ -189,7 +189,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     id: 'pro',
     name: 'Professional',
     description: 'For established wedding professionals',
-    price: 15,
+    price: 825,
     billing_cycle: 'monthly',
     tier: 'pro',
     features: [
@@ -231,7 +231,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     id: 'enterprise',
     name: 'Enterprise',
     description: 'For large wedding businesses and agencies',
-    price: 29,
+    price: 1595,
     billing_cycle: 'monthly',
     tier: 'enterprise',
     features: [

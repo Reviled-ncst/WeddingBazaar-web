@@ -39,7 +39,7 @@ export const AdminFinances: React.FC = () => {
   const financialMetrics: FinancialMetric[] = [
     {
       title: 'Total Revenue',
-      value: '$247,890',
+      value: '₱12,394,500',
       change: '+15.3%',
       trend: 'up',
       icon: DollarSign,
@@ -47,7 +47,7 @@ export const AdminFinances: React.FC = () => {
     },
     {
       title: 'Vendor Payouts',
-      value: '$198,312',
+      value: '₱9,915,600',
       change: '+12.8%',
       trend: 'up',
       icon: Banknote,
@@ -55,7 +55,7 @@ export const AdminFinances: React.FC = () => {
     },
     {
       title: 'Platform Fees',
-      value: '$49,578',
+      value: '₱2,478,900',
       change: '+18.2%',
       trend: 'up',
       icon: CreditCard,
@@ -63,7 +63,7 @@ export const AdminFinances: React.FC = () => {
     },
     {
       title: 'Net Profit',
-      value: '$37,124',
+      value: '₱1,856,200',
       change: '+22.1%',
       trend: 'up',
       icon: TrendingUp,
@@ -71,7 +71,7 @@ export const AdminFinances: React.FC = () => {
     },
     {
       title: 'Refunds Issued',
-      value: '$12,456',
+      value: '₱622,800',
       change: '-8.4%',
       trend: 'down',
       icon: TrendingDown,
@@ -79,7 +79,7 @@ export const AdminFinances: React.FC = () => {
     },
     {
       title: 'Avg. Transaction',
-      value: '$1,247',
+      value: '₱62,350',
       change: '+5.7%',
       trend: 'up',
       icon: BarChart3,
@@ -91,7 +91,7 @@ export const AdminFinances: React.FC = () => {
     {
       id: 'TXN001',
       type: 'payment',
-      amount: '$2,450',
+      amount: '₱122,500',
       description: 'Wedding photography booking - Elite Studios',
       date: '2024-01-15 14:32',
       status: 'completed'
@@ -99,7 +99,7 @@ export const AdminFinances: React.FC = () => {
     {
       id: 'TXN002',
       type: 'payout',
-      amount: '$1,960',
+      amount: '₱105,840',
       description: 'Vendor payout - Elite Studios (80%)',
       date: '2024-01-15 14:35',
       status: 'completed'
@@ -107,7 +107,7 @@ export const AdminFinances: React.FC = () => {
     {
       id: 'TXN003',
       type: 'payment',
-      amount: '$3,200',
+      amount: '₱172,800',
       description: 'Venue booking - Grand Ballroom',
       date: '2024-01-15 11:28',
       status: 'pending'
@@ -115,7 +115,7 @@ export const AdminFinances: React.FC = () => {
     {
       id: 'TXN004',
       type: 'refund',
-      amount: '$850',
+      amount: '₱45,900',
       description: 'Cancelled catering service - Refund issued',
       date: '2024-01-14 16:45',
       status: 'completed'
@@ -123,7 +123,7 @@ export const AdminFinances: React.FC = () => {
     {
       id: 'TXN005',
       type: 'fee',
-      amount: '$490',
+      amount: '₱26,460',
       description: 'Platform commission - Photography booking',
       date: '2024-01-14 14:32',
       status: 'completed'
@@ -268,7 +268,7 @@ export const AdminFinances: React.FC = () => {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-gray-600">Gross Revenue</span>
-                    <span className="font-semibold text-green-600">$247,890</span>
+                    <span className="font-semibold text-green-600">₱13,386,060</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full w-full"></div>
@@ -278,7 +278,7 @@ export const AdminFinances: React.FC = () => {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-gray-600">Vendor Payouts</span>
-                    <span className="font-semibold text-blue-600">$198,312</span>
+                    <span className="font-semibold text-blue-600">₱10,708,848</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full w-[80%]"></div>
@@ -288,7 +288,7 @@ export const AdminFinances: React.FC = () => {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-gray-600">Platform Fees</span>
-                    <span className="font-semibold text-purple-600">$49,578</span>
+                    <span className="font-semibold text-purple-600">₱2,677,212</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div className="bg-gradient-to-r from-purple-500 to-violet-500 h-2 rounded-full w-[20%]"></div>
@@ -298,7 +298,7 @@ export const AdminFinances: React.FC = () => {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-gray-600">Processing Fees</span>
-                    <span className="font-semibold text-orange-600">$12,314</span>
+                    <span className="font-semibold text-orange-600">₱664,956</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div className="bg-gradient-to-r from-orange-500 to-red-500 h-2 rounded-full w-[5%]"></div>
@@ -309,7 +309,7 @@ export const AdminFinances: React.FC = () => {
                 
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-gray-900">Net Profit</span>
-                  <span className="font-bold text-green-600 text-lg">$37,124</span>
+                  <span className="font-bold text-green-600 text-lg">₱2,004,696</span>
                 </div>
               </div>
             </div>

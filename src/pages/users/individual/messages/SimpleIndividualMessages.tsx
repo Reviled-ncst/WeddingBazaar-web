@@ -43,7 +43,7 @@ const SIMPLE_MOCK_CONVERSATIONS = [
       id: 'SRV-001',
       name: 'Wedding Photography Package',
       category: 'Photography',
-      price: '$2,500',
+      price: '₱125,000',
       image: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400'
     }
   },
@@ -74,7 +74,7 @@ const SIMPLE_MOCK_CONVERSATIONS = [
       id: 'SRV-002',
       name: 'Wedding Catering Service',
       category: 'Catering',
-      price: '$85/person',
+      price: '₱4,250/person',
       image: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400'
     }
   },
@@ -105,7 +105,7 @@ const SIMPLE_MOCK_CONVERSATIONS = [
       id: 'SRV-003',
       name: 'Full Wedding Planning',
       category: 'Planning',
-      price: '$3,800',
+      price: '₱190,000',
       image: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400'
     }
   }

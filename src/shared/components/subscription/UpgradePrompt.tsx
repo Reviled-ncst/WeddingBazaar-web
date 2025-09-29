@@ -39,7 +39,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
 }) => {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
-  const [currency, setCurrency] = useState({ code: 'USD', symbol: '$', rate: 1 });
+  const [currency, setCurrency] = useState({ code: 'PHP', symbol: '₱', rate: 1 });
   const [isLoadingCurrency, setIsLoadingCurrency] = useState(true);
 
   // Access subscription context to ensure upgrade prompt is properly closed
@@ -99,12 +99,12 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
 
         const countryCode = locationData.country_code;
         console.log('Detected country code:', countryCode);
-        const detectedCurrency = currencyMap[countryCode] || { code: 'USD', symbol: '$' };
+        const detectedCurrency = currencyMap[countryCode] || { code: 'PHP', symbol: '₱' };
 
-        if (detectedCurrency.code !== 'USD') {
-          // Get exchange rate from USD to detected currency
+        if (detectedCurrency.code !== 'PHP') {
+          // Get exchange rate from PHP to detected currency
           const exchangeResponse = await fetch(
-            `https://api.exchangerate-api.com/v4/latest/USD`
+            `https://api.exchangerate-api.com/v4/latest/PHP`
           );
           const exchangeData = await exchangeResponse.json();
           const rate = exchangeData.rates[detectedCurrency.code] || 1;
@@ -116,14 +116,14 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
           });
           console.log('Currency detected:', detectedCurrency.code, 'Rate:', rate);
         } else {
-          setCurrency({ code: 'USD', symbol: '$', rate: 1 });
-          console.log('Using default USD currency');
+          setCurrency({ code: 'PHP', symbol: '₱', rate: 1 });
+          console.log('Using default PHP currency');
         }
       } catch (error) {
         console.error('Failed to detect currency:', error);
-        // Default to USD if detection fails
-        setCurrency({ code: 'USD', symbol: '$', rate: 1 });
-        console.log('Using fallback USD currency due to error');
+        // Default to PHP if detection fails
+        setCurrency({ code: 'PHP', symbol: '₱', rate: 1 });
+        console.log('Using fallback PHP currency due to error');
       } finally {
         setIsLoadingCurrency(false);
       }
@@ -135,11 +135,11 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
   const plans = useMemo(() => {
     console.log('🔄 Plans being recalculated with currency:', currency, 'loading:', isLoadingCurrency);
     
-    const formatPriceForPlan = (usdPrice: number) => {
+    const formatPriceForPlan = (phpPrice: number) => {
       if (isLoadingCurrency) return '$...';
       
-      const convertedPrice = usdPrice * currency.rate;
-      console.log(`💰 Converting $${usdPrice} to ${currency.code}: ${currency.symbol}${convertedPrice.toFixed(2)}`);
+      const convertedPrice = phpPrice * currency.rate;
+      console.log(`💰 Converting ₱${phpPrice} to ${currency.code}: ${currency.symbol}${convertedPrice.toFixed(2)}`);
       
       // Format based on currency
       if (currency.code === 'JPY') {
@@ -277,7 +277,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
           paymentData: {
             payment_method: 'free',
             amount: 0,
-            currency: 'USD'
+            currency: 'PHP'
           }
         })
       });
@@ -315,7 +315,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
     try {
       const convertedAmount = selectedPlan.price * currency.rate;
       console.log(`💳 Payment Success: ${selectedPlan.name} plan`);
-      console.log(`💰 Original USD: $${selectedPlan.price}`);
+      console.log(`💰 Original PHP: ₱${selectedPlan.price}`);
       console.log(`💰 Converted ${currency.code}: ${currency.symbol}${convertedAmount.toFixed(2)}`);
       
       // API call to upgrade subscription after successful payment
@@ -330,7 +330,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
             payment_method: 'paymongo',
             amount: convertedAmount,
             currency: currency.code,
-            original_amount_usd: selectedPlan.price,
+            original_amount_php: selectedPlan.price,
             payment_reference: paymentData.id,
             ...paymentData
           }
@@ -458,7 +458,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
                       value={currency.code}
                       onChange={(e) => {
                         const rates = {
-                          'USD': { code: 'USD', symbol: '$', rate: 1 },
+                          'PHP': { code: 'PHP', symbol: '₱', rate: 1 },
                           'PHP': { code: 'PHP', symbol: '₱', rate: 56.5 },
                           'EUR': { code: 'EUR', symbol: '€', rate: 0.85 },
                           'GBP': { code: 'GBP', symbol: '£', rate: 0.75 },

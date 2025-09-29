@@ -65,7 +65,7 @@ export const VendorLanding: React.FC = () => {
             {[
               { icon: Users, number: "10,000+", label: "Active Couples" },
               { icon: Calendar, number: "500+", label: "Weddings Monthly" },
-              { icon: DollarSign, number: "$2M+", label: "Revenue Generated" },
+              { icon: DollarSign, number: "₱100M+", label: "Revenue Generated" },
               { icon: Star, number: "4.9/5", label: "Average Rating" }
             ].map((stat, index) => (
               <div key={index} className="text-center">

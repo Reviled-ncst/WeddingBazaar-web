@@ -101,7 +101,7 @@ export const PremiumFeatures: React.FC = () => {
     {
       icon: Shield,
       title: 'Wedding Insurance',
-      description: 'Complimentary wedding insurance up to $10,000 coverage',
+      description: 'Complimentary wedding insurance up to ₱500,000 coverage',
       included: isEnterprise,
       comingSoon: !isEnterprise
     }
@@ -162,7 +162,7 @@ export const PremiumFeatures: React.FC = () => {
             </div>
             <div className="text-right">
               <div className="text-3xl font-bold text-gray-900">
-                {isEnterprise ? 'Unlimited' : isPremium ? '$29.99' : 'Free'}
+                {isEnterprise ? 'Unlimited' : isPremium ? '₱1,499' : 'Free'}
               </div>
               {!isEnterprise && (
                 <div className="text-gray-600">
