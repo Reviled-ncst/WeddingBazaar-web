@@ -605,18 +605,26 @@ app.get('/api/bookings/couple/:userId', async (req, res) => {
       sql(countQuery, [userId])
     ]);
     
-    const bookings = bookingsResult.map(booking => ({
-      ...booking,
-      // Convert dates to ISO strings for frontend compatibility
-      event_date: booking.event_date ? new Date(booking.event_date).toISOString() : null,
-      created_at: booking.created_at ? new Date(booking.created_at).toISOString() : null,
-      updated_at: booking.updated_at ? new Date(booking.updated_at).toISOString() : null,
-      // Convert numeric values
-      total_amount: booking.total_amount ? parseFloat(booking.total_amount) : 0,
-      deposit_amount: booking.deposit_amount ? parseFloat(booking.deposit_amount) : 0,
-      estimated_cost_min: booking.estimated_cost_min ? parseFloat(booking.estimated_cost_min) : 0,
-      estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost_max) : 0
-    }));
+    const bookings = bookingsResult.map(booking => {
+      // Apply status mapping to transform database status to frontend expected status
+      const mappedStatus = mapBookingStatus(booking.status);
+      console.log(`🔄 [STATUS MAPPING] Couple Booking ${booking.id}: ${booking.status} -> ${mappedStatus}`);
+      
+      return {
+        ...booking,
+        // Map the status using the mapping function
+        status: mappedStatus,
+        // Convert dates to ISO strings for frontend compatibility
+        event_date: booking.event_date ? new Date(booking.event_date).toISOString() : null,
+        created_at: booking.created_at ? new Date(booking.created_at).toISOString() : null,
+        updated_at: booking.updated_at ? new Date(booking.updated_at).toISOString() : null,
+        // Convert numeric values
+        total_amount: booking.total_amount ? parseFloat(booking.total_amount) : 0,
+        deposit_amount: booking.deposit_amount ? parseFloat(booking.deposit_amount) : 0,
+        estimated_cost_min: booking.estimated_cost_min ? parseFloat(booking.estimated_cost_min) : 0,
+        estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost_max) : 0
+      };
+    });
     
     const total = parseInt(countResult[0].total);
     
@@ -694,18 +702,26 @@ app.get('/api/bookings/enhanced', async (req, res) => {
       sql(countQuery, queryParams.slice(0, -2)) // Remove limit and offset for count
     ]);
     
-    const bookings = bookingsResult.map(booking => ({
-      ...booking,
-      // Convert dates to ISO strings for frontend compatibility
-      event_date: booking.event_date ? new Date(booking.event_date).toISOString() : null,
-      created_at: booking.created_at ? new Date(booking.created_at).toISOString() : null,
-      updated_at: booking.updated_at ? new Date(booking.updated_at).toISOString() : null,
-      // Convert numeric values
-      total_amount: booking.total_amount ? parseFloat(booking.total_amount) : 0,
-      deposit_amount: booking.deposit_amount ? parseFloat(booking.deposit_amount) : 0,
-      estimated_cost_min: booking.estimated_cost_min ? parseFloat(booking.estimated_cost_min) : 0,
-      estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost_max) : 0
-    }));
+    const bookings = bookingsResult.map(booking => {
+      // Apply status mapping to transform database status to frontend expected status
+      const mappedStatus = mapBookingStatus(booking.status);
+      console.log(`🔄 [STATUS MAPPING] Booking ${booking.id}: ${booking.status} -> ${mappedStatus}`);
+      
+      return {
+        ...booking,
+        // Map the status using the mapping function
+        status: mappedStatus,
+        // Convert dates to ISO strings for frontend compatibility
+        event_date: booking.event_date ? new Date(booking.event_date).toISOString() : null,
+        created_at: booking.created_at ? new Date(booking.created_at).toISOString() : null,
+        updated_at: booking.updated_at ? new Date(booking.updated_at).toISOString() : null,
+        // Convert numeric values
+        total_amount: booking.total_amount ? parseFloat(booking.total_amount) : 0,
+        deposit_amount: booking.deposit_amount ? parseFloat(booking.deposit_amount) : 0,
+        estimated_cost_min: booking.estimated_cost_min ? parseFloat(booking.estimated_cost_min) : 0,
+        estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost_max) : 0
+      };
+    });
     
     const total = parseInt(countResult[0].total);
     
@@ -767,18 +783,26 @@ app.get('/api/bookings/vendor/:vendorId', async (req, res) => {
       sql(countQuery, [vendorId])
     ]);
     
-    const bookings = bookingsResult.map(booking => ({
-      ...booking,
-      // Convert dates to ISO strings for frontend compatibility
-      event_date: booking.event_date ? new Date(booking.event_date).toISOString() : null,
-      created_at: booking.created_at ? new Date(booking.created_at).toISOString() : null,
-      updated_at: booking.updated_at ? new Date(booking.updated_at).toISOString() : null,
-      // Convert numeric values
-      total_amount: booking.total_amount ? parseFloat(booking.total_amount) : 0,
-      deposit_amount: booking.deposit_amount ? parseFloat(booking.deposit_amount) : 0,
-      estimated_cost_min: booking.estimated_cost_min ? parseFloat(booking.estimated_cost_min) : 0,
-      estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost_max) : 0
-    }));
+    const bookings = bookingsResult.map(booking => {
+      // Apply status mapping to transform database status to frontend expected status
+      const mappedStatus = mapBookingStatus(booking.status);
+      console.log(`🔄 [STATUS MAPPING] Vendor Booking ${booking.id}: ${booking.status} -> ${mappedStatus}`);
+      
+      return {
+        ...booking,
+        // Map the status using the mapping function
+        status: mappedStatus,
+        // Convert dates to ISO strings for frontend compatibility
+        event_date: booking.event_date ? new Date(booking.event_date).toISOString() : null,
+        created_at: booking.created_at ? new Date(booking.created_at).toISOString() : null,
+        updated_at: booking.updated_at ? new Date(booking.updated_at).toISOString() : null,
+        // Convert numeric values
+        total_amount: booking.total_amount ? parseFloat(booking.total_amount) : 0,
+        deposit_amount: booking.deposit_amount ? parseFloat(booking.deposit_amount) : 0,
+        estimated_cost_min: booking.estimated_cost_min ? parseFloat(booking.estimated_cost_min) : 0,
+        estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost_max) : 0
+      };
+    });
     
     const total = parseInt(countResult[0].total);
     
@@ -950,6 +974,130 @@ app.patch('/api/bookings/:bookingId/accept-quote', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to accept quotation',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ================================
+// STATUS MAPPING FUNCTION
+// ================================
+
+// Status mapping function to transform database values to frontend expectations
+const mapBookingStatus = (dbStatus) => {
+  const statusMap = {
+    'request': 'quote_requested',
+    'pending': 'quote_requested', 
+    'quote_requested': 'quote_requested',
+    'approved': 'confirmed',
+    'confirmed': 'confirmed',
+    'downpayment': 'downpayment_paid',
+    'downpayment_paid': 'downpayment_paid',
+    'paid': 'paid_in_full',
+    'paid_in_full': 'paid_in_full',
+    'completed': 'completed',
+    'cancelled': 'cancelled',
+    'rejected': 'quote_rejected',
+    'quote_rejected': 'quote_rejected'
+  };
+  
+  return statusMap[dbStatus] || 'quote_requested';
+};
+
+// Create new booking endpoint
+app.post('/api/bookings', async (req, res) => {
+  try {
+    const {
+      coupleId,
+      vendorId,
+      serviceType,
+      weddingDate,
+      eventLocation,
+      specialRequests,
+      coupleName,
+      vendorName
+    } = req.body;
+    
+    console.log('📝 [BOOKINGS] POST /api/bookings - Creating new booking');
+    
+    const bookingId = Date.now();
+    const now = new Date();
+    
+    await sql`
+      INSERT INTO bookings (
+        id, couple_id, vendor_id, service_type, status,
+        wedding_date, event_location, special_requests,
+        couple_name, vendor_name, created_at, updated_at
+      ) VALUES (
+        ${bookingId}, ${coupleId}, ${vendorId}, ${serviceType}, 'request',
+        ${weddingDate}, ${eventLocation}, ${specialRequests},
+        ${coupleName}, ${vendorName}, ${now}, ${now}
+      )
+    `;
+    
+    console.log(`✅ [BOOKINGS] Created booking ${bookingId}`);
+    
+    res.json({
+      success: true,
+      bookingId: bookingId,
+      message: 'Booking created successfully',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [BOOKINGS] Error creating booking:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create booking',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Update booking status endpoint
+app.patch('/api/bookings/:bookingId/status', async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { status, quotedPrice, finalPrice } = req.body;
+    
+    console.log(`📝 [BOOKINGS] PATCH /api/bookings/${bookingId}/status`);
+    console.log(`📝 [BOOKINGS] New status: ${status}`);
+    
+    // Map frontend status back to database format if needed
+    const dbStatus = status === 'quote_requested' ? 'request' :
+                    status === 'confirmed' ? 'approved' :
+                    status === 'downpayment_paid' ? 'downpayment' :
+                    status;
+    
+    const updateFields = {
+      status: dbStatus,
+      updated_at: new Date()
+    };
+    
+    if (quotedPrice !== undefined) updateFields.quoted_price = quotedPrice;
+    if (finalPrice !== undefined) updateFields.final_price = finalPrice;
+    
+    await sql`
+      UPDATE bookings 
+      SET ${sql(updateFields)}
+      WHERE id = ${bookingId}
+    `;
+    
+    console.log(`✅ [BOOKINGS] Updated booking ${bookingId} status to ${dbStatus}`);
+    
+    res.json({
+      success: true,
+      message: 'Booking status updated successfully',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [BOOKINGS] Error updating booking status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update booking status',
       message: error.message,
       timestamp: new Date().toISOString()
     });
