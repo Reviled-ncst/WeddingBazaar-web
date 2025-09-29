@@ -330,7 +330,7 @@ export const VendorServices: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
         <VendorHeader />
-        <main className="pt-4 pb-12">
+        <main className="pt-24 pb-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
@@ -355,7 +355,7 @@ export const VendorServices: React.FC = () => {
       
       <VendorHeader />
       
-      <main className="pt-4 pb-12 relative z-10">
+      <main className="pt-24 pb-12 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header with Stats */}
           <div className="mb-8">
@@ -374,15 +374,15 @@ export const VendorServices: React.FC = () => {
                 </div>
               </div>
               
-              <div className="flex-shrink-0">
+              <div className="flex items-center gap-4">
                 <button
                   onClick={handleQuickCreateService}
-                  className="group w-full sm:w-auto px-8 py-4 rounded-2xl font-semibold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-2xl bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700 hover:scale-105 relative overflow-hidden"
+                  className="group w-full sm:w-auto px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-xl hover:shadow-2xl bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700 hover:scale-105 relative overflow-hidden text-lg"
                   title="Add New Service"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <Plus size={22} className="group-hover:rotate-90 transition-transform duration-300" />
-                  <span className="relative z-10">Add Service</span>
+                  <Plus size={24} className="group-hover:rotate-90 transition-transform duration-300" />
+                  <span className="relative z-10">Add New Service</span>
                 </button>
               </div>
             </div>
@@ -997,52 +997,54 @@ export const VendorServices: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                        {/* Primary Actions */}
-                        <button
-                          onClick={() => editService(service)}
-                          className="group flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105"
-                        >
-                          <Edit size={18} className="group-hover:rotate-12 transition-transform duration-200" />
-                          Edit Service
-                        </button>
-                        
-                        <button
-                          onClick={() => toggleServiceAvailability(service)}
-                          className={`group flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 ${
-                            (service.isActive ?? service.is_active)
-                              ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700'
-                              : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
-                          }`}
-                        >
-                          {(service.isActive ?? service.is_active) ? (
-                            <>
-                              <EyeOff size={18} className="group-hover:scale-110 transition-transform duration-200" />
-                              Make Unavailable
-                            </>
-                          ) : (
-                            <>
-                              <Eye size={18} className="group-hover:scale-110 transition-transform duration-200" />
-                              Make Available
-                            </>
-                          )}
-                        </button>
+                      {/* Action Buttons - Enhanced Visibility */}
+                      <div className="flex flex-col gap-4 pt-6 border-t border-gray-200">
+                        {/* Primary Action Row */}
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            onClick={() => editService(service)}
+                            className="group flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 min-w-[140px]"
+                          >
+                            <Edit size={20} className="group-hover:rotate-12 transition-transform duration-200" />
+                            Edit Service
+                          </button>
+                          
+                          <button
+                            onClick={() => toggleServiceAvailability(service)}
+                            className={`group flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 min-w-[160px] ${
+                              (service.isActive ?? service.is_active)
+                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700'
+                                : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
+                            }`}
+                          >
+                            {(service.isActive ?? service.is_active) ? (
+                              <>
+                                <EyeOff size={20} className="group-hover:scale-110 transition-transform duration-200" />
+                                Hide Service
+                              </>
+                            ) : (
+                              <>
+                                <Eye size={20} className="group-hover:scale-110 transition-transform duration-200" />
+                                Show Service
+                              </>
+                            )}
+                          </button>
 
-                        <button
-                          onClick={() => toggleServiceFeatured(service)}
-                          className={`group flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 ${
-                            service.featured
-                              ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white hover:from-yellow-600 hover:to-amber-700'
-                              : 'bg-gradient-to-r from-gray-500 to-slate-600 text-white hover:from-gray-600 hover:to-slate-700'
-                          }`}
-                        >
-                          <Star size={18} className={`group-hover:scale-110 transition-transform duration-200 ${service.featured ? 'fill-current' : ''}`} />
-                          {service.featured ? 'Remove Feature' : 'Make Featured'}
-                        </button>
+                          <button
+                            onClick={() => toggleServiceFeatured(service)}
+                            className={`group flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 min-w-[140px] ${
+                              service.featured
+                                ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white hover:from-yellow-600 hover:to-amber-700'
+                                : 'bg-gradient-to-r from-gray-500 to-slate-600 text-white hover:from-gray-600 hover:to-slate-700'
+                            }`}
+                          >
+                            <Star size={20} className={`group-hover:scale-110 transition-transform duration-200 ${service.featured ? 'fill-current' : ''}`} />
+                            {service.featured ? 'Unfeatured' : 'Feature'}
+                          </button>
+                        </div>
 
-                        {/* Secondary Actions */}
-                        <div className="flex items-center gap-2 ml-auto">
+                        {/* Secondary Action Row */}
+                        <div className="flex items-center gap-3">
                           <button
                             onClick={() => {
                               const duplicatedService = {
@@ -1054,18 +1056,18 @@ export const VendorServices: React.FC = () => {
                               setEditingService(duplicatedService);
                               setIsCreating(true);
                             }}
-                            className="group p-3 bg-gradient-to-r from-purple-100 to-violet-100 text-purple-600 rounded-xl hover:from-purple-200 hover:to-violet-200 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
-                            title="Duplicate Service"
+                            className="group flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-violet-600 text-white rounded-xl hover:from-purple-600 hover:to-violet-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 min-w-[140px]"
                           >
-                            <Copy size={18} className="group-hover:scale-110 transition-transform duration-200" />
+                            <Copy size={20} className="group-hover:scale-110 transition-transform duration-200" />
+                            Duplicate
                           </button>
                           
                           <button
                             onClick={() => deleteService(service.id)}
-                            className="group p-3 bg-gradient-to-r from-red-100 to-pink-100 text-red-600 rounded-xl hover:from-red-200 hover:to-pink-200 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
-                            title="Delete Service"
+                            className="group flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:from-red-600 hover:to-pink-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 min-w-[140px]"
                           >
-                            <Trash2 size={18} className="group-hover:scale-110 transition-transform duration-200" />
+                            <Trash2 size={20} className="group-hover:scale-110 transition-transform duration-200" />
+                            Delete
                           </button>
                         </div>
                       </div>
@@ -1140,20 +1142,35 @@ export const VendorServices: React.FC = () => {
         requiredTier={upgradePrompt.requiredTier}
       />
 
-      {/* Floating Add Service Button - Always Visible */}
-      <motion.button
-        onClick={handleQuickCreateService}
-        className="fixed bottom-8 right-8 z-40 w-20 h-20 bg-gradient-to-br from-rose-500 to-pink-600 text-white rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 flex items-center justify-center group"
-        title="Add New Service"
-        whileHover={{ scale: 1.1, rotate: 5 }}
-        whileTap={{ scale: 0.95 }}
+      {/* Enhanced Floating Add Service Button - Always Visible */}
+      <motion.div
+        className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-4"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+        transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.5 }}
       >
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-        <Plus size={28} className="group-hover:rotate-90 transition-transform duration-300 relative z-10" />
-      </motion.button>
+        {/* Tooltip */}
+        <div className="bg-black/80 text-white px-3 py-2 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+          Add New Service
+        </div>
+        
+        {/* Main Button */}
+        <motion.button
+          onClick={handleQuickCreateService}
+          className="group w-24 h-24 bg-gradient-to-br from-rose-500 to-pink-600 text-white rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 flex items-center justify-center relative overflow-hidden"
+          whileHover={{ scale: 1.15, rotate: 10 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          {/* Glow Effect */}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          
+          {/* Pulse Animation */}
+          <div className="absolute inset-0 rounded-full bg-rose-400/50 animate-ping"></div>
+          
+          {/* Icon */}
+          <Plus size={32} className="group-hover:rotate-180 transition-transform duration-500 relative z-10 drop-shadow-lg" />
+        </motion.button>
+      </motion.div>
     </div>
   );
 };
