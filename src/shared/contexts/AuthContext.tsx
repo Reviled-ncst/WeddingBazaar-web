@@ -64,7 +64,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const token = localStorage.getItem('auth_token');
         if (!token) {
-          // No token found, user is not authenticated - this is normal for public pages
+          // Try sessionStorage as fallback
+          const sessionToken = sessionStorage.getItem('auth_token');
+          if (sessionToken) {
+            localStorage.setItem('auth_token', sessionToken);
+            return checkAuthStatus(); // Retry with sessionStorage token
+          }
+          
+          // No token found anywhere, user is not authenticated
           setIsLoading(false);
           return;
         }
@@ -85,18 +92,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Only set user if we get valid data back
           if (data.success && data.authenticated && data.user) {
             setUser(data.user);
+            // Ensure token is in both storages for persistence
+            localStorage.setItem('auth_token', token);
+            sessionStorage.setItem('auth_token', token);
           } else {
             console.log('❌ Invalid verify response:', data);
             localStorage.removeItem('auth_token');
+            sessionStorage.removeItem('auth_token');
           }
         } else if (response.status === 401) {
           // Token is invalid/expired - remove it silently (this is normal)
           console.log('🔄 Token expired or invalid, removing...');
           localStorage.removeItem('auth_token');
+          sessionStorage.removeItem('auth_token');
         } else {
           // Other errors (500, etc.)
           console.error('❌ Token verification failed:', response.status, response.statusText);
           localStorage.removeItem('auth_token');
+          sessionStorage.removeItem('auth_token');
         }
       } catch (error) {
         // Network errors, API unavailable, etc. - don't remove token immediately
@@ -197,7 +210,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Only store token and user if login was successful
       if (data.success && data.user && data.token) {
+        // Store in both localStorage and sessionStorage for better persistence
         localStorage.setItem('auth_token', data.token);
+        sessionStorage.setItem('auth_token', data.token);
         setUser(data.user);
         console.log('✅ Login successful for:', data.user.email, 'with role:', data.user.role);
         return data.user;
@@ -272,7 +287,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Store token and user data
       if (data.success && data.user && data.token) {
+        // Store in both localStorage and sessionStorage for better persistence
         localStorage.setItem('auth_token', data.token);
+        sessionStorage.setItem('auth_token', data.token);
         setUser(data.user);
         console.log('✅ Registration successful for:', data.user.email);
       } else {
@@ -298,10 +315,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    // Clear all auth-related data
+  const logout = async () => {
+    try {
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+      
+      if (token) {
+        // Notify backend to invalidate token
+        const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        await fetch(`${apiBaseUrl}/api/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }).catch(() => {
+          // Ignore network errors during logout
+          console.log('Network error during logout - continuing with local cleanup');
+        });
+      }
+    } catch (error) {
+      console.log('Error during logout:', error);
+    }
+    
+    // Clear all auth-related data from both storages
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_data'); // In case there's any cached user data
+    sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('user_data');
     setUser(null);
     
     // Force a page reload to clear any stale state

@@ -349,18 +349,111 @@ role: user.user_type || 'couple',
 
 **Status**: ✅ **DEPLOYED** - VendorBookings page now works correctly
 
-### 🚀 Final Deployment Summary
-- **Git Commit**: `48f562d` - Backend column name fix
-- **Firebase Deploy**: Frontend fixes for VendorBookings component
-- **Production Status**: ✅ **FULLY OPERATIONAL**
+## 🚨 NEW ISSUE DISCOVERED - TOKEN PERSISTENCE PROBLEM
 
-### 🧹 Next Steps (Optional Cleanup)
-1. **Remove RoleDebugger**: Component can be removed from production since issue is resolved
-2. **Test All Vendor Pages**: Verify all vendor functionality works correctly
-3. **Test Registration**: Test new vendor account registration flow
+### ❌ **Token Authentication Issue**
+**Problem**: Users become automatically unauthenticated after deployments or page refreshes
 
-The vendor routing issue has been **completely resolved**. Vendors now correctly:
-1. Login with `role: 'vendor'` response from backend
-2. Route to `/vendor` landing page
-3. Access vendor-specific pages and functionality
-4. Use vendor bookings page without errors
+**Console Evidence**:
+```
+🔄 [UniversalMessaging] Auth state changed: {isAuthenticated: false, hasUser: false, userEmail: undefined, userFirstName: undefined, userLastName: undefined}
+⚠️ [UniversalMessaging] User not authenticated - no messaging available
+```
+
+**Symptoms**:
+- ✅ Login works initially
+- ❌ After page refresh: User becomes unauthenticated  
+- ❌ After deployment: All users logged out automatically
+- ❌ Token persistence failing across sessions
+
+### 🔍 **Potential Root Causes**
+
+**1. JWT Token Expiration**
+- Backend changes might have affected token expiration handling
+- Tokens might be expiring immediately after creation
+
+**2. Token Validation Issues**
+- Backend token verification endpoint might be failing
+- JWT secret or validation logic might have changed during deployment
+
+**3. Local Storage Problems**
+- Tokens not being properly stored in localStorage
+- Token format changes causing validation failures
+
+**4. Backend Session Management**
+- Production backend using different session handling than expected
+- Mock JWT tokens (as seen in production-backend.cjs) might not persist correctly
+
+### 🔧 **Immediate Diagnostic Steps**
+
+**Step 1: Check Token Storage**
+```javascript
+// In browser console:
+console.log('Auth token:', localStorage.getItem('auth_token'));
+console.log('All localStorage:', { ...localStorage });
+```
+
+**Step 2: Test Token Validation**
+```javascript
+// Test token verification endpoint:
+const token = localStorage.getItem('auth_token');
+if (token) {
+  fetch('https://weddingbazaar-web.onrender.com/api/auth/verify', {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
+  }).then(r => r.json()).then(data => {
+    console.log('Token verification response:', data);
+  }).catch(err => {
+    console.error('Token verification failed:', err);
+  });
+}
+```
+
+**Step 3: Check Backend Token Logic**
+The production backend uses mock JWT tokens:
+```javascript
+// From production-backend.cjs:
+const token = `mock-jwt-token-${Date.now()}`;
+```
+
+This might be causing persistence issues since these aren't real JWT tokens.
+
+### 🚀 **Proposed Solutions**
+
+**Solution 1: Fix Mock Token Implementation**
+Update production backend to use real JWT tokens instead of mock tokens:
+```javascript
+// Replace mock token with real JWT
+const jwt = require('jsonwebtoken');
+const token = jwt.sign(
+  { userId: user.id, email: user.email, role: user.user_type },
+  process.env.JWT_SECRET || 'fallback-secret',
+  { expiresIn: '7d' }
+);
+```
+
+**Solution 2: Improve Token Persistence**
+Enhance AuthContext to better handle token validation failures:
+```typescript
+// Add token refresh logic
+// Add better error handling for expired tokens
+// Add automatic re-authentication flow
+```
+
+**Solution 3: Session Storage Fallback**
+Add sessionStorage as backup for localStorage:
+```javascript
+// Store tokens in both localStorage and sessionStorage
+// Use sessionStorage if localStorage fails
+```
+
+**Solution 4: Token Refresh Mechanism**
+Implement automatic token refresh before expiration:
+```javascript
+// Check token expiration on app load
+// Refresh tokens proactively  
+// Handle refresh failures gracefully
+```
