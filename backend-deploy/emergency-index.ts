@@ -49,7 +49,7 @@ const mockVendors = [
     location: 'Chicago, IL',
     description: 'Exquisite cuisine and exceptional service for your wedding.',
     image: 'https://via.placeholder.com/400x300/f8f9fa/333?text=Gourmet+Catering',
-    price: '$45 - $85 per person',
+    price: '₱2,430 - ₱4,590 per person',
     specialties: ['Fine Dining', 'Cocktail Hour', 'Dietary Accommodations']
   },
   {
@@ -61,7 +61,7 @@ const mockVendors = [
     location: 'Austin, TX',
     description: 'Beautiful indoor and outdoor wedding venues.',
     image: 'https://via.placeholder.com/400x300/f8f9fa/333?text=Harmony+Venues',
-    price: '$2000 - $8000',
+    price: '₱108,000 - ₱432,000',
     specialties: ['Garden Ceremonies', 'Reception Halls', 'Bridal Suites']
   },
   {
