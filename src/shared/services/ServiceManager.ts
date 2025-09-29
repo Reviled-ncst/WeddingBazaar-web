@@ -578,7 +578,7 @@ export class ServiceManager {
         location: 'Metro Manila',
         rating: 4.8,
         review_count: 127,
-        price_range: '$$$',
+        price_range: '₱₱₱',
         availability: true,
         gallery: ['https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=600'],
         features: ['Professional Photography', 'Digital Gallery', 'High Resolution', 'Editing Included'],

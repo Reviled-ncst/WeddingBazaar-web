@@ -46,7 +46,7 @@ interface Service {
   vendor_name?: string;
   location?: string;
   review_count?: number; // Keep for backward compatibility
-  price_range?: string; // '$', '$$', '$$$', '$$$$'
+  price_range?: string; // '₱', '₱₱', '₱₱₱', '₱₱₱₱'
   availability?: boolean;
   gallery?: string[]; // Alias for images
   features?: string[];
