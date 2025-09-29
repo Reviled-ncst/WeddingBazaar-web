@@ -352,7 +352,7 @@ export const VendorMap: React.FC<VendorMapProps> = ({
             ${vendor.priceRange ? `
               <div class="vendor-detail">
                 <span class="detail-icon">💰</span>
-                <span class="detail-text price-range">${vendor.priceRange}</span>
+                <span class="detail-text price-range">₱{vendor.priceRange}</span>
               </div>
             ` : ''}
           </div>

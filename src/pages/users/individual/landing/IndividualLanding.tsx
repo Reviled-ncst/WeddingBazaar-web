@@ -294,10 +294,10 @@ export const IndividualLanding: React.FC = () => {
             viewMode === 'grid' ? "grid-cols-2 md:grid-cols-4" : "grid-cols-1 md:grid-cols-2"
           )}>
             {[
-              { icon: Camera, name: "Photography", count: "150+ vendors", price: "From $1,200", rating: 4.8 },
-              { icon: Music, name: "Entertainment", count: "80+ vendors", price: "From $800", rating: 4.7 },
-              { icon: Utensils, name: "Catering", count: "120+ vendors", price: "From $45/person", rating: 4.9 },
-              { icon: Users, name: "Planning", count: "50+ vendors", price: "From $2,000", rating: 4.8 }
+              { icon: Camera, name: "Photography", count: "150+ vendors", price: "From ₱60,000", rating: 4.8 },
+              { icon: Music, name: "Entertainment", count: "80+ vendors", price: "From ₱40,000", rating: 4.7 },
+              { icon: Utensils, name: "Catering", count: "120+ vendors", price: "From ₱2,250/person", rating: 4.9 },
+              { icon: Users, name: "Planning", count: "50+ vendors", price: "From ₱100,000", rating: 4.8 }
             ].map((category, index) => (
               <div key={index} className={cn(
                 "bg-white rounded-xl border border-gray-200 p-6",

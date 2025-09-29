@@ -122,7 +122,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     featured: false,
     is_active: true,
     location: '',
-    price_range: '$',
+    price_range: '₱',
     features: [],
     contact_info: {
       phone: '',
@@ -152,7 +152,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         featured: editingService.featured || false,
         is_active: editingService.is_active ?? true,
         location: editingService.location || '',
-        price_range: editingService.price_range || '$',
+        price_range: editingService.price_range || '₱',
         features: editingService.features || [],
         contact_info: {
           phone: editingService.contact_info?.phone || '',
@@ -173,7 +173,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         featured: false,
         is_active: true,
         location: '',
-        price_range: '$',
+        price_range: '₱',
         features: [],
         contact_info: {
           phone: '',
@@ -565,7 +565,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                       {/* Base Price */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Starting Price (USD)
+                          Starting Price (₱)
                         </label>
                         <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />

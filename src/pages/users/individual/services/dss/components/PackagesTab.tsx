@@ -254,7 +254,7 @@ export const PackagesTab: React.FC<PackagesTabProps> = ({
               onChange={(e) => setPriceRange([0, parseInt(e.target.value)])}
               className="w-full h-2 bg-pink-200 rounded-lg appearance-none cursor-pointer"
               title="Adjust package budget range"
-              aria-label={`Package budget range: $0 to $${priceRange[1].toLocaleString()}`}
+              aria-label={`Package budget range: ₱0 to ₱${priceRange[1].toLocaleString()}`}
             />
           </div>
           <span className="text-sm text-gray-600 min-w-fit">

@@ -37,7 +37,7 @@ export const AdminAnalytics: React.FC = () => {
   const metrics: MetricCard[] = [
     {
       title: 'Total Revenue',
-      value: '$247,890',
+      value: '₱13,386,060',
       change: '+15.3%',
       trend: 'up',
       icon: DollarSign,
@@ -77,7 +77,7 @@ export const AdminAnalytics: React.FC = () => {
     },
     {
       title: 'Avg. Booking Value',
-      value: '$1,247',
+      value: '₱67,338',
       change: '-2.1%',
       trend: 'down',
       icon: BarChart3,
@@ -269,10 +269,10 @@ export const AdminAnalytics: React.FC = () => {
               
               <div className="space-y-4">
                 {[
-                  { name: 'Elite Photography', revenue: '$12,450', bookings: 23 },
-                  { name: 'Perfect Venues', revenue: '$8,970', bookings: 18 },
-                  { name: 'Gourmet Catering', revenue: '$7,230', bookings: 15 },
-                  { name: 'Dream Planners', revenue: '$6,890', bookings: 12 }
+                  { name: 'Elite Photography', revenue: '₱672,300', bookings: 23 },
+                  { name: 'Perfect Venues', revenue: '₱484,380', bookings: 18 },
+                  { name: 'Gourmet Catering', revenue: '₱390,420', bookings: 15 },
+                  { name: 'Dream Planners', revenue: '₱372,060', bookings: 12 }
                 ].map((vendor, index) => (
                   <div key={index} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors">
                     <div>

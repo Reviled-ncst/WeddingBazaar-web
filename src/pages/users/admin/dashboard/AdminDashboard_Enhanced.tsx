@@ -344,7 +344,7 @@ export const AdminDashboard: React.FC = () => {
     },
     {
       label: 'Platform Revenue',
-      value: '$127,500',
+      value: '₱6,885,000',
       change: '+18.7%',
       trend: 'up',
       icon: DollarSign,
@@ -402,7 +402,7 @@ export const AdminDashboard: React.FC = () => {
     {
       id: '4',
       type: 'payment_processed',
-      description: 'Payment of $2,500 processed',
+      description: 'Payment of ₱135,000 processed',
       timestamp: '1 hour ago',
       status: 'success',
       priority: 'high',

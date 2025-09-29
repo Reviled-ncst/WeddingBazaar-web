@@ -4,10 +4,10 @@ import { CreditCard, Download, Clock, CheckCircle, AlertCircle } from 'lucide-re
 
 export const VendorBilling: React.FC = () => {
   const billingHistory = [
-    { id: '1', date: '2024-01-15', amount: '$29.99', plan: 'Premium Plan', status: 'paid' },
-    { id: '2', date: '2023-12-15', amount: '$29.99', plan: 'Premium Plan', status: 'paid' },
-    { id: '3', date: '2023-11-15', amount: '$29.99', plan: 'Premium Plan', status: 'paid' },
-    { id: '4', date: '2023-10-15', amount: '$19.99', plan: 'Pro Plan', status: 'paid' }
+    { id: '1', date: '2024-01-15', amount: '₱1,649', plan: 'Premium Plan', status: 'paid' },
+    { id: '2', date: '2023-12-15', amount: '₱1,649', plan: 'Premium Plan', status: 'paid' },
+    { id: '3', date: '2023-11-15', amount: '₱1,649', plan: 'Premium Plan', status: 'paid' },
+    { id: '4', date: '2023-10-15', amount: '₱1,099', plan: 'Pro Plan', status: 'paid' }
   ];
 
   return (
@@ -41,7 +41,7 @@ export const VendorBilling: React.FC = () => {
                   Active
                 </div>
               </div>
-              <div className="text-3xl font-bold text-purple-700 mb-2">$29.99</div>
+              <div className="text-3xl font-bold text-purple-700 mb-2">₱1,649</div>
               <div className="text-purple-600 mb-4">per month</div>
               <div className="space-y-2 text-sm text-purple-600">
                 <div>✓ Unlimited Services</div>

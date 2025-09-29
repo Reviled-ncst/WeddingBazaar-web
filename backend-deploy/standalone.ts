@@ -538,7 +538,7 @@ async function addSampleConversations() {
     await pool.query(`
       INSERT INTO messages (id, conversation_id, sender_id, sender_name, sender_role, content) 
       VALUES ($1, $2, $3, $4, $5, $6)
-    `, [msg2Id, conv1Id, '2-2025-003', 'Beltran Sound Systems', 'vendor', 'Thank you for your interest! I offer several DJ packages ranging from $1,200 to $2,500. Would you like me to send you the detailed pricing and what\'s included?']);
+    `, [msg2Id, conv1Id, '2-2025-003', 'Beltran Sound Systems', 'vendor', 'Thank you for your interest! I offer several DJ packages ranging from ₱65,000 to ₱135,000. Would you like me to send you the detailed pricing and what\'s included?']);
 
     // Sample conversation 2: Another couple
     const conv2Id = 'conv_' + Date.now() + '_002';

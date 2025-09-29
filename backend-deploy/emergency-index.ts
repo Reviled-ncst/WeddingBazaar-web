@@ -25,7 +25,7 @@ const mockVendors = [
     location: 'New York, NY',
     description: 'Full-service wedding planning with 15+ years experience.',
     image: 'https://via.placeholder.com/400x300/f8f9fa/333?text=Perfect+Weddings',
-    price: '$2500 - $5000',
+    price: '₱135,000 - ₱270,000',
     specialties: ['Full Planning', 'Day Coordination', 'Destination Weddings']
   },
   {
@@ -37,7 +37,7 @@ const mockVendors = [
     location: 'Los Angeles, CA',
     description: 'Award-winning wedding photography capturing your special moments.',
     image: 'https://via.placeholder.com/400x300/f8f9fa/333?text=Elegant+Captures',
-    price: '$1800 - $3500',
+    price: '₱97,200 - ₱189,000',
     specialties: ['Engagement Photos', 'Wedding Day', 'Bridal Portraits']
   },
   {
