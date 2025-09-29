@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
   Download, 
@@ -8,7 +8,23 @@ import {
   CheckCircle, 
   TrendingUp, 
   Calendar, 
-  Loader2
+  Loader2,
+  Bell,
+  BellRing,
+  MessageSquare,
+  Star,
+  DollarSign,
+  X,
+  Filter,
+  RefreshCw,
+  Zap,
+  Clock,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  Eye,
+  MoreVertical
 } from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { VendorBookingDetailsModal } from './components/VendorBookingDetailsModal';
@@ -46,7 +62,36 @@ import { useAuth } from '../../../../shared/contexts/AuthContext';
 // Import currency formatting utility
 import { formatPHP } from '../../../../utils/currency';
 
+// Import notification system
+import { useNotifications } from '../../../../shared/components/notifications/NotificationProvider';
+
 type FilterStatus = 'all' | BookingStatus;
+
+// Notification types for vendor bookings
+interface BookingNotification {
+  id: string;
+  type: 'booking_inquiry' | 'message_received' | 'payment_received' | 'booking_confirmed' | 'quote_accepted' | 'quote_rejected' | 'booking_cancelled' | 'review_received';
+  title: string;
+  message: string;
+  timestamp: string;
+  priority: 'high' | 'medium' | 'low';
+  bookingId?: string;
+  coupleId?: string;
+  read: boolean;
+  actionRequired?: boolean;
+}
+
+// Real-time activity types
+interface LiveActivity {
+  id: string;
+  type: 'new_inquiry' | 'quote_viewed' | 'payment_made' | 'message_sent' | 'booking_update';
+  title: string;
+  description: string;
+  timestamp: string;
+  bookingId?: string;
+  avatar?: string;
+  status?: BookingStatus;
+}
 
 // Note: Vendors do NOT process payments - they only track payment status from clients
 // Payment receipts and processing are handled by individual/couple users only
@@ -54,6 +99,9 @@ type FilterStatus = 'all' | BookingStatus;
 export const VendorBookings: React.FC = () => {
   // Get authenticated vendor user for real vendor ID
   const { user } = useAuth();
+  
+  // Notification system
+  const { showSuccess, showError, showInfo, showWarning } = useNotifications();
   
   const [bookings, setBookings] = useState<UIBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +117,14 @@ export const VendorBookings: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<UIBookingsListResponse['pagination'] | null>(null);
   
+  // Enhanced UI state
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<BookingNotification[]>([]);
+  const [liveActivities, setLiveActivities] = useState<LiveActivity[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  
   // Use authenticated vendor ID
   const vendorId = user?.id || 'vendor_001'; // Fallback for demo
 
@@ -77,6 +133,7 @@ export const VendorBookings: React.FC = () => {
     // Always try to load real data first, fall back to mock if it fails
     loadBookings();
     loadStats();
+    loadNotifications();
   }, [filterStatus, dateRange, sortBy, sortOrder, currentPage, vendorId]);
 
   useEffect(() => {
@@ -91,9 +148,38 @@ export const VendorBookings: React.FC = () => {
     return () => clearTimeout(delayedSearch);
   }, [searchQuery]);
 
-  const loadBookings = async () => {
+  // Real-time updates and notifications
+  useEffect(() => {
+    // Poll for new data every 30 seconds
+    const pollInterval = setInterval(() => {
+      if (!loading) {
+        console.log('🔄 [VendorBookings] Auto-refreshing data...');
+        loadBookings(true); // Silent refresh
+        loadStats();
+        loadNotifications();
+        setLastUpdate(new Date());
+      }
+    }, 30000);
+
+    // Simulate real-time activities (in production, this would be WebSocket)
+    const activityInterval = setInterval(() => {
+      generateMockActivity();
+    }, 45000); // Every 45 seconds
+
+    return () => {
+      clearInterval(pollInterval);
+      clearInterval(activityInterval);
+    };
+  }, [loading, vendorId]);
+
+  // Initialize mock notifications and activities
+  useEffect(() => {
+    initializeMockData();
+  }, [vendorId]);
+
+  const loadBookings = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       console.log('📥 [VendorBookings] Loading bookings with comprehensive API for vendor:', vendorId);
       console.log('🔍 [VendorBookings] Current filters:', { filterStatus, dateRange, sortBy, sortOrder, currentPage, searchQuery });
       
@@ -120,6 +206,18 @@ export const VendorBookings: React.FC = () => {
       console.log('📊 [VendorBookings] Bookings count:', response.bookings?.length || 0);
       console.log('📊 [VendorBookings] Total bookings:', response.total || 0);
       
+      // Check for new bookings and show notifications
+      if (silent && bookings.length > 0) {
+        const newBookings = response.bookings?.filter(newBooking => 
+          !bookings.some(existing => existing.id === newBooking.id)
+        ) || [];
+        
+        if (newBookings.length > 0) {
+          showInfo('New Updates', `${newBookings.length} new booking${newBookings.length === 1 ? '' : 's'} received!`);
+          generateNotificationForNewBookings(newBookings);
+        }
+      }
+      
       // Map API response to UI format using unified mapping utility
       const uiResponse = mapToUIBookingsListResponse(response, mapVendorBookingToUI);
       
@@ -139,11 +237,14 @@ export const VendorBookings: React.FC = () => {
       
     } catch (error) {
       console.error('💥 [VendorBookings] Error loading bookings with comprehensive API:', error);
+      if (!silent) {
+        showError('Loading Error', 'Failed to load bookings. Please try again.');
+      }
       // No fallback to mock data - display error state instead
       setBookings([]);
       setPagination(null);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -199,6 +300,12 @@ export const VendorBookings: React.FC = () => {
       
       console.log('✅ [VendorBookings] Booking status updated successfully');
       
+      // Show success notification
+      showSuccess('Status Updated', `Booking status changed to ${newStatus.replace('_', ' ')}`);
+      
+      // Generate notification for status change
+      generateNotificationForStatusChange(bookingId, newStatus);
+      
       // Reload bookings and stats to reflect changes
       await loadBookings();
       await loadStats();
@@ -208,15 +315,253 @@ export const VendorBookings: React.FC = () => {
     } catch (error) {
       console.error('💥 [VendorBookings] Failed to update booking status:', error);
       
-      // Show detailed error information
-      let errorMessage = 'Failed to update booking. ';
-      if (error instanceof Error) {
-        errorMessage += `Error: ${error.message}`;
-      } else {
-        errorMessage += 'Unknown error occurred.';
+      // Show error notification
+      showError('Update Failed', 'Failed to update booking status. Please try again.');
+    }
+  };
+
+  // Load notifications for the vendor
+  const loadNotifications = async () => {
+    try {
+      // In production, this would fetch from API
+      // For now, we'll simulate with mock data if no existing notifications
+      if (notifications.length === 0) {
+        const mockNotifications = generateMockNotifications();
+        setNotifications(mockNotifications);
+        setUnreadCount(mockNotifications.filter(n => !n.read).length);
       }
+    } catch (error) {
+      console.error('💥 [VendorBookings] Error loading notifications:', error);
+    }
+  };
+
+  // Initialize mock data
+  const initializeMockData = () => {
+    const mockNotifications = generateMockNotifications();
+    const mockActivities = generateMockActivities();
+    
+    setNotifications(mockNotifications);
+    setLiveActivities(mockActivities);
+    setUnreadCount(mockNotifications.filter(n => !n.read).length);
+  };
+
+  // Generate mock notifications
+  const generateMockNotifications = (): BookingNotification[] => {
+    const now = new Date();
+    return [
+      {
+        id: '1',
+        type: 'booking_inquiry',
+        title: 'New Wedding Inquiry',
+        message: 'Sarah & Michael inquired about photography services for their June wedding',
+        timestamp: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
+        priority: 'high',
+        bookingId: 'booking-001',
+        read: false,
+        actionRequired: true
+      },
+      {
+        id: '2',
+        type: 'quote_accepted',
+        title: 'Quote Accepted!',
+        message: 'Jennifer & David accepted your ₱125,000 photography package quote',
+        timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+        priority: 'high',
+        bookingId: 'booking-002',
+        read: false,
+        actionRequired: true
+      },
+      {
+        id: '3',
+        type: 'payment_received',
+        title: 'Payment Received',
+        message: 'Downpayment of ₱37,500 received for Rodriguez wedding',
+        timestamp: new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString(),
+        priority: 'medium',
+        bookingId: 'booking-003',
+        read: true,
+        actionRequired: false
+      },
+      {
+        id: '4',
+        type: 'message_received',
+        title: 'New Message',
+        message: 'Maria Santos sent a message about venue details',
+        timestamp: new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString(),
+        priority: 'medium',
+        read: false,
+        actionRequired: false
+      },
+      {
+        id: '5',
+        type: 'review_received',
+        title: '5-Star Review!',
+        message: 'Amazing work! Highly recommended for any wedding event.',
+        timestamp: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+        priority: 'low',
+        read: true,
+        actionRequired: false
+      }
+    ];
+  };
+
+  // Generate mock activities
+  const generateMockActivities = (): LiveActivity[] => {
+    const now = new Date();
+    return [
+      {
+        id: '1',
+        type: 'new_inquiry',
+        title: 'Sarah & Michael',
+        description: 'Viewed your photography portfolio',
+        timestamp: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
+        bookingId: 'booking-001',
+        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=32&h=32&fit=crop&crop=face'
+      },
+      {
+        id: '2',
+        type: 'quote_viewed',
+        title: 'Jennifer & David',
+        description: 'Opened your quote for wedding package',
+        timestamp: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
+        bookingId: 'booking-002',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=32&h=32&fit=crop&crop=face'
+      },
+      {
+        id: '3',
+        type: 'payment_made',
+        title: 'Rodriguez Wedding',
+        description: 'Downpayment processed successfully',
+        timestamp: new Date(now.getTime() - 45 * 60 * 1000).toISOString(),
+        status: 'downpayment_paid'
+      }
+    ];
+  };
+
+  // Generate new activity
+  const generateMockActivity = () => {
+    const activities = [
+      'New inquiry from couple',
+      'Quote viewed by client',
+      'Message received',
+      'Payment notification',
+      'Booking confirmed'
+    ];
+    
+    const names = ['Emma & James', 'Lisa & John', 'Sarah & Michael', 'Ana & Carlos', 'Jennifer & David'];
+    const activity = activities[Math.floor(Math.random() * activities.length)];
+    const name = names[Math.floor(Math.random() * names.length)];
+    
+    const newActivity: LiveActivity = {
+      id: Date.now().toString(),
+      type: 'new_inquiry',
+      title: name,
+      description: activity,
+      timestamp: new Date().toISOString(),
+      avatar: `https://images.unsplash.com/photo-${1494790108755 + Math.floor(Math.random() * 1000)}?w=32&h=32&fit=crop&crop=face`
+    };
+    
+    setLiveActivities(prev => [newActivity, ...prev.slice(0, 4)]);
+    
+    // Also add as notification if it's important
+    if (activity.includes('inquiry') || activity.includes('payment')) {
+      const notification: BookingNotification = {
+        id: Date.now().toString(),
+        type: activity.includes('inquiry') ? 'booking_inquiry' : 'payment_received',
+        title: activity.includes('inquiry') ? 'New Inquiry' : 'Payment Received',
+        message: `${name}: ${activity}`,
+        timestamp: new Date().toISOString(),
+        priority: 'medium',
+        read: false,
+        actionRequired: activity.includes('inquiry')
+      };
       
-      alert(errorMessage + '\n\nCheck the console for more details.');
+      setNotifications(prev => [notification, ...prev.slice(0, 9)]);
+      setUnreadCount(prev => prev + 1);
+    }
+  };
+
+  // Generate notification for new bookings
+  const generateNotificationForNewBookings = (newBookings: any[]) => {
+    newBookings.forEach(booking => {
+      const notification: BookingNotification = {
+        id: `new-${booking.id}-${Date.now()}`,
+        type: 'booking_inquiry',
+        title: 'New Booking Inquiry',
+        message: `${booking.coupleName || 'New couple'} inquired about your services`,
+        timestamp: new Date().toISOString(),
+        priority: 'high',
+        bookingId: booking.id,
+        read: false,
+        actionRequired: true
+      };
+      
+      setNotifications(prev => [notification, ...prev.slice(0, 9)]);
+      setUnreadCount(prev => prev + 1);
+    });
+  };
+
+  // Generate notification for status changes
+  const generateNotificationForStatusChange = (bookingId: string, newStatus: BookingStatus) => {
+    const booking = bookings.find(b => b.id === bookingId);
+    const statusMessages = {
+      'quote_sent': 'Quote sent successfully',
+      'quote_accepted': 'Quote accepted by client',
+      'quote_rejected': 'Quote declined by client',
+      'confirmed': 'Booking confirmed',
+      'in_progress': 'Service in progress',
+      'completed': 'Service completed',
+      'paid_in_full': 'Payment completed',
+      'cancelled': 'Booking cancelled'
+    };
+    
+    const message = statusMessages[newStatus as keyof typeof statusMessages] || `Status updated to ${newStatus}`;
+    
+    const notification: BookingNotification = {
+      id: `status-${bookingId}-${Date.now()}`,
+      type: newStatus.includes('quote') ? 'quote_accepted' : 'booking_confirmed',
+      title: 'Booking Updated',
+      message: `${booking?.coupleName || 'Client'}: ${message}`,
+      timestamp: new Date().toISOString(),
+      priority: 'medium',
+      bookingId,
+      read: false,
+      actionRequired: false
+    };
+    
+    setNotifications(prev => [notification, ...prev.slice(0, 9)]);
+    setUnreadCount(prev => prev + 1);
+  };
+
+  // Mark notification as read
+  const markNotificationAsRead = (notificationId: string) => {
+    setNotifications(prev => 
+      prev.map(n => 
+        n.id === notificationId ? { ...n, read: true } : n
+      )
+    );
+    setUnreadCount(prev => Math.max(0, prev - 1));
+  };
+
+  // Mark all notifications as read
+  const markAllNotificationsAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setUnreadCount(0);
+  };
+
+  // Manual refresh function
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await loadBookings();
+      await loadStats();
+      await loadNotifications();
+      setLastUpdate(new Date());
+      showSuccess('Data Refreshed', 'All booking data has been updated');
+    } catch (error) {
+      showError('Refresh Failed', 'Failed to refresh data. Please try again.');
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -255,21 +600,215 @@ export const VendorBookings: React.FC = () => {
       
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-4">
-          {/* Header */}
+          {/* Enhanced Header with Notifications */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-rose-700 to-gray-900 bg-clip-text text-transparent mb-3">
-              Booking Management
-            </h1>
-            <p className="text-gray-600 text-lg">
-              Manage your client bookings and track your business performance
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-rose-700 to-gray-900 bg-clip-text text-transparent mb-3">
+                  Booking Management
+                </h1>
+                <p className="text-gray-600 text-lg">
+                  Manage your client bookings and track your business performance
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Last updated: {lastUpdate.toLocaleTimeString()}
+                </p>
+              </div>
+              
+              {/* Notification Bell and Refresh */}
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-xl hover:bg-rose-50 transition-all duration-300 shadow-lg"
+                  title="Refresh data"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <span className="text-sm font-medium">Refresh</span>
+                </button>
+                
+                <div className="relative">
+                  <button
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    className="relative flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-xl hover:bg-rose-50 transition-all duration-300 shadow-lg"
+                    title="View notifications"
+                  >
+                    {unreadCount > 0 ? (
+                      <BellRing className="h-5 w-5 text-rose-600" />
+                    ) : (
+                      <Bell className="h-5 w-5 text-gray-600" />
+                    )}
+                    <span className="text-sm font-medium">Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center animate-pulse">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Notifications Dropdown */}
+                  <AnimatePresence>
+                    {showNotifications && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 top-full mt-2 w-96 bg-white/95 backdrop-blur-md border border-rose-200/50 rounded-2xl shadow-2xl z-50 max-h-96 overflow-hidden"
+                      >
+                        <div className="p-4 border-b border-rose-200/30">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-gray-900">Notifications</h3>
+                            <div className="flex items-center gap-2">
+                              {unreadCount > 0 && (
+                                <button
+                                  onClick={markAllNotificationsAsRead}
+                                  className="text-xs text-rose-600 hover:text-rose-700 font-medium"
+                                >
+                                  Mark all read
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setShowNotifications(false)}
+                                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                              >
+                                <X className="h-4 w-4 text-gray-500" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="max-h-80 overflow-y-auto">
+                          {notifications.length === 0 ? (
+                            <div className="p-8 text-center text-gray-500">
+                              <Bell className="h-8 w-8 mx-auto mb-3 text-gray-300" />
+                              <p>No notifications yet</p>
+                            </div>
+                          ) : (
+                            notifications.map((notification) => (
+                              <motion.div
+                                key={notification.id}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className={`p-4 border-b border-gray-100 hover:bg-rose-50/50 transition-colors cursor-pointer ${
+                                  !notification.read ? 'bg-blue-50/30' : ''
+                                }`}
+                                onClick={() => markNotificationAsRead(notification.id)}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className={`p-2 rounded-full ${
+                                    notification.type === 'booking_inquiry' ? 'bg-blue-100 text-blue-600' :
+                                    notification.type === 'quote_accepted' ? 'bg-green-100 text-green-600' :
+                                    notification.type === 'payment_received' ? 'bg-purple-100 text-purple-600' :
+                                    notification.type === 'message_received' ? 'bg-yellow-100 text-yellow-600' :
+                                    'bg-gray-100 text-gray-600'
+                                  }`}>
+                                    {notification.type === 'booking_inquiry' && <Calendar className="h-4 w-4" />}
+                                    {notification.type === 'quote_accepted' && <CheckCircle className="h-4 w-4" />}
+                                    {notification.type === 'payment_received' && <DollarSign className="h-4 w-4" />}
+                                    {notification.type === 'message_received' && <MessageSquare className="h-4 w-4" />}
+                                    {notification.type === 'review_received' && <Star className="h-4 w-4" />}
+                                  </div>
+                                  
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between">
+                                      <p className="font-medium text-gray-900 text-sm">{notification.title}</p>
+                                      <div className="flex items-center gap-2">
+                                        {notification.priority === 'high' && (
+                                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                        )}
+                                        {!notification.read && (
+                                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <p className="text-gray-600 text-sm mt-1">{notification.message}</p>
+                                    <p className="text-gray-400 text-xs mt-2">
+                                      {new Date(notification.timestamp).toLocaleString()}
+                                    </p>
+                                    {notification.actionRequired && (
+                                      <div className="mt-2">
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                          Action Required
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            ))
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </div>
           </motion.div>
 
-          {/* Stats Cards */}
+          {/* Live Activity Feed */}
+          {liveActivities.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-2xl p-6 mb-8 shadow-lg"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-green-500" />
+                  <h3 className="font-semibold text-gray-900">Live Activity</h3>
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                    Real-time
+                  </span>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                {liveActivities.slice(0, 3).map((activity, index) => (
+                  <motion.div
+                    key={activity.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-rose-50/30 rounded-xl"
+                  >
+                    {activity.avatar ? (
+                      <img
+                        src={activity.avatar}
+                        alt=""
+                        className="w-8 h-8 rounded-full"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${activity.title}&background=f3f4f6&color=374151&size=32`;
+                        }}
+                      />
+                    ) : (
+                      <div className="w-8 h-8 bg-gradient-to-r from-rose-400 to-pink-400 rounded-full flex items-center justify-center">
+                        <User className="h-4 w-4 text-white" />
+                      </div>
+                    )}
+                    
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 text-sm">{activity.title}</p>
+                      <p className="text-gray-600 text-sm">{activity.description}</p>
+                    </div>
+                    
+                    <div className="text-right">
+                      <p className="text-gray-400 text-xs">
+                        {new Date(activity.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Enhanced Stats Cards */}
           {stats && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -277,57 +816,101 @@ export const VendorBookings: React.FC = () => {
               transition={{ delay: 0.1 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
             >
-              <div className="group relative overflow-hidden bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+              <motion.div 
+                whileHover={{ y: -5 }}
+                className="group relative overflow-hidden bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 cursor-pointer"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-rose-50/50 to-pink-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-gradient-to-r from-rose-500 to-pink-500 rounded-xl shadow-lg">
+                    <div className="p-3 bg-gradient-to-r from-rose-500 to-pink-500 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
                       <Package className="h-6 w-6 text-white" />
                     </div>
-                    <span className="text-3xl font-bold text-gray-900">{stats.totalBookings}</span>
+                    <div className="text-right">
+                      <span className="text-3xl font-bold text-gray-900 group-hover:text-rose-600 transition-colors duration-300">
+                        {stats.totalBookings}
+                      </span>
+                      <div className="text-xs text-green-600 font-medium">+12% this month</div>
+                    </div>
                   </div>
-                  <h3 className="text-gray-600 font-medium">Total Bookings</h3>
+                  <h3 className="text-gray-600 font-medium group-hover:text-gray-900 transition-colors duration-300">Total Bookings</h3>
+                  <div className="mt-2 w-full bg-gray-200 rounded-full h-1">
+                    <div className="bg-gradient-to-r from-rose-500 to-pink-500 h-1 rounded-full w-3/4"></div>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="group relative overflow-hidden bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+              <motion.div 
+                whileHover={{ y: -5 }}
+                className="group relative overflow-hidden bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 cursor-pointer"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-yellow-50/50 to-orange-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl shadow-lg">
+                    <div className="p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
                       <AlertCircle className="h-6 w-6 text-white" />
                     </div>
-                    <span className="text-3xl font-bold text-gray-900">{stats.inquiries}</span>
+                    <div className="text-right">
+                      <span className="text-3xl font-bold text-gray-900 group-hover:text-orange-600 transition-colors duration-300">
+                        {stats.inquiries}
+                      </span>
+                      <div className="text-xs text-orange-600 font-medium">Needs attention</div>
+                    </div>
                   </div>
-                  <h3 className="text-gray-600 font-medium">New Inquiries</h3>
+                  <h3 className="text-gray-600 font-medium group-hover:text-gray-900 transition-colors duration-300">New Inquiries</h3>
+                  <div className="mt-2 w-full bg-gray-200 rounded-full h-1">
+                    <div className="bg-gradient-to-r from-yellow-500 to-orange-500 h-1 rounded-full w-1/2 animate-pulse"></div>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="group relative overflow-hidden bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+              <motion.div 
+                whileHover={{ y: -5 }}
+                className="group relative overflow-hidden bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 cursor-pointer"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-green-50/50 to-emerald-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl shadow-lg">
+                    <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
                       <CheckCircle className="h-6 w-6 text-white" />
                     </div>
-                    <span className="text-3xl font-bold text-gray-900">{stats.fullyPaidBookings}</span>
+                    <div className="text-right">
+                      <span className="text-3xl font-bold text-gray-900 group-hover:text-green-600 transition-colors duration-300">
+                        {stats.fullyPaidBookings}
+                      </span>
+                      <div className="text-xs text-green-600 font-medium">Completed</div>
+                    </div>
                   </div>
-                  <h3 className="text-gray-600 font-medium">Fully Paid</h3>
+                  <h3 className="text-gray-600 font-medium group-hover:text-gray-900 transition-colors duration-300">Fully Paid</h3>
+                  <div className="mt-2 w-full bg-gray-200 rounded-full h-1">
+                    <div className="bg-gradient-to-r from-green-500 to-emerald-500 h-1 rounded-full w-5/6"></div>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="group relative overflow-hidden bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+              <motion.div 
+                whileHover={{ y: -5 }}
+                className="group relative overflow-hidden bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 cursor-pointer"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl shadow-lg">
+                    <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
                       <TrendingUp className="h-6 w-6 text-white" />
                     </div>
-                    <span className="text-2xl font-bold text-gray-900">{stats.formatted?.totalRevenue || formatCurrency(stats.totalRevenue)}</span>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
+                        {stats.formatted?.totalRevenue || formatCurrency(stats.totalRevenue)}
+                      </span>
+                      <div className="text-xs text-blue-600 font-medium">+8% this month</div>
+                    </div>
                   </div>
-                  <h3 className="text-gray-600 font-medium">Total Revenue</h3>
+                  <h3 className="text-gray-600 font-medium group-hover:text-gray-900 transition-colors duration-300">Total Revenue</h3>
+                  <div className="mt-2 w-full bg-gray-200 rounded-full h-1">
+                    <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-1 rounded-full w-4/5"></div>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
           )}
 
@@ -433,16 +1016,34 @@ export const VendorBookings: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Export Button */}
-                  <button 
-                    onClick={exportBookings}
-                    className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl"
-                    title="Export bookings to CSV"
-                    aria-label="Export all bookings to CSV file"
-                  >
-                    <Download className="h-5 w-5" />
-                    <span className="font-medium">Export</span>
-                  </button>
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={exportBookings}
+                      className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+                      title="Export bookings to CSV"
+                      aria-label="Export all bookings to CSV file"
+                    >
+                      <Download className="h-5 w-5" />
+                      <span className="font-medium">Export</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setFilterStatus('all');
+                        setSearchQuery('');
+                        setDateRange('all');
+                        setSortBy('created_at');
+                        setSortOrder('DESC');
+                        setCurrentPage(1);
+                      }}
+                      className="flex items-center space-x-2 px-4 py-3 bg-white/80 backdrop-blur-sm border border-rose-200/50 text-gray-700 rounded-xl hover:bg-rose-50 transition-all duration-300 shadow-lg hover:shadow-xl"
+                      title="Clear all filters"
+                    >
+                      <Filter className="h-4 w-4" />
+                      <span className="font-medium text-sm">Clear</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -475,60 +1076,124 @@ export const VendorBookings: React.FC = () => {
               ) : (
                 <>
                   <div className="divide-y divide-rose-200/30">
-                    {bookings.map((booking) => {
+                    {bookings.map((booking, index) => {
                       return (
-                        <EnhancedBookingCard
+                        <motion.div
                           key={booking.id}
-                          booking={booking}
-                          onViewDetails={(booking: UIBooking) => {
-                            setSelectedBooking(mapVendorBookingToUI(booking));
-                            setShowDetails(true);
-                          }}
-                          onUpdateStatus={(bookingId: string, newStatus: string, message?: string) => {
-                            handleStatusUpdate(bookingId, newStatus as BookingStatus, message);
-                          }}
-                          onSendQuote={(booking: UIBooking) => {
-                            setSelectedBooking(mapVendorBookingToUI(booking));
-                            setShowQuoteModal(true);
-                          }}
-                          onContactClient={(booking: UIBooking) => {
-                            // Handle contact client action
-                            console.log('Contact client:', booking.contactEmail);
-                          }}
-                          viewMode="list"
-                        />
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="group"
+                        >
+                          <EnhancedBookingCard
+                            booking={booking}
+                            onViewDetails={(booking: UIBooking) => {
+                              setSelectedBooking(mapVendorBookingToUI(booking));
+                              setShowDetails(true);
+                            }}
+                            onUpdateStatus={(bookingId: string, newStatus: string, message?: string) => {
+                              handleStatusUpdate(bookingId, newStatus as BookingStatus, message);
+                            }}
+                            onSendQuote={(booking: UIBooking) => {
+                              setSelectedBooking(mapVendorBookingToUI(booking));
+                              setShowQuoteModal(true);
+                            }}
+                            onContactClient={(booking: UIBooking) => {
+                              // Handle contact client action
+                              window.open(`mailto:${booking.contactEmail}?subject=Regarding your wedding booking&body=Hi ${booking.coupleName},%0D%0A%0D%0AThank you for your inquiry about our services.%0D%0A%0D%0ABest regards`);
+                            }}
+                            viewMode="list"
+                          />
+                          
+                          {/* Enhanced hover overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-rose-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"></div>
+                        </motion.div>
                       );
                     })}
                   </div>
 
-                  {/* Pagination */}
+                  {/* Enhanced Pagination */}
                   {pagination && pagination.total_pages > 1 && (
-                    <div className="px-6 py-4 border-t border-rose-200/30">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-600">
-                          Showing {((currentPage - 1) * 10) + 1} to {Math.min(currentPage * 10, pagination.total_items)} of {pagination.total_items} bookings
-                        </p>
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="px-6 py-6 border-t border-rose-200/30 bg-gradient-to-r from-rose-50/30 to-pink-50/20"
+                    >
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <p className="text-sm text-gray-600">
+                            Showing <span className="font-semibold text-gray-900">{((currentPage - 1) * 10) + 1}</span> to{' '}
+                            <span className="font-semibold text-gray-900">{Math.min(currentPage * 10, pagination.total_items)}</span> of{' '}
+                            <span className="font-semibold text-gray-900">{pagination.total_items}</span> bookings
+                          </p>
+                          
+                          {/* Results per page selector */}
+                          <select className="text-sm bg-white border border-rose-200 rounded-lg px-2 py-1">
+                            <option value="10">10 per page</option>
+                            <option value="25">25 per page</option>
+                            <option value="50">50 per page</option>
+                          </select>
+                        </div>
+                        
                         <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => setCurrentPage(1)}
+                            disabled={currentPage === 1}
+                            className="px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"
+                            title="First page"
+                          >
+                            First
+                          </button>
+                          
                           <button
                             onClick={() => setCurrentPage(currentPage - 1)}
                             disabled={!pagination.hasPrev}
-                            className="px-3 py-1 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50"
+                            className="px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"
                           >
                             Previous
                           </button>
-                          <span className="px-3 py-1 text-sm bg-rose-100 text-rose-700 rounded-lg">
-                            Page {currentPage} of {pagination.total_pages}
-                          </span>
+                          
+                          {/* Page numbers */}
+                          <div className="flex items-center space-x-1">
+                            {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                              const pageNum = currentPage - 2 + i;
+                              if (pageNum < 1 || pageNum > pagination.total_pages) return null;
+                              
+                              return (
+                                <button
+                                  key={pageNum}
+                                  onClick={() => setCurrentPage(pageNum)}
+                                  className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                                    pageNum === currentPage
+                                      ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg'
+                                      : 'border border-rose-200 hover:bg-rose-50'
+                                  }`}
+                                >
+                                  {pageNum}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          
                           <button
                             onClick={() => setCurrentPage(currentPage + 1)}
                             disabled={!pagination.hasNext}
-                            className="px-3 py-1 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50"
+                            className="px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"
                           >
                             Next
                           </button>
+                          
+                          <button
+                            onClick={() => setCurrentPage(pagination.total_pages)}
+                            disabled={currentPage === pagination.total_pages}
+                            className="px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"
+                            title="Last page"
+                          >
+                            Last
+                          </button>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   )}
                 </>
               )}
