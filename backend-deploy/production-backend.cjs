@@ -634,6 +634,7 @@ app.get('/api/services/vendor/:vendorId', async (req, res) => {
         updated_at
       FROM services 
       WHERE vendor_id = ${vendorId}
+        AND name NOT LIKE '% (Deleted)'
       ORDER BY created_at DESC
     `;
     
@@ -811,40 +812,118 @@ app.put('/api/services/:serviceId', async (req, res) => {
   }
 });
 
-// DELETE service
+// DELETE service (soft delete to handle foreign key constraints)
 app.delete('/api/services/:serviceId', async (req, res) => {
   try {
     const { serviceId } = req.params;
     console.log(`🎯 [SERVICES] DELETE /api/services/${serviceId} called`);
     
-    // Delete service
-    const result = await sql`
-      DELETE FROM services 
-      WHERE id = ${serviceId}
-      RETURNING *
+    // Check if service has active bookings
+    const bookingCheck = await sql`
+      SELECT COUNT(*) as booking_count 
+      FROM bookings 
+      WHERE service_id = ${serviceId}
     `;
     
-    if (result.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Service not found'
+    const hasBookings = parseInt(bookingCheck[0].booking_count) > 0;
+    console.log(`📊 [SERVICES] Service ${serviceId} has ${bookingCheck[0].booking_count} bookings`);
+    
+    if (hasBookings) {
+      // Soft delete: Mark as inactive and hidden
+      console.log(`🔄 [SERVICES] Soft deleting service ${serviceId} due to existing bookings`);
+      
+      const result = await sql`
+        UPDATE services 
+        SET 
+          is_active = false,
+          name = name || ' (Deleted)',
+          description = 'This service has been deleted but preserved due to existing bookings.',
+          updated_at = NOW()
+        WHERE id = ${serviceId}
+        RETURNING *
+      `;
+      
+      if (result.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Service not found'
+        });
+      }
+      
+      console.log('✅ [SERVICES] Service soft deleted successfully');
+      
+      res.json({
+        success: true,
+        service: result[0],
+        message: 'Service deleted successfully (preserved due to existing bookings)',
+        softDelete: true
+      });
+      
+    } else {
+      // Hard delete: No bookings, safe to remove
+      console.log(`🗑️ [SERVICES] Hard deleting service ${serviceId} - no bookings found`);
+      
+      const result = await sql`
+        DELETE FROM services 
+        WHERE id = ${serviceId}
+        RETURNING *
+      `;
+      
+      if (result.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Service not found'
+        });
+      }
+      
+      console.log('✅ [SERVICES] Service hard deleted successfully');
+      
+      res.json({
+        success: true,
+        service: result[0],
+        message: 'Service deleted successfully',
+        softDelete: false
       });
     }
     
-    console.log('✅ [SERVICES] Service deleted successfully');
-    
-    res.json({
-      success: true,
-      service: result[0],
-      message: 'Service deleted successfully'
-    });
-    
   } catch (error) {
     console.error('❌ [SERVICES] Error deleting service:', error);
+    
+    // Check if it's a foreign key constraint error
+    if (error.message.includes('foreign key constraint') || error.message.includes('violates')) {
+      console.log('🔄 [SERVICES] Foreign key constraint detected, attempting soft delete...');
+      
+      try {
+        const result = await sql`
+          UPDATE services 
+          SET 
+            is_active = false,
+            name = name || ' (Deleted)',
+            description = 'This service has been deleted but preserved due to existing bookings.',
+            updated_at = NOW()
+          WHERE id = ${req.params.serviceId}
+          RETURNING *
+        `;
+        
+        if (result.length > 0) {
+          return res.json({
+            success: true,
+            service: result[0],
+            message: 'Service deleted successfully (preserved due to existing bookings)',
+            softDelete: true,
+            reason: 'Foreign key constraint - service has existing bookings'
+          });
+        }
+      } catch (softDeleteError) {
+        console.error('❌ [SERVICES] Soft delete also failed:', softDeleteError);
+      }
+    }
+    
     res.status(500).json({
       success: false,
       error: 'Failed to delete service',
-      message: error.message
+      message: error.message,
+      details: 'This service may have existing bookings and cannot be completely removed.'
     });
   }
 });

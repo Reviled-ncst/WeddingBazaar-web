@@ -301,7 +301,15 @@ export const VendorServices: React.FC = () => {
 
   // Delete service with confirmation
   const deleteService = async (serviceId: string) => {
-    if (!confirm('⚠️ Are you sure you want to permanently delete this service?\n\nThis action cannot be undone.')) {
+    const confirmed = confirm(
+      '⚠️ Delete Service Confirmation\n\n' +
+      'Are you sure you want to delete this service?\n\n' +
+      '• If this service has existing bookings, it will be hidden from customers but preserved in our records\n' +
+      '• If no bookings exist, it will be completely removed\n\n' +
+      'Continue with deletion?'
+    );
+    
+    if (!confirmed) {
       return;
     }
 
@@ -323,11 +331,17 @@ export const VendorServices: React.FC = () => {
       const result = await response.json();
       console.log('✅ [VendorServices] Service deleted successfully:', result);
 
+      // Show appropriate success message based on delete type
+      if (result.softDelete) {
+        console.log('🔄 Service soft deleted (preserved due to existing bookings)');
+        alert('✅ Service deleted successfully!\n\nNote: The service was preserved in our records due to existing bookings, but it\'s no longer visible to customers.');
+      } else {
+        console.log('🗑️ Service completely removed');
+        alert('✅ Service deleted successfully and completely removed!');
+      }
+
       // Refresh services list
       await fetchServices();
-      
-      // Show success message
-      console.log('🎉 Service deleted successfully!');
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete service';
