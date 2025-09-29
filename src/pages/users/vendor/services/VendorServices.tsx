@@ -134,7 +134,7 @@ export const VendorServices: React.FC = () => {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  // Load services using centralized service manager
+  // Load services directly from API
   const fetchServices = async () => {
     try {
       setLoading(true);
@@ -146,14 +146,56 @@ export const VendorServices: React.FC = () => {
         return;
       }
 
-      console.log('🔄 [VendorServices] Loading services with centralized manager...');
+      console.log(`🔄 [VendorServices] Loading services for vendor ${vendorId}...`);
       
+      // Try the new vendor-specific endpoint first
       try {
+        const response = await fetch(`${apiUrl}/api/services/vendor/${vendorId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          
+          if (result.success && result.services.length > 0) {
+            console.log('✅ [VendorServices] Loaded services from API:', result.services.length);
+            
+            // Map API response to component interface
+            const mappedServices = result.services.map((service: any) => ({
+              id: service.id,
+              vendorId: service.vendorId || service.vendor_id,
+              name: service.name,
+              description: service.description || '',
+              category: service.category,
+              price: typeof service.price === 'string' ? service.price : String(service.price || '0.00'),
+              imageUrl: service.imageUrl || service.image,
+              images: service.images || [service.imageUrl || service.image].filter(Boolean),
+              rating: service.rating || 4.5,
+              reviewCount: service.reviewCount || 0,
+              isActive: service.isActive !== undefined ? service.isActive : service.is_active,
+              featured: service.featured || false,
+              vendor_name: service.vendor_name,
+              location: service.location,
+              features: service.features || [],
+              contact_info: service.contact_info || {},
+              created_at: service.created_at,
+              updated_at: service.updated_at
+            }));
+            
+            setServices(mappedServices);
+            return;
+          }
+        }
+        
+        // If vendor endpoint fails or returns no data, try centralized manager as fallback
+        console.log('🔄 [VendorServices] Trying centralized service manager as fallback...');
         const result = await serviceManager.getVendorServices(vendorId);
         
         if (result.success && result.services.length > 0) {
           console.log('✅ [VendorServices] Loaded services from centralized manager:', result.services.length);
-          // Map centralized service format to component's interface
           const mappedServices = result.services.map((service: any) => ({
             id: service.id,
             vendorId: service.vendorId || service.vendor_id,
@@ -180,6 +222,7 @@ export const VendorServices: React.FC = () => {
           setServices([]);
           setError('No services created yet. Click "Add Service" to get started!');
         }
+        
       } catch (error) {
         console.error('❌ [VendorServices] Error loading services:', error);
         setServices([]);
@@ -204,30 +247,48 @@ export const VendorServices: React.FC = () => {
   // Handle form submission
   const handleSubmit = async (serviceData: any) => {
     try {
+      console.log('💾 [VendorServices] Saving service:', serviceData);
+      
       const url = editingService 
         ? `${apiUrl}/api/services/${editingService.id}`
         : `${apiUrl}/api/services`;
       
       const method = editingService ? 'PUT' : 'POST';
       
+      // Ensure vendor_id is included
+      const payload = {
+        ...serviceData,
+        vendor_id: serviceData.vendor_id || vendorId,
+        vendorId: serviceData.vendorId || vendorId
+      };
+      
+      console.log(`🔄 [VendorServices] ${method} ${url}`, payload);
+      
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(serviceData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save service');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to ${editingService ? 'update' : 'create'} service`);
       }
 
-      // Fetch updated services
+      const result = await response.json();
+      console.log('✅ [VendorServices] Service saved successfully:', result);
+
+      // Close form and refresh services
       setIsCreating(false);
       setEditingService(null);
-      fetchServices();
+      await fetchServices();
+      
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save service');
+      const errorMessage = err instanceof Error ? err.message : `Failed to ${editingService ? 'update' : 'create'} service`;
+      console.error('❌ [VendorServices] Error saving service:', errorMessage);
+      setError(errorMessage);
       throw err; // Re-throw so AddServiceForm can handle it
     }
   };
@@ -238,22 +299,40 @@ export const VendorServices: React.FC = () => {
     setIsCreating(true);
   };
 
-  // Delete service
+  // Delete service with confirmation
   const deleteService = async (serviceId: string) => {
-    if (!confirm('Are you sure you want to delete this service?')) return;
+    if (!confirm('⚠️ Are you sure you want to permanently delete this service?\n\nThis action cannot be undone.')) {
+      return;
+    }
 
     try {
+      console.log(`🗑️ [VendorServices] Deleting service ${serviceId}...`);
+      
       const response = await fetch(`${apiUrl}/api/services/${serviceId}`, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete service');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to delete service');
       }
 
-      fetchServices();
+      const result = await response.json();
+      console.log('✅ [VendorServices] Service deleted successfully:', result);
+
+      // Refresh services list
+      await fetchServices();
+      
+      // Show success message
+      console.log('🎉 Service deleted successfully!');
+      
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete service');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete service';
+      console.error('❌ [VendorServices] Error deleting service:', errorMessage);
+      setError(errorMessage);
     }
   };
 
@@ -261,25 +340,49 @@ export const VendorServices: React.FC = () => {
   const toggleServiceAvailability = async (service: Service) => {
     try {
       const currentStatus = service.isActive ?? service.is_active;
+      const newStatus = !currentStatus;
+      
+      console.log(`🔄 [VendorServices] Toggling service ${service.id} availability: ${currentStatus} → ${newStatus}`);
+      
       const response = await fetch(`${apiUrl}/api/services/${service.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...service,
-          isActive: !currentStatus,
-          is_active: !currentStatus
+          name: service.name,
+          category: service.category,
+          description: service.description,
+          price: service.price,
+          isActive: newStatus,
+          is_active: newStatus,
+          featured: service.featured
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update service availability');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update service availability');
       }
 
-      fetchServices();
+      const result = await response.json();
+      console.log('✅ [VendorServices] Service availability updated:', result);
+
+      // Update local state immediately for better UX
+      setServices(prevServices => 
+        prevServices.map(s => 
+          s.id === service.id 
+            ? { ...s, isActive: newStatus, is_active: newStatus }
+            : s
+        )
+      );
+
+      // Optionally refresh from server
+      // await fetchServices();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update service availability');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update service availability';
+      console.error('❌ [VendorServices] Error toggling availability:', errorMessage);
+      setError(errorMessage);
     }
   };
 
@@ -287,34 +390,49 @@ export const VendorServices: React.FC = () => {
   const toggleServiceFeatured = async (service: Service) => {
     try {
       const currentFeaturedStatus = service.featured;
+      const newFeaturedStatus = !currentFeaturedStatus;
+      
+      console.log(`⭐ [VendorServices] Toggling service ${service.id} featured status: ${currentFeaturedStatus} → ${newFeaturedStatus}`);
+      
       const response = await fetch(`${apiUrl}/api/services/${service.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...service,
-          featured: !currentFeaturedStatus
+          name: service.name,
+          category: service.category,
+          description: service.description,
+          price: service.price,
+          isActive: service.isActive ?? service.is_active,
+          is_active: service.isActive ?? service.is_active,
+          featured: newFeaturedStatus
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update service featured status');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update service featured status');
       }
+
+      const result = await response.json();
+      console.log('✅ [VendorServices] Service featured status updated:', result);
 
       // Update the local state immediately for better UX
       setServices(prevServices => 
         prevServices.map(s => 
           s.id === service.id 
-            ? { ...s, featured: !currentFeaturedStatus }
+            ? { ...s, featured: newFeaturedStatus }
             : s
         )
       );
 
       // Optionally refresh from server
-      // fetchServices();
+      // await fetchServices();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update service featured status');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update service featured status';
+      console.error('❌ [VendorServices] Error toggling featured status:', errorMessage);
+      setError(errorMessage);
     }
   };
 
@@ -794,77 +912,83 @@ export const VendorServices: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2 pt-4 border-t border-gray-100 flex-wrap">
-                      {/* Primary Actions */}
-                      <button
-                        onClick={() => editService(service)}
-                        className="group flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 rounded-xl hover:from-blue-100 hover:to-indigo-100 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
-                        title="Edit service details"
-                      >
-                        <Edit3 size={16} className="group-hover:rotate-12 transition-transform duration-200" />
-                        Edit
-                      </button>
-                      
-                      <button
-                        onClick={() => toggleServiceAvailability(service)}
-                        className={`group flex items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200 font-medium shadow-sm hover:shadow-md ${
-                          (service.isActive ?? service.is_active)
-                            ? 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-600 hover:from-amber-100 hover:to-yellow-100'
-                            : 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-600 hover:from-green-100 hover:to-emerald-100'
-                        }`}
-                        title={(service.isActive ?? service.is_active) ? 'Mark as unavailable' : 'Mark as available'}
-                      >
-                        {(service.isActive ?? service.is_active) ? (
-                          <EyeOff size={16} className="group-hover:scale-110 transition-transform duration-200" />
-                        ) : (
-                          <Eye size={16} className="group-hover:scale-110 transition-transform duration-200" />
-                        )}
-                        {(service.isActive ?? service.is_active) ? 'Hide' : 'Show'}
-                      </button>
+                    {/* Action Buttons - Improved Symmetrical Layout */}
+                    <div className="pt-4 border-t border-gray-100">
+                      {/* Two balanced rows of buttons for perfect alignment */}
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        {/* First Row - Primary Actions */}
+                        <button
+                          onClick={() => editService(service)}
+                          className="group flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 rounded-xl hover:from-blue-100 hover:to-indigo-100 transition-all duration-200 font-medium shadow-sm hover:shadow-md hover:scale-105"
+                          title="Edit service details"
+                        >
+                          <Edit3 size={16} className="group-hover:rotate-12 transition-transform duration-200" />
+                          Edit
+                        </button>
+                        
+                        <button
+                          onClick={() => toggleServiceAvailability(service)}
+                          className={`group flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-200 font-medium shadow-sm hover:shadow-md hover:scale-105 ${
+                            (service.isActive ?? service.is_active)
+                              ? 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-600 hover:from-amber-100 hover:to-yellow-100'
+                              : 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-600 hover:from-green-100 hover:to-emerald-100'
+                          }`}
+                          title={(service.isActive ?? service.is_active) ? 'Mark as unavailable' : 'Mark as available'}
+                        >
+                          {(service.isActive ?? service.is_active) ? (
+                            <EyeOff size={16} className="group-hover:scale-110 transition-transform duration-200" />
+                          ) : (
+                            <Eye size={16} className="group-hover:scale-110 transition-transform duration-200" />
+                          )}
+                          {(service.isActive ?? service.is_active) ? 'Hide' : 'Show'}
+                        </button>
+                      </div>
 
-                      {/* Feature Action */}
-                      <button
-                        onClick={() => toggleServiceFeatured(service)}
-                        className={`group flex items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200 font-medium shadow-sm hover:shadow-md ${
-                          service.featured
-                            ? 'bg-gradient-to-r from-yellow-50 to-amber-50 text-yellow-600 hover:from-yellow-100 hover:to-amber-100'
-                            : 'bg-gradient-to-r from-gray-50 to-slate-50 text-gray-600 hover:from-gray-100 hover:to-slate-100'
-                        }`}
-                        title={service.featured ? 'Remove from featured' : 'Mark as featured'}
-                      >
-                        <Star size={16} className={`group-hover:scale-110 transition-transform duration-200 ${service.featured ? 'fill-current' : ''}`} />
-                        {service.featured ? 'Unfeature' : 'Feature'}
-                      </button>
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Second Row - Secondary Actions */}
+                        <button
+                          onClick={() => toggleServiceFeatured(service)}
+                          className={`group flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-200 font-medium shadow-sm hover:shadow-md hover:scale-105 ${
+                            service.featured
+                              ? 'bg-gradient-to-r from-yellow-50 to-amber-50 text-yellow-600 hover:from-yellow-100 hover:to-amber-100'
+                              : 'bg-gradient-to-r from-gray-50 to-slate-50 text-gray-600 hover:from-gray-100 hover:to-slate-100'
+                          }`}
+                          title={service.featured ? 'Remove from featured' : 'Mark as featured'}
+                        >
+                          <Star size={16} className={`group-hover:scale-110 transition-transform duration-200 ${service.featured ? 'fill-current' : ''}`} />
+                          {service.featured ? 'Unfeature' : 'Feature'}
+                        </button>
 
-                      {/* Copy/Duplicate Action */}
-                      <button
-                        onClick={() => {
-                          const duplicatedService = {
-                            ...service,
-                            id: `temp-${Date.now()}`, // Temporary ID for new service
-                            name: `${service.name} (Copy)`,
-                            title: `${service.title || service.name} (Copy)`
-                          };
-                          setEditingService(duplicatedService);
-                          setIsCreating(true);
-                        }}
-                        className="group flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-50 to-violet-50 text-purple-600 rounded-xl hover:from-purple-100 hover:to-violet-100 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
-                        title="Duplicate this service"
-                      >
-                        <Copy size={16} className="group-hover:scale-110 transition-transform duration-200" />
-                        Copy
-                      </button>
-                      
-                      {/* Delete Action - Moved to end */}
-                      <button
-                        onClick={() => deleteService(service.id)}
-                        className="group flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-red-50 to-pink-50 text-red-600 rounded-xl hover:from-red-100 hover:to-pink-100 transition-all duration-200 font-medium shadow-sm hover:shadow-md ml-auto"
-                        title="Delete service permanently"
-                      >
-                        <Trash2 size={16} className="group-hover:scale-110 transition-transform duration-200" />
-                        Delete
-                      </button>
+                        <button
+                          onClick={() => {
+                            const duplicatedService = {
+                              ...service,
+                              id: `temp-${Date.now()}`, // Temporary ID for new service
+                              name: `${service.name} (Copy)`,
+                              title: `${service.title || service.name} (Copy)`
+                            };
+                            setEditingService(duplicatedService);
+                            setIsCreating(true);
+                          }}
+                          className="group flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-50 to-violet-50 text-purple-600 rounded-xl hover:from-purple-100 hover:to-violet-100 transition-all duration-200 font-medium shadow-sm hover:shadow-md hover:scale-105"
+                          title="Duplicate this service"
+                        >
+                          <Copy size={16} className="group-hover:scale-110 transition-transform duration-200" />
+                          Copy
+                        </button>
+                      </div>
+
+                      {/* Delete button - Full width for emphasis */}
+                      <div className="mt-3">
+                        <button
+                          onClick={() => deleteService(service.id)}
+                          className="group flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-red-50 to-pink-50 text-red-600 rounded-xl hover:from-red-100 hover:to-pink-100 transition-all duration-200 font-medium shadow-sm hover:shadow-md hover:scale-105"
+                          title="Delete service permanently"
+                        >
+                          <Trash2 size={16} className="group-hover:scale-110 transition-transform duration-200" />
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

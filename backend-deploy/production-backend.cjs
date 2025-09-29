@@ -614,6 +614,241 @@ app.get('/api/services', async (req, res) => {
   }
 });
 
+// GET services by vendor ID
+app.get('/api/services/vendor/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    console.log(`🎯 [SERVICES] GET /api/services/vendor/${vendorId} called`);
+    
+    const services = await sql`
+      SELECT 
+        id,
+        name,
+        category,
+        vendor_id,
+        price,
+        description,
+        is_active,
+        featured,
+        created_at,
+        updated_at
+      FROM services 
+      WHERE vendor_id = ${vendorId}
+      ORDER BY created_at DESC
+    `;
+    
+    console.log(`✅ [SERVICES] Found ${services.length} services for vendor ${vendorId}`);
+    
+    // Format services for frontend
+    const formattedServices = services.map(service => ({
+      id: service.id,
+      vendorId: service.vendor_id,
+      name: service.name,
+      category: service.category,
+      price: service.price || '0.00',
+      description: service.description || '',
+      isActive: service.is_active || false,
+      featured: service.featured || false,
+      rating: 4.5,
+      reviewCount: 25,
+      imageUrl: `https://images.unsplash.com/photo-1519741497674-611481863552?w=600`,
+      images: [`https://images.unsplash.com/photo-1519741497674-611481863552?w=600`],
+      location: 'Multiple locations',
+      features: ['Professional service', 'Experienced team'],
+      created_at: service.created_at,
+      updated_at: service.updated_at
+    }));
+    
+    res.json({
+      success: true,
+      services: formattedServices,
+      total: services.length,
+      vendorId
+    });
+    
+  } catch (error) {
+    console.error('❌ [SERVICES] Error fetching vendor services:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch vendor services',
+      message: error.message
+    });
+  }
+});
+
+// CREATE new service
+app.post('/api/services', async (req, res) => {
+  try {
+    console.log('🎯 [SERVICES] POST /api/services called');
+    console.log('📄 Request body:', req.body);
+    
+    const {
+      vendor_id,
+      vendorId,
+      name,
+      title,
+      category,
+      description,
+      price,
+      is_active,
+      isActive,
+      featured
+    } = req.body;
+    
+    const serviceVendorId = vendor_id || vendorId;
+    const serviceName = name || title;
+    const serviceActive = is_active !== undefined ? is_active : (isActive !== undefined ? isActive : true);
+    
+    if (!serviceVendorId || !serviceName || !category) {
+      return res.status(400).json({
+        success: false,
+        error: 'Vendor ID, service name, and category are required'
+      });
+    }
+    
+    // Insert new service
+    const result = await sql`
+      INSERT INTO services (
+        vendor_id,
+        name,
+        category,
+        description,
+        price,
+        is_active,
+        featured,
+        created_at,
+        updated_at
+      ) VALUES (
+        ${serviceVendorId},
+        ${serviceName},
+        ${category},
+        ${description || ''},
+        ${price || '0.00'},
+        ${serviceActive},
+        ${featured || false},
+        NOW(),
+        NOW()
+      )
+      RETURNING *
+    `;
+    
+    console.log('✅ [SERVICES] Service created successfully');
+    
+    res.json({
+      success: true,
+      service: result[0],
+      message: 'Service created successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ [SERVICES] Error creating service:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create service',
+      message: error.message
+    });
+  }
+});
+
+// UPDATE service
+app.put('/api/services/:serviceId', async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+    console.log(`🎯 [SERVICES] PUT /api/services/${serviceId} called`);
+    console.log('📄 Request body:', req.body);
+    
+    const {
+      name,
+      title,
+      category,
+      description,
+      price,
+      is_active,
+      isActive,
+      featured
+    } = req.body;
+    
+    const serviceName = name || title;
+    const serviceActive = is_active !== undefined ? is_active : (isActive !== undefined ? isActive : true);
+    
+    // Update service
+    const result = await sql`
+      UPDATE services 
+      SET 
+        name = ${serviceName || name},
+        category = ${category},
+        description = ${description || ''},
+        price = ${price || '0.00'},
+        is_active = ${serviceActive},
+        featured = ${featured || false},
+        updated_at = NOW()
+      WHERE id = ${serviceId}
+      RETURNING *
+    `;
+    
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found'
+      });
+    }
+    
+    console.log('✅ [SERVICES] Service updated successfully');
+    
+    res.json({
+      success: true,
+      service: result[0],
+      message: 'Service updated successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ [SERVICES] Error updating service:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update service',
+      message: error.message
+    });
+  }
+});
+
+// DELETE service
+app.delete('/api/services/:serviceId', async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+    console.log(`🎯 [SERVICES] DELETE /api/services/${serviceId} called`);
+    
+    // Delete service
+    const result = await sql`
+      DELETE FROM services 
+      WHERE id = ${serviceId}
+      RETURNING *
+    `;
+    
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found'
+      });
+    }
+    
+    console.log('✅ [SERVICES] Service deleted successfully');
+    
+    res.json({
+      success: true,
+      service: result[0],
+      message: 'Service deleted successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ [SERVICES] Error deleting service:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete service',
+      message: error.message
+    });
+  }
+});
+
 // ================================
 // BOOKING ENDPOINTS
 // ================================
