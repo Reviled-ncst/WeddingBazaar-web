@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Plus,
+  Edit,
   Edit3,
   Trash2,
   Eye,
@@ -629,12 +630,10 @@ export const VendorServices: React.FC = () => {
 
 
 
-          {/* Services Grid/List */}
-          <div className={
-            viewMode === 'grid' 
-              ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-8'
-              : 'space-y-6 mb-8'
-          }>
+          {/* Services Display */}
+          {viewMode === 'grid' ? (
+            /* Grid View */
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
             {filteredServices.map((service, index) => (
               <motion.div
                 key={service.id}
@@ -871,7 +870,175 @@ export const VendorServices: React.FC = () => {
                 </div>
               </motion.div>
             ))}
-          </div>
+            </div>
+          ) : (
+            /* Table View */
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-white/30 shadow-xl overflow-hidden mb-8">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gradient-to-r from-rose-50 to-pink-50 border-b border-rose-100">
+                    <tr>
+                      <th className="text-left p-6 font-semibold text-gray-900">Service</th>
+                      <th className="text-left p-6 font-semibold text-gray-900">Category</th>
+                      <th className="text-left p-6 font-semibold text-gray-900">Price</th>
+                      <th className="text-left p-6 font-semibold text-gray-900">Status</th>
+                      <th className="text-left p-6 font-semibold text-gray-900">Rating</th>
+                      <th className="text-left p-6 font-semibold text-gray-900">Featured</th>
+                      <th className="text-center p-6 font-semibold text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredServices.map((service, index) => (
+                      <motion.tr
+                        key={service.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="border-b border-gray-100 hover:bg-rose-50/50 transition-colors"
+                      >
+                        {/* Service Info */}
+                        <td className="p-6">
+                          <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0">
+                              {service.imageUrl || (service.images && service.images[0]) ? (
+                                <img
+                                  src={service.imageUrl || service.images?.[0] || 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop&auto=format'}
+                                  alt={service.name || service.title || 'Service'}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    const fallbackUrl = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop&auto=format';
+                                    if (e.currentTarget.src !== fallbackUrl) {
+                                      e.currentTarget.src = fallbackUrl;
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-rose-100 to-pink-100 flex items-center justify-center">
+                                  <Grid className="h-6 w-6 text-rose-300" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-semibold text-gray-900 truncate">
+                                {service.name || service.title || 'Untitled Service'}
+                              </h3>
+                              <p className="text-sm text-gray-600 truncate">
+                                {service.description || 'No description'}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Category */}
+                        <td className="p-6">
+                          <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-lg text-sm font-medium">
+                            {service.category}
+                          </span>
+                        </td>
+
+                        {/* Price */}
+                        <td className="p-6">
+                          <span className="text-lg font-bold text-rose-600">
+                            ₱{typeof service.price === 'string' ? parseFloat(service.price).toLocaleString() : service.price?.toLocaleString() || '0'}
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td className="p-6">
+                          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                            (service.isActive ?? service.is_active)
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {(service.isActive ?? service.is_active) ? 'Available' : 'Unavailable'}
+                          </span>
+                        </td>
+
+                        {/* Rating */}
+                        <td className="p-6">
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                            <span className="font-medium">{service.rating || 4.5}</span>
+                            <span className="text-sm text-gray-500">({service.reviewCount || 0})</span>
+                          </div>
+                        </td>
+
+                        {/* Featured */}
+                        <td className="p-6">
+                          {service.featured ? (
+                            <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1 w-fit">
+                              <Star className="h-3 w-3 fill-current" />
+                              Featured
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 text-sm">Not featured</span>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="p-6">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => editService(service)}
+                              className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors"
+                              title="Edit service"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => toggleServiceAvailability(service)}
+                              className={`p-2 rounded-lg transition-colors ${
+                                (service.isActive ?? service.is_active)
+                                  ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
+                                  : 'bg-green-50 text-green-600 hover:bg-green-100'
+                              }`}
+                              title={`${(service.isActive ?? service.is_active) ? 'Make unavailable' : 'Make available'}`}
+                            >
+                              {(service.isActive ?? service.is_active) ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                            <button
+                              onClick={() => toggleServiceFeatured(service)}
+                              className={`p-2 rounded-lg transition-colors ${
+                                service.featured
+                                  ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                              }`}
+                              title={`${service.featured ? 'Remove from featured' : 'Add to featured'}`}
+                            >
+                              <Star className={`h-4 w-4 ${service.featured ? 'fill-current' : ''}`} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const duplicatedService = {
+                                  ...service,
+                                  id: `temp-${Date.now()}`,
+                                  name: `${service.name} (Copy)`,
+                                  title: `${service.title || service.name} (Copy)`
+                                };
+                                setEditingService(duplicatedService);
+                                setIsCreating(true);
+                              }}
+                              className="p-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
+                              title="Duplicate service"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => deleteService(service.id)}
+                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                              title="Delete service"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Empty State */}
           {filteredServices.length === 0 && !loading && (
