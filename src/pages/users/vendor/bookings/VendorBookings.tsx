@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  Search, 
+  Download, 
+  Package, 
+  AlertCircle, 
+  CheckCircle, 
+  TrendingUp, 
+  Calendar, 
+  Loader2
+} from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { VendorBookingDetailsModal } from './components/VendorBookingDetailsModal';
 import { SendQuoteModal } from './components/SendQuoteModal';
 
 // Import enhanced booking components
 import { 
+  EnhancedBookingCard,
   EnhancedBookingList, 
   EnhancedBookingStats,
   type EnhancedBooking
@@ -30,6 +42,9 @@ import type {
 
 // Import auth context to get the real vendor ID
 import { useAuth } from '../../../../shared/contexts/AuthContext';
+
+// Import currency formatting utility
+import { formatPHP } from '../../../../utils/currency';
 
 type FilterStatus = 'all' | BookingStatus;
 
@@ -462,21 +477,21 @@ export const VendorBookings: React.FC = () => {
                   <div className="divide-y divide-rose-200/30">
                     {bookings.map((booking) => {
                       return (
-                        <VendorBookingCard
+                        <EnhancedBookingCard
                           key={booking.id}
                           booking={booking}
-                          onViewDetails={(booking) => {
+                          onViewDetails={(booking: UIBooking) => {
                             setSelectedBooking(mapVendorBookingToUI(booking));
                             setShowDetails(true);
                           }}
-                          onUpdateStatus={(bookingId, newStatus, message) => {
+                          onUpdateStatus={(bookingId: string, newStatus: string, message?: string) => {
                             handleStatusUpdate(bookingId, newStatus as BookingStatus, message);
                           }}
-                          onSendQuote={(booking) => {
+                          onSendQuote={(booking: UIBooking) => {
                             setSelectedBooking(mapVendorBookingToUI(booking));
                             setShowQuoteModal(true);
                           }}
-                          onContactClient={(booking) => {
+                          onContactClient={(booking: UIBooking) => {
                             // Handle contact client action
                             console.log('Contact client:', booking.contactEmail);
                           }}
