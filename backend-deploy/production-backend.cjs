@@ -34,6 +34,31 @@ console.log('📊 Environment:', process.env.NODE_ENV || 'development');
 console.log('🔗 Database:', process.env.DATABASE_URL ? 'Connected' : 'Not configured');
 console.log('🔄 Filter Fix Deployment:', new Date().toISOString());
 
+// ================================
+// STATUS MAPPING FUNCTION
+// ================================
+
+// Status mapping function to transform database values to frontend expectations
+const mapBookingStatus = (dbStatus) => {
+  const statusMap = {
+    'request': 'quote_requested',
+    'pending': 'quote_requested', 
+    'quote_requested': 'quote_requested',
+    'approved': 'confirmed',
+    'confirmed': 'confirmed',
+    'downpayment': 'downpayment_paid',
+    'downpayment_paid': 'downpayment_paid',
+    'paid': 'paid_in_full',
+    'paid_in_full': 'paid_in_full',
+    'completed': 'completed',
+    'cancelled': 'cancelled',
+    'rejected': 'quote_rejected',
+    'quote_rejected': 'quote_rejected'
+  };
+  
+  return statusMap[dbStatus] || 'quote_requested';
+};
+
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
   try {
@@ -719,7 +744,7 @@ app.get('/api/bookings/enhanced', async (req, res) => {
         total_amount: booking.total_amount ? parseFloat(booking.total_amount) : 0,
         deposit_amount: booking.deposit_amount ? parseFloat(booking.deposit_amount) : 0,
         estimated_cost_min: booking.estimated_cost_min ? parseFloat(booking.estimated_cost_min) : 0,
-        estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost_max) : 0
+        estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost.max) : 0
       };
     });
     
@@ -800,7 +825,7 @@ app.get('/api/bookings/vendor/:vendorId', async (req, res) => {
         total_amount: booking.total_amount ? parseFloat(booking.total_amount) : 0,
         deposit_amount: booking.deposit_amount ? parseFloat(booking.deposit_amount) : 0,
         estimated_cost_min: booking.estimated_cost_min ? parseFloat(booking.estimated_cost_min) : 0,
-        estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost_max) : 0
+        estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost.max) : 0
       };
     });
     
@@ -962,7 +987,7 @@ app.patch('/api/bookings/:bookingId/accept-quote', async (req, res) => {
         total_amount: booking.total_amount ? parseFloat(booking.total_amount) : 0,
         deposit_amount: booking.deposit_amount ? parseFloat(booking.deposit_amount) : 0,
         estimated_cost_min: booking.estimated_cost_min ? parseFloat(booking.estimated_cost_min) : 0,
-        estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost_max) : 0
+        estimated_cost_max: booking.estimated_cost_max ? parseFloat(booking.estimated_cost.max) : 0
       },
       message: `Quotation accepted successfully for booking ${bookingId}`,
       timestamp: new Date().toISOString()
@@ -980,30 +1005,7 @@ app.patch('/api/bookings/:bookingId/accept-quote', async (req, res) => {
   }
 });
 
-// ================================
-// STATUS MAPPING FUNCTION
-// ================================
 
-// Status mapping function to transform database values to frontend expectations
-const mapBookingStatus = (dbStatus) => {
-  const statusMap = {
-    'request': 'quote_requested',
-    'pending': 'quote_requested', 
-    'quote_requested': 'quote_requested',
-    'approved': 'confirmed',
-    'confirmed': 'confirmed',
-    'downpayment': 'downpayment_paid',
-    'downpayment_paid': 'downpayment_paid',
-    'paid': 'paid_in_full',
-    'paid_in_full': 'paid_in_full',
-    'completed': 'completed',
-    'cancelled': 'cancelled',
-    'rejected': 'quote_rejected',
-    'quote_rejected': 'quote_rejected'
-  };
-  
-  return statusMap[dbStatus] || 'quote_requested';
-};
 
 // Create new booking endpoint
 app.post('/api/bookings', async (req, res) => {
