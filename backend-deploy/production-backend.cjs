@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const jwt = require('jsonwebtoken');
 const { neon } = require('@neondatabase/serverless');
 require('dotenv').config();
 
@@ -26,8 +27,12 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Active token sessions for user mapping
-const activeTokenSessions = {};
+// JWT configuration
+const JWT_SECRET = process.env.JWT_SECRET || 'wedding-bazaar-fallback-secret-key-2024';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
+// Token blacklist for logout functionality (in-memory is fine for this)
+const tokenBlacklist = new Set();
 
 console.log('🚀 Wedding Bazaar Backend Starting...');
 console.log('📊 Environment:', process.env.NODE_ENV || 'development');
@@ -140,20 +145,21 @@ app.post('/api/auth/login', async (req, res) => {
     // For demo purposes, accept any password
     // In production, use bcrypt to verify password
     
-    // Generate session token
-    const token = `mock-jwt-token-${Date.now()}`;
-    
-    // Store user session for token verification
-    activeTokenSessions[token] = {
-      id: user.id,
+    // Generate real JWT token
+    const tokenPayload = {
+      userId: user.id,
       email: user.email,
-      firstName: user.first_name,
-      lastName: user.last_name,
       role: user.user_type || 'couple',
-      businessName: user.business_name
+      iat: Math.floor(Date.now() / 1000)
     };
     
-    console.log(`✅ [AUTH] Login successful for ${email} - stored session for token ${token.substring(0, 20)}...`);
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { 
+      expiresIn: JWT_EXPIRES_IN,
+      issuer: 'wedding-bazaar',
+      audience: 'wedding-bazaar-users'
+    });
+    
+    console.log(`✅ [AUTH] Login successful for ${email} - generated JWT token`);
     
     res.json({
       success: true,
@@ -194,33 +200,111 @@ app.post('/api/auth/verify', async (req, res) => {
       });
     }
 
-    // Look up user from active sessions
-    const sessionUser = activeTokenSessions[token];
-    
-    if (sessionUser) {
-      console.log(`✅ [AUTH] Token verification successful: ${sessionUser.email}`);
-      res.json({
-        success: true,
-        authenticated: true,
-        user: sessionUser,
-        message: 'Token valid',
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      console.log(`❌ [AUTH] Token verification failed - no session found`);
-      res.json({
+    // Check if token is blacklisted
+    if (tokenBlacklist.has(token)) {
+      return res.json({
         success: false,
         authenticated: false,
-        message: 'Invalid token - session not found',
+        message: 'Token has been invalidated',
         timestamp: new Date().toISOString()
       });
     }
+
+    // Verify JWT token
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      issuer: 'wedding-bazaar',
+      audience: 'wedding-bazaar-users'
+    });
+    
+    // Fetch current user data from database
+    const userRows = await sql`
+      SELECT id, email, first_name, last_name, user_type, business_name 
+      FROM users 
+      WHERE id = ${decoded.userId}
+    `;
+    
+    if (userRows.length === 0) {
+      console.log(`❌ [AUTH] User not found in database: ${decoded.userId}`);
+      return res.json({
+        success: false,
+        authenticated: false,
+        message: 'User not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const user = userRows[0];
+    const sessionUser = {
+      id: user.id,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      role: user.user_type || 'couple',
+      businessName: user.business_name
+    };
+    
+    console.log(`✅ [AUTH] JWT verification successful: ${user.email}`);
+    res.json({
+      success: true,
+      authenticated: true,
+      user: sessionUser,
+      message: 'Token valid',
+      timestamp: new Date().toISOString()
+    });
+    
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      console.log(`❌ [AUTH] Invalid JWT token: ${error.message}`);
+      return res.json({
+        success: false,
+        authenticated: false,
+        message: 'Invalid token',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      console.log(`❌ [AUTH] JWT token expired: ${error.message}`);
+      return res.json({
+        success: false,
+        authenticated: false,
+        message: 'Token expired',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
     console.error('❌ [AUTH] Token verification error:', error);
     res.json({
       success: false,
       authenticated: false,
       message: 'Token verification failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Logout endpoint - invalidates JWT token
+app.post('/api/auth/logout', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (token) {
+      // Add token to blacklist to prevent reuse
+      tokenBlacklist.add(token);
+      console.log(`✅ [AUTH] Token blacklisted for logout`);
+    }
+    
+    res.json({
+      success: true,
+      message: 'Logged out successfully',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [AUTH] Logout error:', error);
+    res.json({
+      success: false,
+      message: 'Logout failed',
       timestamp: new Date().toISOString()
     });
   }
