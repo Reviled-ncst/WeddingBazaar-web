@@ -47,7 +47,8 @@ import type {
 import { 
   mapVendorBookingToUI, 
   mapToUIBookingStats, 
-  mapToUIBookingsListResponse
+  mapToUIBookingsListResponse,
+  mapToUIBookingsListResponseWithLookup
 } from '../../../../shared/utils/booking-data-mapping';
 import type {
   UIBooking,
@@ -200,8 +201,8 @@ export const VendorBookings: React.FC = () => {
         }
       }
       
-      // Map API response to UI format using unified mapping utility
-      const uiResponse = mapToUIBookingsListResponse(response, mapVendorBookingToUI);
+      // Map API response to UI format using enhanced mapping with vendor lookup
+      const uiResponse = await mapToUIBookingsListResponseWithLookup(response);
       
       console.log('🔄 [VendorBookings] Mapped UI response:', uiResponse);
       console.log('📊 [VendorBookings] UI Bookings count:', uiResponse.bookings?.length || 0);
