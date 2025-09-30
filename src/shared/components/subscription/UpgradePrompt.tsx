@@ -459,7 +459,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
                       onChange={(e) => {
                         const rates = {
                           'PHP': { code: 'PHP', symbol: '₱', rate: 1 },
-                          'PHP': { code: 'PHP', symbol: '₱', rate: 56.5 },
+                          'USD': { code: 'USD', symbol: '$', rate: 56.5 },
                           'EUR': { code: 'EUR', symbol: '€', rate: 0.85 },
                           'GBP': { code: 'GBP', symbol: '£', rate: 0.75 },
                           'CAD': { code: 'CAD', symbol: 'C$', rate: 1.25 },

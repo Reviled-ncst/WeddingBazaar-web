@@ -9,8 +9,7 @@ import {
   TrendingUp, 
   Calendar, 
   Loader2,
-  Bell,
-  BellRing,
+
   MessageSquare,
   Star,
   DollarSign,
@@ -65,24 +64,7 @@ import { formatPHP } from '../../../../utils/currency';
 // Import notification system
 import { useNotifications } from '../../../../shared/components/notifications/NotificationProvider';
 
-// Import debug panel
-import { NotificationDebugPanel } from './components/NotificationDebugPanel';
-
 type FilterStatus = 'all' | BookingStatus;
-
-// Notification types for vendor bookings
-interface BookingNotification {
-  id: string;
-  type: 'booking_inquiry' | 'message_received' | 'payment_received' | 'booking_confirmed' | 'quote_accepted' | 'quote_rejected' | 'booking_cancelled' | 'review_received';
-  title: string;
-  message: string;
-  timestamp: string;
-  priority: 'high' | 'medium' | 'low';
-  bookingId?: string;
-  coupleId?: string;
-  read: boolean;
-  actionRequired?: boolean;
-}
 
 // Real-time activity types
 interface LiveActivity {
@@ -124,10 +106,7 @@ export const VendorBookings: React.FC = () => {
   
   // Enhanced UI state
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState<BookingNotification[]>([]);
   const [liveActivities, setLiveActivities] = useState<LiveActivity[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   
   // Use authenticated vendor ID
@@ -138,7 +117,6 @@ export const VendorBookings: React.FC = () => {
     // Always try to load real data first, fall back to mock if it fails
     loadBookings();
     loadStats();
-    loadNotifications();
   }, [filterStatus, dateRange, sortBy, sortOrder, currentPage, vendorId]);
 
   useEffect(() => {
@@ -161,26 +139,16 @@ export const VendorBookings: React.FC = () => {
         console.log('🔄 [VendorBookings] Auto-refreshing data...');
         loadBookings(true); // Silent refresh
         loadStats();
-        loadNotifications();
         setLastUpdate(new Date());
       }
     }, 30000);
 
-    // Simulate real-time activities (in production, this would be WebSocket)
-    const activityInterval = setInterval(() => {
-      generateMockActivity();
-    }, 45000); // Every 45 seconds
-
     return () => {
       clearInterval(pollInterval);
-      clearInterval(activityInterval);
     };
   }, [loading, vendorId]);
 
-  // Initialize mock notifications and activities
-  useEffect(() => {
-    initializeMockData();
-  }, [vendorId]);
+
 
   const loadBookings = async (silent = false) => {
     try {
@@ -219,7 +187,6 @@ export const VendorBookings: React.FC = () => {
         
         if (newBookings.length > 0) {
           showInfo('New Updates', `${newBookings.length} new booking${newBookings.length === 1 ? '' : 's'} received!`);
-          generateNotificationForNewBookings(newBookings);
         }
       }
       
@@ -308,9 +275,6 @@ export const VendorBookings: React.FC = () => {
       // Show success notification
       showSuccess('Status Updated', `Booking status changed to ${newStatus.replace('_', ' ')}`);
       
-      // Generate notification for status change
-      generateNotificationForStatusChange(bookingId, newStatus);
-      
       // Reload bookings and stats to reflect changes
       await loadBookings();
       await loadStats();
@@ -325,99 +289,7 @@ export const VendorBookings: React.FC = () => {
     }
   };
 
-  // Load notifications for the vendor
-  const loadNotifications = async () => {
-    try {
-      console.log('📡 [VendorBookings] Loading notifications. Current count:', notifications.length);
-      // In production, this would fetch from API
-      // For now, we'll always generate mock data for testing
-      const mockNotifications = generateMockNotifications();
-      console.log('📡 [VendorBookings] Generated mock notifications:', mockNotifications.length, mockNotifications);
-      setNotifications(mockNotifications);
-      setUnreadCount(mockNotifications.filter(n => !n.read).length);
-      console.log('📡 [VendorBookings] Set notifications. New count:', mockNotifications.length);
-    } catch (error) {
-      console.error('💥 [VendorBookings] Error loading notifications:', error);
-    }
-  };
 
-  // Initialize mock data
-  const initializeMockData = () => {
-    const mockNotifications = generateMockNotifications();
-    const mockActivities = generateMockActivities();
-    
-    console.log('🔔 [VendorBookings] Initializing mock notifications:', mockNotifications);
-    setNotifications(mockNotifications);
-    setLiveActivities(mockActivities);
-    setUnreadCount(mockNotifications.filter(n => !n.read).length);
-    console.log('📊 [VendorBookings] Set notifications count:', mockNotifications.length, 'unread:', mockNotifications.filter(n => !n.read).length);
-  };
-
-  // Force immediate initialization of mock data
-  useEffect(() => {
-    console.log('🚀 [VendorBookings] Component mounted. Initializing mock data immediately...');
-    initializeMockData();
-  }, []); // Empty dependency array = run once on mount
-
-  // Generate mock notifications
-  const generateMockNotifications = (): BookingNotification[] => {
-    const now = new Date();
-    return [
-      {
-        id: '1',
-        type: 'booking_inquiry',
-        title: 'New Wedding Inquiry',
-        message: 'Sarah & Michael inquired about photography services for their June wedding',
-        timestamp: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
-        priority: 'high',
-        bookingId: 'booking-001',
-        read: false,
-        actionRequired: true
-      },
-      {
-        id: '2',
-        type: 'quote_accepted',
-        title: 'Quote Accepted!',
-        message: 'Jennifer & David accepted your ₱125,000 photography package quote',
-        timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
-        priority: 'high',
-        bookingId: 'booking-002',
-        read: false,
-        actionRequired: true
-      },
-      {
-        id: '3',
-        type: 'payment_received',
-        title: 'Payment Received',
-        message: 'Downpayment of ₱37,500 received for Rodriguez wedding',
-        timestamp: new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString(),
-        priority: 'medium',
-        bookingId: 'booking-003',
-        read: true,
-        actionRequired: false
-      },
-      {
-        id: '4',
-        type: 'message_received',
-        title: 'New Message',
-        message: 'Maria Santos sent a message about venue details',
-        timestamp: new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString(),
-        priority: 'medium',
-        read: false,
-        actionRequired: false
-      },
-      {
-        id: '5',
-        type: 'review_received',
-        title: '5-Star Review!',
-        message: 'Amazing work! Highly recommended for any wedding event.',
-        timestamp: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
-        priority: 'low',
-        read: true,
-        actionRequired: false
-      }
-    ];
-  };
 
   // Generate mock activities
   const generateMockActivities = (): LiveActivity[] => {
@@ -452,116 +324,7 @@ export const VendorBookings: React.FC = () => {
     ];
   };
 
-  // Generate new activity
-  const generateMockActivity = () => {
-    const activities = [
-      'New inquiry from couple',
-      'Quote viewed by client',
-      'Message received',
-      'Payment notification',
-      'Booking confirmed'
-    ];
-    
-    const names = ['Emma & James', 'Lisa & John', 'Sarah & Michael', 'Ana & Carlos', 'Jennifer & David'];
-    const activity = activities[Math.floor(Math.random() * activities.length)];
-    const name = names[Math.floor(Math.random() * names.length)];
-    
-    const newActivity: LiveActivity = {
-      id: Date.now().toString(),
-      type: 'new_inquiry',
-      title: name,
-      description: activity,
-      timestamp: new Date().toISOString(),
-      avatar: `https://images.unsplash.com/photo-${1494790108755 + Math.floor(Math.random() * 1000)}?w=32&h=32&fit=crop&crop=face`
-    };
-    
-    setLiveActivities(prev => [newActivity, ...prev.slice(0, 4)]);
-    
-    // Also add as notification if it's important
-    if (activity.includes('inquiry') || activity.includes('payment')) {
-      const notification: BookingNotification = {
-        id: Date.now().toString(),
-        type: activity.includes('inquiry') ? 'booking_inquiry' : 'payment_received',
-        title: activity.includes('inquiry') ? 'New Inquiry' : 'Payment Received',
-        message: `${name}: ${activity}`,
-        timestamp: new Date().toISOString(),
-        priority: 'medium',
-        read: false,
-        actionRequired: activity.includes('inquiry')
-      };
-      
-      setNotifications(prev => [notification, ...prev.slice(0, 9)]);
-      setUnreadCount(prev => prev + 1);
-    }
-  };
 
-  // Generate notification for new bookings
-  const generateNotificationForNewBookings = (newBookings: any[]) => {
-    newBookings.forEach(booking => {
-      const notification: BookingNotification = {
-        id: `new-${booking.id}-${Date.now()}`,
-        type: 'booking_inquiry',
-        title: 'New Booking Inquiry',
-        message: `${booking.coupleName || 'New couple'} inquired about your services`,
-        timestamp: new Date().toISOString(),
-        priority: 'high',
-        bookingId: booking.id,
-        read: false,
-        actionRequired: true
-      };
-      
-      setNotifications(prev => [notification, ...prev.slice(0, 9)]);
-      setUnreadCount(prev => prev + 1);
-    });
-  };
-
-  // Generate notification for status changes
-  const generateNotificationForStatusChange = (bookingId: string, newStatus: BookingStatus) => {
-    const booking = bookings.find(b => b.id === bookingId);
-    const statusMessages = {
-      'quote_sent': 'Quote sent successfully',
-      'quote_accepted': 'Quote accepted by client',
-      'quote_rejected': 'Quote declined by client',
-      'confirmed': 'Booking confirmed',
-      'in_progress': 'Service in progress',
-      'completed': 'Service completed',
-      'paid_in_full': 'Payment completed',
-      'cancelled': 'Booking cancelled'
-    };
-    
-    const message = statusMessages[newStatus as keyof typeof statusMessages] || `Status updated to ${newStatus}`;
-    
-    const notification: BookingNotification = {
-      id: `status-${bookingId}-${Date.now()}`,
-      type: newStatus.includes('quote') ? 'quote_accepted' : 'booking_confirmed',
-      title: 'Booking Updated',
-      message: `${booking?.coupleName || 'Client'}: ${message}`,
-      timestamp: new Date().toISOString(),
-      priority: 'medium',
-      bookingId,
-      read: false,
-      actionRequired: false
-    };
-    
-    setNotifications(prev => [notification, ...prev.slice(0, 9)]);
-    setUnreadCount(prev => prev + 1);
-  };
-
-  // Mark notification as read
-  const markNotificationAsRead = (notificationId: string) => {
-    setNotifications(prev => 
-      prev.map(n => 
-        n.id === notificationId ? { ...n, read: true } : n
-      )
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
-  };
-
-  // Mark all notifications as read
-  const markAllNotificationsAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    setUnreadCount(0);
-  };
 
   // Manual refresh function
   const handleRefresh = async () => {
@@ -569,7 +332,6 @@ export const VendorBookings: React.FC = () => {
     try {
       await loadBookings();
       await loadStats();
-      await loadNotifications();
       setLastUpdate(new Date());
       showSuccess('Data Refreshed', 'All booking data has been updated');
     } catch (error) {
@@ -633,7 +395,7 @@ export const VendorBookings: React.FC = () => {
                 </p>
               </div>
               
-              {/* Notification Bell and Refresh */}
+              {/* Refresh Button */}
               <div className="flex items-center gap-4">
                 <button
                   onClick={handleRefresh}
@@ -644,141 +406,11 @@ export const VendorBookings: React.FC = () => {
                   <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                   <span className="text-sm font-medium">Refresh</span>
                 </button>
-                
-                <div className="relative">
-                  <button
-                    onClick={() => {
-                      console.log('🔔 [VendorBookings] Notification button clicked. Current state:');
-                      console.log('- Notifications count:', notifications.length);
-                      console.log('- Notifications:', notifications);
-                      console.log('- Unread count:', unreadCount);
-                      console.log('- Show notifications:', showNotifications);
-                      setShowNotifications(!showNotifications);
-                    }}
-                    className="relative flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-xl hover:bg-rose-50 transition-all duration-300 shadow-lg"
-                    title="View notifications"
-                  >
-                    {unreadCount > 0 ? (
-                      <BellRing className="h-5 w-5 text-rose-600" />
-                    ) : (
-                      <Bell className="h-5 w-5 text-gray-600" />
-                    )}
-                    <span className="text-sm font-medium">Notifications</span>
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center animate-pulse">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Notifications Dropdown */}
-                  <AnimatePresence>
-                    {showNotifications && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-0 top-full mt-2 w-96 bg-white/95 backdrop-blur-md border border-rose-200/50 rounded-2xl shadow-2xl z-50 max-h-96 overflow-hidden"
-                      >
-                        <div className="p-4 border-b border-rose-200/30">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-gray-900">Notifications</h3>
-                            <div className="flex items-center gap-2">
-                              {unreadCount > 0 && (
-                                <button
-                                  onClick={markAllNotificationsAsRead}
-                                  className="text-xs text-rose-600 hover:text-rose-700 font-medium"
-                                >
-                                  Mark all read
-                                </button>
-                              )}
-                              <button
-                                onClick={() => setShowNotifications(false)}
-                                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-                              >
-                                <X className="h-4 w-4 text-gray-500" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="max-h-80 overflow-y-auto">
-                          {notifications.length === 0 ? (
-                            <div className="p-8 text-center text-gray-500">
-                              <Bell className="h-8 w-8 mx-auto mb-3 text-gray-300" />
-                              <p>No notifications yet</p>
-                              <p className="text-xs mt-2">Debug: {notifications.length} notifications loaded</p>
-                            </div>
-                          ) : (
-                            notifications.map((notification) => (
-                              <motion.div
-                                key={notification.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                className={`p-4 border-b border-gray-100 hover:bg-rose-50/50 transition-colors cursor-pointer ${
-                                  !notification.read ? 'bg-blue-50/30' : ''
-                                }`}
-                                onClick={() => markNotificationAsRead(notification.id)}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div className={`p-2 rounded-full ${
-                                    notification.type === 'booking_inquiry' ? 'bg-blue-100 text-blue-600' :
-                                    notification.type === 'quote_accepted' ? 'bg-green-100 text-green-600' :
-                                    notification.type === 'payment_received' ? 'bg-purple-100 text-purple-600' :
-                                    notification.type === 'message_received' ? 'bg-yellow-100 text-yellow-600' :
-                                    'bg-gray-100 text-gray-600'
-                                  }`}>
-                                    {notification.type === 'booking_inquiry' && <Calendar className="h-4 w-4" />}
-                                    {notification.type === 'quote_accepted' && <CheckCircle className="h-4 w-4" />}
-                                    {notification.type === 'payment_received' && <DollarSign className="h-4 w-4" />}
-                                    {notification.type === 'message_received' && <MessageSquare className="h-4 w-4" />}
-                                    {notification.type === 'review_received' && <Star className="h-4 w-4" />}
-                                  </div>
-                                  
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between">
-                                      <p className="font-medium text-gray-900 text-sm">{notification.title}</p>
-                                      <div className="flex items-center gap-2">
-                                        {notification.priority === 'high' && (
-                                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                                        )}
-                                        {!notification.read && (
-                                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <p className="text-gray-600 text-sm mt-1">{notification.message}</p>
-                                    <p className="text-gray-400 text-xs mt-2">
-                                      {new Date(notification.timestamp).toLocaleString()}
-                                    </p>
-                                    {notification.actionRequired && (
-                                      <div className="mt-2">
-                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                                          Action Required
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </motion.div>
-                            ))
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
               </div>
             </div>
           </motion.div>
 
-          {/* Debug Panel */}
-          <NotificationDebugPanel
-            notifications={notifications}
-            unreadCount={unreadCount}
-            onMarkAsRead={markNotificationAsRead}
-            onMarkAllAsRead={markAllNotificationsAsRead}
-          />
+
 
           {/* Live Activity Feed */}
           {liveActivities.length > 0 && (
