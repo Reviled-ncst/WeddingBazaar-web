@@ -5,6 +5,7 @@
 
 import { formatPHP } from '../../utils/currency';
 import type { BookingStatus } from '../types/comprehensive-booking.types';
+import { vendorLookupService } from '../../services/vendorLookupService';
 
 // Database field names (snake_case)
 export interface DatabaseBooking {
@@ -413,7 +414,7 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
  */
 export function mapVendorBookingToUI(apiBooking: any): UIBooking {
   // Handle both comprehensive format (snake_case) and actual API format (camelCase)
-  const totalAmount = apiBooking.quoted_price || apiBooking.final_price || apiBooking.amount || 0;
+  const totalAmount = apiBooking.quoted_price || apiBooking.final_price || apiBooking.amount || apiBooking.total_amount || 0;
   const totalPaid = apiBooking.total_paid || apiBooking.totalPaid || 0;
   const remainingBalance = apiBooking.remaining_balance || apiBooking.remainingBalance || (totalAmount - totalPaid);
   const paymentProgressPercentage = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
@@ -421,12 +422,12 @@ export function mapVendorBookingToUI(apiBooking: any): UIBooking {
   return {
     id: apiBooking.id?.toString() || '',
     vendorId: apiBooking.vendor_id || apiBooking.vendorId || '',
-    vendorName: apiBooking.vendor_name || apiBooking.vendorName || 'Unknown Vendor',
+    vendorName: apiBooking.vendor_name || apiBooking.vendorName || apiBooking.service_name || 'Unknown Vendor',
     coupleId: apiBooking.couple_id || apiBooking.coupleId || '',
-    coupleName: apiBooking.couple_name || apiBooking.contact_person || apiBooking.coupleName || apiBooking.clientName || 'Unknown Couple',
+    coupleName: apiBooking.couple_name || apiBooking.contact_person || apiBooking.coupleName || apiBooking.clientName || `Client ${apiBooking.couple_id || 'ID Unknown'}`,
     contactEmail: apiBooking.contact_email || apiBooking.contactEmail || apiBooking.clientEmail || '',
     contactPhone: apiBooking.contact_phone || apiBooking.contactPhone || apiBooking.clientPhone,
-    serviceType: apiBooking.service_type || apiBooking.serviceType || 'Unknown Service',
+    serviceType: (apiBooking.service_type || apiBooking.serviceType || 'other').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
     eventDate: apiBooking.event_date || apiBooking.eventDate || apiBooking.bookingDate || '',
     eventTime: apiBooking.event_time || apiBooking.eventTime,
     eventLocation: apiBooking.event_location || apiBooking.eventLocation || apiBooking.location,
@@ -444,7 +445,7 @@ export function mapVendorBookingToUI(apiBooking: any): UIBooking {
     paymentProgressPercentage,
     paymentCount: 0, // Would need to be calculated from payments array if available
     formatted: {
-      totalAmount: totalAmount ? formatPHP(totalAmount) : '₱0',
+      totalAmount: totalAmount ? formatPHP(totalAmount) : (apiBooking.status === 'quote_requested' ? 'Quote Pending' : '₱0'),
       totalPaid: totalPaid ? formatPHP(totalPaid) : '₱0',
       remainingBalance: remainingBalance > 0 ? formatPHP(remainingBalance) : '₱0',
       downpaymentAmount: (apiBooking.downpayment_amount || apiBooking.downPayment || apiBooking.deposit) ? 
@@ -497,48 +498,65 @@ export function mapToUIBookingsListResponse(apiResponse: any, mappingFunction = 
 }
 
 /**
- * Enhanced booking type for IndividualBookings with additional UI fields
+ * Enhanced vendor booking mapping with async vendor name lookup
  */
-export function mapToEnhancedBooking(booking: any): any {
-  console.log('🔄 [mapToEnhancedBooking] Processing booking:', booking.id, {
-    serviceType: booking.serviceType || booking.service_type,
-    amount: booking.amount,
-    quoted_price: booking.quoted_price,
-    final_price: booking.final_price,
-    vendorName: booking.vendorName
-  });
+export async function mapVendorBookingToUIWithLookup(apiBooking: any): Promise<UIBooking> {
+  // Get vendor name from lookup service
+  let vendorName = apiBooking.vendor_name || apiBooking.vendorName || apiBooking.service_name;
   
-  const baseBooking = mapComprehensiveBookingToUI(booking);
-  
-  console.log('✅ [mapToEnhancedBooking] Base booking after mapping:', {
-    id: baseBooking.id,
-    totalAmount: baseBooking.totalAmount,
-    downpaymentAmount: baseBooking.downpaymentAmount,
-    serviceType: baseBooking.serviceType,
-    vendorName: baseBooking.vendorName
-  });
-  
+  if (!vendorName || vendorName === 'Unknown Vendor') {
+    try {
+      const lookupName = await vendorLookupService.getVendorName(apiBooking.vendor_id || apiBooking.vendorId);
+      if (lookupName && !lookupName.startsWith('Vendor ')) {
+        vendorName = lookupName;
+      }
+    } catch (error) {
+      console.warn('Vendor lookup failed:', error);
+    }
+  }
+
+  // Use the regular mapping function and override the vendor name
+  const baseMapping = mapVendorBookingToUI(apiBooking);
   return {
-    ...baseBooking,
-    // Enhanced properties for UI
-    vendorBusinessName: booking.vendorName || baseBooking.vendorName,
-    vendorCategory: booking.vendorCategory || booking.service_type || 'Wedding Service',
-    serviceImage: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400',
-    serviceGallery: ['https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400'],
-    serviceId: booking.service_id || booking.serviceId,
-    eventCoordinates: { lat: 14.5995, lng: 120.9842 },
-    formattedEventDate: booking.eventDate ? new Date(booking.eventDate).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    }) : '',
-    formattedEventTime: booking.eventTime || '14:00',
-    daysUntilEvent: booking.eventDate ? Math.ceil((new Date(booking.eventDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0,
-    vendorRating: booking.vendorRating || 4.5,
-    vendorImage: booking.vendorImage || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
-    vendorPhone: booking.contactPhone,
-    vendorEmail: booking.contactEmail
+    ...baseMapping,
+    vendorName: vendorName || baseMapping.vendorName
   };
+}
+
+/**
+ * Enhanced mapping for booking lists with vendor lookup
+ */
+export async function mapToUIBookingsListResponseWithLookup(apiResponse: any) {
+  try {
+    // Preload vendors for faster lookup
+    await vendorLookupService.preloadVendors();
+    
+    // Map all bookings with enhanced lookup
+    const bookings = await Promise.all(
+      (apiResponse.bookings || []).map(async (booking: any) => 
+        await mapVendorBookingToUIWithLookup(booking)
+      )
+    );
+
+    return {
+      bookings,
+      total: apiResponse.total || bookings.length,
+      page: apiResponse.page || 1,
+      limit: apiResponse.limit || 10,
+      success: apiResponse.success !== false,
+      pagination: {
+        current_page: apiResponse.page || 1,
+        total_pages: Math.ceil((apiResponse.total || bookings.length) / (apiResponse.limit || 10)),
+        total_items: apiResponse.total || bookings.length,
+        items_per_page: apiResponse.limit || 10,
+        has_next_page: (apiResponse.page || 1) < Math.ceil((apiResponse.total || bookings.length) / (apiResponse.limit || 10)),
+        has_prev_page: (apiResponse.page || 1) > 1
+      }
+    };
+  } catch (error) {
+    console.error('Enhanced mapping failed, falling back to regular mapping:', error);
+    return mapToUIBookingsListResponse(apiResponse, mapVendorBookingToUI);
+  }
 }
 
 /**
@@ -568,5 +586,12 @@ export function getIntegerVendorId(stringVendorId: string): number {
   
   console.warn('⚠️ Could not convert vendor ID:', stringVendorId, 'using default 1');
   return 1;
+}
+
+/**
+ * Enhanced booking mapping for individual bookings
+ */
+export function mapToEnhancedBooking(apiBooking: any): UIBooking {
+  return mapComprehensiveBookingToUI(apiBooking);
 }
 
