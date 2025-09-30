@@ -109,8 +109,18 @@ export const VendorBookings: React.FC = () => {
   const [liveActivities, setLiveActivities] = useState<LiveActivity[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   
-  // Use authenticated vendor ID
-  const vendorId = user?.id || 'vendor_001'; // Fallback for demo
+  // Use authenticated vendor ID - For vendors, user.id IS the vendor ID
+  const vendorId = user?.role === 'vendor' ? user.id : (user?.vendorId || '2-2025-001');
+  
+  // Debug logging for vendor identification
+  console.log('🔍 [VendorBookings] Vendor identification debug:', {
+    'user?.id': user?.id,
+    'user?.role': user?.role,
+    'user?.vendorId': user?.vendorId, 
+    'user?.businessName': user?.businessName,
+    'final vendorId used': vendorId,
+    'logic': user?.role === 'vendor' ? 'Using user.id as vendorId' : 'Using vendorId field or fallback'
+  });
 
   useEffect(() => {
     console.log('🔄 [VendorBookings] Effect triggered with:', { vendorId, filterStatus, currentPage });
