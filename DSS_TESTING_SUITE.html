@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSS Batch Booking & Group Chat Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+        .test-section {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        .test-section h2 {
+            color: #4a5568;
+            margin-top: 0;
+        }
+        .steps {
+            list-style: none;
+            padding: 0;
+        }
+        .steps li {
+            background: white;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            position: relative;
+        }
+        .steps li::before {
+            content: counter(step-counter);
+            counter-increment: step-counter;
+            background: #667eea;
+            color: white;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            font-size: 14px;
+        }
+        .steps {
+            counter-reset: step-counter;
+        }
+        .feature-highlight {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .url-box {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        .expected-result {
+            background: #f0fff4;
+            border: 1px solid #68d391;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .expected-result h4 {
+            color: #22543d;
+            margin-top: 0;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        .nav-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .nav-button:hover {
+            transform: translateY(-2px);
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-ready { background-color: #48bb78; }
+        .status-testing { background-color: #ed8936; }
+        .status-pending { background-color: #a0aec0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 DSS Batch Booking & Group Chat Test Suite</h1>
+        
+        <div class="feature-highlight">
+            <h3>🚀 New Features Implemented:</h3>
+            <ul>
+                <li><strong>✅ Batch Booking:</strong> Book all DSS recommended services at once</li>
+                <li><strong>💬 Group Chat:</strong> Create conversations with all unique vendors</li>
+                <li><strong>🎯 Smart Deduplication:</strong> No duplicate vendors or services</li>
+                <li><strong>📝 Proper Naming:</strong> Descriptive conversation names based on categories</li>
+            </ul>
+        </div>
+
+        <div class="nav-buttons">
+            <a href="http://localhost:5174" class="nav-button" target="_blank">
+                🏠 Development Server
+            </a>
+            <a href="https://weddingbazaarph.web.app" class="nav-button" target="_blank">
+                🌐 Production Site
+            </a>
+        </div>
+
+        <!-- Test 1: Access DSS -->
+        <div class="test-section">
+            <h2><span class="status-indicator status-ready"></span>Test 1: Access Decision Support System</h2>
+            
+            <ol class="steps">
+                <li>Navigate to the Wedding Bazaar homepage</li>
+                <li>Click on "Individual Services" in the navigation</li>
+                <li>Browse available services and click on any service card</li>
+                <li>In the service modal, click the "Smart Recommendations" button</li>
+                <li>The DSS modal should open with AI-powered recommendations</li>
+            </ol>
+
+            <div class="url-box">
+                Direct Access: http://localhost:5174/individual/services
+            </div>
+
+            <div class="expected-result">
+                <h4>✅ Expected Result:</h4>
+                <ul>
+                    <li>DSS modal opens with service recommendations</li>
+                    <li>Multiple services are displayed with ratings and costs</li>
+                    <li>Tabs for "Smart Recommendations" are visible</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Test 2: Batch Booking Section -->
+        <div class="test-section">
+            <h2><span class="status-indicator status-testing"></span>Test 2: Batch Booking Section</h2>
+            
+            <ol class="steps">
+                <li>In the DSS modal, look for the "Book All Recommended Services" section</li>
+                <li>It should appear above the recommendations grid when 2+ services are available</li>
+                <li>Verify the section shows:
+                    <ul>
+                        <li>Service count (e.g., "all 15 recommended services")</li>
+                        <li>Preview of first 3 services with costs</li>
+                        <li>"+X more" indicator for additional services</li>
+                    </ul>
+                </li>
+                <li>Check for two buttons: "Book All (X)" and "Group Chat"</li>
+            </ol>
+
+            <div class="expected-result">
+                <h4>✅ Expected Result:</h4>
+                <ul>
+                    <li>Purple gradient section with glassmorphism effects</li>
+                    <li>Shows total service count</li>
+                    <li>Displays first 3 services with categories and estimated costs</li>
+                    <li>Two action buttons are clearly visible</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Test 3: Batch Booking Modal -->
+        <div class="test-section">
+            <h2><span class="status-indicator status-testing"></span>Test 3: Batch Booking Modal</h2>
+            
+            <ol class="steps">
+                <li>Click the "Book All (X)" button in the batch booking section</li>
+                <li>The BatchBookingModal should open</li>
+                <li>Verify the modal header shows:
+                    <ul>
+                        <li>Selected Services count</li>
+                        <li>Unique Vendors count</li>
+                        <li>Total Estimate in PHP currency</li>
+                    </ul>
+                </li>
+                <li>Check the service list:
+                    <ul>
+                        <li>All services are pre-selected (checkboxes checked)</li>
+                        <li>Each service shows image, name, category, rating, and price</li>
+                        <li>Vendor name is displayed for each service</li>
+                    </ul>
+                </li>
+                <li>Test service selection:
+                    <ul>
+                        <li>Click checkboxes to toggle services on/off</li>
+                        <li>Verify totals update in real-time</li>
+                        <li>Unique vendor count should update correctly</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <div class="expected-result">
+                <h4>✅ Expected Result:</h4>
+                <ul>
+                    <li>Modal opens with purple/pink gradient header</li>
+                    <li>Summary cards show current selection stats</li>
+                    <li>Interactive service list with working checkboxes</li>
+                    <li>Real-time cost and vendor count updates</li>
+                    <li>Vendor summary section shows unique vendors</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Test 4: Group Chat Creation -->
+        <div class="test-section">
+            <h2><span class="status-indicator status-testing"></span>Test 4: Group Chat Creation</h2>
+            
+            <ol class="steps">
+                <li>In the DSS batch booking section, click the "Group Chat" button</li>
+                <li>Or in the BatchBookingModal, click "Create Group Chat"</li>
+                <li>Monitor the browser console for group chat creation logs</li>
+                <li>Verify the following in console:
+                    <ul>
+                        <li>"Creating group chat with X unique vendors"</li>
+                        <li>Vendor deduplication logic working</li>
+                        <li>Conversation name generation</li>
+                        <li>"Group conversation created successfully"</li>
+                    </ul>
+                </li>
+                <li>Check for success notification popup</li>
+            </ol>
+
+            <div class="expected-result">
+                <h4>✅ Expected Result:</h4>
+                <ul>
+                    <li>Console shows vendor deduplication process</li>
+                    <li>Conversation name follows patterns:
+                        <ul>
+                            <li>Single category: "Photography Planning Discussion"</li>
+                            <li>Multiple: "Photography & Catering & Venue Planning"</li>
+                            <li>Many: "Wedding Planning - 5 Categories"</li>
+                        </ul>
+                    </li>
+                    <li>Success notification appears with group chat details</li>
+                    <li>Initial message is logged with service list</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Test 5: Batch Booking Process -->
+        <div class="test-section">
+            <h2><span class="status-indicator status-testing"></span>Test 5: Batch Booking Process</h2>
+            
+            <ol class="steps">
+                <li>In the BatchBookingModal, select desired services (at least 2-3)</li>
+                <li>Click "Book All (X)" button at the bottom</li>
+                <li>Watch the progress tracking:
+                    <ul>
+                        <li>Each service should show individual progress</li>
+                        <li>Status icons: Pending → Processing → Completed</li>
+                        <li>Service names displayed during processing</li>
+                    </ul>
+                </li>
+                <li>Monitor browser console for booking creation events</li>
+                <li>Check for success notifications</li>
+            </ol>
+
+            <div class="expected-result">
+                <h4>✅ Expected Result:</h4>
+                <ul>
+                    <li>Progress view shows each service being processed</li>
+                    <li>Individual booking creation for each service</li>
+                    <li>Console shows "bookingCreated" events being dispatched</li>
+                    <li>Final success notification with booking summary</li>
+                    <li>Modal closes after successful completion</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Test 6: IndividualBookings Integration -->
+        <div class="test-section">
+            <h2><span class="status-indicator status-testing"></span>Test 6: IndividualBookings Integration</h2>
+            
+            <ol class="steps">
+                <li>After batch booking, navigate to Individual → Bookings</li>
+                <li>Verify that new bookings appear in the list</li>
+                <li>Check that bookings are sorted by latest first</li>
+                <li>Verify booking details are correct:
+                    <ul>
+                        <li>Service names match selected services</li>
+                        <li>Vendor names are correct</li>
+                        <li>Status is "quote_requested"</li>
+                        <li>Costs are properly calculated</li>
+                    </ul>
+                </li>
+                <li>Test the auto-refresh functionality</li>
+            </ol>
+
+            <div class="url-box">
+                Direct Access: http://localhost:5174/individual/bookings
+            </div>
+
+            <div class="expected-result">
+                <h4>✅ Expected Result:</h4>
+                <ul>
+                    <li>All batch-created bookings appear in the list</li>
+                    <li>Bookings are sorted with newest first</li>
+                    <li>All booking details are accurate</li>
+                    <li>Page refreshes automatically after booking creation</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Test 7: Edge Cases & Error Handling -->
+        <div class="test-section">
+            <h2><span class="status-indicator status-pending"></span>Test 7: Edge Cases & Error Handling</h2>
+            
+            <ol class="steps">
+                <li>Test with no services selected:
+                    <ul>
+                        <li>Deselect all services in BatchBookingModal</li>
+                        <li>Verify buttons are disabled</li>
+                        <li>Check validation messages</li>
+                    </ul>
+                </li>
+                <li>Test with single service:
+                    <ul>
+                        <li>Verify batch booking section appears only with 2+ services</li>
+                        <li>Single service should use individual booking flow</li>
+                    </ul>
+                </li>
+                <li>Test vendor deduplication:
+                    <ul>
+                        <li>Select services from same vendor</li>
+                        <li>Verify vendor appears only once in group chat</li>
+                    </ul>
+                </li>
+                <li>Test responsive design:
+                    <ul>
+                        <li>Resize browser window</li>
+                        <li>Test on mobile viewport</li>
+                        <li>Verify all elements are accessible</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <div class="expected-result">
+                <h4>✅ Expected Result:</h4>
+                <ul>
+                    <li>Proper validation prevents empty bookings</li>
+                    <li>Single service flows work correctly</li>
+                    <li>Vendor deduplication is accurate</li>
+                    <li>Responsive design works on all screen sizes</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Test Results Summary -->
+        <div class="test-section">
+            <h2>📊 Test Results Summary</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin: 20px 0;">
+                <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <h4>🎯 Core Features</h4>
+                    <ul style="margin: 0; padding-left: 20px;">
+                        <li>DSS Access</li>
+                        <li>Batch Booking UI</li>
+                        <li>Service Selection</li>
+                    </ul>
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <h4>💬 Group Chat</h4>
+                    <ul style="margin: 0; padding-left: 20px;">
+                        <li>Vendor Deduplication</li>
+                        <li>Conversation Naming</li>
+                        <li>Initial Messages</li>
+                    </ul>
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <h4>📱 User Experience</h4>
+                    <ul style="margin: 0; padding-left: 20px;">
+                        <li>Progress Tracking</li>
+                        <li>Success Notifications</li>
+                        <li>Responsive Design</li>
+                    </ul>
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <h4>🔗 Integration</h4>
+                    <ul style="margin: 0; padding-left: 20px;">
+                        <li>BookingRequestModal</li>
+                        <li>IndividualBookings</li>
+                        <li>Event Dispatching</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Developer Console Commands -->
+        <div class="test-section">
+            <h2>🔧 Developer Console Testing Commands</h2>
+            
+            <p>Open browser DevTools (F12) and run these commands to test specific functionality:</p>
+            
+            <div class="url-box">
+// Test batch booking event listening
+window.addEventListener('bookingCreated', (e) => {
+    console.log('🎉 Booking Created Event:', e.detail);
+});
+
+// Test group chat creation
+// (This will be called when you click the Group Chat button)
+
+// Check for DSS components
+console.log('DSS Available:', !!document.querySelector('[data-testid="dss-modal"]'));
+
+// Monitor API calls
+const originalFetch = window.fetch;
+window.fetch = function(...args) {
+    console.log('🌐 API Call:', args[0]);
+    return originalFetch.apply(this, args);
+};
+            </div>
+        </div>
+
+        <div style="text-align: center; margin: 40px 0; padding: 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 12px;">
+            <h3>🚀 Ready to Test!</h3>
+            <p>Follow the test steps above to verify all batch booking and group chat functionality.</p>
+            <p><strong>Start with Test 1</strong> and work through each section systematically.</p>
+        </div>
+    </div>
+
+    <script>
+        // Auto-update status indicators based on current test
+        document.addEventListener('DOMContentLoaded', function() {
+            const testSections = document.querySelectorAll('.test-section');
+            testSections.forEach((section, index) => {
+                const indicator = section.querySelector('.status-indicator');
+                if (index === 0) {
+                    indicator.className = 'status-indicator status-ready';
+                } else if (index <= 2) {
+                    indicator.className = 'status-indicator status-testing';
+                } else {
+                    indicator.className = 'status-indicator status-pending';
+                }
+            });
+        });
+
+        // Add click handlers for navigation buttons
+        document.querySelectorAll('.nav-button').forEach(button => {
+            button.addEventListener('click', function(e) {
+                console.log('🚀 Opening:', this.href);
+            });
+        });
+    </script>
+</body>
+</html>

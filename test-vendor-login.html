@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Vendor Login</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+        }
+        .test-result { 
+            margin: 10px 0; 
+            padding: 10px; 
+            border-radius: 5px; 
+        }
+        .success { 
+            background-color: #d4edda; 
+            border: 1px solid #c3e6cb; 
+            color: #155724;
+        }
+        .error { 
+            background-color: #f8d7da; 
+            border: 1px solid #f5c6cb; 
+            color: #721c24;
+        }
+        .info { 
+            background-color: #d1ecf1; 
+            border: 1px solid #bee5eb; 
+            color: #0c5460;
+        }
+        pre { 
+            background: #f8f9fa; 
+            padding: 10px; 
+            border-radius: 5px; 
+            overflow-x: auto;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Vendor Role Login Test</h1>
+    <p>This test will verify that user roles are working correctly for vendor routing.</p>
+    
+    <div id="results"></div>
+    
+    <button onclick="testCoupleLogin()">Test Couple Login</button>
+    <button onclick="testVendorLogin()">Test Vendor Login</button>
+    <button onclick="testAdminLogin()">Test Admin Login</button>
+    <button onclick="testTokenVerify()">Test Token Verification</button>
+    
+    <script>
+        const API_BASE = 'http://localhost:3001';
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+            console.log(message);
+        }
+        
+        async function testCoupleLogin() {
+            log('🔍 Testing Couple Login...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'couple@test.com',
+                        password: 'password123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.user.role === 'couple') {
+                    log('✅ Couple login successful! Role: ' + data.user.role, 'success');
+                    log('<pre>' + JSON.stringify(data.user, null, 2) + '</pre>', 'info');
+                } else {
+                    log('❌ Couple login failed or wrong role. Expected: couple, Got: ' + data.user?.role, 'error');
+                    log('<pre>' + JSON.stringify(data, null, 2) + '</pre>', 'error');
+                }
+            } catch (error) {
+                log('❌ Couple login error: ' + error.message, 'error');
+            }
+        }
+        
+        async function testVendorLogin() {
+            log('🔍 Testing Vendor Login...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'vendor@business.com',
+                        password: 'password123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.user.role === 'vendor') {
+                    log('✅ Vendor login successful! Role: ' + data.user.role, 'success');
+                    log('<pre>' + JSON.stringify(data.user, null, 2) + '</pre>', 'info');
+                } else {
+                    log('❌ Vendor login failed or wrong role. Expected: vendor, Got: ' + data.user?.role, 'error');
+                    log('<pre>' + JSON.stringify(data, null, 2) + '</pre>', 'error');
+                }
+            } catch (error) {
+                log('❌ Vendor login error: ' + error.message, 'error');
+            }
+        }
+        
+        async function testAdminLogin() {
+            log('🔍 Testing Admin Login...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@wedding.com',
+                        password: 'password123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.user.role === 'admin') {
+                    log('✅ Admin login successful! Role: ' + data.user.role, 'success');
+                    log('<pre>' + JSON.stringify(data.user, null, 2) + '</pre>', 'info');
+                } else {
+                    log('❌ Admin login failed or wrong role. Expected: admin, Got: ' + data.user?.role, 'error');
+                    log('<pre>' + JSON.stringify(data, null, 2) + '</pre>', 'error');
+                }
+            } catch (error) {
+                log('❌ Admin login error: ' + error.message, 'error');
+            }
+        }
+        
+        async function testTokenVerify() {
+            log('🔍 Testing Token Verification...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/verify`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer mock-jwt-token'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.authenticated && data.user.role) {
+                    log('✅ Token verification successful! Role: ' + data.user.role, 'success');
+                    log('<pre>' + JSON.stringify(data.user, null, 2) + '</pre>', 'info');
+                } else {
+                    log('❌ Token verification failed', 'error');
+                    log('<pre>' + JSON.stringify(data, null, 2) + '</pre>', 'error');
+                }
+            } catch (error) {
+                log('❌ Token verification error: ' + error.message, 'error');
+            }
+        }
+        
+        // Auto-run tests on page load
+        window.onload = function() {
+            log('🚀 Starting role-based login tests...', 'info');
+            setTimeout(() => testCoupleLogin(), 500);
+            setTimeout(() => testVendorLogin(), 1000);
+            setTimeout(() => testAdminLogin(), 1500);
+            setTimeout(() => testTokenVerify(), 2000);
+        };
+    </script>
+</body>
+</html>

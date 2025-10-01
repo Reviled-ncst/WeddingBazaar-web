@@ -68,6 +68,14 @@ interface VendorPricing {
 interface SendQuoteModalProps {
   isOpen: boolean;
   onClose: () => void;
+  serviceData?: {
+    id: string;
+    name: string;
+    category: string;
+    features: string[]; // List of items/equipment provided in the service
+    price: string;
+    description: string;
+  } | null;
   booking: UIBooking;
   onSendQuote: (quoteData: any) => void;
   vendorPricing?: VendorPricing; // Optional vendor-specific pricing
@@ -1246,7 +1254,8 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
   booking,
   onSendQuote,
   vendorPricing,
-  onSavePricing
+  onSavePricing,
+  serviceData
 }) => {
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [quoteMessage, setQuoteMessage] = useState('');
@@ -1261,59 +1270,42 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
     return vendorPricing?.[serviceType]?.[itemName] ?? defaultPrice;
   };
 
-  // Initialize quote items based on service type
+  // Reset form when modal opens
   useEffect(() => {
     if (isOpen && booking) {
-      const serviceType = booking.serviceType || 'default';
-      const template = DEFAULT_QUOTE_TEMPLATES[serviceType] || DEFAULT_QUOTE_TEMPLATES['default'];
+      // Initialize with service items if available, otherwise empty form
+      if (serviceData && serviceData.features && serviceData.features.length > 0) {
+        console.log('🎯 [SendQuoteModal] Using service items for prefill:', serviceData);
+        
+        // Convert service items to quote items
+        const basePrice = parseFloat(serviceData.price) || 10000;
+        const pricePerItem = Math.round(basePrice / Math.max(serviceData.features.length, 1));
+        
+        const prefillItems: QuoteItem[] = serviceData.features.map((item, index) => ({
+          id: `item-${index + 1}`,
+          name: item,
+          description: `${item} - provided for ${serviceData.name} service`,
+          quantity: 1,
+          unitPrice: index === 0 ? basePrice - (pricePerItem * (serviceData.features.length - 1)) : pricePerItem,
+          total: index === 0 ? basePrice - (pricePerItem * (serviceData.features.length - 1)) : pricePerItem,
+          category: `${serviceData.category} - Equipment & Items`
+        }));
+        
+        setQuoteItems(prefillItems);
+        setQuoteMessage(`Thank you for your interest in our ${serviceData.name} service. Below is the detailed breakdown of all items and equipment included:`);
+        
+        console.log('✅ [SendQuoteModal] Prefilled with', prefillItems.length, 'items from service inventory');
+      } else {
+        // Reset to empty form - no pre-filled values
+        console.log('📝 [SendQuoteModal] No service data available, starting with empty form');
+        setQuoteItems([]);
+        setQuoteMessage('');
+      }
       
-      const initialItems: QuoteItem[] = template.items.map((item: any, index: number) => {
-        const vendorPrice = getVendorPrice(serviceType, item.name, item.unitPrice);
-        return {
-          id: `item-${index}`,
-          ...item,
-          unitPrice: vendorPrice,
-          total: item.quantity * vendorPrice
-        };
-      });
-
-      setQuoteItems(initialItems);
-      
-      // Set default valid until date (30 days from now)
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 30);
-      setValidUntil(futureDate.toISOString().split('T')[0]);
-
-      // Set default terms
-      setTerms(`Terms & Conditions:
-• ${downpaymentPercentage}% deposit required to secure booking
-• Full payment due 7 days before event date
-• Cancellation policy: 50% refund if cancelled 30+ days before event
-• Changes to services may affect final pricing
-• All prices are inclusive of taxes
-• Additional charges may apply for services beyond agreed scope
-• Weather contingency plans available for outdoor events
-• Client responsible for venue accessibility and vendor coordination`);
-
-      // Set default message with enhanced personalization
-      setQuoteMessage(`Dear ${booking.coupleName},
-
-Thank you for considering our ${serviceType.toLowerCase()} services for your wedding celebration on ${new Date(booking.eventDate).toLocaleDateString()}.
-
-We are thrilled at the opportunity to be part of your magical day! Below you'll find our comprehensive quotation tailored specifically to your needs and vision.
-
-Our team has carefully crafted this package to ensure every detail contributes to making your wedding day absolutely perfect. Each service item has been selected to complement the others and create a cohesive, beautiful experience for you and your guests.
-
-We understand that your wedding day is one of the most important days of your life, and we're committed to delivering exceptional service that exceeds your expectations.
-
-Please review the detailed breakdown and let us know if you'd like to discuss any modifications or have questions about our services.
-
-Looking forward to celebrating with you!
-
-Warm regards,
-${booking.vendorName || 'Our Wedding Services Team'}`);
+      setTerms('');
+      setValidUntil('');
     }
-  }, [isOpen, booking, downpaymentPercentage]);
+  }, [isOpen, booking, serviceData]);
 
   // Function to save current prices as vendor's default
   const saveVendorPricing = () => {

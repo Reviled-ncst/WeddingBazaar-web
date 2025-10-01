@@ -24,10 +24,9 @@ import { useAuth } from '../../../../shared/contexts/AuthContext';
 import { centralizedBookingAPI as bookingApiService } from '../../../../services/api/CentralizedBookingAPI';
 
 // Import unified mapping utilities
-import { mapToEnhancedBooking } from '../../../../shared/utils/booking-data-mapping';
+import { mapToEnhancedBooking, type UIBooking } from '../../../../shared/utils/booking-data-mapping';
 
-// Import custom hooks
-import { useBookingPreferences } from './hooks';
+// Custom hooks removed - using fixed sorting (latest first)
 
 import type { 
   Booking
@@ -37,11 +36,7 @@ import type { PaymentType } from '../payment/types/payment.types';
 
 export const IndividualBookings: React.FC = () => {
   
-  // User preferences from localStorage
-  const { 
-    sortBy,
-    sortOrder
-  } = useBookingPreferences();
+  // Bookings will be sorted by latest first (created_at DESC)
   
   // Auth context to get user information
   const { user } = useAuth();
@@ -67,24 +62,26 @@ export const IndividualBookings: React.FC = () => {
   // Load bookings function
   const loadBookings = useCallback(async () => {
     
-    // TEMPORARY: Use fallback user ID for testing if not logged in
-    let effectiveUserId = user?.id;
-    if (!effectiveUserId) {
-      effectiveUserId = '1-2025-001'; // User with 2 bookings for testing
+    // Only load bookings if user is authenticated
+    if (!user?.id) {
+      console.log('⚠️ [IndividualBookings] No authenticated user, skipping booking load');
+      setLoading(false);
+      setBookings([]);
+      return;
     }
     
-    console.log('👤 [IndividualBookings] Loading bookings for user:', effectiveUserId);
+    console.log('👤 [IndividualBookings] Loading bookings for user:', user.id);
     
     try {
       setLoading(true);
       setError(null);
 
-      // Call the booking API service with current sort preferences
-      const response = await bookingApiService.getCoupleBookings(effectiveUserId, {
+      // Call the booking API service with latest first sorting
+      const response = await bookingApiService.getCoupleBookings(user.id, {
         page: 1,
         limit: 50,
-        sortBy,
-        sortOrder
+        sortBy: 'created_at',
+        sortOrder: 'desc'
       });
 
       console.log('🔥 [CRITICAL DEBUG] Raw API response:', response);
@@ -101,9 +98,33 @@ export const IndividualBookings: React.FC = () => {
         });
         
         // Map backend response to enhanced bookings using unified mapping utility
-        const enhancedBookings: EnhancedBooking[] = response.bookings.map((booking: any) => 
+        const uiBookings = response.bookings.map((booking: any) => 
           mapToEnhancedBooking(booking)
         );
+        
+        // Convert UIBooking to EnhancedBooking format
+        const enhancedBookings: EnhancedBooking[] = uiBookings.map((uiBooking: UIBooking) => ({
+          id: uiBooking.id,
+          serviceName: uiBooking.serviceType,
+          serviceType: uiBooking.serviceType,
+          vendorName: uiBooking.vendorName,
+          vendorBusinessName: uiBooking.vendorName,
+          vendorPhone: uiBooking.contactPhone ?? undefined,
+          vendorEmail: uiBooking.contactEmail ?? undefined,
+          coupleName: uiBooking.coupleName,
+          clientName: uiBooking.coupleName,
+          eventDate: uiBooking.eventDate,
+          eventLocation: uiBooking.eventLocation || 'TBD',
+          status: uiBooking.status,
+          totalAmount: uiBooking.totalAmount,
+          downpaymentAmount: uiBooking.downpaymentAmount,
+          remainingBalance: uiBooking.remainingBalance,
+          createdAt: uiBooking.createdAt,
+          updatedAt: uiBooking.updatedAt,
+          paymentProgress: uiBooking.paymentProgressPercentage,
+          specialRequests: uiBooking.specialRequests,
+          notes: uiBooking.notes
+        }));
 
         setBookings(enhancedBookings);
         console.log('✅ [IndividualBookings] Bookings loaded successfully:', enhancedBookings);
@@ -121,7 +142,7 @@ export const IndividualBookings: React.FC = () => {
       setLoading(false);
       console.log('🏁 [IndividualBookings] loadBookings completed');
     }
-  }, [user?.id, sortBy, sortOrder]);
+  }, [user?.id]);
 
   // Load bookings on component mount and when user changes
   useEffect(() => {
@@ -152,7 +173,7 @@ export const IndividualBookings: React.FC = () => {
     };
   }, [loadBookings]);
 
-  const handlePayment = (booking: Booking | EnhancedBooking, paymentType: PaymentType) => {
+  const handlePayment = (booking: EnhancedBooking, paymentType: 'downpayment' | 'full_payment' | 'remaining_balance') => {
     console.log('💳 [PAYMENT TRIGGER] Opening payment modal for:', {
       bookingId: booking.id,
       paymentType,
@@ -545,180 +566,8 @@ export const IndividualBookings: React.FC = () => {
     }
   };
 
-  // Mock function to simulate vendor sending a quote (for testing)
-  const handleSimulateQuoteSent = async (booking: EnhancedBooking) => {
-    try {
-      console.log('🧪 [TEST] Simulating quote sent for booking:', booking.id);
-      
-      // Generate enhanced mock quote data with detailed breakdown
-      const baseAmount = booking.totalAmount || 45000;
-      const mockQuoteData = {
-        quotedPrice: baseAmount,
-        breakdown: [
-          { 
-            item: `${booking.serviceType || 'Wedding Service'} - Core Package`, 
-            amount: Math.round(baseAmount * 0.6),
-            description: 'Base service package with standard features'
-          },
-          { 
-            item: 'Premium Features & Enhancements', 
-            amount: Math.round(baseAmount * 0.25),
-            description: 'Advanced features, premium materials, and extended coverage'
-          },
-          { 
-            item: 'Professional Consultation & Coordination', 
-            amount: Math.round(baseAmount * 0.1),
-            description: 'Pre-event planning, day-of coordination, and expert guidance'
-          },
-          { 
-            item: 'Service Fee & Administrative Costs', 
-            amount: Math.round(baseAmount * 0.05),
-            description: 'Processing, documentation, and service management'
-          }
-        ],
-        validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-        notes: `🎉 Congratulations on your upcoming wedding! We're excited to be part of your special day. This comprehensive quote includes our premium ${booking.serviceType || 'wedding service'} package with all the features you requested. Our team of experienced professionals will ensure everything runs smoothly from planning to execution.`,
-        paymentTerms: `💰 Payment Schedule: 30% deposit (₱${Math.round(baseAmount * 0.3).toLocaleString()}) required to confirm booking. Remaining 70% (₱${Math.round(baseAmount * 0.7).toLocaleString()}) due 7 days before your event date.`,
-        inclusions: [
-          `Complete ${booking.serviceType || 'wedding service'} package`,
-          'Pre-event consultation and planning session',
-          'Professional team on your wedding day',
-          'High-quality equipment and materials',
-          'Coordination with other vendors',
-          'Post-event follow-up and delivery'
-        ],
-        specialOffers: baseAmount > 50000 ? [
-          '🎁 FREE: Additional 2-hour coverage extension',
-          '🎁 FREE: Premium package upgrade (worth ₱5,000)',
-          '💎 VIP: Priority support and dedicated coordinator'
-        ] : [
-          '🎁 FREE: 1-hour consultation session',
-          '💝 BONUS: Complimentary basic coordination package'
-        ]
-      };
+  // Test functions removed for production
 
-      // Update the booking status to 'quote_sent' locally
-      setBookings(prevBookings => 
-        prevBookings.map(b => 
-          b.id === booking.id 
-            ? { 
-                ...b, 
-                status: 'quote_sent' as BookingStatus,
-                quotedPrice: mockQuoteData.quotedPrice,
-                quoteData: mockQuoteData,
-                updatedAt: new Date().toISOString()
-              }
-            : b
-        )
-      );
-
-      // Show enhanced success notification with detailed quote information
-      const notification = document.createElement('div');
-      notification.className = 'fixed top-4 right-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-4 rounded-xl shadow-lg z-50 transform transition-all duration-300 max-w-md';
-      notification.innerHTML = `
-        <div class="flex items-start gap-3">
-          <div class="text-2xl flex-shrink-0">📋</div>
-          <div class="flex-1">
-            <div class="font-bold text-lg mb-1">Quote Received!</div>
-            <div class="text-sm opacity-95 mb-2">${booking.vendorName || 'Vendor'} sent a detailed quote</div>
-            
-            <div class="bg-white bg-opacity-20 rounded-lg p-3 mb-3">
-              <div class="font-semibold">💰 Total Quote: ₱${mockQuoteData.quotedPrice.toLocaleString()}</div>
-              <div class="text-xs opacity-90">
-                • Deposit: ₱${Math.round(baseAmount * 0.3).toLocaleString()} (30%)
-                • Balance: ₱${Math.round(baseAmount * 0.7).toLocaleString()} (70%)
-              </div>
-            </div>
-            
-            <div class="text-xs bg-gradient-to-r from-green-500 to-emerald-600 bg-opacity-80 rounded p-2">
-              <div class="font-semibold">📱 What's Next?</div>
-              <div class="opacity-95">
-                1. Click "Accept Quote" button to accept<br>
-                2. Or click booking card for full quote details<br>
-                3. Valid for 7 days from today
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(notification);
-
-      setTimeout(() => {
-        notification.style.transform = 'translateX(100%)';
-        setTimeout(() => document.body.removeChild(notification), 300);
-      }, 7000);
-
-      console.log('✅ [TEST] Quote simulation completed successfully');
-    } catch (error) {
-      console.error('❌ [TEST] Error simulating quote:', error);
-      alert('Failed to simulate quote sending.');
-    }
-  };
-
-  // Mock function to simulate creating a test booking in quote_requested status
-  const handleCreateTestBooking = async () => {
-    try {
-      console.log('🧪 [TEST] Creating test booking for quote workflow testing');
-      
-      const mockBooking: EnhancedBooking = {
-        id: `test-${Date.now()}`,
-        serviceName: 'Premium Wedding Photography',
-        serviceType: 'photography',
-        vendorName: 'Captured Moments Studio',
-        vendorBusinessName: 'Captured Moments Studio',
-        vendorRating: 4.8,
-        vendorPhone: '+63 912 345 6789',
-        vendorEmail: 'hello@capturedmoments.ph',
-        eventDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString(), // 120 days from now
-        formattedEventDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }),
-        eventLocation: 'Makati Shangri-La Hotel',
-        status: 'quote_requested',
-        totalAmount: 75000,
-        downpaymentAmount: 22500,
-        remainingBalance: 52500,
-        bookingReference: `WB-TEST-${Date.now().toString().slice(-6)}`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        daysUntilEvent: 120,
-        specialRequests: 'Please include engagement photos and same-day editing for key moments',
-        notes: 'Test booking created for workflow testing'
-      };
-
-      // Add the test booking to the list
-      setBookings(prevBookings => [mockBooking, ...prevBookings]);
-
-      // Show success notification with workflow guidance
-      const notification = document.createElement('div');
-      notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 transform transition-all duration-300 max-w-sm';
-      notification.innerHTML = `
-        <div class="flex items-start gap-3">
-          <div class="text-2xl flex-shrink-0">✨</div>
-          <div class="flex-1">
-            <div class="font-semibold">Test Booking Created!</div>
-            <div class="text-sm opacity-90 mb-2">Ready for quote workflow testing</div>
-            <div class="text-xs bg-green-600 bg-opacity-50 rounded p-2 mt-2">
-              💡 <strong>Next:</strong> Click "Send quote" button above to simulate vendor sending a quote for this booking.
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(notification);
-
-      setTimeout(() => {
-        notification.style.transform = 'translateX(100%)';
-        setTimeout(() => document.body.removeChild(notification), 300);
-      }, 6000);
-
-      console.log('✅ [TEST] Test booking created successfully:', mockBooking);
-    } catch (error) {
-      console.error('❌ [TEST] Error creating test booking:', error);
-      alert('Failed to create test booking.');
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -754,111 +603,7 @@ export const IndividualBookings: React.FC = () => {
           </div>
         </div>
 
-        {/* Development Test Controls */}
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-              <h3 className="text-sm font-semibold text-blue-800">Quote Workflow Testing</h3>
-              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">DEV MODE</span>
-            </div>
-            <div className="text-xs text-blue-600">
-              Full workflow simulation available
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={handleCreateTestBooking}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-            >
-              <span>✨</span>
-              Create Test Booking
-            </button>
-            <button
-              onClick={() => {
-                // Clear test bookings (those with IDs starting with 'test-')
-                setBookings(prevBookings => 
-                  prevBookings.filter(booking => !booking.id.startsWith('test-'))
-                );
-                
-                // Show notification
-                const notification = document.createElement('div');
-                notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 transform transition-all duration-300';
-                notification.innerHTML = `
-                  <div class="flex items-center gap-3">
-                    <div class="text-2xl">🧹</div>
-                    <div>
-                      <div class="font-semibold">Test Data Cleared!</div>
-                      <div class="text-sm opacity-90">All test bookings removed</div>
-                    </div>
-                  </div>
-                `;
-                document.body.appendChild(notification);
-
-                setTimeout(() => {
-                  notification.style.transform = 'translateX(100%)';
-                  setTimeout(() => document.body.removeChild(notification), 300);
-                }, 3000);
-              }}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-            >
-              <span>🧹</span>
-              Clear Test Data
-            </button>
-            {bookings.filter(b => b.status === 'quote_requested').length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-blue-700">Send quote for:</span>
-                {bookings.filter(b => b.status === 'quote_requested').slice(0, 3).map(booking => (
-                  <button
-                    key={booking.id}
-                    onClick={() => handleSimulateQuoteSent(booking)}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors flex items-center gap-1"
-                    title={`Send quote for ${booking.serviceName}`}
-                  >
-                    <span>📋</span>
-                    {booking.serviceName?.split(' ').slice(0, 2).join(' ') || 'Service'}
-                  </button>
-                ))}
-              </div>
-            )}
-            {bookings.filter(b => b.status === 'quote_sent').length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-blue-700">View quotes:</span>
-                {bookings.filter(b => b.status === 'quote_sent').slice(0, 3).map(booking => (
-                  <button
-                    key={`quote-${booking.id}`}
-                    onClick={() => {
-                      setSelectedBooking(booking as any);
-                      setShowQuoteDetails(true);
-                    }}
-                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-md transition-colors flex items-center gap-1"
-                    title={`View quote for ${booking.serviceName}`}
-                  >
-                    <span>👀</span>
-                    {booking.serviceName?.split(' ').slice(0, 2).join(' ') || 'Service'}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex gap-4 mt-3 text-xs">
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              <span className="text-gray-600">{bookings.filter(b => b.status === 'quote_requested').length} awaiting quotes</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-              <span className="text-gray-600">{bookings.filter(b => b.status === 'quote_sent').length} quotes received</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-              <span className="text-gray-600">{bookings.filter(b => b.status === 'confirmed').length} confirmed</span>
-            </div>
-          </div>
-          <p className="text-xs text-blue-600 mt-2">
-            <strong>Workflow:</strong> Create test booking → Send quote → View/Accept quote → Complete workflow testing
-          </p>
-        </div>
+        {/* Development test controls removed for production */}
 
         {/* Booking Statistics */}
         {bookings.length > 0 && (

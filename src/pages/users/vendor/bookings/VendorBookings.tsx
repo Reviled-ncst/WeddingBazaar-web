@@ -87,7 +87,7 @@ export const VendorBookings: React.FC = () => {
   const { user } = useAuth();
   
   // Notification system
-  const { showSuccess, showError, showInfo, showWarning } = useNotifications();
+  const { showSuccess, showError, showInfo } = useNotifications();
   
   console.log('🔧 [VendorBookings] NotificationProvider context is working!');
   
@@ -109,9 +109,13 @@ export const VendorBookings: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [liveActivities, setLiveActivities] = useState<LiveActivity[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [selectedServiceData, setSelectedServiceData] = useState<any>(null);
   
   // Use authenticated vendor ID - For vendors, user.id IS the vendor ID
   const vendorId = user?.role === 'vendor' ? user.id : (user?.vendorId || '2-2025-001');
+  
+  // API URL
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
   
   // Debug logging for vendor identification
   console.log('🔍 [VendorBookings] Vendor identification debug:', {
@@ -349,6 +353,58 @@ export const VendorBookings: React.FC = () => {
       showError('Refresh Failed', 'Failed to refresh data. Please try again.');
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  // Fetch service data for quote prefilling
+  const fetchServiceDataForQuote = async (booking: UIBooking) => {
+    try {
+      console.log('🔍 [VendorBookings] Fetching service data for booking:', booking.id, 'serviceType:', booking.serviceType);
+      
+      // Try to fetch vendor's service that matches the booking's service type
+      const response = await fetch(`${apiUrl}/api/services/vendor/${vendorId}`);
+      
+      if (response.ok) {
+        const result = await response.json();
+        
+        if (result.success && result.services.length > 0) {
+          // Find a service that matches the booking's service type/category
+          const matchingService = result.services.find((service: any) => 
+            service.category === booking.serviceType || 
+            service.name.toLowerCase().includes(booking.serviceType.toLowerCase())
+          );
+          
+          if (matchingService) {
+            console.log('✅ [VendorBookings] Found matching service for prefill:', matchingService.name);
+            return {
+              id: matchingService.id,
+              name: matchingService.name,
+              category: matchingService.category,
+              features: matchingService.features || [],
+              price: matchingService.price || '10000',
+              description: matchingService.description || ''
+            };
+          } else {
+            // Use the first available service as fallback
+            const firstService = result.services[0];
+            console.log('🔄 [VendorBookings] No exact match, using first service:', firstService.name);
+            return {
+              id: firstService.id,
+              name: firstService.name,
+              category: firstService.category,
+              features: firstService.features || [],
+              price: firstService.price || '10000',
+              description: firstService.description || ''
+            };
+          }
+        }
+      }
+      
+      console.log('⚠️ [VendorBookings] No service data available for prefill');
+      return null;
+    } catch (error) {
+      console.error('❌ [VendorBookings] Error fetching service data:', error);
+      return null;
     }
   };
 
@@ -767,8 +823,14 @@ export const VendorBookings: React.FC = () => {
                             onUpdateStatus={(bookingId: string, newStatus: string, message?: string) => {
                               handleStatusUpdate(bookingId, newStatus as BookingStatus, message);
                             }}
-                            onSendQuote={(booking: UIBooking) => {
-                              setSelectedBooking(mapVendorBookingToUI(booking));
+                            onSendQuote={async (booking: UIBooking) => {
+                              const mappedBooking = mapVendorBookingToUI(booking);
+                              setSelectedBooking(mappedBooking);
+                              
+                              // Fetch service data for prefilling
+                              const serviceData = await fetchServiceDataForQuote(mappedBooking);
+                              setSelectedServiceData(serviceData);
+                              
                               setShowQuoteModal(true);
                             }}
                             onContactClient={(booking: UIBooking) => {
@@ -907,8 +969,13 @@ export const VendorBookings: React.FC = () => {
         onUpdateStatus={(bookingId: string, newStatus: string, message?: string) => {
           handleStatusUpdate(bookingId, newStatus as BookingStatus, message);
         }}
-        onSendQuote={(booking) => {
+        onSendQuote={async (booking) => {
           setSelectedBooking(booking as any);
+          
+          // Fetch service data for prefilling
+          const serviceData = await fetchServiceDataForQuote(booking as UIBooking);
+          setSelectedServiceData(serviceData);
+          
           setShowQuoteModal(true);
         }}
         onContactClient={(booking) => {
@@ -923,33 +990,53 @@ export const VendorBookings: React.FC = () => {
           isOpen={showQuoteModal}
           onClose={() => setShowQuoteModal(false)}
           booking={selectedBooking}
+          serviceData={selectedServiceData}
           onSendQuote={async (quoteData) => {
             try {
               console.log('📤 [VendorBookings] Sending quote:', quoteData);
               
-              // First send the quote
-              // TODO: Implement actual quote sending API call
-              console.log('Quote data to send:', {
-                bookingId: selectedBooking.id,
-                vendorId: selectedBooking.vendorId,
-                quoteDetails: quoteData
-              });
+              // Create a comprehensive quote summary for the booking record
+              const quoteItemsSummary = quoteData.items.map((item: any) => 
+                `${item.description}: ${formatPHP(item.total)} (${item.quantity}x ${formatPHP(item.unitPrice)})`
+              ).join('; ');
               
-              // Then update the booking status to 'quote_sent'
+              const quoteSummary = [
+                `ITEMIZED QUOTE: ${quoteData.items.length} items`,
+                `Items: ${quoteItemsSummary}`,
+                `Subtotal: ${formatPHP(quoteData.subtotal)}`,
+                quoteData.tax > 0 ? `Tax: ${formatPHP(quoteData.tax)}` : null,
+                quoteData.discount > 0 ? `Discount: -${formatPHP(quoteData.discount)}` : null,
+                `TOTAL: ${formatPHP(quoteData.total)}`,
+                quoteData.notes ? `Notes: ${quoteData.notes}` : null,
+                `Valid until: ${quoteData.validUntil}`,
+                quoteData.terms ? `Terms: ${quoteData.terms}` : null
+              ].filter(Boolean).join(' | ');
+              
+              console.log('📋 [VendorBookings] Quote summary prepared:', quoteSummary);
+              
+              // Update booking status to 'quote_sent' with the detailed quote information
               try {
-                console.log('🔄 [VendorBookings] Attempting status update to quote_sent for booking:', selectedBooking.id);
-                await handleStatusUpdate(selectedBooking.id, 'quote_sent', 'Quote sent to client');
-                console.log('✅ [VendorBookings] Quote sent and status updated successfully');
-                alert('Quote sent successfully! Booking status updated to "Quote Sent".');
+                console.log('🔄 [VendorBookings] Updating booking status to quote_sent with quote details...');
+                await handleStatusUpdate(selectedBooking.id, 'quote_sent', quoteSummary);
+                console.log('✅ [VendorBookings] Quote sent and booking status updated successfully');
+                
+                showSuccess(
+                  'Quote Sent Successfully!', 
+                  `Your detailed quote with ${quoteData.items.length} items totaling ${formatPHP(quoteData.total)} has been sent to the client. They will receive an email notification.`
+                );
               } catch (statusError) {
-                console.warn('⚠️ [VendorBookings] Status update failed, but quote was processed:', statusError);
-                alert('Quote sent successfully! (Note: Status update failed - this will be fixed in a future update)');
+                console.error('💥 [VendorBookings] Failed to send quote via status update:', statusError);
+                throw new Error('Failed to send quote. Please try again.');
               }
               
               setShowQuoteModal(false);
+              
             } catch (error) {
-              console.error('💥 [VendorBookings] Error sending quote:', error);
-              alert('Failed to send quote. Please try again.');
+              console.error('💥 [VendorBookings] Quote sending failure:', error);
+              showError(
+                'Quote Send Failed', 
+                (error as Error)?.message || 'Failed to send quote. Please check your connection and try again.'
+              );
             }
           }}
         />
