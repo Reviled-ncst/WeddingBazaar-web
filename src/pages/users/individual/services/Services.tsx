@@ -259,22 +259,19 @@ export const Services: React.FC = () => {
             vendorImage: service.vendorImage,
             description: service.description,
             priceRange: service.priceRange,
-            location: vendor.location || vendor.address || 'Philippines',
-            rating: typeof vendor.rating === 'number' ? vendor.rating : parseFloat(vendor.rating) || 4.5,
-            reviewCount: vendor.review_count || vendor.reviewCount || vendor.reviews_count || 0,
-            image: imageUrl,
-            gallery: vendor.gallery || vendor.images || [imageUrl],
-            features: vendor.features || vendor.specialties || vendor.services || [],
-            availability: vendor.availability !== false,
+            location: service.location || service.address || 'Philippines',
+            rating: typeof service.rating === 'number' ? service.rating : parseFloat(service.rating) || 4.5,
+            reviewCount: service.review_count || service.reviewCount || service.reviews_count || 0,
+            image: service.image,
+            gallery: service.gallery || service.images || [service.image],
+            features: service.features || service.specialties || service.services || [],
+            availability: service.availability !== false,
             contactInfo: {
-              phone: vendor.phone || vendor.contact_phone,
-              email: vendor.email || vendor.contact_email,
-              website: vendor.website || vendor.business_website
+              phone: service.phone || service.contact_phone,
+              email: service.email || service.contact_email,
+              website: service.website || service.business_website
             }
-          };
-
-          return converted;
-        };
+          }));
 
         // Enhanced helper function to convert service to service format  
         const convertServiceToService = (service: any) => {
@@ -917,48 +914,25 @@ export const Services: React.FC = () => {
                 </div>
               </div>
 
-              {/* MEGA PROMINENT DSS BUTTON - ALWAYS VISIBLE */}
-              <div className="flex justify-center mb-12 relative">
-                {/* Pulsing background effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-300/30 via-indigo-300/30 to-blue-300/30 rounded-3xl blur-2xl animate-pulse scale-110"></div>
-                
+              {/* Always Visible DSS Button - Prominently placed */}
+              <div className="flex justify-center mb-8">
                 <button
                   onClick={handleOpenDSS}
-                  className="group relative flex items-center space-x-6 px-16 py-8 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white rounded-3xl hover:from-purple-700 hover:via-indigo-700 hover:to-blue-700 transition-all duration-500 shadow-2xl hover:shadow-3xl transform hover:scale-110 hover:-translate-y-3 font-bold text-3xl border-4 border-white/40 backdrop-blur-sm overflow-hidden z-10"
-                  title="🤖 AI Decision Support System - Get Personalized Wedding Service Recommendations"
+                  className="group flex items-center space-x-4 px-12 py-6 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white rounded-3xl hover:from-purple-600 hover:via-indigo-600 hover:to-blue-600 transition-all duration-500 shadow-2xl hover:shadow-3xl transform hover:scale-110 hover:-translate-y-2 font-bold text-2xl border-2 border-white/30 backdrop-blur-sm relative overflow-hidden"
+                  title="AI Decision Support System - Get Personalized Wedding Service Recommendations"
                   aria-label="Open AI Decision Support System for personalized recommendations"
-                  style={{ minHeight: '80px' }}
                 >
-                  {/* Multiple background effects */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-400/30 to-blue-400/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                  {/* Background glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-blue-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
                   
-                  {/* Icon with enhanced effects */}
-                  <div className="relative">
-                    <Brain className="h-12 w-12 group-hover:animate-pulse group-hover:scale-125 transition-all duration-300 relative z-10 drop-shadow-lg" />
-                    <div className="absolute inset-0 bg-white/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  </div>
+                  <Brain className="h-8 w-8 group-hover:animate-pulse group-hover:scale-125 transition-all duration-300 relative z-10" />
+                  <span className="relative z-10">🤖 AI Wedding Planner</span>
+                  <div className="w-4 h-4 bg-white/90 rounded-full animate-bounce shadow-lg relative z-10"></div>
                   
-                  <span className="relative z-10 drop-shadow-lg">🤖 AI Wedding Planner</span>
-                  
-                  {/* Enhanced bouncing indicator */}
-                  <div className="flex space-x-1 relative z-10">
-                    <div className="w-3 h-3 bg-white/90 rounded-full animate-bounce shadow-lg"></div>
-                    <div className="w-3 h-3 bg-white/70 rounded-full animate-bounce shadow-lg" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-3 h-3 bg-white/50 rounded-full animate-bounce shadow-lg" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-                  
-                  {/* Multiple floating particles */}
-                  <div className="absolute -top-3 -right-3 w-4 h-4 bg-white/60 rounded-full animate-bounce opacity-80"></div>
-                  <div className="absolute -bottom-3 -left-3 w-3 h-3 bg-white/50 rounded-full animate-bounce-delayed opacity-80"></div>
-                  <div className="absolute top-2 left-4 w-2 h-2 bg-white/40 rounded-full animate-float opacity-60"></div>
-                  <div className="absolute bottom-2 right-6 w-2 h-2 bg-white/40 rounded-full animate-float-delayed opacity-60"></div>
+                  {/* Floating particles */}
+                  <div className="absolute -top-2 -right-2 w-3 h-3 bg-white/60 rounded-full animate-bounce opacity-80"></div>
+                  <div className="absolute -bottom-2 -left-2 w-2 h-2 bg-white/60 rounded-full animate-bounce-delayed opacity-80"></div>
                 </button>
-                
-                {/* Floating label */}
-                <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-500/90 to-blue-500/90 text-white px-4 py-2 rounded-full text-sm font-semibold backdrop-blur-sm border border-white/30 animate-bounce-subtle shadow-lg">
-                  Click for AI Recommendations!
-                </div>
               </div>
             </div>
 
