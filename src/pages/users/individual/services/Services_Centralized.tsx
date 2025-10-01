@@ -12,7 +12,8 @@ import {
   Mail,
   Globe,
   Filter,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Brain
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../../../utils/cn';
@@ -20,6 +21,7 @@ import { CoupleHeader } from '../landing/CoupleHeader';
 import { useUniversalMessaging } from '../../../../shared/contexts/UniversalMessagingContext';
 import { serviceManager, SERVICE_CATEGORIES } from '../../../../shared/services/CentralizedServiceManager';
 import { BookingRequestModal } from '../../../../modules/services/components/BookingRequestModal';
+// import { DecisionSupportSystem } from './dss/DecisionSupportSystem';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 import type { Service as BookingService } from '../../../../modules/services/types';
 
@@ -129,6 +131,7 @@ export function Services() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<Service | null>(null);
+  const [showDSS, setShowDSS] = useState(false);
   
   const { startConversationWith } = useUniversalMessaging();
 
@@ -392,6 +395,23 @@ Best regards`;
 
   const categories = ['All', ...SERVICE_CATEGORIES.map(cat => cat.name)];
 
+  // DSS handlers
+  const handleOpenDSS = () => {
+    setShowDSS(true);
+  };
+
+  const handleCloseDSS = () => {
+    setShowDSS(false);
+  };
+
+  const handleServiceRecommend = (serviceId: string) => {
+    const service = services.find(s => s.id === serviceId);
+    if (service) {
+      setSelectedService(service);
+      setShowBookingModal(true);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
@@ -474,6 +494,25 @@ Best regards`;
                     className="w-full pl-10 pr-4 py-3 border border-pink-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
                   />
                 </div>
+
+                {/* Always Visible DSS Button - Prominently placed */}
+                <button
+                  onClick={handleOpenDSS}
+                  className="group flex items-center space-x-3 px-8 py-3 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white rounded-xl hover:from-purple-600 hover:via-indigo-600 hover:to-blue-600 transition-all duration-500 shadow-lg hover:shadow-xl transform hover:scale-105 hover:-translate-y-1 font-semibold border border-white/20 backdrop-blur-sm relative overflow-hidden"
+                  title="AI Decision Support System - Get Personalized Wedding Service Recommendations"
+                  aria-label="Open AI Decision Support System for personalized recommendations"
+                >
+                  {/* Background glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-blue-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
+                  
+                  <Brain className="h-6 w-6 group-hover:animate-pulse group-hover:scale-110 transition-all duration-300 relative z-10" />
+                  <span className="relative z-10 text-lg">🤖 AI Wedding Planner</span>
+                  <div className="w-3 h-3 bg-white/90 rounded-full animate-bounce shadow-lg relative z-10"></div>
+                  
+                  {/* Floating particles */}
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-white/60 rounded-full animate-bounce opacity-80"></div>
+                  <div className="absolute -bottom-1 -left-1 w-1.5 h-1.5 bg-white/60 rounded-full animate-bounce opacity-80 animate-delay-500"></div>
+                </button>
 
                 {/* View Mode Toggle */}
                 <div className="flex items-center bg-pink-50 rounded-xl p-1">
@@ -777,6 +816,26 @@ Best regards`;
             setSelectedServiceForBooking(null);
           }}
         />
+      )}
+
+      {/* Decision Support System (DSS) Modal */}
+      {/* Temporarily disabled - DSS component has JSX structure issues */}
+      {showDSS && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">AI Wedding Planner</h3>
+            <p className="text-gray-600 mb-6">
+              Our intelligent wedding planning system is being enhanced with advanced features. 
+              Please check back soon for personalized recommendations and smart booking suggestions!
+            </p>
+            <button
+              onClick={handleCloseDSS}
+              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1529,7 +1529,6 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                         </p>
                       </div>
                     </div>
-                    </>
                   )}
                 </motion.div>
               )}
@@ -1953,7 +1952,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                   <p className="text-sm text-gray-500 mt-2">Feature coming soon...</p>
                 </div>
               </motion.div>
-              )}
+            )}
             </AnimatePresence>
           </div>
         </div>
