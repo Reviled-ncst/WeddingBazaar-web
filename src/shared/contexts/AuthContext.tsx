@@ -78,13 +78,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Only verify token if one exists
         const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-        const response = await fetch(`${apiBaseUrl}/api/auth/verify`, {
+        
+        // Create timeout promise to prevent hanging
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Authentication timeout after 10 seconds')), 10000);
+        });
+        
+        const fetchPromise = fetch(`${apiBaseUrl}/api/auth/verify`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           }
         });
+        
+        const response = await Promise.race([fetchPromise, timeoutPromise]);
 
         if (response.ok) {
           const data = await response.json();

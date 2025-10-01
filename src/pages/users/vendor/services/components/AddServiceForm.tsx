@@ -18,6 +18,7 @@ import {
   Camera,
   Sparkles
 } from 'lucide-react';
+import { LocationPicker } from '../../../../../shared/components/forms/LocationPicker';
 
 // Service interface based on the actual database schema
 interface Service {
@@ -44,6 +45,15 @@ interface Service {
   keywords?: string;
 }
 
+interface LocationData {
+  address: string;
+  lat?: number;
+  lng?: number;
+  city?: string;
+  state?: string;
+  country?: string;
+}
+
 interface FormData {
   title: string;
   description: string;
@@ -53,6 +63,7 @@ interface FormData {
   featured: boolean;
   is_active: boolean;
   location: string;
+  locationData?: LocationData;
   price_range: string;
   features: string[];
   contact_info: {
@@ -105,6 +116,101 @@ const PLACEHOLDER_IMAGES = [
   'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=400'
 ];
 
+// Item/Equipment examples for different service categories to help vendors
+const getCategoryExamples = (category: string): string[] => {
+  const examples: Record<string, string[]> = {
+    'Photographer & Videographer': [
+      'DSLR Camera with 24-70mm lens',
+      'Prime lens 50mm f/1.4',
+      'Professional flash with diffuser',
+      'LED continuous lighting kit',
+      'Tripod and monopod',
+      'Memory cards and backup storage',
+      'Reflectors and light modifiers',
+      'Drone with 4K camera (if permitted)'
+    ],
+    'Wedding Planner': [
+      'Wedding timeline and checklist',
+      'Emergency bridal kit',
+      'Vendor contact coordination',
+      'Budget tracking spreadsheet',
+      'Day-of coordination services',
+      'Setup supervision',
+      'Guest seating chart',
+      'Wedding rehearsal coordination'
+    ],
+    'Caterer': [
+      'Chafing dishes and food warmers',
+      'Serving utensils and platters',
+      'Table linens and napkins',
+      'Dinnerware and glassware',
+      'Professional serving staff',
+      'Bar setup and bartender',
+      'Food preparation and cooking',
+      'Cleanup and dishwashing service'
+    ],
+    'Florist': [
+      'Bridal bouquet (seasonal flowers)',
+      'Groom and groomsmen boutonnieres',
+      'Ceremony arch with fresh flowers',
+      'Aisle petals and decorations',
+      'Reception centerpieces (8 tables)',
+      'Flower crown for bride',
+      'Corsages for mothers',
+      'Delivery and setup service'
+    ],
+    'Hair & Makeup Artists': [
+      'Professional makeup brushes and tools',
+      'High-end cosmetic products',
+      'Hair styling tools and equipment',
+      'Hair extensions and accessories',
+      'Touch-up kit for the day',
+      'Bridal makeup application',
+      'Hair styling and updo',
+      'Trial session (2 hours)'
+    ],
+    'DJ/Band': [
+      'Professional DJ mixing console',
+      'Speakers and amplification system',
+      'Wireless microphones (2 units)',
+      'Lighting equipment and effects',
+      'Backup sound system',
+      'DJ booth and equipment setup',
+      'Music library and playlist',
+      'MC services throughout event'
+    ],
+    'Venue Coordinator': [
+      'Round tables for 150 guests',
+      'Chiavari chairs with cushions',
+      'Table linens and chair covers',
+      'Basic lighting system',
+      'Sound system for ceremony',
+      'Bridal suite access (4 hours)',
+      'Parking coordination',
+      'Security and staff supervision'
+    ],
+    'Event Rentals': [
+      'White wedding tent (40x60 ft)',
+      'Round tables (60" diameter)',
+      'White folding chairs',
+      'Table linens and napkins',
+      'Portable dance floor',
+      'String lighting installation',
+      'Generator and power distribution',
+      'Delivery, setup, and breakdown'
+    ]
+  };
+  
+  return examples[category] || [
+    'Professional equipment rental',
+    'Quality materials and supplies',
+    'Setup and installation service',
+    'Delivery and pickup included',
+    'Backup equipment available',
+    'Professional consultation'
+  ];
+};
+
 export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   isOpen,
   onClose,
@@ -122,6 +228,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     featured: false,
     is_active: true,
     location: '',
+    locationData: undefined,
     price_range: '₱',
     features: [],
     contact_info: {
@@ -152,6 +259,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         featured: editingService.featured || false,
         is_active: editingService.is_active ?? true,
         location: editingService.location || '',
+        locationData: undefined, // Will be populated if location has coordinates
         price_range: editingService.price_range || '₱',
         features: editingService.features || [],
         contact_info: {
@@ -173,6 +281,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         featured: false,
         is_active: true,
         location: '',
+        locationData: undefined,
         price_range: '₱',
         features: [],
         contact_info: {
@@ -197,6 +306,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         if (!formData.title.trim()) newErrors.title = 'Service name is required';
         if (!formData.category) newErrors.category = 'Category is required';
         if (!formData.description.trim()) newErrors.description = 'Description is required';
+        if (!formData.location.trim()) newErrors.location = 'Service location is required';
         break;
       case 2:
         if (formData.price && parseFloat(formData.price) < 0) {
@@ -238,6 +348,15 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         ...formData,
         price: formData.price ? parseFloat(formData.price) : null,
         vendor_id: vendorId,
+        // Include location coordinates if available
+        location_coordinates: formData.locationData?.lat && formData.locationData?.lng 
+          ? { lat: formData.locationData.lat, lng: formData.locationData.lng }
+          : null,
+        location_details: formData.locationData ? {
+          city: formData.locationData.city,
+          state: formData.locationData.state,
+          country: formData.locationData.country
+        } : null,
         // Ensure we have at least one placeholder image
         images: formData.images.length > 0 ? formData.images : [PLACEHOLDER_IMAGES[0]]
       };
@@ -358,7 +477,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
           initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden"
+          className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -433,23 +552,24 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                       <p className="text-gray-600">Tell us about your amazing service</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-8">
                       {/* Service Name */}
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <div className="bg-gradient-to-r from-rose-50 to-pink-50 p-6 rounded-2xl border border-rose-100">
+                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <Sparkles className="h-5 w-5 text-rose-600" />
                           Service Name *
                         </label>
                         <input
                           type="text"
                           value={formData.title}
                           onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                          className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all ${
-                            errors.title ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                          className={`w-full px-5 py-4 border-2 rounded-xl focus:ring-4 focus:ring-rose-500/20 focus:border-rose-500 transition-all text-lg ${
+                            errors.title ? 'border-red-300 bg-red-50' : 'border-white bg-white/70 backdrop-blur-sm'
                           }`}
                           placeholder="e.g., Elegant Wedding Photography Package"
                         />
                         {errors.title && (
-                          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                          <p className="mt-2 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-2 rounded-lg">
                             <AlertCircle size={14} />
                             {errors.title}
                           </p>
@@ -457,15 +577,20 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                       </div>
 
                       {/* Category */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Category *
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
+                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <Tag className="h-5 w-5 text-blue-600" />
+                          Service Category *
                         </label>
+                        <p className="text-sm text-gray-600 mb-4">
+                          Choose the category that best describes your wedding service
+                        </p>
                         <select
                           value={formData.category}
                           onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                          className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all ${
-                            errors.category ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                          title="Select service category"
+                          className={`w-full px-5 py-4 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg ${
+                            errors.category ? 'border-red-300 bg-red-50' : 'border-white bg-white/70 backdrop-blur-sm'
                           }`}
                         >
                           <option value="">Select a category</option>
@@ -474,51 +599,111 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                           ))}
                         </select>
                         {errors.category && (
-                          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                          <p className="mt-2 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-2 rounded-lg">
                             <AlertCircle size={14} />
                             {errors.category}
                           </p>
                         )}
                       </div>
 
-                      {/* Location */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Service Location
+                      {/* Location with Leaflet Map - Full Width Section */}
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
+                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <MapPin className="h-5 w-5 text-green-600" />
+                          Service Location *
                         </label>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                          <input
-                            type="text"
+                        <p className="text-sm text-gray-600 mb-6 bg-white/50 p-3 rounded-lg border border-green-200">
+                          📍 <strong>Interactive Location Selection:</strong> Click on the map or search for your service location. 
+                          This helps clients find you and enables distance-based searches.
+                        </p>
+                        <div className="bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white">
+                          <LocationPicker
                             value={formData.location}
-                            onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all"
-                            placeholder="e.g., New York, NY"
+                            onChange={(location, locationData) => {
+                              setFormData(prev => ({
+                                ...prev,
+                                location,
+                                locationData
+                              }));
+                            }}
+                            placeholder="🔍 Search for your service location (e.g., Manila, Philippines)"
+                            className="w-full"
                           />
                         </div>
+                        {errors.location && (
+                          <p className="mt-3 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-3 rounded-lg border border-red-200">
+                            <AlertCircle size={16} />
+                            {errors.location}
+                          </p>
+                        )}
+                        {formData.locationData?.lat && formData.locationData?.lng && (
+                          <div className="mt-4 p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl border border-green-300 backdrop-blur-sm">
+                            <div className="flex items-center gap-3 text-green-800 mb-2">
+                              <div className="p-2 bg-green-600 text-white rounded-full">
+                                <MapPin className="h-4 w-4" />
+                              </div>
+                              <span className="text-lg font-semibold">Location Confirmed! ✅</span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                              <div className="bg-white/70 p-3 rounded-lg">
+                                <div className="text-green-700 font-medium">📍 Coordinates</div>
+                                <div className="text-green-800 font-mono">
+                                  {formData.locationData.lat.toFixed(6)}, {formData.locationData.lng.toFixed(6)}
+                                </div>
+                              </div>
+                              {formData.locationData.city && formData.locationData.state && (
+                                <div className="bg-white/70 p-3 rounded-lg">
+                                  <div className="text-green-700 font-medium">🏙️ Location Details</div>
+                                  <div className="text-green-800">
+                                    {formData.locationData.city}, {formData.locationData.state}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
 
-                    {/* Description */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Service Description *
-                      </label>
-                      <textarea
-                        value={formData.description}
-                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all ${
-                          errors.description ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                        }`}
-                        rows={4}
-                        placeholder="Describe your service in detail. What makes it special? What's included?"
-                      />
-                      {errors.description && (
-                        <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-                          <AlertCircle size={14} />
-                          {errors.description}
+                      {/* Description */}
+                      <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-6 rounded-2xl border border-purple-100">
+                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <div className="p-1 bg-purple-600 text-white rounded-full">
+                            <span className="text-sm">📝</span>
+                          </div>
+                          Service Description *
+                        </label>
+                        <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-purple-200">
+                          ✨ Tell your story! Describe what makes your service special, what's included, and why couples should choose you.
                         </p>
-                      )}
+                        <div className="bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white">
+                          <textarea
+                            value={formData.description}
+                            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                            className={`w-full px-5 py-4 border-2 rounded-xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-base resize-none ${
+                              errors.description ? 'border-red-300 bg-red-50' : 'border-transparent bg-transparent'
+                            }`}
+                            rows={6}
+                            placeholder="📖 Describe your service in detail...
+
+• What makes your service unique?
+• What's included in your packages?
+• What experience can couples expect?
+• Why should they choose you?
+
+Example: 'Our wedding photography captures the authentic emotions and intimate moments of your special day. We provide 8 hours of coverage, 500+ edited photos, online gallery, and complimentary engagement session...'"
+                          />
+                        </div>
+                        {errors.description && (
+                          <p className="mt-3 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-3 rounded-lg border border-red-200">
+                            <AlertCircle size={16} />
+                            {errors.description}
+                          </p>
+                        )}
+                        <div className="mt-3 text-xs text-gray-500 flex items-center gap-1">
+                          <span>💡</span>
+                          <span>Tip: A detailed description helps couples understand the value you provide</span>
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -537,53 +722,75 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                       <p className="text-gray-600">Set your pricing and availability</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-8">
                       {/* Price Range */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
+                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <DollarSign className="h-5 w-5 text-green-600" />
                           Price Range
                         </label>
-                        <div className="space-y-2">
+                        <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-green-200">
+                          💰 Select the price range that best fits your service. This helps couples find options within their budget.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {PRICE_RANGES.map(range => (
-                            <label key={range.value} className="flex items-center">                          <input
-                            type="radio"
-                            name="price_range"
-                            value={range.value}
-                            checked={formData.price_range === range.value}
-                            onChange={(e) => setFormData(prev => ({ ...prev, price_range: e.target.value }))}
-                            className="mr-3 text-rose-600"
-                            aria-label={range.label}
-                          />
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${range.color}`}>
-                                {range.label}
-                              </span>
+                            <label key={range.value} className="relative cursor-pointer">
+                              <input
+                                type="radio"
+                                name="price_range"
+                                value={range.value}
+                                checked={formData.price_range === range.value}
+                                onChange={(e) => setFormData(prev => ({ ...prev, price_range: e.target.value }))}
+                                className="sr-only"
+                                aria-label={range.label}
+                              />
+                              <div className={`p-4 rounded-xl border-2 transition-all ${
+                                formData.price_range === range.value
+                                  ? 'border-green-500 bg-green-100 shadow-lg scale-105'
+                                  : 'border-gray-200 bg-white/70 hover:border-green-300 hover:shadow-md'
+                              }`}>
+                                <div className="flex items-center justify-between">
+                                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${range.color}`}>
+                                    {range.label}
+                                  </span>
+                                  {formData.price_range === range.value && (
+                                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                  )}
+                                </div>
+                              </div>
                             </label>
                           ))}
                         </div>
                       </div>
 
                       {/* Base Price */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Starting Price (₱)
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
+                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <span className="p-1 bg-blue-600 text-white rounded-full text-sm">₱</span>
+                          Starting Price (Optional)
                         </label>
-                        <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                          <input
-                            type="number"
-                            value={formData.price}
-                            onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                            className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all ${
-                              errors.price ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                            }`}
-                            placeholder="0.00"
-                            min="0"
-                            step="0.01"
-                          />
+                        <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-blue-200">
+                          💡 Add a starting price to give couples an idea of your rates. You can always provide detailed quotes later.
+                        </p>
+                        <div className="bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white">
+                          <div className="relative">
+                            <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-400" />
+                            <input
+                              type="number"
+                              value={formData.price}
+                              onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                              className={`w-full pl-12 pr-5 py-4 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg ${
+                                errors.price ? 'border-red-300 bg-red-50' : 'border-transparent bg-transparent'
+                              }`}
+                              placeholder="e.g., 25000.00"
+                              min="0"
+                              step="100"
+                            />
+                          </div>
                         </div>
                         {errors.price && (
-                          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-                            <AlertCircle size={14} />
+                          <p className="mt-3 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-3 rounded-lg border border-red-200">
+                            <AlertCircle size={16} />
                             {errors.price}
                           </p>
                         )}
@@ -591,45 +798,75 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                     </div>
 
                     {/* Service Options */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <Star className="h-5 w-5 text-yellow-500" />
-                          <div>
-                            <p className="font-medium text-gray-900">Featured Service</p>
-                            <p className="text-sm text-gray-600">Highlight this service in search results</p>
+                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-2xl border border-yellow-100">
+                      <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span className="p-1 bg-yellow-600 text-white rounded-full text-sm">⚙️</span>
+                        Service Options
+                      </h4>
+                      <p className="text-sm text-gray-600 mb-6 bg-white/50 p-3 rounded-lg border border-yellow-200">
+                        🎯 Configure how your service appears and functions on the platform
+                      </p>
+                      
+                      <div className="space-y-4">
+                        <div className={`p-5 rounded-xl border-2 transition-all ${
+                          formData.featured 
+                            ? 'bg-gradient-to-r from-yellow-100 to-orange-100 border-yellow-400 shadow-lg' 
+                            : 'bg-white/70 border-white hover:border-yellow-300'
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className={`p-3 rounded-full ${
+                                formData.featured ? 'bg-yellow-500 text-white' : 'bg-gray-100 text-gray-400'
+                              }`}>
+                                <Star className="h-6 w-6" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900 text-lg">Featured Service</p>
+                                <p className="text-sm text-gray-600">⭐ Highlight this service in search results and get more visibility</p>
+                              </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={formData.featured}
+                                onChange={(e) => setFormData(prev => ({ ...prev, featured: e.target.checked }))}
+                                className="sr-only peer"
+                                aria-label="Featured Service"
+                              />
+                              <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-yellow-500 shadow-lg"></div>
+                            </label>
                           </div>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.featured}
-                            onChange={(e) => setFormData(prev => ({ ...prev, featured: e.target.checked }))}
-                            className="sr-only peer"
-                            aria-label="Featured Service"
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-rose-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"></div>
-                        </label>
-                      </div>
 
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <CheckCircle2 className="h-5 w-5 text-green-500" />
-                          <div>
-                            <p className="font-medium text-gray-900">Available for Booking</p>
-                            <p className="text-sm text-gray-600">Allow clients to book this service</p>
+                        <div className={`p-5 rounded-xl border-2 transition-all ${
+                          formData.is_active 
+                            ? 'bg-gradient-to-r from-green-100 to-emerald-100 border-green-400 shadow-lg' 
+                            : 'bg-white/70 border-white hover:border-green-300'
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className={`p-3 rounded-full ${
+                                formData.is_active ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
+                              }`}>
+                                <CheckCircle2 className="h-6 w-6" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900 text-lg">Available for Booking</p>
+                                <p className="text-sm text-gray-600">✅ Allow clients to book this service and send inquiries</p>
+                              </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={formData.is_active}
+                                onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                                className="sr-only peer"
+                                aria-label="Available for Booking"
+                              />
+                              <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-green-500 shadow-lg"></div>
+                            </label>
                           </div>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.is_active}
-                            onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
-                            className="sr-only peer"
-                            aria-label="Available for Booking"
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-rose-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"></div>
-                        </label>
                       </div>
                     </div>
                   </motion.div>
@@ -711,26 +948,34 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                       </div>
                     </div>
 
-                    {/* Service Features */}
+                    {/* Service Items & Equipment List */}
                     <div className="space-y-4">
-                      <h4 className="font-medium text-gray-900">Service Features</h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-gray-900">Service Items & Equipment</h4>
+                        <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
+                          � These will auto-populate your quotes
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-4">
+                        List all items, equipment, or materials that will be provided/borrowed during your service. Each item will become a line item in your quotes with individual pricing.
+                      </p>
                       <div className="space-y-3">
-                        {formData.features.map((feature, index) => (
-                          <div key={index} className="flex items-center gap-3">
+                        {formData.features.map((item, index) => (
+                          <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                             <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
                             <input
                               type="text"
-                              value={feature}
+                              value={item}
                               onChange={(e) => updateFeature(index, e.target.value)}
-                              className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
-                              placeholder="Enter a feature or benefit"
+                              className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white"
+                              placeholder="e.g., DSLR Camera with 24-70mm lens, Professional lighting kit, Wireless microphones (2 units)"
                             />
                             <button
                               type="button"
                               onClick={() => removeFeature(index)}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Remove feature"
-                              aria-label={`Remove feature: ${feature}`}
+                              title="Remove item"
+                              aria-label={`Remove item: ${item}`}
                             >
                               <X size={16} />
                             </button>
@@ -742,9 +987,38 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                           className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-rose-300 hover:text-rose-600 transition-all w-full justify-center"
                         >
                           <Plus size={18} />
-                          Add Feature
+                          Add Service Item
                         </button>
                       </div>
+                      
+                      {/* Helpful examples based on category */}
+                      {formData.category && (
+                        <div className="mt-4 p-4 bg-gradient-to-r from-rose-50 to-pink-50 rounded-lg border border-rose-200">
+                          <h5 className="font-medium text-rose-900 mb-2 flex items-center gap-2">
+                            <Sparkles className="h-4 w-4" />
+                            Example items for {formData.category}:
+                          </h5>
+                          <div className="text-sm text-rose-700 space-y-1">
+                            {getCategoryExamples(formData.category).map((example, index) => (
+                              <div key={index} className="flex items-start gap-2">
+                                <span className="text-rose-400 mt-0.5">•</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!formData.features.includes(example)) {
+                                      setFormData(prev => ({ ...prev, features: [...prev.features, example] }));
+                                    }
+                                  }}
+                                  className="text-left hover:text-rose-800 hover:underline cursor-pointer"
+                                  title="Click to add this item"
+                                >
+                                  {example}
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}

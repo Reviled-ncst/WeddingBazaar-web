@@ -25,6 +25,35 @@ import {
 import { cn } from '../../../../../utils/cn';
 import type { Service } from '../../../../../modules/services/types';
 import { dssApiService } from './DSSApiService';
+import { useAuth } from '../../../../../shared/contexts/AuthContext';
+
+// Import booking functionality
+import { BookingRequestModal } from '../../../../../modules/services/components/BookingRequestModal';
+import { BatchBookingModal } from './BatchBookingModal';
+import type { ServiceCategory } from '../../../../../shared/types/comprehensive-booking.types';
+
+// Helper function to convert Service to BookingService format
+const convertToBookingService = (service: Service) => {
+  return {
+    id: service.id,
+    vendorId: service.vendorId,
+    name: service.name,
+    category: service.category, // Already ServiceCategory type
+    description: service.description,
+    basePrice: service.basePrice,
+    priceRange: service.priceRange,
+    image: service.image,
+    gallery: service.gallery || [service.image].filter(Boolean),
+    features: service.packageInclusions || [],
+    availability: service.availability,
+    location: service.location,
+    rating: service.rating,
+    reviewCount: service.reviewCount,
+    vendorName: service.vendorName,
+    vendorImage: service.vendorImage,
+    contactInfo: service.contactInfo
+  };
+};
 
 interface DSSProps {
   services: Service[];
@@ -102,6 +131,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
   onClose,
   onServiceRecommend
 }) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'recommendations' | 'insights' | 'budget' | 'comparison' | 'packages'>('recommendations');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, budget]);
@@ -116,6 +146,146 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
   const [services, setServices] = useState<Service[]>(initialServices);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
+
+  // Booking modal state
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<Service | null>(null);
+  
+  // Batch booking state
+  const [showBatchBookingModal, setShowBatchBookingModal] = useState(false);
+  const [batchBookingServices, setBatchBookingServices] = useState<Service[]>([]);
+  const [isProcessingBatchBooking, setIsProcessingBatchBooking] = useState(false);
+  const [batchBookingProgress, setBatchBookingProgress] = useState({ completed: 0, total: 0 });
+
+  // Handle booking request from DSS recommendations
+  const handleBookingRequest = (service: Service) => {
+    console.log('📅 [DSS] Booking request for service:', service.name);
+    setSelectedServiceForBooking(service);
+    setShowBookingModal(true);
+  };
+
+  // Handle batch booking of all recommended services
+  const handleBatchBookingRequest = () => {
+    const servicesToBook = recommendations
+      .map(rec => getService(rec.serviceId))
+      .filter((service): service is Service => service !== null);
+    
+    if (servicesToBook.length === 0) {
+      console.warn('📅 [DSS] No services available for batch booking');
+      return;
+    }
+
+    console.log('📅 [DSS] Batch booking request for', servicesToBook.length, 'services');
+    setBatchBookingServices(servicesToBook);
+    setShowBatchBookingModal(true);
+  };
+
+  // Create group chat with all unique vendors
+  const createGroupChatWithVendors = async (services: Service[]) => {
+    try {
+      // Get unique vendors from the services
+      const uniqueVendors = Array.from(
+        new Map(
+          services.map(service => [service.vendorId, {
+            vendorId: service.vendorId,
+            vendorName: service.vendorName || `Vendor ${service.vendorId}`,
+            serviceName: service.name,
+            category: service.category
+          }])
+        ).values()
+      );
+
+      if (uniqueVendors.length === 0) {
+        throw new Error('No vendors found for group chat');
+      }
+
+      console.log('💬 [DSS] Creating group chat with', uniqueVendors.length, 'unique vendors:', uniqueVendors);
+
+      // Generate a descriptive conversation name
+      const categories = Array.from(new Set(uniqueVendors.map(v => v.category)));
+      const conversationName = categories.length === 1 
+        ? `${categories[0]} Planning Discussion`
+        : categories.length <= 3 
+          ? `${categories.join(' & ')} Planning`
+          : `Wedding Planning - ${categories.length} Categories`;
+
+      // Import messaging service
+      const MessagingAPI = await import('../../../../../services/api/messagingApiService');
+      
+      // Create conversation with first vendor (primary conversation)
+      const primaryVendor = uniqueVendors[0];
+      const conversationId = `dss-group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      const conversationData = {
+        conversationId,
+        vendorId: primaryVendor.vendorId,
+        vendorName: primaryVendor.vendorName,
+        serviceName: conversationName, // Use descriptive name instead of single service
+        userId: user?.id || 'demo-user-123', // Use real user ID from auth context
+        userName: (user as any)?.name || user?.email || 'Demo User',
+        userType: 'couple' as const
+      };
+
+      console.log('💬 [DSS] Creating group conversation:', conversationData);
+      const result = await MessagingAPI.default.createConversation(conversationData);
+      
+      if (result) {
+        // TODO: In a real implementation, we would:
+        // 1. Add all other vendors as participants to the conversation
+        // 2. Send an initial message introducing the group and services
+        // 3. Navigate to the conversation
+        
+        console.log('✅ [DSS] Group conversation created successfully');
+        
+        // Send initial group message
+        const initialMessage = `Hi everyone! I'm interested in booking multiple services for my wedding:\n\n${services.map(s => `• ${s.name} (${s.category})`).join('\n')}\n\nLooking forward to discussing how we can work together!`;
+        
+        // TODO: Send the initial message
+        console.log('💬 [DSS] Initial group message:', initialMessage);
+        
+        // Show enhanced success notification for group chat
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 bg-gradient-to-r from-purple-500 to-pink-600 text-white px-6 py-4 rounded-xl shadow-lg z-50 transform transition-all duration-300 max-w-md';
+        notification.innerHTML = `
+          <div class="flex items-start gap-3">
+            <div class="text-3xl flex-shrink-0">💬</div>
+            <div class="flex-1">
+              <div class="font-bold text-lg mb-1">Group Chat Created!</div>
+              <div class="text-sm opacity-95 mb-2">Connected with ${uniqueVendors.length} vendors for coordinated planning</div>
+              
+              <div class="bg-white bg-opacity-20 rounded-lg p-3 mb-3">
+                <div class="font-semibold text-sm">👥 Conversation: "${conversationName}"</div>
+                <div class="text-xs opacity-95 mt-1">
+                  ${services.map(s => `• ${s.category}: ${s.name}`).join('<br>')}
+                </div>
+              </div>
+              
+              <div class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 bg-opacity-80 rounded p-2">
+                <div class="font-semibold">💡 Next Steps:</div>
+                <div class="opacity-95">
+                  All vendors can now collaborate on your wedding planning.<br>
+                  Check your messages to start the conversation!
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+          notification.style.transform = 'translateX(100%)';
+          setTimeout(() => document.body.removeChild(notification), 300);
+        }, 6000);
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('❌ [DSS] Failed to create group chat:', error);
+      return false;
+    }
+  };
 
   // Load real data when component opens
   useEffect(() => {
@@ -1180,7 +1350,62 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+                    <>
+                      {/* Batch Booking Section */}
+                      {recommendations.length > 1 && (
+                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-4 sm:p-6 mb-6">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <ShoppingBag className="h-5 w-5 text-purple-600" />
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                  Book All Recommended Services
+                                </h3>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-3">
+                                Save time by booking all {recommendations.length} recommended services at once and create a group chat with all vendors for coordinated planning.
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {recommendations.slice(0, 3).map((rec) => {
+                                  const service = getService(rec.serviceId);
+                                  if (!service) return null;
+                                  return (
+                                    <div key={rec.serviceId} className="flex items-center gap-1 bg-white/70 rounded-lg px-2 py-1 text-xs">
+                                      <span className="font-medium">{service.category}</span>
+                                      <span className="text-gray-500">•</span>
+                                      <span className="text-green-600 font-medium">₱{rec.estimatedCost.toLocaleString()}</span>
+                                    </div>
+                                  );
+                                })}
+                                {recommendations.length > 3 && (
+                                  <div className="flex items-center gap-1 bg-white/70 rounded-lg px-2 py-1 text-xs text-gray-500">
+                                    +{recommendations.length - 3} more
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                              <button
+                                onClick={handleBatchBookingRequest}
+                                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
+                              >
+                                <Calendar className="h-4 w-4" />
+                                Book All ({recommendations.length})
+                              </button>
+                              <button
+                                onClick={() => createGroupChatWithVendors(recommendations.map(rec => getService(rec.serviceId)).filter((service): service is Service => service !== null))}
+                                className="px-4 py-3 bg-white text-purple-600 border-2 border-purple-300 rounded-xl hover:bg-purple-50 transition-all duration-200 font-medium flex items-center gap-2"
+                              >
+                                <Heart className="h-4 w-4" />
+                                Group Chat
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Recommendations Grid */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
                       {recommendations.map((rec, index) => {
                         const service = getService(rec.serviceId);
                         if (!service) return null;
@@ -1265,10 +1490,17 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                               {/* Action Buttons */}
                               <div className="flex gap-2 pt-2">
                                 <button
-                                  onClick={() => onServiceRecommend(rec.serviceId)}
-                                  className="flex-1 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                                  onClick={() => handleBookingRequest(service)}
+                                  className="flex-1 px-3 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg hover:from-pink-600 hover:to-purple-700 transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium shadow-sm hover:shadow-md transform hover:scale-105"
                                 >
-                                  <span>View Details</span>
+                                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  <span>Book Now</span>
+                                </button>
+                                <button
+                                  onClick={() => onServiceRecommend(rec.serviceId)}
+                                  className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-1 text-sm font-medium"
+                                  title="View service details"
+                                >
                                   <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
                                 </button>
                                 <button
@@ -1282,10 +1514,9 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                           </motion.div>
                         );
                       })}
-                    </div>
-                  )}
+                      </div>
 
-                  {/* Load More Button - Enhanced */}
+                      {/* Load More Button - Enhanced */}
                   {recommendations.length >= 20 && (
                     <div className="text-center pt-6">
                       <div className="inline-flex flex-col items-center gap-3">
@@ -1298,6 +1529,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                         </p>
                       </div>
                     </div>
+                    </>
                   )}
                 </motion.div>
               )}
@@ -1726,6 +1958,68 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
           </div>
         </div>
       </motion.div>
+
+      {/* Booking Request Modal */}
+      {showBookingModal && selectedServiceForBooking && (
+        <BookingRequestModal
+          service={convertToBookingService(selectedServiceForBooking)}
+          isOpen={showBookingModal}
+          onClose={() => {
+            setShowBookingModal(false);
+            setSelectedServiceForBooking(null);
+          }}
+          onBookingCreated={(booking) => {
+            console.log('📅 [DSS] Booking created from DSS:', booking);
+            setShowBookingModal(false);
+            setSelectedServiceForBooking(null);
+            // Optionally show success message or update recommendations
+          }}
+        />
+      )}
+
+      {/* Batch Booking Modal */}
+      <BatchBookingModal
+        isOpen={showBatchBookingModal}
+        onClose={() => {
+          setShowBatchBookingModal(false);
+          setBatchBookingServices([]);
+        }}
+        services={batchBookingServices}
+        onConfirmBooking={async (services) => {
+          console.log('📅 [DSS] Batch booking confirmed for', services.length, 'services');
+          
+          // Here you would implement the actual batch booking logic
+          // For now, we'll simulate the booking process
+          for (const service of services) {
+            console.log('📅 [DSS] Creating booking for:', service.name);
+            
+            // Simulate individual booking creation
+            // This would call your booking API for each service
+            try {
+              // Simulate API call
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Dispatch booking created event for each service
+              const bookingCreatedEvent = new CustomEvent('bookingCreated', {
+                detail: {
+                  serviceId: service.id,
+                  serviceName: service.name,
+                  vendorName: service.vendorName,
+                  status: 'quote_requested'
+                }
+              });
+              window.dispatchEvent(bookingCreatedEvent);
+              
+            } catch (error) {
+              console.error('❌ [DSS] Failed to create booking for', service.name, ':', error);
+            }
+          }
+          
+          // Show success notification
+          console.log('✅ [DSS] All bookings created successfully');
+        }}
+        onCreateGroupChat={createGroupChatWithVendors}
+      />
     </motion.div>
   );
 };

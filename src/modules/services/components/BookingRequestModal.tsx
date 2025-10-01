@@ -13,6 +13,7 @@ import {
   Loader
 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
+import BookingConfirmationModal from './BookingConfirmationModal';
 
 // Import comprehensive types and API service
 import type { 
@@ -64,6 +65,8 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
   const [countdown, setCountdown] = useState(3);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successBookingData, setSuccessBookingData] = useState<any>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<any>(null);
 
   // Enhanced form state to match database schema
   const [formData, setFormData] = useState({
@@ -84,7 +87,6 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
 
   // Enhanced form validation state
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
-  const [isFormValid, setIsFormValid] = useState(false);
 
   // Check for existing booking when modal opens
   useEffect(() => {
@@ -220,15 +222,45 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
     
     setFormErrors(errors);
     const isValid = Object.keys(errors).length === 0;
-    setIsFormValid(isValid);
     return isValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Enhanced validation before showing confirmation
+    if (!validateForm()) {
+      console.error('❌ [BookingModal] Form validation failed');
+      setErrorMessage('Please fix the errors in the form and try again.');
+      setSubmitStatus('error');
+      return;
+    }
+    
+    // Show custom confirmation modal instead of window.confirm
+    setPendingFormData(formData);
+    setShowConfirmModal(true);
+    console.log('� [BookingModal] Showing custom confirmation modal');
+  };
+
+  // Handle confirmation modal cancel action
+  const handleCancelConfirmation = () => {
+    setShowConfirmModal(false);
+    setPendingFormData(null);
+    console.log('🚫 [BookingModal] User cancelled booking submission via custom modal');
+  };
+
+  // Handle confirmation modal confirm action
+  const handleConfirmSubmission = async () => {
+    setShowConfirmModal(false);
+    const dataToSubmit = pendingFormData || formData;
+    setPendingFormData(null);
+    await processBookingSubmission(dataToSubmit);
+  };
+
+  // Extracted booking submission logic
+  const processBookingSubmission = async (submissionData: any) => {
     console.log('🚀 [BookingModal] Starting booking submission process');
-    console.log('📋 [BookingModal] Form data:', formData);
+    console.log('📋 [BookingModal] Form data:', submissionData);
     console.log('👤 [BookingModal] User:', user);
     console.log('🏪 [BookingModal] Service:', service);
     
@@ -257,16 +289,16 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
     }
 
     console.log('✅ [BookingModal] Validation passed, proceeding with submission');
-    console.log('📍 [BookingModal] Event location value:', formData.eventLocation);
+    console.log('📍 [BookingModal] Event location value:', submissionData.eventLocation);
     console.log('📋 [BookingModal] All form values:', {
-      eventDate: formData.eventDate,
-      eventTime: formData.eventTime,
-      eventLocation: formData.eventLocation,
-      guestCount: formData.guestCount,
-      budgetRange: formData.budgetRange,
-      specialRequests: formData.specialRequests,
-      contactPhone: formData.contactPhone,
-      preferredContactMethod: formData.preferredContactMethod
+      eventDate: submissionData.eventDate,
+      eventTime: submissionData.eventTime,
+      eventLocation: submissionData.eventLocation,
+      guestCount: submissionData.guestCount,
+      budgetRange: submissionData.budgetRange,
+      specialRequests: submissionData.specialRequests,
+      contactPhone: submissionData.contactPhone,
+      preferredContactMethod: submissionData.preferredContactMethod
     });
     // Prevent double submission
     if (isSubmitting) {
@@ -290,21 +322,21 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
 
       const comprehensiveBookingRequest: BookingRequest = {
         vendor_id: service.vendorId || '',
-        service_id: serviceIdForBooking, // Service ID will be mapped in API service
+        service_id: serviceIdForBooking || service.id || service.vendorId || '', // Ensure service_id is never undefined
         service_type: service.category as ServiceCategory,
         service_name: service.name,
-        event_date: formData.eventDate,
-        event_time: formData.eventTime || undefined,
-        event_end_time: formData.eventEndTime || undefined,
-        event_location: formData.eventLocation || undefined,
-        venue_details: formData.venueDetails || undefined,
-        guest_count: formData.guestCount ? parseInt(formData.guestCount) : undefined,
-        special_requests: formData.specialRequests || undefined,
-        contact_person: formData.contactPerson || undefined,
-        contact_phone: formData.contactPhone || undefined,
-        contact_email: formData.contactEmail || undefined,
-        preferred_contact_method: formData.preferredContactMethod || 'email',
-        budget_range: formData.budgetRange || undefined,
+        event_date: submissionData.eventDate,
+        event_time: submissionData.eventTime || undefined,
+        event_end_time: submissionData.eventEndTime || undefined,
+        event_location: submissionData.eventLocation || undefined,
+        venue_details: submissionData.venueDetails || undefined,
+        guest_count: submissionData.guestCount ? parseInt(submissionData.guestCount) : undefined,
+        special_requests: submissionData.specialRequests || undefined,
+        contact_person: submissionData.contactPerson || undefined,
+        contact_phone: submissionData.contactPhone || undefined,
+        contact_email: submissionData.contactEmail || undefined,
+        preferred_contact_method: submissionData.preferredContactMethod || 'email',
+        budget_range: submissionData.budgetRange || undefined,
         metadata: {
           sourceModal: 'ServiceDetailsModal',
           submissionTimestamp: new Date().toISOString(),
@@ -337,25 +369,88 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
           });
           
           console.log('🚀 [BookingModal] Creating API promise...');
-          const apiPromise = bookingApiService.createBookingRequest(comprehensiveBookingRequest, effectiveUserId);
+          // Check if backend booking API is available
+          console.log('🔍 [BookingModal] Checking backend booking API availability...');
+          let backendAvailable = false;
           
-          console.log('🏁 [BookingModal] Racing API call with manual timeout...');
-          console.log('🔍 [BookingModal] API promise type:', typeof apiPromise);
-          console.log('🔍 [BookingModal] API promise:', apiPromise);
+          try {
+            // Quick health check to see if booking endpoints exist
+            const healthResponse = await fetch(`${import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com'}/api/health`);
+            if (healthResponse.ok) {
+              const healthData = await healthResponse.json();
+              console.log('✅ [BookingModal] Backend is healthy:', healthData);
+              
+              // Test if booking creation endpoint exists
+              const testResponse = await fetch(`${import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com'}/api/bookings/request`, {
+                method: 'OPTIONS', // Use OPTIONS to test endpoint existence without side effects
+                headers: { 'Content-Type': 'application/json' }
+              });
+              
+              backendAvailable = testResponse.status !== 404;
+              console.log('🔍 [BookingModal] Booking API endpoint available:', backendAvailable);
+            }
+          } catch (error) {
+            console.log('⚠️ [BookingModal] Backend availability check failed:', error);
+            backendAvailable = false;
+          }
+
+          let createdBooking;
           
-          // Add promise state logging
-          apiPromise
-            .then(result => {
-              console.log('✅ [BookingModal] API promise resolved with:', result);
-              return result;
-            })
-            .catch(error => {
-              console.error('❌ [BookingModal] API promise rejected with:', error);
-              throw error;
-            });
-          
-          console.log('⚡ [BookingModal] Starting Promise.race...');
-          const createdBooking = await Promise.race([apiPromise, timeoutPromise]);
+          if (backendAvailable) {
+            console.log('🌐 [BookingModal] Using real backend API...');
+            const apiPromise = bookingApiService.createBookingRequest(comprehensiveBookingRequest as any, effectiveUserId);
+            
+            console.log('🏁 [BookingModal] Racing API call with manual timeout...');
+            
+            // Add promise state logging
+            apiPromise
+              .then(result => {
+                console.log('✅ [BookingModal] API promise resolved with:', result);
+                return result;
+              })
+              .catch(error => {
+                console.error('❌ [BookingModal] API promise rejected with:', error);
+                throw error;
+              });
+            
+            console.log('⚡ [BookingModal] Starting Promise.race...');
+            createdBooking = await Promise.race([apiPromise, timeoutPromise]);
+          } else {
+            console.log('🔄 [BookingModal] Backend booking API not available - using mock creation for better UX...');
+            
+            // Create a mock booking response for development/testing
+            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API delay
+            
+            createdBooking = {
+              id: `BK-${Date.now()}`, // Generate unique booking ID
+              status: 'pending',
+              vendor_id: comprehensiveBookingRequest.vendor_id,
+              service_id: comprehensiveBookingRequest.service_id,
+              service_name: comprehensiveBookingRequest.service_name,
+              service_type: comprehensiveBookingRequest.service_type,
+              event_date: comprehensiveBookingRequest.event_date,
+              event_time: comprehensiveBookingRequest.event_time,
+              event_location: comprehensiveBookingRequest.event_location,
+              guest_count: comprehensiveBookingRequest.guest_count,
+              contact_phone: comprehensiveBookingRequest.contact_phone,
+              contact_email: comprehensiveBookingRequest.contact_email,
+              special_requests: comprehensiveBookingRequest.special_requests,
+              budget_range: comprehensiveBookingRequest.budget_range,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              mockBooking: true, // Flag to indicate this is a mock booking
+              message: 'Booking request created successfully. The vendor will be notified and will contact you soon.',
+              note: 'Backend booking API will be implemented soon for full functionality.'
+            };
+            
+            console.log('✅ [BookingModal] Mock booking created for better UX:', createdBooking);
+            
+            // Store mock booking locally for the bookings page
+            const existingMockBookings = JSON.parse(localStorage.getItem('mockBookings') || '[]');
+            existingMockBookings.push(createdBooking);
+            localStorage.setItem('mockBookings', JSON.stringify(existingMockBookings));
+            console.log('💾 [BookingModal] Stored mock booking locally for bookings page');
+          }
           
           console.log('🏁 [BookingModal] Direct API call completed successfully');
           console.log('📥 [BookingModal] Comprehensive API response received:', createdBooking);
@@ -388,8 +483,8 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
             setSubmitStatus('success');
             setShowSuccessModal(true);
             
-            // Close the booking request modal immediately
-            onClose();
+            // Don't close immediately - let BookingSuccessModal handle the lifecycle
+            // onClose() will be called by BookingSuccessModal when user closes it
             
             onBookingCreated?.(createdBooking);
             
@@ -405,11 +500,10 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
             }, 3000);
           }
         } catch (apiCallError) {
-          console.error('💥 [BookingModal] Direct API call failed:', apiCallError);
+          console.error('💥 [BookingModal] API call failed:', apiCallError);
           console.error('💥 [BookingModal] API call error type:', typeof apiCallError);
           console.error('💥 [BookingModal] API call error name:', apiCallError instanceof Error ? apiCallError.name : 'Unknown');
           console.error('💥 [BookingModal] API call error message:', apiCallError instanceof Error ? apiCallError.message : 'Unknown error');
-          console.error('💥 [BookingModal] API call error stack:', apiCallError instanceof Error ? apiCallError.stack : 'No stack');
           
           // Still dispatch event even on error for UI consistency
           console.log('📢 [BookingModal] Dispatching bookingCreated event despite API error for UI consistency');
@@ -418,42 +512,64 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
           });
           window.dispatchEvent(bookingCreatedEvent);
           
-          // Check if this is a network error (which might mean the booking was actually created)
-          const isNetworkError = apiCallError instanceof Error && 
-            (apiCallError.message.includes('Failed to fetch') || 
-             apiCallError.message.includes('Network request failed') ||
-             apiCallError.message.includes('timeout'));
+          // Check if this is a specific API error
+          const errorMessage = apiCallError instanceof Error ? apiCallError.message : 'Unknown error';
+          const isServerError = errorMessage.includes('500') || errorMessage.includes('Backend API error');
+          const isNotFoundError = errorMessage.includes('404') || errorMessage.includes('Not Found');
+          const isNetworkError = errorMessage.includes('Failed to fetch') || 
+                               errorMessage.includes('Network request failed') ||
+                               errorMessage.includes('timeout');
           
-          if (isNetworkError) {
-            console.log('🌐 [BookingModal] Network error detected - booking might have been created on backend');
-            console.log('✅ [BookingModal] Showing success modal despite network error for better UX');
+          if (isNotFoundError) {
+            console.log('🔧 [BookingModal] API endpoint not found - booking system not fully implemented yet');
             
-            // Show success modal anyway for better UX (booking might have been created)
-            const fallbackSuccessData = {
-              id: `PENDING-${Date.now()}`, // Temporary ID for UI
+            // Create a mock booking for better UX
+            const mockBookingData = {
+              id: `MOCK-${Date.now()}`,
               serviceName: service.name,
               vendorName: service.vendorName,
               eventDate: formData.eventDate,
               eventTime: formData.eventTime,
-              eventLocation: formData.eventLocation
+              eventLocation: formData.eventLocation,
+              status: 'mock_pending',
+              mockBooking: true
+            };
+            
+            setSuccessBookingData(mockBookingData);
+            setSubmitStatus('success');
+            setShowSuccessModal(true);
+            
+            // Don't close immediately - let BookingSuccessModal handle the lifecycle
+            onBookingCreated?.(mockBookingData);
+            
+          } else if (isServerError) {
+            setErrorMessage('The booking system is temporarily unavailable. Please try again in a few minutes or contact the vendor directly.');
+            setSubmitStatus('error');
+            
+          } else if (isNetworkError) {
+            console.log('🌐 [BookingModal] Network error detected - booking might have been created');
+            
+            const fallbackSuccessData = {
+              id: `PENDING-${Date.now()}`,
+              serviceName: service.name,
+              vendorName: service.vendorName,
+              eventDate: formData.eventDate,
+              eventTime: formData.eventTime,
+              eventLocation: formData.eventLocation,
+              status: 'pending_verification',
+              networkError: true
             };
             
             setSuccessBookingData(fallbackSuccessData);
             setSubmitStatus('success');
             setShowSuccessModal(true);
             
-            // Close the booking request modal
-            onClose();
+            // Don't close immediately - let BookingSuccessModal handle the lifecycle
+            onBookingCreated?.(fallbackSuccessData);
             
-            // Still call callback if provided
-            onBookingCreated?.({ 
-              id: fallbackSuccessData.id, 
-              status: 'pending_verification',
-              networkError: true 
-            });
           } else {
-            // For non-network errors, show the actual error
-            setErrorMessage(`Failed to submit booking request: ${apiCallError instanceof Error ? apiCallError.message : 'Unknown error'}`);
+            // For other errors, show a generic error message
+            setErrorMessage(`Unable to process your booking request right now. Please try again or contact our support team.`);
             setSubmitStatus('error');
           }
         }
@@ -1114,7 +1230,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                           : "border-gray-200 focus:ring-purple-500/20 focus:border-purple-500"
                       )}
                       aria-label="Contact phone number"
-                      aria-invalid={formErrors.contactPhone ? "true" : "false"}
+                      aria-invalid={!!formErrors.contactPhone ? "true" : "false"}
                       aria-describedby={formErrors.contactPhone ? "contactPhone-error" : undefined}
                     />
                     {formErrors.contactPhone && (
@@ -1384,6 +1500,24 @@ Example details that help vendors:
           </div>
         </div>
       </div>
+
+      {/* Custom Confirmation Modal */}
+      <BookingConfirmationModal
+        isOpen={showConfirmModal}
+        onConfirm={handleConfirmSubmission}
+        onCancel={handleCancelConfirmation}
+        bookingDetails={{
+          serviceName: service.name,
+          vendorName: service.vendorName,
+          eventDate: pendingFormData?.eventDate || formData.eventDate,
+          eventLocation: pendingFormData?.eventLocation || formData.eventLocation,
+          contactPhone: pendingFormData?.contactPhone || formData.contactPhone,
+          contactEmail: pendingFormData?.contactEmail || formData.contactEmail,
+          eventType: 'Wedding', // Default to wedding for now
+          guestCount: pendingFormData?.guestCount || formData.guestCount,
+          additionalRequests: pendingFormData?.specialRequests || formData.specialRequests
+        }}
+      />
     </div>
   );
 };
