@@ -1515,8 +1515,10 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                         );
                       })}
                       </div>
+                    </>
+                  )}
 
-                      {/* Load More Button - Enhanced */}
+                  {/* Load More Button - Enhanced */}
                   {recommendations.length >= 20 && (
                     <div className="text-center pt-6">
                       <div className="inline-flex flex-col items-center gap-3">
