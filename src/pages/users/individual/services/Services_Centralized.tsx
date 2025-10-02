@@ -21,7 +21,7 @@ import { CoupleHeader } from '../landing/CoupleHeader';
 import { useUniversalMessaging } from '../../../../shared/contexts/UniversalMessagingContext';
 import { serviceManager, SERVICE_CATEGORIES } from '../../../../shared/services/CentralizedServiceManager';
 import { BookingRequestModal } from '../../../../modules/services/components/BookingRequestModal';
-// import { DecisionSupportSystem } from './dss/DecisionSupportSystem';
+import { DecisionSupportSystem } from './dss/DecisionSupportSystemClean';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 import type { Service as BookingService } from '../../../../modules/services/types';
 
@@ -822,36 +822,15 @@ Best regards`;
 
       {/* Decision Support System (DSS) Modal */}
       {showDSS && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <Brain className="h-8 w-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">AI Wedding Planner</h3>
-              <p className="text-gray-600 mb-6">
-                🚀 <strong>DSS Feature Successfully Deployed!</strong>
-                <br /><br />
-                Our advanced Decision Support System is now live with:
-                <br />• Real-time vendor analysis from {filteredServices.length} services
-                <br />• AI-powered personalized recommendations
-                <br />• Batch booking with group chat creation
-                <br />• Smart budget optimization
-                <br /><br />
-                The full DSS interface is being optimized for the best user experience. 
-                Meanwhile, you can browse and book services normally!
-              </p>
-              <div className="flex gap-4 justify-center">
-                <button
-                  onClick={handleCloseDSS}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
-                >
-                  Continue Browsing
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DecisionSupportSystem
+          services={filteredServices as any}
+          budget={50000}
+          location={locationFilter}
+          priorities={[selectedCategory]}
+          isOpen={showDSS}
+          onClose={handleCloseDSS}
+          onServiceRecommend={handleServiceRecommend}
+        />
       )}
     </div>
   );
