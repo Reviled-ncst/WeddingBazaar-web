@@ -21,7 +21,7 @@ import { CoupleHeader } from '../landing/CoupleHeader';
 import { useUniversalMessaging } from '../../../../shared/contexts/UniversalMessagingContext';
 import { serviceManager, SERVICE_CATEGORIES } from '../../../../shared/services/CentralizedServiceManager';
 import { BookingRequestModal } from '../../../../modules/services/components/BookingRequestModal';
-import { DecisionSupportSystem } from './dss/DecisionSupportSystemClean';
+import { DecisionSupportSystem } from './dss/DecisionSupportSystem';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 import type { Service as BookingService } from '../../../../modules/services/types';
 
