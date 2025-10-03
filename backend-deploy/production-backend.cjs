@@ -224,7 +224,7 @@ app.post('/api/auth/register', async (req, res) => {
     const userType = role || 'couple';
     
     const newUsers = await sql`
-      INSERT INTO users (email, password_hash, first_name, last_name, user_type, created_at)
+      INSERT INTO users (email, password, first_name, last_name, user_type, created_at)
       VALUES (${email}, ${password}, ${firstName}, ${lastName}, ${userType}, NOW())
       RETURNING id, email, first_name, last_name, user_type
     `;
@@ -1701,7 +1701,7 @@ app.post('/api/debug/create-demo-user', async (req, res) => {
     
     if (existing.length === 0) {
       await sql`
-        INSERT INTO users (email, password_hash, first_name, last_name, user_type, created_at)
+        INSERT INTO users (email, password, first_name, last_name, user_type, created_at)
         VALUES (${demoEmail}, 'demo123', 'Demo', 'User', 'couple', NOW())
       `;
       console.log('✅ Demo user created');
