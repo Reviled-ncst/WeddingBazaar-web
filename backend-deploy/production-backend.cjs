@@ -1511,15 +1511,17 @@ app.post('/api/bookings', async (req, res) => {
 app.patch('/api/bookings/:bookingId/status', async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { status, quotedPrice, finalPrice } = req.body;
+    const { status, quotedPrice, finalPrice, message } = req.body;
     
     console.log(`📝 [BOOKINGS] PATCH /api/bookings/${bookingId}/status`);
     console.log(`📝 [BOOKINGS] New status: ${status}`);
+    console.log(`📝 [BOOKINGS] Message: ${message ? message.substring(0, 100) + '...' : 'No message'}`);
     
     // Map frontend status back to database format if needed
     const dbStatus = status === 'quote_requested' ? 'request' :
                     status === 'confirmed' ? 'approved' :
                     status === 'downpayment_paid' ? 'downpayment' :
+                    status === 'quote_sent' ? 'quote_sent' :
                     status;
     
     const updateFields = {
@@ -1529,6 +1531,7 @@ app.patch('/api/bookings/:bookingId/status', async (req, res) => {
     
     if (quotedPrice !== undefined) updateFields.quoted_price = quotedPrice;
     if (finalPrice !== undefined) updateFields.final_price = finalPrice;
+    if (message !== undefined) updateFields.response_message = message;
     
     await sql`
       UPDATE bookings 
