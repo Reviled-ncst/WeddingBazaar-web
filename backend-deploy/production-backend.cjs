@@ -1524,20 +1524,36 @@ app.patch('/api/bookings/:bookingId/status', async (req, res) => {
                     status === 'quote_sent' ? 'quote_sent' :
                     status;
     
-    const updateFields = {
-      status: dbStatus,
-      updated_at: new Date()
-    };
-    
-    if (quotedPrice !== undefined) updateFields.quoted_price = quotedPrice;
-    if (finalPrice !== undefined) updateFields.final_price = finalPrice;
-    if (message !== undefined) updateFields.response_message = message;
-    
-    await sql`
+    // Build update query with proper SQL syntax
+    let updateQuery = `
       UPDATE bookings 
-      SET ${sql(updateFields)}
-      WHERE id = ${bookingId}
+      SET status = $1, updated_at = $2
     `;
+    let queryParams = [dbStatus, new Date()];
+    let paramIndex = 3;
+    
+    if (quotedPrice !== undefined) {
+      updateQuery += `, quoted_price = $${paramIndex}`;
+      queryParams.push(quotedPrice);
+      paramIndex++;
+    }
+    
+    if (finalPrice !== undefined) {
+      updateQuery += `, final_price = $${paramIndex}`;
+      queryParams.push(finalPrice);
+      paramIndex++;
+    }
+    
+    if (message !== undefined) {
+      updateQuery += `, response_message = $${paramIndex}`;
+      queryParams.push(message);
+      paramIndex++;
+    }
+    
+    updateQuery += ` WHERE id = $${paramIndex}`;
+    queryParams.push(bookingId);
+    
+    await sql(updateQuery, queryParams);
     
     console.log(`✅ [BOOKINGS] Updated booking ${bookingId} status to ${dbStatus}`);
     
