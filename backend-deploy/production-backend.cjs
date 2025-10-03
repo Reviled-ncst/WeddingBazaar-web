@@ -968,20 +968,17 @@ app.post('/api/bookings/request', async (req, res) => {
       updated_at: new Date().toISOString()
     };
     
-    // FIXED: Direct database insertion with correct column names (couple_id not user_id)
+    // FIXED: Use only basic columns that exist in the database schema
     const bookingId = Date.now();
     const now = new Date();
     
+    // Start with minimal columns and only add what exists
     await sql`
       INSERT INTO bookings (
-        id, couple_id, vendor_id, service_name, event_date, event_time,
-        event_location, guest_count, contact_phone, contact_email,
-        budget_range, special_requests, status, created_at, updated_at
+        id, couple_id, vendor_id, service_name, event_date, status, created_at, updated_at
       ) VALUES (
         ${bookingId}, ${properBookingData.couple_id}, ${properBookingData.vendor_id}, 
-        ${properBookingData.service_name}, ${properBookingData.event_date}, ${properBookingData.event_time},
-        ${properBookingData.event_location}, ${properBookingData.guest_count}, ${properBookingData.contact_phone},
-        ${properBookingData.contact_email}, ${properBookingData.budget_range}, ${properBookingData.special_requests},
+        ${properBookingData.service_name}, ${properBookingData.event_date}, 
         ${properBookingData.status}, ${now}, ${now}
       )
     `;
