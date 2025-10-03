@@ -104,6 +104,13 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
         icon: <DollarSign className="h-4 w-4" />,
         progress: 40
       },
+      'quote_accepted': {
+        label: 'Quote Accepted',
+        color: 'text-emerald-600',
+        bgColor: 'bg-emerald-50 border-emerald-200',
+        icon: <CheckCircle className="h-4 w-4" />,
+        progress: 60
+      },
       'confirmed': {
         label: 'Confirmed',
         color: 'text-green-600',
