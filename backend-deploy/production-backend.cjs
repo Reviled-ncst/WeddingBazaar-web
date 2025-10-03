@@ -1490,22 +1490,16 @@ app.patch('/api/bookings/:bookingId/accept-quote', async (req, res) => {
     
     console.log('🔍 [BOOKING] Accept quote params:', { bookingId, status, notes });
     
-    // Update booking status and add notes
-    const updateQuery = `
+    // Update booking status directly without triggering status history (to avoid constraint issues)
+    const updatedBooking = await sql`
       UPDATE bookings 
       SET 
-        status = $1,
-        notes = COALESCE(notes, '') || $2,
+        status = ${status},
+        notes = COALESCE(notes, '') || ${notes ? `\n[${new Date().toISOString()}] ${notes}` : ''},
         updated_at = NOW()
-      WHERE id = $3
+      WHERE id = ${bookingId}
       RETURNING *
     `;
-    
-    const updatedBooking = await sql(updateQuery, [
-      status,
-      notes ? `\n[${new Date().toISOString()}] ${notes}` : '',
-      bookingId
-    ]);
     
     if (updatedBooking.length === 0) {
       return res.status(404).json({
