@@ -1600,6 +1600,30 @@ app.patch('/api/bookings/:bookingId/status', async (req, res) => {
   }
 });
 
+// Simple debug endpoint to create demo users
+app.post('/api/debug/create-demo-user', async (req, res) => {
+  try {
+    console.log('🛠️ Creating demo users...');
+    
+    // Create demo couple user
+    const demoEmail = 'demo@wedding.com';
+    const existing = await sql`SELECT id FROM users WHERE email = ${demoEmail}`;
+    
+    if (existing.length === 0) {
+      await sql`
+        INSERT INTO users (email, password_hash, first_name, last_name, user_type, created_at)
+        VALUES (${demoEmail}, 'demo123', 'Demo', 'User', 'couple', NOW())
+      `;
+      console.log('✅ Demo user created');
+    }
+    
+    res.json({success: true, message: 'Demo user ready', email: demoEmail});
+  } catch (error) {
+    console.error('❌ Demo user creation error:', error);
+    res.status(500).json({success: false, error: error.message});
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('❌ [ERROR] Unhandled error:', err);
