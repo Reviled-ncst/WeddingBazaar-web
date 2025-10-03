@@ -963,7 +963,7 @@ app.post('/api/bookings/request', async (req, res) => {
       contact_email: bookingRequest.contactEmail || bookingRequest.contact_email,
       budget_range: bookingRequest.budgetRange || bookingRequest.budget_range,
       special_requests: bookingRequest.specialRequests || bookingRequest.special_requests,
-      status: 'pending',
+      status: 'request',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
