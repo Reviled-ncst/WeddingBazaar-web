@@ -972,13 +972,13 @@ app.post('/api/bookings/request', async (req, res) => {
     const bookingId = Math.floor(Math.random() * 1000000); // Use smaller integer ID
     const now = new Date();
     
-    // Start with minimal columns and only add what exists
+    // FIXED: Add more fields gradually - try event_time and guest_count first
     await sql`
       INSERT INTO bookings (
-        id, couple_id, vendor_id, service_name, event_date, status, created_at, updated_at
+        id, couple_id, vendor_id, service_name, event_date, guest_count, status, created_at, updated_at
       ) VALUES (
         ${bookingId}, ${properBookingData.couple_id}, ${properBookingData.vendor_id}, 
-        ${properBookingData.service_name}, ${properBookingData.event_date}, 
+        ${properBookingData.service_name}, ${properBookingData.event_date}, ${properBookingData.guest_count},
         ${properBookingData.status}, ${now}, ${now}
       )
     `;
