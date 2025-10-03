@@ -45,8 +45,8 @@ console.log('🔄 Filter Fix Deployment:', new Date().toISOString());
 
 // Status mapping function to transform database values to frontend expectations
 const mapBookingStatus = (dbStatus, responseMessage) => {
-  // Special case: if status is 'pending' and response message contains quote info, it's quote_sent
-  if (dbStatus === 'pending' && responseMessage && responseMessage.includes('ITEMIZED QUOTE')) {
+  // Special case: if response message contains quote info, it's quote_sent regardless of status
+  if (responseMessage && responseMessage.includes('ITEMIZED QUOTE')) {
     return 'quote_sent';
   }
   
@@ -1522,11 +1522,32 @@ app.patch('/api/bookings/:bookingId/status', async (req, res) => {
     console.log(`📝 [BOOKINGS] New status: ${status}`);
     console.log(`📝 [BOOKINGS] Message: ${message ? message.substring(0, 100) + '...' : 'No message'}`);
     
-    // Map frontend status back to database format if needed
+    // Special handling for quote_sent - don't change status, just update message
+    if (status === 'quote_sent') {
+      // For quote_sent, just update the response message without changing status
+      let updateQuery = `
+        UPDATE bookings 
+        SET response_message = $1, updated_at = $2
+        WHERE id = $3 
+      `;
+      let queryParams = [message, new Date(), bookingId];
+      
+      await sql(updateQuery, queryParams);
+      
+      console.log(`✅ [BOOKINGS] Updated booking ${bookingId} with quote message (status unchanged)`);
+      
+      res.json({
+        success: true,
+        message: 'Quote sent successfully',
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
+    
+    // Map frontend status back to database format for other statuses
     const dbStatus = status === 'quote_requested' ? 'request' :
                     status === 'confirmed' ? 'approved' :
                     status === 'downpayment_paid' ? 'downpayment' :
-                    status === 'quote_sent' ? 'pending' :  // Changed to use 'pending' instead
                     status;
     
     // Build update query with proper SQL syntax
