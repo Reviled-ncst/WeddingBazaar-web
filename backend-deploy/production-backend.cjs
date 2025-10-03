@@ -44,7 +44,12 @@ console.log('🔄 Filter Fix Deployment:', new Date().toISOString());
 // ================================
 
 // Status mapping function to transform database values to frontend expectations
-const mapBookingStatus = (dbStatus) => {
+const mapBookingStatus = (dbStatus, responseMessage) => {
+  // Special case: if status is 'pending' and response message contains quote info, it's quote_sent
+  if (dbStatus === 'pending' && responseMessage && responseMessage.includes('ITEMIZED QUOTE')) {
+    return 'quote_sent';
+  }
+  
   const statusMap = {
     'request': 'quote_requested',
     'pending': 'quote_requested', 
@@ -1081,7 +1086,7 @@ app.get('/api/bookings/couple/:userId', async (req, res) => {
     
     const bookings = bookingsResult.map(booking => {
       // Apply status mapping to transform database status to frontend expected status
-      const mappedStatus = mapBookingStatus(booking.status);
+      const mappedStatus = mapBookingStatus(booking.status, booking.response_message);
       console.log(`🔄 [STATUS MAPPING] Couple Booking ${booking.id}: ${booking.status} -> ${mappedStatus}`);
       
       return {
@@ -1178,7 +1183,7 @@ app.get('/api/bookings/enhanced', async (req, res) => {
     
     const bookings = bookingsResult.map(booking => {
       // Apply status mapping to transform database status to frontend expected status
-      const mappedStatus = mapBookingStatus(booking.status);
+      const mappedStatus = mapBookingStatus(booking.status, booking.response_message);
       console.log(`🔄 [STATUS MAPPING] Booking ${booking.id}: ${booking.status} -> ${mappedStatus}`);
       
       return {
@@ -1259,7 +1264,7 @@ app.get('/api/bookings/vendor/:vendorId', async (req, res) => {
     
     const bookings = bookingsResult.map(booking => {
       // Apply status mapping to transform database status to frontend expected status
-      const mappedStatus = mapBookingStatus(booking.status);
+      const mappedStatus = mapBookingStatus(booking.status, booking.response_message);
       console.log(`🔄 [STATUS MAPPING] Vendor Booking ${booking.id}: ${booking.status} -> ${mappedStatus}`);
       
       return {
@@ -1521,7 +1526,7 @@ app.patch('/api/bookings/:bookingId/status', async (req, res) => {
     const dbStatus = status === 'quote_requested' ? 'request' :
                     status === 'confirmed' ? 'approved' :
                     status === 'downpayment_paid' ? 'downpayment' :
-                    status === 'quote_sent' ? 'quote_sent' :
+                    status === 'quote_sent' ? 'pending' :  // Changed to use 'pending' instead
                     status;
     
     // Build update query with proper SQL syntax
