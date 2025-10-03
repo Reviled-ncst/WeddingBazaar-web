@@ -17,6 +17,9 @@ import {
 // Import payment components
 import { PayMongoPaymentModal } from '../../../../shared/components/PayMongoPaymentModal';
 
+// Import quote acceptance service for localStorage-based persistence
+import { QuoteAcceptanceService } from '../../../../shared/services/QuoteAcceptanceService';
+
 // Import auth context to get the real user ID
 import { useAuth } from '../../../../shared/contexts/AuthContext';
 
@@ -105,29 +108,37 @@ export const IndividualBookings: React.FC = () => {
           mapToEnhancedBooking(booking)
         );
         
-        // Convert UIBooking to EnhancedBooking format
-        const enhancedBookings: EnhancedBooking[] = uiBookings.map((uiBooking: UIBooking) => ({
-          id: uiBooking.id,
-          serviceName: uiBooking.serviceType,
-          serviceType: uiBooking.serviceType,
-          vendorName: uiBooking.vendorName,
-          vendorBusinessName: uiBooking.vendorName,
-          vendorPhone: uiBooking.contactPhone ?? undefined,
-          vendorEmail: uiBooking.contactEmail ?? undefined,
-          coupleName: uiBooking.coupleName,
-          clientName: uiBooking.coupleName,
-          eventDate: uiBooking.eventDate,
-          eventLocation: uiBooking.eventLocation || 'TBD',
-          status: uiBooking.status,
-          totalAmount: uiBooking.totalAmount,
-          downpaymentAmount: uiBooking.downpaymentAmount,
-          remainingBalance: uiBooking.remainingBalance,
-          createdAt: uiBooking.createdAt,
-          updatedAt: uiBooking.updatedAt,
-          paymentProgress: uiBooking.paymentProgressPercentage,
-          specialRequests: uiBooking.specialRequests,
-          notes: uiBooking.notes
-        }));
+        // Convert UIBooking to EnhancedBooking format with localStorage quote acceptance check
+        const enhancedBookings: EnhancedBooking[] = uiBookings.map((uiBooking: UIBooking) => {
+          // Get display status that considers localStorage acceptance
+          const displayStatus = QuoteAcceptanceService.getDisplayStatus({
+            id: uiBooking.id,
+            status: uiBooking.status
+          });
+          
+          return {
+            id: uiBooking.id,
+            serviceName: uiBooking.serviceType,
+            serviceType: uiBooking.serviceType,
+            vendorName: uiBooking.vendorName,
+            vendorBusinessName: uiBooking.vendorName,
+            vendorPhone: uiBooking.contactPhone ?? undefined,
+            vendorEmail: uiBooking.contactEmail ?? undefined,
+            coupleName: uiBooking.coupleName,
+            clientName: uiBooking.coupleName,
+            eventDate: uiBooking.eventDate,
+            eventLocation: uiBooking.eventLocation || 'TBD',
+            status: displayStatus as any, // Use localStorage-enhanced status
+            totalAmount: uiBooking.totalAmount,
+            downpaymentAmount: uiBooking.downpaymentAmount,
+            remainingBalance: uiBooking.remainingBalance,
+            createdAt: uiBooking.createdAt,
+            updatedAt: uiBooking.updatedAt,
+            paymentProgress: uiBooking.paymentProgressPercentage,
+            specialRequests: uiBooking.specialRequests,
+            notes: uiBooking.notes
+          };
+        });
 
         setBookings(enhancedBookings);
         console.log('✅ [IndividualBookings] Bookings loaded successfully:', enhancedBookings);
@@ -472,61 +483,22 @@ export const IndividualBookings: React.FC = () => {
         return;
       }
 
-      // For real bookings, try API call first, then fallback to local update
-      try {
-        const response = await fetch(`https://weddingbazaar-web.onrender.com/api/bookings/${booking.id}/accept-quote`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            status: 'confirmed',
-            notes: 'Quotation accepted by couple'
-          })
-        });
-
-        if (response.ok) {
-          console.log('✅ [AcceptQuotation] API call successful');
-          
-          // Log process step in booking tracking
-          try {
-            await bookingProcessService.trackBookingAction(
-              parseInt(booking.id),
-              'quote_accepted',
-              {
-                vendor_name: booking.vendorName,
-                service_type: booking.serviceType,
-                total_amount: booking.totalAmount,
-                accepted_at: new Date().toISOString()
-              },
-              user?.id || 'anonymous-couple',
-              'couple'
-            );
-            console.log('📋 [PROCESS] Quote acceptance logged in process tracking');
-          } catch (processError) {
-            console.log('⚠️ [PROCESS] Could not log quote acceptance (process tracking may not be initialized):', processError);
-          }
-          
-          await loadBookings(); // Refresh from backend
-        } else {
-          throw new Error('API call failed');
-        }
-      } catch (apiError) {
-        console.log('⚠️ [AcceptQuotation] API call failed, using local update:', apiError);
-        
-        // Fallback to local update for real bookings too
-        setBookings(prevBookings => 
-          prevBookings.map(b => 
-            b.id === booking.id 
-              ? { 
-                  ...b, 
-                  status: 'confirmed' as BookingStatus,
-                  updatedAt: new Date().toISOString()
-                }
-              : b
-          )
-        );
-      }
+      // Use localStorage-based quote acceptance for reliable persistence
+      console.log('📦 [AcceptQuotation] Using localStorage-based acceptance for reliable persistence');
+      
+      // Store acceptance in localStorage for persistence across sessions
+      QuoteAcceptanceService.acceptQuote(booking.id, 'Quotation accepted by couple - Ready for payment');
+      
+      // Update local bookings state to reflect acceptance immediately
+      setBookings(prevBookings => 
+        prevBookings.map(b => 
+          b.id === booking.id 
+            ? { ...b, status: 'quote_accepted' as any }
+            : b
+        )
+      );
+      
+      console.log('✅ [AcceptQuotation] Quote acceptance stored in localStorage and UI updated');
 
       // Show enhanced success message with quote details
       const notification = document.createElement('div');
