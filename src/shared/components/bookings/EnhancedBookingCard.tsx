@@ -153,181 +153,200 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className={cn(
-        "bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden",
-        "hover:shadow-2xl hover:border-pink-200 transition-all duration-500",
-        "transform hover:scale-[1.02]",
+        "relative bg-white/95 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 overflow-hidden",
+        "hover:shadow-2xl hover:border-pink-200/50 transition-all duration-500",
+        "transform hover:scale-[1.02] hover:-translate-y-1",
+        "before:absolute before:inset-0 before:bg-gradient-to-br before:from-pink-50/30 before:via-transparent before:to-purple-50/30 before:pointer-events-none",
         className
       )}
     >
-      {/* Header with gradient background */}
-      <div className="bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 p-6 relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-pink-200/20 to-purple-200/20 rounded-full -translate-y-16 translate-x-16" />
-        <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-br from-indigo-200/20 to-blue-200/20 rounded-full translate-y-10 -translate-x-10" />
+      {/* Header with enhanced gradient background */}
+      <div className="relative bg-gradient-to-br from-pink-50/80 via-purple-50/80 to-indigo-50/80 backdrop-blur-sm p-5 overflow-hidden">
+        {/* Enhanced decorative elements */}
+        <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-pink-300/30 to-purple-300/30 rounded-full -translate-y-20 translate-x-20 animate-pulse" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-br from-indigo-300/30 to-blue-300/30 rounded-full translate-y-12 -translate-x-12 animate-pulse" />
+        <div className="absolute top-1/2 left-1/2 w-16 h-16 bg-gradient-to-br from-purple-200/20 to-pink-200/20 rounded-full -translate-x-8 -translate-y-8" />
         
         <div className="relative z-10 flex items-start justify-between">
           <div className="flex items-center gap-4 flex-1">
-            {/* Service Icon */}
-            <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl relative">
-              <span className="text-2xl">{getServiceIcon(booking.serviceType)}</span>
+            {/* Enhanced Service Icon */}
+            <div className="relative w-14 h-14 bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-xl ring-3 ring-white/50 backdrop-blur-sm">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-xl" />
+              <span className="text-xl relative z-10 drop-shadow-sm">{getServiceIcon(booking.serviceType)}</span>
               {urgencyLevel === 'urgent' && (
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-red-500 to-red-600 rounded-full border-2 border-white shadow-lg animate-pulse" />
+              )}
+              {urgencyLevel === 'soon' && (
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full border-2 border-white shadow-lg" />
               )}
             </div>
             
             {/* Booking Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-xl font-bold text-gray-900 truncate">{booking.serviceName}</h3>
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-bold text-gray-900 truncate leading-tight">
+                    {booking.serviceType || booking.serviceName || 'Wedding Service'}
+                  </h3>
+                  <p className="text-gray-600 font-medium text-sm truncate">
+                    {userType === 'vendor' 
+                      ? (booking.coupleName || booking.clientName || 'Wedding Couple')
+                      : (booking.vendorName || booking.vendorBusinessName || 'Wedding Vendor')
+                    }
+                  </p>
+                </div>
                 {booking.vendorRating && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 rounded-lg">
-                    <Star className="h-3 w-3 text-yellow-600 fill-current" />
+                  <div className="flex items-center gap-1 px-1.5 py-0.5 bg-yellow-100 rounded-md flex-shrink-0">
+                    <Star className="h-2.5 w-2.5 text-yellow-600 fill-current" />
                     <span className="text-xs font-medium text-yellow-700">{booking.vendorRating}</span>
                   </div>
                 )}
               </div>
               
-              <p className="text-gray-600 font-medium mb-1">
-                {userType === 'vendor' 
-                  ? (booking.coupleName || booking.clientName || 'Client')
-                  : (booking.vendorName || booking.vendorBusinessName || 'Vendor')
-                }
-              </p>
-              
-              <p className="text-sm text-gray-500">
+              <p className="text-xs text-gray-500 truncate">
                 Booking #{booking.bookingReference || `WB-${booking.id?.slice(-6)}`}
               </p>
             </div>
           </div>
           
-          {/* Status Badge */}
+          {/* Enhanced Status Badge */}
           <div className={cn(
-            "px-4 py-2 rounded-xl border-2 flex items-center gap-2 shadow-sm",
+            "px-3 py-1.5 rounded-lg border flex items-center gap-1.5 shadow-md backdrop-blur-sm relative overflow-hidden",
             statusConfig.bgColor,
-            statusConfig.color
+            statusConfig.color,
+            "hover:scale-105 transition-transform duration-200"
           )}>
-            {statusConfig.icon}
-            <span className="font-semibold text-sm">{statusConfig.label}</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent" />
+            <div className="relative z-10 flex items-center gap-1.5">
+              <div className="w-3 h-3">{statusConfig.icon}</div>
+              <span className="font-semibold text-xs">{statusConfig.label}</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Content Section */}
-      <div className="p-6 space-y-4">
-        {/* Event Details Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center gap-3 p-3 bg-gray-50/50 rounded-xl">
-            <div className="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center">
-              <Calendar className="h-5 w-5 text-pink-600" />
+      <div className="relative p-4 space-y-3 bg-gradient-to-b from-transparent to-gray-50/30">
+        {/* Enhanced Event Details Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="flex items-center gap-2 p-2.5 bg-gradient-to-r from-pink-50/70 to-purple-50/70 backdrop-blur-sm rounded-lg border border-white/30 shadow-sm hover:shadow-md transition-shadow duration-200 min-h-[50px]">
+            <div className="w-8 h-8 bg-gradient-to-br from-pink-100 to-pink-200 rounded-lg flex items-center justify-center shadow-sm ring-1 ring-white/50 flex-shrink-0">
+              <Calendar className="h-3 w-3 text-pink-600 drop-shadow-sm" />
             </div>
-            <div>
-              <div className="font-semibold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-gray-900 text-xs truncate">
                 {booking.formattedEventDate || (booking.eventDate ? new Date(booking.eventDate).toLocaleDateString('en-US', {
                   year: 'numeric',
-                  month: 'long',
+                  month: 'short',
                   day: 'numeric'
                 }) : 'TBD')}
               </div>
-              <div className="text-sm text-gray-500">
-                {booking.daysUntilEvent && booking.daysUntilEvent > 0 
-                  ? `${booking.daysUntilEvent} days to go`
-                  : 'Event Date'
-                }
+              <div className="text-xs text-gray-500 truncate">
+                Event Date
               </div>
             </div>
           </div>
           
-          <div className="flex items-center gap-3 p-3 bg-gray-50/50 rounded-xl">
-            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-              <MapPin className="h-5 w-5 text-purple-600" />
+          <div className="flex items-center gap-2 p-2.5 bg-gradient-to-r from-purple-50/70 to-indigo-50/70 backdrop-blur-sm rounded-lg border border-white/30 shadow-sm hover:shadow-md transition-shadow duration-200 min-h-[50px]">
+            <div className="w-8 h-8 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg flex items-center justify-center shadow-sm ring-1 ring-white/50 flex-shrink-0">
+              <MapPin className="h-3 w-3 text-purple-600 drop-shadow-sm" />
             </div>
-            <div>
-              <div className="font-semibold text-gray-900 truncate">{booking.eventLocation}</div>
-              <div className="text-sm text-gray-500">Venue</div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-gray-900 text-xs truncate">
+                {booking.eventLocation || 'Venue TBD'}
+              </div>
+              <div className="text-xs text-gray-500">Event Location</div>
             </div>
           </div>
         </div>
 
-        {/* Amount Section */}
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 p-4 rounded-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-bold text-gray-900">
+        {/* Enhanced Amount Section */}
+        <div className="relative bg-gradient-to-r from-gray-50/80 via-white/50 to-gray-100/80 backdrop-blur-sm p-3 rounded-lg border border-white/40 shadow-lg overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-pink-500/5 to-purple-500/5" />
+          <div className="relative flex items-center justify-between gap-3">
+            <div className="flex-1">
+              <div className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 ₱{booking.totalAmount?.toLocaleString() || '0'}
               </div>
-              <div className="text-sm text-gray-500">Total Amount</div>
+              <div className="text-xs text-gray-500 font-medium">Total Amount</div>
             </div>
             
-            {/* Progress Bar */}
+            {/* Enhanced Progress Bar */}
             {statusConfig.progress > 0 && (
-              <div className="flex-1 max-w-32 ml-4">
-                <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>Progress</span>
-                  <span>{statusConfig.progress}%</span>
+              <div className="flex-shrink-0 w-20">
+                <div className="flex justify-between text-xs text-gray-600 font-medium mb-0.5">
+                  <span className="text-xs">Progress</span>
+                  <span className="font-bold text-xs">{statusConfig.progress}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-gray-200/80 rounded-full h-1.5 shadow-inner border border-gray-300/50">
                   <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${statusConfig.progress}%` }}
-                    transition={{ duration: 1, delay: 0.3 }}
+                    transition={{ duration: 1.2, delay: 0.3, ease: "easeOut" }}
                     className={cn(
-                      "h-2 rounded-full",
+                      "h-1.5 rounded-full shadow-sm relative overflow-hidden",
                       statusConfig.progress === 100 
-                        ? "bg-gradient-to-r from-green-400 to-emerald-500"
-                        : "bg-gradient-to-r from-pink-400 to-purple-500"
+                        ? "bg-gradient-to-r from-green-400 via-emerald-500 to-green-600"
+                        : "bg-gradient-to-r from-pink-400 via-purple-500 to-pink-600"
                     )}
-                  />
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-full" />
+                  </motion.div>
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-3 pt-2">
+        {/* Enhanced Action Buttons */}
+        <div className="flex items-center gap-2 pt-2">
           <button
             onClick={() => onViewDetails?.(booking)}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-xl transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-700 text-white rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden group text-sm"
           >
-            <span>View Details</span>
-            <ChevronRight className="h-4 w-4" />
+            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <span className="relative z-10">View Details</span>
+            <ChevronRight className="h-3 w-3 relative z-10 group-hover:translate-x-0.5 transition-transform duration-200" />
           </button>
           
-          {/* Conditional Action Buttons based on user type and status */}
+          {/* Enhanced Conditional Action Buttons */}
           {userType === 'vendor' && booking.status === 'quote_requested' && (
             <button
               onClick={() => onSendQuote?.(booking)}
-              className="px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
+              className="px-3 py-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 hover:from-blue-600 hover:via-indigo-600 hover:to-blue-700 text-white rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden group text-sm"
             >
-              Send Quote
+              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <span className="relative z-10">Send Quote</span>
             </button>
           )}
           
           {userType === 'individual' && booking.status === 'quote_sent' && (
             <button
               onClick={() => onAcceptQuote?.(booking)}
-              className="px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
+              className="px-3 py-2 bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 hover:from-green-600 hover:via-emerald-600 hover:to-green-700 text-white rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden group text-sm"
             >
-              Accept Quote
+              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <span className="relative z-10">Accept Quote</span>
             </button>
           )}
           
           {userType === 'individual' && (booking.status === 'confirmed' || booking.status === 'downpayment_paid') && (
             <button
               onClick={() => onPayment?.(booking, booking.status === 'confirmed' ? 'downpayment' : 'remaining_balance')}
-              className="px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white rounded-xl transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
+              className="px-3 py-2 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 hover:from-emerald-600 hover:via-green-600 hover:to-emerald-700 text-white rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden group text-sm"
             >
-              {booking.status === 'confirmed' ? 'Pay Deposit' : 'Pay Balance'}
+              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <span className="relative z-10">{booking.status === 'confirmed' ? 'Pay Deposit' : 'Pay Balance'}</span>
             </button>
           )}
           
-          {/* Contact Button */}
+          {/* Enhanced Contact Button */}
           {onContact && (booking.vendorPhone || booking.vendorEmail) && (
             <button
               onClick={() => onContact?.(booking)}
-              className="p-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
+              className="p-2 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 backdrop-blur-sm border border-white/50"
             >
-              {booking.vendorPhone ? <Phone className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
+              {booking.vendorPhone ? <Phone className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
             </button>
           )}
         </div>

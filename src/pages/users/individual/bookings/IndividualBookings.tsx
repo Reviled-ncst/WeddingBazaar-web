@@ -26,6 +26,9 @@ import { centralizedBookingAPI as bookingApiService } from '../../../../services
 // Import unified mapping utilities
 import { mapToEnhancedBooking, type UIBooking } from '../../../../shared/utils/booking-data-mapping';
 
+// Import booking process tracking service
+import bookingProcessService from '../../../../services/booking-process-tracking';
+
 // Custom hooks removed - using fixed sorting (latest first)
 
 import type { 
@@ -484,6 +487,26 @@ export const IndividualBookings: React.FC = () => {
 
         if (response.ok) {
           console.log('✅ [AcceptQuotation] API call successful');
+          
+          // Log process step in booking tracking
+          try {
+            await bookingProcessService.trackBookingAction(
+              parseInt(booking.id),
+              'quote_accepted',
+              {
+                vendor_name: booking.vendorName,
+                service_type: booking.serviceType,
+                total_amount: booking.totalAmount,
+                accepted_at: new Date().toISOString()
+              },
+              user?.id || 'anonymous-couple',
+              'couple'
+            );
+            console.log('📋 [PROCESS] Quote acceptance logged in process tracking');
+          } catch (processError) {
+            console.log('⚠️ [PROCESS] Could not log quote acceptance (process tracking may not be initialized):', processError);
+          }
+          
           await loadBookings(); // Refresh from backend
         } else {
           throw new Error('API call failed');

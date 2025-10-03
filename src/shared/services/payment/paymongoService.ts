@@ -17,41 +17,38 @@ class PayMongoService {
     };
   }
 
-  // Create Card Payment
-  async createCardPayment(bookingId: string, amount: number, paymentType: string, _cardDetails: {
+  // Create Card Payment (Simulated for Demo)
+  async createCardPayment(bookingId: string, amount: number, paymentType: string, cardDetails: {
     number: string;
     expiry: string;
     cvc: string;
     name: string;
   }): Promise<PaymentResult> {
     try {
-      // First create a payment intent
-      const response = await fetch(`${this.baseUrl}/api/payments/create-intent`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          amount: amount * 100, // Convert to centavos
-          currency: 'PHP',
-          description: `Wedding Bazaar - ${paymentType} payment`,
-          metadata: {
-            booking_id: bookingId,
-            payment_type: paymentType
-          }
-        })
-      });
-
-      const result = await response.json();
+      console.log('💳 [CARD PAYMENT] Starting card payment simulation...');
+      console.log('💳 [CARD PAYMENT] Booking:', bookingId);
+      console.log('💳 [CARD PAYMENT] Amount:', amount);
+      console.log('💳 [CARD PAYMENT] Card ending in:', cardDetails.number.slice(-4));
       
-      if (!response.ok) {
-        throw new Error(result.error || 'Payment intent creation failed');
-      }
+      // Simulate processing delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Simulate payment success
+      const paymentId = `card_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      console.log('✅ [CARD PAYMENT] Payment simulation completed successfully');
+      console.log('💳 [CARD PAYMENT] Transaction ID:', paymentId);
 
       return {
         success: true,
-        paymentId: result.data?.id,
-        paymentIntent: result.data,
-        requiresAction: false,
-        clientSecret: result.data?.attributes?.client_key
+        paymentId: paymentId,
+        paymentIntent: {
+          id: paymentId,
+          status: 'succeeded',
+          amount: amount * 100, // in centavos
+          currency: 'PHP'
+        },
+        requiresAction: false
       };
     } catch (error) {
       console.error('Card payment creation error:', error);

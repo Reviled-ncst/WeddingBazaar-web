@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Local Bookings</title>
+</head>
+<body>
+    <h1>Local Bookings Debug</h1>
+    <div id="output"></div>
+    
+    <script>
+        console.log('🔍 Checking localStorage for local bookings...');
+        
+        // Get local bookings
+        const localBookingsData = localStorage.getItem('weddingbazaar_local_bookings');
+        console.log('Raw localStorage data:', localBookingsData);
+        
+        if (localBookingsData) {
+            const localBookings = JSON.parse(localBookingsData);
+            console.log('Parsed local bookings:', localBookings);
+            
+            // Display the structure
+            const output = document.getElementById('output');
+            output.innerHTML = '<h2>Local Bookings Structure:</h2><pre>' + JSON.stringify(localBookings, null, 2) + '</pre>';
+            
+            if (localBookings.length > 0) {
+                const firstBooking = localBookings[0];
+                console.log('First booking structure:', firstBooking);
+                console.log('Key fields check:', {
+                    id: firstBooking.id,
+                    service_name: firstBooking.service_name,
+                    vendor_name: firstBooking.vendor_name,
+                    event_location: firstBooking.event_location,
+                    contact_phone: firstBooking.contact_phone,
+                    budget_range: firstBooking.budget_range,
+                    status: firstBooking.status
+                });
+            }
+        } else {
+            console.log('No local bookings found');
+            document.getElementById('output').innerHTML = '<p>No local bookings found in localStorage</p>';
+        }
+    </script>
+</body>
+</html>

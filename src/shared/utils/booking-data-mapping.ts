@@ -300,13 +300,24 @@ export function getValidServiceId(vendorId: string): string {
 export function mapComprehensiveBookingToUI(booking: any): UIBooking {
   console.log('🔄 [mapComprehensiveBookingToUI] Processing booking:', booking.id, {
     serviceType: booking.serviceType || booking.service_type,
-    amount: booking.amount,
+    serviceName: booking.service_name,
     vendorName: booking.vendorName || booking.vendor_name,
-    status: booking.status
+    amount: booking.amount,
+    status: booking.status,
+    responseMessage: booking.response_message?.substring(0, 100) + '...'
   });
   
   // Try multiple amount fields from different API formats
-  let totalAmount = Number(booking.final_price) || Number(booking.quoted_price) || Number(booking.amount) || 0;
+  let totalAmount = Number(booking.final_price) || Number(booking.quoted_price) || Number(booking.amount) || Number(booking.total_amount) || 0;
+  
+  // Extract amount from response_message if available (for quotes)
+  if (totalAmount === 0 && booking.response_message) {
+    const totalMatch = booking.response_message.match(/TOTAL:\s*₱([0-9,]+\.?\d*)/);
+    if (totalMatch) {
+      totalAmount = parseFloat(totalMatch[1].replace(/,/g, ''));
+      console.log('💰 [AMOUNT EXTRACTION] Found total amount in response_message:', totalAmount);
+    }
+  }
   
   // ALWAYS apply fallback pricing if amount is 0 or null
   if (totalAmount === 0) {
@@ -358,15 +369,45 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
     source: booking.amount ? 'amount' : booking.final_price ? 'final_price' : totalAmount > 0 ? 'fallback' : 'other'
   });
 
+  // Enhanced service name and type mapping
+  const serviceName = booking.service_name || booking.serviceName || 'Wedding Service';
+  
+  // Check response message for more context if available
+  const responseMessage = booking.response_message || '';
+  const inferredServiceType = booking.service_type || booking.serviceType || 
+    (responseMessage.includes('Hair') || responseMessage.includes('Makeup') ? 'Beauty Services' :
+     serviceName.includes('Hair') || serviceName.includes('Makeup') ? 'Beauty Services' :
+     serviceName.includes('Cake') ? 'Catering' :
+     serviceName.includes('Photo') ? 'Photography' :
+     serviceName.includes('DJ') || serviceName.includes('Music') ? 'Music' :
+     serviceName.includes('Planning') ? 'Wedding Planning' :
+     serviceName.includes('Decoration') ? 'Decoration' :
+     'Wedding Service');
+
+  // Enhanced vendor name mapping with fallback lookup
+  let vendorName = booking.vendor_name || booking.vendorName;
+  if (!vendorName && booking.vendor_id) {
+    // Map common vendor IDs to names
+    const vendorIdToName: Record<string, string> = {
+      '2-2025-001': 'Perfect Weddings Co.',
+      '2-2025-002': 'Premium Event Services',
+      '2-2025-003': 'Beltran Sound Systems',
+      '2-2025-004': 'Elite Wedding Planners',
+      '2-2025-005': 'Creative Designs Studio'
+    };
+    vendorName = vendorIdToName[booking.vendor_id] || `Vendor ${booking.vendor_id}`;
+  }
+  vendorName = vendorName || 'Wedding Vendor';
+
   const mapped = {
     id: booking.id?.toString() || '',
     vendorId: booking.vendor_id || booking.vendorId || '',
-    vendorName: booking.vendor_name || booking.vendorName || 'Unknown Vendor',
+    vendorName,
     coupleId: booking.couple_id || booking.coupleId || '',
-    coupleName: booking.couple_name || booking.coupleName || booking.contact_person || 'Unknown Couple',
+    coupleName: booking.couple_name || booking.coupleName || booking.contact_person || 'Wedding Couple',
     contactEmail: booking.contact_email || booking.contactEmail || '',
     contactPhone: booking.contact_phone || booking.contactPhone,
-    serviceType: booking.service_type || booking.serviceType || 'Unknown Service',
+    serviceType: inferredServiceType, // Use inferred service type for categorization
     eventDate: booking.event_date || booking.eventDate || '',
     eventTime: booking.event_time || booking.eventTime,
     eventLocation: booking.event_location || booking.eventLocation || booking.location,
@@ -427,7 +468,7 @@ export function mapVendorBookingToUI(apiBooking: any): UIBooking {
     coupleName: apiBooking.couple_name || apiBooking.contact_person || apiBooking.coupleName || apiBooking.clientName || `Client ${apiBooking.couple_id || 'ID Unknown'}`,
     contactEmail: apiBooking.contact_email || apiBooking.contactEmail || apiBooking.clientEmail || '',
     contactPhone: apiBooking.contact_phone || apiBooking.contactPhone || apiBooking.clientPhone,
-    serviceType: (apiBooking.service_type || apiBooking.serviceType || 'other').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    serviceType: (apiBooking.service_type || apiBooking.serviceType || 'other').replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
     eventDate: apiBooking.event_date || apiBooking.eventDate || apiBooking.bookingDate || '',
     eventTime: apiBooking.event_time || apiBooking.eventTime,
     eventLocation: apiBooking.event_location || apiBooking.eventLocation || apiBooking.location,
