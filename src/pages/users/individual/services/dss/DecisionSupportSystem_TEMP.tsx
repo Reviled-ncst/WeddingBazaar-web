@@ -1,0 +1,3041 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Star, Phone, Mail, MapPin, ArrowLeft, X } from 'lucide-react';
+import { CoupleHeader } from '../../../individual/landing/CoupleHeader';
+
+// Import booking functionality
+import { BookingRequestModal } from '../../../../../modules/services/components/BookingRequestModal';
+import { BatchBookingModal } from './BatchBookingModal';
+import type { ServiceCategory } from '../../../../../shared/types/comprehensive-booking.types';
+
+// Helper function to convert Service to BookingService format
+const convertToBookingService = (service: Service) => {
+  return {
+    id: service.id,
+    vendorId: service.vendorId,
+    name: service.name,
+    category: service.category, // Already ServiceCategory type
+    description: service.description,
+    basePrice: service.basePrice,
+    priceRange: service.priceRange,
+    image: service.image,
+    gallery: service.gallery || [service.image].filter(Boolean),
+    features: service.packageInclusions || [],
+    availability: service.availability,
+    location: service.location,
+    rating: service.rating,
+    reviewCount: service.reviewCount,
+    vendorName: service.vendorName,
+    vendorImage: service.vendorImage,
+    contactInfo: service.contactInfo
+  };
+};
+
+interface DSSProps {
+  services: Service[];
+  budget?: number;
+  location?: string;
+  weddingDate?: Date;
+  guestCount?: number;
+  priorities?: string[];
+  isOpen: boolean;
+  onClose: () => void;
+  onServiceRecommend: (serviceId: string) => void;
+}
+
+interface DSSRecommendation {
+  serviceId: string;
+  score: number;
+  reasons: string[];
+  priority: 'high' | 'medium' | 'low';
+  category: string;
+  estimatedCost: number;
+  valueRating: number;
+  riskLevel: 'low' | 'medium' | 'high';
+}
+
+interface DSSInsight {
+  type: 'budget' | 'trend' | 'risk' | 'opportunity';
+  title: string;
+  description: string;
+  impact: 'high' | 'medium' | 'low';
+  actionable: boolean;
+  data?: any;
+}
+
+interface BudgetAnalysis {
+  totalEstimated: number;
+  percentageUsed: number;
+  categoryBreakdown: Record<string, number>;
+  recommendations: string[];
+  riskAreas: string[];
+  savingOpportunities: string[];
+}
+
+interface PackageRecommendation {
+  id: string;
+  name: string;
+  description: string;
+  services: string[]; // Service IDs
+  totalCost: number;
+  originalCost: number;
+  savings: number;
+  savingsPercentage: number;
+  category: 'essential' | 'standard' | 'premium' | 'luxury';
+  suitability: number; // 0-100 score
+  reasons: string[];
+  timeline: string;
+  flexibility: 'high' | 'medium' | 'low';
+  riskLevel: 'low' | 'medium' | 'high';
+}
+
+interface WeddingStyle {
+  style: string;
+  description: string;
+  essentialCategories: string[];
+  recommendedBudgetSplit: Record<string, number>;
+  averageCost: number;
+  popularFeatures: string[];
+}
+
+export const DecisionSupportSystem: React.FC<DSSProps> = ({
+  services: initialServices,
+  budget = 50000,
+  location = '',
+  weddingDate,
+  guestCount = 100,
+  priorities = [],
+  isOpen,
+  onClose,
+  onServiceRecommend
+}) => {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'recommendations' | 'insights' | 'budget' | 'comparison' | 'packages'>('recommendations');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, budget]);
+  const [sortBy, setSortBy] = useState<'score' | 'price' | 'rating'>('score');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [selectedWeddingStyle, setSelectedWeddingStyle] = useState<string>('classic');
+  const [packageFilter, setPackageFilter] = useState<'all' | 'essential' | 'standard' | 'premium' | 'luxury'>('all');
+  
+  // Real data state
+  const [realVendors, setRealVendors] = useState<any[]>([]);
+  const [realServices, setRealServices] = useState<any[]>([]);
+  const [services, setServices] = useState<Service[]>(initialServices);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
+
+  // Booking modal state
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<Service | null>(null);
+  
+  // Batch booking state
+  const [showBatchBookingModal, setShowBatchBookingModal] = useState(false);
+  const [batchBookingServices, setBatchBookingServices] = useState<Service[]>([]);
+  const [isProcessingBatchBooking, setIsProcessingBatchBooking] = useState(false);
+  const [batchBookingProgress, setBatchBookingProgress] = useState({ completed: 0, total: 0 });
+
+  // Package customization state
+  const [customizingPackage, setCustomizingPackage] = useState<string | null>(null);
+  const [customizedServices, setCustomizedServices] = useState<{[packageId: string]: string[]}>({});
+  const [packageBudgetAdjustments, setPackageBudgetAdjustments] = useState<{[packageId: string]: number}>({});
+  const [weddingPreferences, setWeddingPreferences] = useState({
+    guestCount: 100,
+    weddingDate: '',
+    venue: '',
+    theme: selectedWeddingStyle,
+    specialRequirements: [] as string[]
+  });
+
+  // Handle booking request from DSS recommendations
+  const handleBookingRequest = (service: Service) => {
+    console.log('📅 [DSS] Booking request for service:', service.name);
+    setSelectedServiceForBooking(service);
+    setShowBookingModal(true);
+  };
+
+  // Handle batch booking of all recommended services
+  const handleBatchBookingRequest = () => {
+    const servicesToBook = recommendations
+      .map(rec => getService(rec.serviceId))
+      .filter((service): service is Service => service !== null);
+    
+    if (servicesToBook.length === 0) {
+      console.warn('📅 [DSS] No services available for batch booking');
+      return;
+    }
+
+    console.log('📅 [DSS] Batch booking request for', servicesToBook.length, 'services');
+    setBatchBookingServices(servicesToBook);
+    setShowBatchBookingModal(true);
+  };
+
+  // Enhanced vendor deduplication with service aggregation
+  const getUniqueVendorsWithServices = (services: Service[]) => {
+    const vendorServiceMap = new Map<string, {
+      vendorId: string;
+      vendorName: string;
+      services: Array<{
+        serviceId: string;
+        serviceName: string;
+        category: string;
+        price: number;
+      }>;
+      categories: Set<string>;
+      totalValue: number;
+    }>();
+
+    // Group services by vendor
+    services.forEach(service => {
+      const vendorId = service.vendorId;
+      const vendorName = service.vendorName || `Vendor ${vendorId}`;
+      const servicePrice = service.basePrice || parsePriceRange(service.priceRange || '$$');
+
+      if (!vendorServiceMap.has(vendorId)) {
+        vendorServiceMap.set(vendorId, {
+          vendorId,
+          vendorName,
+          services: [],
+          categories: new Set(),
+          totalValue: 0
+        });
+      }
+
+      const vendor = vendorServiceMap.get(vendorId)!;
+      vendor.services.push({
+        serviceId: service.id,
+        serviceName: service.name,
+        category: service.category,
+        price: servicePrice
+      });
+      vendor.categories.add(service.category);
+      vendor.totalValue += servicePrice;
+    });
+
+    return Array.from(vendorServiceMap.values());
+  };
+
+  // Create enhanced group chat with all unique vendors and their services
+  const createGroupChatWithVendors = async (services: Service[], context?: { type: 'package' | 'recommendations', packageName?: string }) => {
+    try {
+      // Get unique vendors with their service details (non-redundant)
+      const uniqueVendorsWithServices = getUniqueVendorsWithServices(services);
+
+      if (uniqueVendorsWithServices.length === 0) {
+        throw new Error('No vendors found for group chat');
+      }
+
+      console.log('💬 [DSS] Creating enhanced group chat with', uniqueVendorsWithServices.length, 'unique vendors:', uniqueVendorsWithServices);
+
+      // Simple conversation naming
+      let conversationName: string;
+      
+      if (context?.type === 'package' && context.packageName) {
+        conversationName = `${context.packageName}`;
+      } else {
+        conversationName = `My Wedding Planning`;
+      }
+
+      // Import messaging service
+      const MessagingAPI = await import('../../../../../services/api/messagingApiService');
+      
+      // Create conversation with the primary vendor (highest value vendor)
+      const primaryVendor = uniqueVendorsWithServices.sort((a, b) => b.totalValue - a.totalValue)[0];
+      const conversationId = `dss-${context?.type || 'group'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      const conversationData = {
+        conversationId,
+        vendorId: primaryVendor.vendorId,
+        vendorName: primaryVendor.vendorName,
+        serviceName: conversationName,
+        userId: user?.id || 'demo-user-123',
+        userName: (user as any)?.name || user?.email || 'Demo User',
+        userType: 'couple' as const
+      };
+
+      console.log('💬 [DSS] Creating enhanced group conversation:', conversationData);
+      const result = await MessagingAPI.default.createConversation(conversationData);
+      
+      if (result) {
+        console.log('✅ [DSS] Enhanced group conversation created successfully');
+        
+        // Generate comprehensive initial message with vendor service details
+        const vendorServiceDetails = uniqueVendorsWithServices.map(vendor => 
+          `🏢 **${vendor.vendorName}** (${Array.from(vendor.categories).join(', ')}):\n` +
+          vendor.services.map(service => `   • ${service.serviceName} - ₱${service.price.toLocaleString()}`).join('\n')
+        ).join('\n\n');
+
+        const totalValue = uniqueVendorsWithServices.reduce((sum, vendor) => sum + vendor.totalValue, 0);
+        const totalServices = services.length;
+        const totalCategories = new Set(services.map(s => s.category)).size;
+
+        const initialMessage = context?.type === 'package' 
+          ? `Hi everyone! I'm interested in the "${context.packageName}" package for my wedding.\n\n` +
+            `📋 **Package Details:**\n` +
+            `• ${totalServices} services across ${totalCategories} categories\n` +
+            `• ${uniqueVendorsWithServices.length} vendors\n` +
+            `• Total estimated value: ₱${totalValue.toLocaleString()}\n\n` +
+            `**Services & Vendors:**\n${vendorServiceDetails}\n\n` +
+            `I'd love to discuss coordination, timelines, and how we can work together to make this wedding perfect! 💍✨`
+          : `Hi everyone! I'm interested in booking multiple services for my wedding based on intelligent recommendations.\n\n` +
+            `📊 **Recommendation Summary:**\n` +
+            `• ${totalServices} recommended services\n` +
+            `• ${totalCategories} service categories\n` +
+            `• ${uniqueVendorsWithServices.length} unique vendors\n` +
+            `• Total estimated value: ₱${totalValue.toLocaleString()}\n\n` +
+            `**Services & Vendors:**\n${vendorServiceDetails}\n\n` +
+            `Looking forward to discussing how we can work together to create an amazing wedding experience! 🎉`;
+        
+        console.log('💬 [DSS] Enhanced initial group message prepared');
+        
+        // Show enhanced success notification with vendor details
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 bg-gradient-to-r from-purple-500 to-pink-600 text-white px-6 py-4 rounded-xl shadow-lg z-50 transform transition-all duration-300 max-w-md';
+        notification.innerHTML = `
+          <div class="flex items-start gap-3">
+            <div class="text-3xl flex-shrink-0">💬</div>
+            <div class="flex-1">
+              <div class="font-bold text-lg mb-1">Enhanced Group Chat Created!</div>
+              <div class="text-sm opacity-95 mb-2">Connected with ${uniqueVendorsWithServices.length} unique vendors (${totalServices} services)</div>
+              
+              <div class="bg-white bg-opacity-20 rounded-lg p-3 mb-3">
+                <div class="font-semibold text-sm">👥 "${conversationName}"</div>
+                <div class="text-xs opacity-95 mt-1">
+                  <div class="font-medium mb-1">Vendors & Services:</div>
+                  ${uniqueVendorsWithServices.slice(0, 3).map(vendor => 
+                    `• <strong>${vendor.vendorName}</strong> (${vendor.services.length} service${vendor.services.length > 1 ? 's' : ''})`
+                  ).join('<br>')}
+                  ${uniqueVendorsWithServices.length > 3 ? `<br>• +${uniqueVendorsWithServices.length - 3} more vendors` : ''}
+                </div>
+              </div>
+              
+              <div class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 bg-opacity-80 rounded p-2">
+                <div class="font-semibold">✨ Smart Features:</div>
+                <div class="opacity-95">
+                  • No duplicate vendors across services<br>
+                  • Service details included in chat<br>
+                  • Total value: ₱${totalValue.toLocaleString()}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+          notification.style.transform = 'translateX(100%)';
+          setTimeout(() => document.body.removeChild(notification), 8000);
+        }, 8000);
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('❌ [DSS] Failed to create enhanced group chat:', error);
+      return false;
+    }
+  };
+
+  // Load real data when component opens
+  useEffect(() => {
+    if (isOpen && !dataLoaded) {
+      loadRealData();
+    }
+  }, [isOpen, dataLoaded]);
+
+  const loadRealData = async () => {
+    try {
+      setIsAnalyzing(true);
+      setDataError(null);
+      console.log('🔄 [DSS] Loading real vendor and service data...');
+
+      const { vendors, services: fetchedServices } = await dssApiService.getVendorsAndServices();
+      
+      if (vendors.length > 0 && fetchedServices.length > 0) {
+        console.log('✅ [DSS] Real data loaded:', { vendors: vendors.length, services: fetchedServices.length });
+        
+        setRealVendors(vendors);
+        setRealServices(fetchedServices);
+        
+        // Convert to legacy Service format for existing DSS logic
+        const legacyServices = dssApiService.convertToLegacyServices(vendors, fetchedServices);
+        setServices([...initialServices, ...legacyServices]);
+        
+        setDataLoaded(true);
+      } else {
+        console.warn('⚠️ [DSS] No real data available, using provided services');
+        setServices(initialServices);
+        setDataLoaded(true);
+      }
+    } catch (error) {
+      console.error('❌ [DSS] Failed to load real data:', error);
+      setDataError('Failed to load real vendor data. Using available services.');
+      setServices(initialServices);
+      setDataLoaded(true);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Enhanced category pricing for better cost estimation
+  const categoryPricing = React.useMemo(() => ({
+    'Photography': 3500,
+    'Venue': 8000,
+    'Catering': 5500,
+    'Flowers': 1800,
+    'Music': 1200,
+    'Entertainment': 2500,
+    'Planning': 2000,
+    'Transportation': 800,
+    'Videography': 2800,
+    'Makeup': 800,
+    'Lighting': 1500,
+    'Decor': 2200,
+    'Cake': 600,
+    'Invitations': 400,
+    'Favors': 300
+  }), []);
+
+  // Helper function to calculate booking popularity score
+  const calculateBookingScore = React.useCallback((reviewCount: number): number => {
+    // Estimate bookings based on reviews (assuming 1 review per 3-5 bookings)
+    const estimatedBookings = reviewCount * 4;
+    if (estimatedBookings >= 200) return 25; // High booking volume
+    if (estimatedBookings >= 100) return 20; // Medium booking volume
+    if (estimatedBookings >= 50) return 15; // Moderate booking volume
+    return 10; // Lower booking volume
+  }, []);
+
+  // Helper functions
+  const parsePriceRange = React.useCallback((priceRange: string): number => {
+    const ranges = {
+      '$': 1000,
+      '$$': 3000,
+      '$$$': 7000,
+      '$$$$': 15000
+    };
+    return ranges[priceRange as keyof typeof ranges] || 5000;
+  }, []);
+
+  const calculateValueRating = React.useCallback((service: Service, cost: number): number => {
+    const qualityScore = service.rating * 2; // Max 10
+    const featureScore = Math.min(service.features?.length || 0, 10); // Max 10
+    const costEfficiency = Math.max(0, 10 - (cost / (budget || 5000)) * 10); // Max 10
+    return Math.round((qualityScore + featureScore + costEfficiency) / 3);
+  }, [budget]);
+
+  const calculateRiskLevel = React.useCallback((service: Service): 'low' | 'medium' | 'high' => {
+    if (service.reviewCount < 10 || service.rating < 3.5) return 'high';
+    if (service.reviewCount < 25 || service.rating < 4.0) return 'medium';
+    return 'low';
+  }, []);
+
+  // Advanced Market Intelligence Analysis
+  const marketIntelligence = useMemo(() => {
+    if (!services.length) return {};
+    
+    // Category market analysis
+    const categoryStats = services.reduce((acc, service) => {
+      if (!acc[service.category]) {
+        acc[service.category] = {
+          services: [],
+          avgRating: 0,
+          avgPrice: 0,
+          totalReviews: 0,
+          priceVariance: 0,
+          competitionLevel: 'low',
+          marketTrend: 'stable',
+          valueOpportunities: []
+        };
+      }
+      acc[service.category].services.push(service);
+      return acc;
+    }, {} as Record<string, any>);
+
+    // Calculate advanced market metrics for each category
+    Object.keys(categoryStats).forEach(category => {
+      const categoryServices = categoryStats[category].services;
+      const ratings = categoryServices.map((s: Service) => s.rating);
+      const prices = categoryServices.map((s: Service) => s.basePrice || parsePriceRange(s.priceRange || '$$'));
+      const reviews = categoryServices.map((s: Service) => s.reviewCount || 0);
+      
+      // Basic statistics
+      categoryStats[category].avgRating = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+      categoryStats[category].avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+      categoryStats[category].totalReviews = reviews.reduce((a, b) => a + b, 0);
+      
+      // Price variance and market stability analysis
+      const avgPrice = categoryStats[category].avgPrice;
+      const variance = prices.reduce((acc, price) => acc + Math.pow(price - avgPrice, 2), 0) / prices.length;
+      categoryStats[category].priceVariance = Math.sqrt(variance);
+      
+      // Competition level assessment with nuanced analysis
+      const serviceCount = categoryServices.length;
+      const highQualityServices = categoryServices.filter((s: Service) => s.rating >= 4.5).length;
+      const qualityRatio = highQualityServices / serviceCount;
+      
+      if (serviceCount >= 20) {
+        categoryStats[category].competitionLevel = 'very-high';
+        categoryStats[category].marketTrend = qualityRatio > 0.6 ? 'quality-focused' : 'price-competitive';
+      } else if (serviceCount >= 12) {
+        categoryStats[category].competitionLevel = 'high';
+        categoryStats[category].marketTrend = qualityRatio > 0.5 ? 'balanced' : 'emerging';
+      } else if (serviceCount >= 6) {
+        categoryStats[category].competitionLevel = 'medium';
+        categoryStats[category].marketTrend = 'developing';
+      } else {
+        categoryStats[category].competitionLevel = 'low';
+        categoryStats[category].marketTrend = 'opportunity-rich';
+      }
+      
+      // Identify value opportunities
+      categoryServices.forEach((service: Service) => {
+        const servicePrice = service.basePrice || parsePriceRange(service.priceRange || '$$');
+        const priceVsMarket = (servicePrice - avgPrice) / avgPrice;
+        const qualityVsMarket = service.rating - categoryStats[category].avgRating;
+        
+        // High quality, reasonable price = value opportunity
+        if (qualityVsMarket > 0.2 && priceVsMarket < 0.1) {
+          categoryStats[category].valueOpportunities.push({
+            serviceId: service.id,
+            type: 'quality-value',
+            reason: 'Above-average quality at market price'
+          });
+        }
+        
+        // Good quality, low price = budget champion
+        if (service.rating >= 4.0 && priceVsMarket < -0.2) {
+          categoryStats[category].valueOpportunities.push({
+            serviceId: service.id,
+            type: 'budget-champion',
+            reason: 'Quality service below market price'
+          });
+        }
+        
+        // Premium service with justified pricing
+        if (service.rating >= 4.7 && priceVsMarket > 0.3) {
+          categoryStats[category].valueOpportunities.push({
+            serviceId: service.id,
+            type: 'premium-justified',
+            reason: 'Premium quality justifies higher price'
+          });
+        }
+      });
+    });
+
+    return categoryStats;
+  }, [services, parsePriceRange]);
+
+  // Advanced Wedding Context Intelligence
+  const weddingContextAnalysis = useMemo(() => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
+    
+    // Seasonal wedding insights
+    const seasonalFactors = {
+      peak: [4, 5, 8, 9], // May, June, Sept, Oct
+      shoulder: [3, 6, 7, 10], // Apr, July, Aug, Nov
+      off: [0, 1, 2, 11] // Jan, Feb, Mar, Dec
+    };
+    
+    let currentSeason = 'shoulder';
+    if (seasonalFactors.peak.includes(currentMonth)) currentSeason = 'peak';
+    else if (seasonalFactors.off.includes(currentMonth)) currentSeason = 'off';
+    
+    // Budget context analysis
+    const budgetTier = budget <= 30000 ? 'budget' : 
+                      budget <= 60000 ? 'moderate' : 
+                      budget <= 100000 ? 'premium' : 'luxury';
+    
+    // Location context (if provided)
+    const locationContext = location ? {
+      isUrban: ['manila', 'cebu', 'davao', 'quezon', 'city'].some(urban => 
+        location.toLowerCase().includes(urban)),
+      isProvince: !['manila', 'cebu', 'davao', 'quezon', 'city'].some(urban => 
+        location.toLowerCase().includes(urban))
+    } : null;
+    
+    // Get wedding date from preferences or component props
+    const weddingDateValue = weddingPreferences.weddingDate || undefined;
+    
+    return {
+      season: currentSeason,
+      budgetTier,
+      locationContext,
+      isWeekend,
+      month: currentMonth,
+      weddingTiming: weddingDateValue ? new Date(weddingDateValue) : null
+    };
+  }, [budget, location, weddingPreferences.weddingDate]);
+
+  // ...existing code...
+
+  // Enhanced Smart Recommendation Algorithm with Real Logic
+  const recommendations = useMemo(() => {
+    if (!services.length) return [];
+
+    setIsAnalyzing(true);
+    
+    const calculateServiceScore = (service: Service): DSSRecommendation => {
+      let score = 0;
+      const reasons: string[] = [];
+      
+      // Get market intelligence for this service category
+      const marketStats = marketIntelligence[service.category] || {
+        avgRating: 4.0,
+        avgPrice: 5000,
+        competitionLevel: 'medium',
+        marketTrend: 'stable',
+        valueOpportunities: []
+      };
+      
+      const contextAnalysis = weddingContextAnalysis;
+
+      // 1. ADVANCED QUALITY ASSESSMENT WITH MARKET CONTEXT (35% weight)
+      const ratingScore = (service.rating / 5) * 35;
+      const categoryAvgRating = marketStats.avgRating;
+      const ratingAdvantage = service.rating - categoryAvgRating;
+      let qualityScore = ratingScore;
+      
+      // Quality tier analysis with sophisticated market context
+      if (service.rating >= 4.8) {
+        qualityScore += 8; // Exceptional quality bonus
+        if (ratingAdvantage > 0.3) {
+          reasons.push(`⭐ Market-leading excellence (${service.rating}/5) - Top 2% in ${service.category}`);
+          reasons.push(`🚀 Significantly outperforms competition (+${ratingAdvantage.toFixed(1)} vs avg)`);
+        } else {
+          reasons.push(`⭐ Exceptional quality (${service.rating}/5) - Elite performer`);
+        }
+      } else if (service.rating >= 4.5) {
+        qualityScore += 5;
+        if (ratingAdvantage > 0.2) {
+          reasons.push(`⭐ Premium quality leader (${service.rating}/5) - Top 10% in market`);
+          reasons.push(`📈 Above category average (${categoryAvgRating.toFixed(1)})`);
+        } else {
+          reasons.push(`⭐ Premium quality (${service.rating}/5) - Highly recommended`);
+        }
+      } else if (service.rating >= 4.0) {
+        if (ratingAdvantage > 0.1) {
+          qualityScore += 2;
+          reasons.push(`⭐ Above-market quality (${service.rating}/5) - Better than typical`);
+        } else if (ratingAdvantage > -0.1) {
+          reasons.push(`⭐ Market-standard quality (${service.rating}/5) - Reliable choice`);
+        } else {
+          qualityScore -= 1;
+          reasons.push(`⭐ Solid but below-average (${service.rating}/5) in competitive market`);
+        }
+      } else if (service.rating >= 3.5) {
+        qualityScore -= 3;
+        if (contextAnalysis.budgetTier === 'budget') {
+          reasons.push(`⭐ Budget-focused choice (${service.rating}/5) - Matches budget priorities`);
+        } else {
+          reasons.push(`⭐ Value option (${service.rating}/5) - Price over premium quality`);
+        }
+      } else {
+        qualityScore -= 6;
+        reasons.push(`⚠️ Economy option (${service.rating}/5) - Significant quality trade-off`);
+      }
+      
+      score += qualityScore;
+
+      // 2. SOPHISTICATED MARKET CREDIBILITY & MOMENTUM ANALYSIS (25% weight)
+      const reviewCount = service.reviewCount || 0;
+      const categoryTotalReviews = marketStats.totalReviews || 200;
+      const reviewShare = reviewCount > 0 ? (reviewCount / categoryTotalReviews) * 100 : 0;
+      let experienceScore = 0;
+      
+      // Multi-dimensional credibility assessment
+      if (reviewCount >= 100) {
+        experienceScore = 25;
+        if (reviewShare > 20) {
+          experienceScore += 5; // Market dominance bonus
+          reasons.push(`👑 Category leader (${reviewCount} reviews, ${reviewShare.toFixed(1)}% market share)`);
+        } else if (reviewShare > 10) {
+          experienceScore += 3;
+          reasons.push(`🏆 Major player (${reviewCount} reviews, strong market presence)`);
+        } else {
+          reasons.push(`🏆 Highly experienced (${reviewCount}+ satisfied clients)`);
+        }
+      } else if (reviewCount >= 50) {
+        experienceScore = 22;
+        const qualityMomentum = service.rating >= 4.5 && ratingAdvantage > 0;
+        if (qualityMomentum) {
+          experienceScore += 3;
+          reasons.push(`⭐ Rising excellence (${reviewCount} reviews, outperforming market)`);
+        } else if (service.rating >= 4.2) {
+          experienceScore += 1;
+          reasons.push(`✨ Established quality (${reviewCount} reviews, consistent performance)`);
+        } else {
+          reasons.push(`✨ Established vendor (${reviewCount}+ reviews)`);
+        }
+      } else if (reviewCount >= 25) {
+        experienceScore = 18;
+        const growthPotential = service.rating >= 4.3;
+        if (growthPotential && marketStats.competitionLevel === 'low') {
+          experienceScore += 3;
+          reasons.push(`� Emerging leader (${reviewCount} reviews in growing market)`);
+        } else if (growthPotential) {
+          experienceScore += 2;
+          reasons.push(`�📈 Quality growth story (${reviewCount} reviews, strong trajectory)`);
+        } else {
+          reasons.push(`📈 Developing business (${reviewCount} reviews)`);
+        }
+      } else if (reviewCount >= 10) {
+        experienceScore = 12;
+        if (service.rating >= 4.5) {
+          experienceScore += 4; // Hidden gem bonus
+          reasons.push(`💎 Hidden gem alert (${reviewCount} reviews, ${service.rating}/5 excellence)`);
+        } else if (service.rating >= 4.0) {
+          experienceScore += 2;
+          reasons.push(`🌟 Promising talent (${reviewCount} reviews, solid quality)`);
+        } else {
+          reasons.push(`🌱 Emerging vendor (${reviewCount} reviews)`);
+        }
+      } else if (reviewCount >= 5) {
+        experienceScore = 8;
+        if (service.rating >= 4.7) {
+          experienceScore += 5; // Exceptional new talent
+          reasons.push(`🏆 Exceptional newcomer (${reviewCount} reviews, ${service.rating}/5 - Watch this space!)`);
+        } else if (service.rating >= 4.3) {
+          experienceScore += 2;
+          reasons.push(`✨ High-potential starter (${reviewCount} reviews, strong early results)`);
+        } else {
+          reasons.push(`🆕 New vendor (${reviewCount} reviews) - Limited track record`);
+        }
+      } else {
+        experienceScore = 5;
+        if (service.rating >= 4.5) {
+          experienceScore += 3;
+          reasons.push(`🔥 Untested excellence (${reviewCount || 'few'} reviews, but ${service.rating}/5 rating)`);
+        } else {
+          reasons.push(`⚠️ Very new vendor (${reviewCount || 'minimal'} reviews) - High risk, unknown quality`);
+        }
+      }
+      
+      score += experienceScore;
+
+      // 3. ADVANCED BUDGET INTELLIGENCE & VALUE ANALYSIS (25% weight)
+      const basePrice = service.basePrice || parsePriceRange(service.priceRange || '$$') || 2500;
+      const budgetPercentage = (basePrice / budget) * 100;
+      const marketAvgPrice = marketStats.avgPrice || 5000;
+      const priceVsMarket = ((basePrice - marketAvgPrice) / marketAvgPrice) * 100;
+      const estimatedCost = basePrice;
+      let budgetScore = 0;
+      
+      // Check if this service is identified as a value opportunity
+      const valueOpportunity = marketStats.valueOpportunities?.find((opp: any) => opp.serviceId === service.id);
+      
+      // Sophisticated budget analysis with market context
+      if (budgetPercentage <= 10) {
+        budgetScore = 25;
+        if (service.rating >= 4.5) {
+          budgetScore += 5; // Exceptional value bonus
+          reasons.push(`🏆 Outstanding value (${budgetPercentage.toFixed(0)}% budget, ${service.rating}/5 quality)`);
+        } else {
+          reasons.push(`💰 Budget-friendly (${budgetPercentage.toFixed(0)}% of budget)`);
+        }
+      } else if (budgetPercentage <= 20) {
+        budgetScore = 22;
+        if (priceVsMarket < -10) {
+          budgetScore += 3;
+          reasons.push(`� Below-market pricing (${budgetPercentage.toFixed(0)}% budget, ${Math.abs(priceVsMarket).toFixed(0)}% under market)`);
+        } else {
+          reasons.push(`💵 Excellent value (${budgetPercentage.toFixed(0)}% of budget)`);
+        }
+      } else if (budgetPercentage <= 35) {
+        budgetScore = 18;
+        if (valueOpportunity?.type === 'quality-value') {
+          budgetScore += 4;
+          reasons.push(`⭐ Quality-value sweet spot (${budgetPercentage.toFixed(0)}% budget, above-avg quality)`);
+        } else if (Math.abs(priceVsMarket) < 10) {
+          budgetScore += 1;
+          reasons.push(`⚖️ Fair market pricing (${budgetPercentage.toFixed(0)}% budget, market-aligned)`);
+        } else {
+          reasons.push(`💵 Reasonable cost (${budgetPercentage.toFixed(0)}% of budget)`);
+        }
+      } else if (budgetPercentage <= 50) {
+        budgetScore = 15;
+        if (service.rating >= 4.7 && priceVsMarket > 20) {
+          budgetScore += 2; // Premium justified
+          reasons.push(`👑 Premium justified (${budgetPercentage.toFixed(0)}% budget, exceptional ${service.rating}/5 quality)`);
+        } else if (contextAnalysis.budgetTier === 'premium' || contextAnalysis.budgetTier === 'luxury') {
+          budgetScore += 1;
+          reasons.push(`💎 Fits premium budget (${budgetPercentage.toFixed(0)}% allocation)`);
+        } else {
+          budgetScore -= 2; // Stretch budget penalty
+          reasons.push(`⚠️ Budget stretch (${budgetPercentage.toFixed(0)}% - consider if worth premium)`);
+        }
+      } else if (budgetPercentage <= 70) {
+        budgetScore = 10;
+        if (contextAnalysis.budgetTier === 'luxury' && service.rating >= 4.8) {
+          budgetScore += 3;
+          reasons.push(`✨ Luxury tier match (${budgetPercentage.toFixed(0)}% budget, elite quality)`);
+        } else {
+          budgetScore -= 3;
+          reasons.push(`💰 Significant investment (${budgetPercentage.toFixed(0)}% budget - major allocation)`);
+        }
+      } else {
+        budgetScore = 5;
+        if (contextAnalysis.budgetTier === 'luxury' && service.rating >= 4.9) {
+          budgetScore += 2;
+          reasons.push(`👑 Ultra-premium choice (${budgetPercentage.toFixed(0)}% budget, pinnacle quality)`);
+        } else {
+          budgetScore -= 5; // Over-budget penalty
+          reasons.push(`⚠️ Over-budget (${budgetPercentage.toFixed(0)}% - requires budget reallocation)`);
+        }
+      }
+      
+      // Additional value opportunity bonuses
+      if (valueOpportunity) {
+        if (valueOpportunity.type === 'budget-champion') {
+          budgetScore += 3;
+          reasons.push(`🏆 Budget champion - Quality service below market price`);
+        } else if (valueOpportunity.type === 'premium-justified') {
+          budgetScore += 2;
+          reasons.push(`✨ Premium value - Higher price justified by excellence`);
+        }
+      }
+      
+      score += budgetScore;
+
+      // 4. INTELLIGENT LOCATION & LOGISTICS ANALYSIS (10% weight)
+      let locationScore = 0;
+      
+      if (location && service.location) {
+        const userLocation = location.toLowerCase();
+        const serviceLocation = service.location.toLowerCase();
+        
+        // Exact location match
+        if (serviceLocation.includes(userLocation) || userLocation.includes(serviceLocation)) {
+          locationScore = 10;
+          if (contextAnalysis.locationContext?.isUrban) {
+            reasons.push(`📍 Perfect urban match in ${location} - Easy accessibility`);
+          } else {
+            reasons.push(`📍 Local provider in ${location} - Community connection`);
+          }
+        } 
+        // Smart city/region matching
+        else {
+          const locationWords = userLocation.split(/[\s,.-]+/).filter(word => word.length > 2);
+          const matches = locationWords.filter(word => serviceLocation.includes(word));
+          
+          if (matches.length > 0) {
+            locationScore = 7;
+            reasons.push(`📍 Regional match (${matches.length} location overlap${matches.length > 1 ? 's' : ''})`);
+          } else {
+            // Check for major city proximity
+            const majorCities = ['manila', 'cebu', 'davao', 'iloilo', 'bacolod'];
+            const userInMajorCity = majorCities.some(city => userLocation.includes(city));
+            const serviceInMajorCity = majorCities.some(city => serviceLocation.includes(city));
+            
+            if (userInMajorCity && serviceInMajorCity) {
+              locationScore = 5;
+              reasons.push(`📍 Metro coverage - Both in major city areas`);
+            } else if (serviceInMajorCity) {
+              locationScore = 6;
+              reasons.push(`📍 Metro-based vendor - Wide service coverage`);
+            } else {
+              locationScore = 4;
+              reasons.push(`📍 Different region - Travel coordination needed`);
+            }
+          }
+        }
+      } else if (service.location) {
+        // Service has location but user didn't specify
+        locationScore = 6;
+        if (service.location.toLowerCase().includes('manila') || service.location.toLowerCase().includes('metro')) {
+          reasons.push(`📍 Metro Manila base - Wide service area`);
+        } else {
+          reasons.push(`📍 Provincial specialist - Local expertise`);
+        }
+      } else {
+        locationScore = 5; // Neutral when no location data
+      }
+      
+      score += locationScore;
+
+      // 5. ADVANCED PERSONAL FIT & CONTEXTUAL INTELLIGENCE (15% weight)
+      let personalFitScore = 0;
+      
+      // Wedding timing and seasonal intelligence
+      if (contextAnalysis.season === 'peak' && service.rating >= 4.5) {
+        personalFitScore += 4;
+        reasons.push(`📅 Peak season specialist - Experienced with high-demand periods`);
+      } else if (contextAnalysis.season === 'off' && budgetPercentage <= 30) {
+        personalFitScore += 3;
+        reasons.push(`❄️ Off-season value - Better availability and potential savings`);
+      } else {
+        personalFitScore += 2;
+      }
+      
+      // Service specialization and feature matching
+      const featureCount = service.features?.length || 0;
+      if (featureCount >= 6) {
+        personalFitScore += 4;
+        reasons.push(`🎯 Full-service provider (${featureCount} specialties) - One-stop solution`);
+      } else if (featureCount >= 4) {
+        personalFitScore += 3;
+        reasons.push(`🎯 Multi-specialty vendor (${featureCount} services) - Comprehensive offering`);
+      } else if (featureCount >= 2) {
+        personalFitScore += 2;
+        reasons.push(`🎯 Focused expertise (${featureCount} specialties) - Targeted skills`);
+      } else if (featureCount >= 1) {
+        personalFitScore += 1;
+        reasons.push(`🎯 Specialized service - Niche focus`);
+      }
+      
+      // Budget tier alignment
+      const budgetTierMatch = 
+        (contextAnalysis.budgetTier === 'budget' && budgetPercentage <= 25) ||
+        (contextAnalysis.budgetTier === 'moderate' && budgetPercentage <= 40) ||
+        (contextAnalysis.budgetTier === 'premium' && budgetPercentage <= 60) ||
+        (contextAnalysis.budgetTier === 'luxury' && budgetPercentage <= 80);
+      
+      if (budgetTierMatch) {
+        personalFitScore += 2;
+        reasons.push(`💰 Perfect budget alignment - Matches ${contextAnalysis.budgetTier} tier expectations`);
+      }
+      
+      // Market timing intelligence
+      if (marketStats.competitionLevel === 'very-high' && service.rating >= 4.6) {
+        personalFitScore += 2;
+        reasons.push(`🏆 Stands out in competitive market - Quality differentiation`);
+      } else if (marketStats.competitionLevel === 'low' && service.rating >= 4.0) {
+        personalFitScore += 1;
+        reasons.push(`🌟 Strong choice in emerging market - Good opportunity`);
+      }
+      
+      score += personalFitScore;
+
+      // 6. CATEGORY PRIORITY AND STRATEGIC IMPORTANCE (10% weight)
+      let categoryScore = 0;
+      
+      // Priority category assessment
+      if (priorities.includes(service.category)) {
+        categoryScore += 7;
+        reasons.push(`⭐ High-priority category for your wedding vision`);
+      } else {
+        categoryScore += 4;
+        reasons.push(`🔄 Complementary service for complete planning`);
+      }
+      
+      // Essential category bonus with smart weighting
+      const essentialCategories = ['Photography', 'Venue', 'Catering'];
+      const importantCategories = ['Music', 'Entertainment', 'Flowers', 'Planning'];
+      
+      if (essentialCategories.includes(service.category)) {
+        categoryScore += 3;
+        reasons.push(`🏆 Essential wedding service - Core requirement`);
+      } else if (importantCategories.includes(service.category)) {
+        categoryScore += 2;
+        reasons.push(`✨ Important enhancement service`);
+      } else {
+        categoryScore += 1;
+        reasons.push(`🎨 Specialty service - Nice-to-have addition`);
+      }
+      
+      score += categoryScore;
+
+      // 7. ADVANCED TREND ANALYSIS & MARKET TIMING (5% weight)
+      let trendScore = 0;
+      
+      // Seasonal optimization
+      if (contextAnalysis.season === 'peak') {
+        if (service.rating >= 4.7 && reviewCount >= 50) {
+          trendScore += 5;
+          reasons.push(`🔥 Peak season premium choice - Proven busy-period performance`);
+        } else {
+          trendScore += 3;
+          reasons.push(`📅 Peak season option - Book quickly for availability`);
+        }
+      } else if (contextAnalysis.season === 'off') {
+        trendScore += 4;
+        if (budgetPercentage <= 35) {
+          trendScore += 1;
+          reasons.push(`❄️ Off-season value champion - Better rates and availability`);
+        } else {
+          reasons.push(`❄️ Off-season opportunity - More vendor attention`);
+        }
+      } else {
+        trendScore += 3;
+        reasons.push(`🌸 Shoulder season balance - Good timing`);
+      }
+      
+      score += trendScore;
+
+      // FINAL INTELLIGENT PRIORITY CALCULATION with contextual adjustment
+      let priority: 'high' | 'medium' | 'low' = 'low';
+      
+      // Dynamic thresholds based on market conditions and context
+      const highThreshold = marketStats.competitionLevel === 'very-high' ? 75 : 
+                           marketStats.competitionLevel === 'high' ? 70 : 
+                           contextAnalysis.budgetTier === 'luxury' ? 65 : 68;
+      
+      const mediumThreshold = marketStats.competitionLevel === 'very-high' ? 55 : 
+                             contextAnalysis.budgetTier === 'budget' ? 45 : 50;
+      
+      if (score >= highThreshold) {
+        priority = 'high';
+      } else if (score >= mediumThreshold) {
+        priority = 'medium';
+      }
+
+      // Enhanced value rating with market intelligence
+      const finalQualityScore = service.rating * 2;
+      const featureScore = Math.min((service.features?.length || 0), 8);
+      const marketPositionScore = ratingAdvantage > 0 ? 2 : ratingAdvantage > -0.2 ? 1 : 0;
+      const costEfficiency = Math.max(0, 8 - (budgetPercentage / 10));
+      
+      const valueRating = Math.round((finalQualityScore + featureScore + marketPositionScore + costEfficiency) / 4);
+
+      // Sophisticated risk assessment
+      let riskLevel: 'low' | 'medium' | 'high' = 'low';
+      
+      if (reviewCount < 5 || service.rating < 3.2) {
+        riskLevel = 'high';
+      } else if (reviewCount < 15 || service.rating < 3.8 || budgetPercentage > 70) {
+        riskLevel = 'medium';
+      } else if (marketStats.competitionLevel === 'low' && reviewCount < 25) {
+        riskLevel = 'medium'; // Emerging market risk
+      }
+
+      return {
+        serviceId: service.id,
+        score: Math.round(score),
+        reasons: reasons.slice(0, 8), // Increased to 8 comprehensive reasons
+        priority,
+        category: service.category,
+        estimatedCost,
+        valueRating: Math.min(valueRating, 10),
+        riskLevel
+      };
+    };
+
+    // Enhanced filtering with intelligent criteria
+    const filteredServices = services.filter(service => {
+      // Category filter - only apply if specifically selected
+      if (selectedCategories.length > 0 && !selectedCategories.includes(service.category)) {
+        return false;
+      }
+      
+      // Intelligent price filtering with market context
+      const servicePrice = service.basePrice || parsePriceRange(service.priceRange || '$$');
+      const flexibilityMultiplier = weddingContextAnalysis.budgetTier === 'luxury' ? 2.0 : 
+                                   weddingContextAnalysis.budgetTier === 'premium' ? 1.5 : 1.2;
+      
+      if (servicePrice < priceRange[0] * 0.3 || servicePrice > priceRange[1] * flexibilityMultiplier) {
+        return false;
+      }
+      
+      // Quality floor based on budget tier
+      const qualityFloor = weddingContextAnalysis.budgetTier === 'luxury' ? 3.5 :
+                          weddingContextAnalysis.budgetTier === 'premium' ? 3.2 :
+                          weddingContextAnalysis.budgetTier === 'moderate' ? 3.0 : 2.8;
+      
+      if (service.rating < qualityFloor) {
+        return false;
+      }
+      
+      return true;
+    });
+
+    // Advanced sorting with diversity and intelligence
+    const recs = filteredServices
+      .map(calculateServiceScore)
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'price':
+            return a.estimatedCost - b.estimatedCost;
+          case 'rating':
+            const serviceA = services.find(s => s.id === a.serviceId);
+            const serviceB = services.find(s => s.id === b.serviceId);
+            return (serviceB?.rating || 0) - (serviceA?.rating || 0);
+          default:
+            // Intelligent score-based sorting with category diversity
+            if (Math.abs(a.score - b.score) < 6) {
+              // Promote category diversity when scores are close
+              const categoryComparison = a.category.localeCompare(b.category);
+              if (categoryComparison !== 0) return categoryComparison;
+              
+              // Then by value rating and market position
+              return b.valueRating - a.valueRating;
+            }
+            return b.score - a.score;
+        }
+      })
+      .slice(0, 60); // Increased to 60 for maximum choice diversity
+
+    setTimeout(() => setIsAnalyzing(false), 500);
+    return recs;
+  }, [services, budget, location, priorities, selectedCategories, priceRange, sortBy, parsePriceRange, marketIntelligence, weddingContextAnalysis]);
+
+  // Helper functions for insights (depend on recommendations)
+  const analyzeBudget = React.useCallback((): BudgetAnalysis => {
+    const topRecommendations = recommendations.slice(0, 10);
+    const totalEstimated = topRecommendations.reduce((sum, rec) => sum + rec.estimatedCost, 0);
+    
+    const categoryBreakdown: Record<string, number> = {};
+    topRecommendations.forEach(rec => {
+      categoryBreakdown[rec.category] = (categoryBreakdown[rec.category] || 0) + rec.estimatedCost;
+    });
+
+    return {
+      totalEstimated,
+      percentageUsed: (totalEstimated / budget) * 100,
+      categoryBreakdown,
+      recommendations: [
+        'Consider bundling services for discounts',
+        'Book early for better rates',
+        'Compare multiple vendors in each category'
+      ],
+      riskAreas: ['Photography', 'Catering'],
+      savingOpportunities: ['Flowers', 'Transportation']
+    };
+  }, [recommendations, budget]);
+
+  const getPopularCategories = React.useCallback((): string[] => {
+    const categoryCount: Record<string, number> = {};
+    services.forEach(service => {
+      categoryCount[service.category] = (categoryCount[service.category] || 0) + 1;
+    });
+    
+    return Object.entries(categoryCount)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([category]) => category);
+  }, [services]);
+
+  // Wedding styles data for package recommendations
+  const weddingStyles: Record<string, WeddingStyle> = React.useMemo(() => ({
+    classic: {
+      style: 'Classic Traditional',
+      description: 'Timeless elegance with traditional elements',
+      essentialCategories: ['Photography', 'Venue', 'Catering', 'Flowers', 'Music'],
+      recommendedBudgetSplit: {
+        'Venue': 0.40,
+        'Catering': 0.30,
+        'Photography': 0.15,
+        'Flowers': 0.08,
+        'Music': 0.07
+      },
+      averageCost: 45000,
+      popularFeatures: ['Formal ceremony', 'Sit-down dinner', 'Traditional music', 'Classic flowers']
+    },
+    modern: {
+      style: 'Modern Contemporary',
+      description: 'Sleek design with contemporary touches',
+      essentialCategories: ['Photography', 'Venue', 'Catering', 'Entertainment', 'Lighting'],
+      recommendedBudgetSplit: {
+        'Venue': 0.35,
+        'Catering': 0.25,
+        'Photography': 0.20,
+        'Entertainment': 0.12,
+        'Lighting': 0.08
+      },
+      averageCost: 55000,
+      popularFeatures: ['Minimalist decor', 'Cocktail reception', 'DJ entertainment', 'Modern lighting']
+    },
+    rustic: {
+      style: 'Rustic Country',
+      description: 'Natural beauty with countryside charm',
+      essentialCategories: ['Photography', 'Venue', 'Catering', 'Flowers', 'Transportation'],
+      recommendedBudgetSplit: {
+        'Venue': 0.30,
+        'Catering': 0.35,
+        'Photography': 0.15,
+        'Flowers': 0.12,
+        'Transportation': 0.08
+      },
+      averageCost: 38000,
+      popularFeatures: ['Outdoor ceremony', 'Barn reception', 'Wildflower arrangements', 'Country music']
+    },
+    luxury: {
+      style: 'Luxury Glamorous',
+      description: 'Opulent celebration with premium everything',
+      essentialCategories: ['Photography', 'Venue', 'Catering', 'Flowers', 'Entertainment', 'Planning'],
+      recommendedBudgetSplit: {
+        'Venue': 0.35,
+        'Catering': 0.30,
+        'Photography': 0.12,
+        'Flowers': 0.10,
+        'Entertainment': 0.08,
+        'Planning': 0.05
+      },
+      averageCost: 85000,
+      popularFeatures: ['Premium venue', 'Gourmet catering', 'Luxury florals', 'Live entertainment']
+    }
+  }), []);
+
+  // Generate package recommendations using real data and all categories
+  const packageRecommendations = React.useMemo((): PackageRecommendation[] => {
+    if (!services.length) return [];
+
+    const packages: PackageRecommendation[] = [];
+
+    // Get all unique categories from real services
+    const allCategories = [...new Set(services.map(s => s.category))];
+    console.log('🎯 [DSS] Available categories for packages:', allCategories);
+
+    // Helper function to get best service from each category by criteria
+    const getBestServiceFromCategory = (category: string, criteria: 'budget' | 'balanced' | 'premium' | 'luxury') => {
+      const categoryServices = services.filter(s => s.category === category);
+      if (categoryServices.length === 0) {
+        console.log(`⚠️ [DSS] No services found for category: ${category}`);
+        return null;
+      }
+
+      console.log(`🎯 [DSS] Selecting ${criteria} service from ${category} (${categoryServices.length} available)`);
+
+      switch (criteria) {
+        case 'budget':
+          // Lowest cost with decent rating (>= 3.5)
+          const budgetService = categoryServices
+            .filter(s => s.rating >= 3.5)
+            .sort((a, b) => {
+              const priceA = a.basePrice || parsePriceRange(a.priceRange || '$') || 1000;
+              const priceB = b.basePrice || parsePriceRange(b.priceRange || '$') || 1000;
+              return priceA - priceB;
+            })[0];
+          
+          // Fallback to lowest rated if no services meet rating requirement
+          return budgetService || categoryServices.sort((a, b) => {
+            const priceA = a.basePrice || parsePriceRange(a.priceRange || '$') || 1000;
+            const priceB = b.basePrice || parsePriceRange(b.priceRange || '$') || 1000;
+            return priceA - priceB;
+          })[0];
+        
+        case 'balanced':
+          // Best value (good rating + reasonable price)
+          return categoryServices
+            .sort((a, b) => {
+              const priceA = a.basePrice || parsePriceRange(a.priceRange || '$$') || 2500;
+              const priceB = b.basePrice || parsePriceRange(b.priceRange || '$$') || 2500;
+              const scoreA = (a.rating * 2) - (priceA / 1000); // Rating weighted against price
+              const scoreB = (b.rating * 2) - (priceB / 1000);
+              return scoreB - scoreA;
+            })[0];
+        
+        case 'premium':
+          // High rating with good features, fallback to highest rating
+          const premiumCandidates = categoryServices.filter(s => s.rating >= 4.0);
+          const candidatePool = premiumCandidates.length > 0 ? premiumCandidates : categoryServices;
+          
+          return candidatePool
+            .sort((a, b) => {
+              const featuresA = (a.features?.length || 0);
+              const featuresB = (b.features?.length || 0);
+              const scoreA = a.rating + (featuresA * 0.1);
+              const scoreB = b.rating + (featuresB * 0.1);
+              return scoreB - scoreA;
+            })[0];
+        
+        case 'luxury':
+          // Highest rating and most features
+          return categoryServices
+            .sort((a, b) => {
+              const featuresA = (a.features?.length || 0);
+              const featuresB = (b.features?.length || 0);
+              const scoreA = a.rating + (featuresA * 0.2) + (a.reviewCount * 0.001);
+              const scoreB = b.rating + (featuresB * 0.2) + (b.reviewCount * 0.001);
+              return scoreB - scoreA;
+            })[0];
+        
+        default:
+          return categoryServices[0];
+      }
+    };
+
+    // NEW LOGIC: All packages include one service from each available category
+    // The difference is in the selection criteria (budget vs quality focus)
+    
+    // 1. MINIMAL PACKAGE - One from each category, budget-focused selection
+    const minimalServices = allCategories
+      .map(category => getBestServiceFromCategory(category, 'budget'))
+      .filter((service): service is Service => service !== null);
+
+    if (minimalServices.length >= 8) { // Require at least 8 categories for a complete package
+      const serviceCosts = minimalServices.map(s => s.basePrice || parsePriceRange(s.priceRange || '$'));
+      const totalCost = serviceCosts.reduce((sum, cost) => sum + cost, 0);
+      const originalCost = totalCost * 1.20; // 20% bundle discount
+      
+      packages.push({
+        id: 'minimal',
+        name: 'Minimal Wedding Package',
+        description: 'Complete wedding coverage with budget-focused service selection from every category',
+        services: minimalServices.map(s => s.id),
+        totalCost,
+        originalCost,
+        savings: originalCost - totalCost,
+        savingsPercentage: 20,
+        category: 'essential',
+        suitability: 75,
+        reasons: [
+          'Most affordable option',
+          'One service from every category',
+          'Budget-conscious vendor selection',
+          'Complete wedding coverage'
+        ],
+        timeline: '3-6 months planning',
+        flexibility: 'high',
+        riskLevel: 'low'
+      });
+    }
+
+    // 2. MODERATE PACKAGE - One from each category, balanced selection
+    const moderateServices = allCategories
+      .map(category => getBestServiceFromCategory(category, 'balanced'))
+      .filter((service): service is Service => service !== null);
+
+    if (moderateServices.length >= 8) {
+      const serviceCosts = moderateServices.map(s => s.basePrice || parsePriceRange(s.priceRange || '$$'));
+      const totalCost = serviceCosts.reduce((sum, cost) => sum + cost, 0);
+      const originalCost = totalCost * 1.15; // 15% bundle discount
+      
+      packages.push({
+        id: 'moderate',
+        name: 'Complete Wedding Package',
+        description: 'Balanced quality and value with one service from every available category',
+        services: moderateServices.map(s => s.id),
+        totalCost,
+        originalCost,
+        savings: originalCost - totalCost,
+        savingsPercentage: 15,
+        category: 'standard',
+        suitability: 90,
+        reasons: [
+          'Balanced quality and cost',
+          'One service from every category',
+          'Best value vendors selected',
+          'Most popular choice'
+        ],
+        timeline: '6-12 months planning',
+        flexibility: 'medium',
+        riskLevel: 'low'
+      });
+    }
+
+    // 3. PREMIUM PACKAGE - One from each category, premium selection
+    const premiumServices = allCategories
+      .map(category => getBestServiceFromCategory(category, 'premium'))
+      .filter((service): service is Service => service !== null);
+
+    if (premiumServices.length >= 8) {
+      const serviceCosts = premiumServices.map(s => s.basePrice || parsePriceRange(s.priceRange || '$$$'));
+      const totalCost = serviceCosts.reduce((sum, cost) => sum + cost, 0);
+      const originalCost = totalCost * 1.12; // 12% bundle discount
+      
+      packages.push({
+        id: 'premium',
+        name: 'Premium Wedding Experience',
+        description: 'High-quality service selection from every category for an exceptional celebration',
+        services: premiumServices.map(s => s.id),
+        totalCost,
+        originalCost,
+        savings: originalCost - totalCost,
+        savingsPercentage: 12,
+        category: 'premium',
+        suitability: 92,
+        reasons: [
+          'High-rated vendors only',
+          'One premium service per category',
+          'Feature-rich service selection',
+          'Enhanced guest experience'
+        ],
+        timeline: '9-15 months planning',
+        flexibility: 'medium',
+        riskLevel: 'low'
+      });
+    }
+
+    // 4. LUXURY PACKAGE - One from each category, luxury selection
+    const luxuryServices = allCategories
+      .map(category => getBestServiceFromCategory(category, 'luxury'))
+      .filter((service): service is Service => service !== null);
+
+    if (luxuryServices.length >= 8) {
+      const serviceCosts = luxuryServices.map(s => s.basePrice || parsePriceRange(s.priceRange || '$$$$'));
+      const totalCost = serviceCosts.reduce((sum, cost) => sum + cost, 0);
+      const originalCost = totalCost * 1.10; // 10% bundle discount
+      
+      packages.push({
+        id: 'luxury',
+        name: 'Luxury Dream Wedding',
+        description: 'The ultimate wedding experience with the absolute best service from every category',
+        services: luxuryServices.map(s => s.id),
+        totalCost,
+        originalCost,
+        savings: originalCost - totalCost,
+        savingsPercentage: 10,
+        category: 'luxury',
+        suitability: 95,
+        reasons: [
+          'Best vendor in each category',
+          'Complete luxury experience',
+          'No compromises on quality',
+          'Unforgettable celebration'
+        ],
+        timeline: '12-24 months planning',
+        flexibility: 'low',
+        riskLevel: 'medium'
+      });
+    }
+
+    console.log('🎯 [DSS] Generated packages:', packages.map(p => ({
+      name: p.name,
+      services: p.services.length,
+      categories: p.services.map(id => services.find(s => s.id === id)?.category).filter(Boolean),
+      categoriesCount: [...new Set(p.services.map(id => services.find(s => s.id === id)?.category).filter(Boolean))].length,
+      totalAvailableCategories: allCategories.length,
+      cost: `₱${p.totalCost.toLocaleString()}`,
+      allCategoriesCovered: [...new Set(p.services.map(id => services.find(s => s.id === id)?.category).filter(Boolean))].length === allCategories.length
+    })));
+
+    // Enhanced validation: ensure each package covers all categories
+    packages.forEach(pkg => {
+      const packageCategories = [...new Set(pkg.services.map(id => services.find(s => s.id === id)?.category).filter(Boolean))];
+      const missingCategories = allCategories.filter(cat => !packageCategories.includes(cat));
+      
+      if (missingCategories.length > 0) {
+        console.warn(`⚠️ [DSS] Package "${pkg.name}" missing categories:`, missingCategories);
+      } else {
+        console.log(`✅ [DSS] Package "${pkg.name}" covers all ${allCategories.length} categories`);
+      }
+    });
+
+    return packages.sort((a, b) => a.totalCost - b.totalCost); // Sort by cost ascending
+  }, [services, parsePriceRange]);
+
+  // Enhanced insights generation with comprehensive analysis
+  const insights = useMemo((): DSSInsight[] => {
+    const insights: DSSInsight[] = [];
+
+    // Budget insights with more detailed analysis
+    const budgetAnalysis = analyzeBudget();
+    if (budgetAnalysis.percentageUsed > 100) {
+      insights.push({
+        type: 'budget',
+        title: '⚠️ Over Budget Alert',
+        description: `Your current selections exceed budget by ${(budgetAnalysis.percentageUsed - 100).toFixed(1)}%. Consider adjusting selections or increasing budget.`,
+        impact: 'high',
+        actionable: true,
+        data: budgetAnalysis
+      });
+    } else if (budgetAnalysis.percentageUsed > 90) {
+      insights.push({
+        type: 'budget',
+        title: '💰 Budget Optimization Needed',
+        description: `You're using ${budgetAnalysis.percentageUsed.toFixed(1)}% of your budget. Consider reviewing high-cost categories for savings.`,
+        impact: 'high',
+        actionable: true,
+        data: budgetAnalysis
+      });
+    } else if (budgetAnalysis.percentageUsed < 60) {
+      insights.push({
+        type: 'opportunity',
+        title: '💎 Budget Opportunity',
+        description: `You have ${(100 - budgetAnalysis.percentageUsed).toFixed(1)}% budget remaining. Consider upgrading key services or adding extras.`,
+        impact: 'medium',
+        actionable: true,
+        data: budgetAnalysis
+      });
+    }
+
+    // Market trend insights
+    const popularCategories = getPopularCategories();
+    const categoryStats = services.reduce((acc, service) => {
+      if (!acc[service.category]) {
+        acc[service.category] = { count: 0, avgRating: 0, totalRating: 0 };
+      }
+      acc[service.category].count++;
+      acc[service.category].totalRating += service.rating;
+      acc[service.category].avgRating = acc[service.category].totalRating / acc[service.category].count;
+      return acc;
+    }, {} as Record<string, { count: number; avgRating: number; totalRating: number }>);
+
+    if (popularCategories.length > 0) {
+      const topCategory = popularCategories[0];
+      const categoryInfo = categoryStats[topCategory];
+      insights.push({
+        type: 'trend',
+        title: '📈 Market Trends',
+        description: `${topCategory} is highly competitive with ${categoryInfo.count} vendors averaging ${categoryInfo.avgRating.toFixed(1)} stars. Book early for best selection.`,
+        impact: 'medium',
+        actionable: true,
+        data: { categories: popularCategories, stats: categoryStats }
+      });
+    }
+
+    // Risk assessment insights
+    const highRiskServices = recommendations.filter(r => r.riskLevel === 'high');
+    const mediumRiskServices = recommendations.filter(r => r.riskLevel === 'medium');
+    
+    if (highRiskServices.length > 0) {
+      insights.push({
+        type: 'risk',
+        title: '🚨 High-Risk Services Detected',
+        description: `${highRiskServices.length} services have potential risks due to limited reviews or lower ratings. Consider alternatives or request references.`,
+        impact: 'high',
+        actionable: true,
+        data: highRiskServices
+      });
+    } else if (mediumRiskServices.length > 3) {
+      insights.push({
+        type: 'risk',
+        title: '⚠️ Medium-Risk Services',
+        description: `${mediumRiskServices.length} services have moderate risk. Review their portfolios and recent work carefully.`,
+        impact: 'medium',
+        actionable: true,
+        data: mediumRiskServices
+      });
+    }
+
+    // Value opportunity insights
+    const valuePicks = recommendations.filter(r => r.valueRating >= 8);
+    const budgetFriendly = recommendations.filter(r => r.estimatedCost <= budget * 0.15); // 15% or less of budget
+    
+    if (valuePicks.length > 0) {
+      insights.push({
+        type: 'opportunity',
+        title: '💎 Excellent Value Opportunities',
+        description: `Found ${valuePicks.length} high-value services offering exceptional quality for the price. These vendors provide the best ROI.`,
+        impact: 'medium',
+        actionable: true,
+        data: valuePicks
+      });
+    }
+
+    if (budgetFriendly.length > 0) {
+      insights.push({
+        type: 'opportunity',
+        title: '💰 Budget-Friendly Options',
+        description: `${budgetFriendly.length} services cost less than 15% of your budget each, leaving room for upgrades in other areas.`,
+        impact: 'low',
+        actionable: true,
+        data: budgetFriendly
+      });
+    }
+
+    // Location and logistics insights
+    const localServices = recommendations.filter(r => {
+      const service = services.find(s => s.id === r.serviceId);
+      return service && location && service.location?.toLowerCase().includes(location.toLowerCase());
+    });
+
+    if (location && localServices.length > 0) {
+      insights.push({
+        type: 'opportunity',
+        title: '📍 Local Vendor Advantage',
+        description: `${localServices.length} recommended vendors are in ${location}, reducing travel costs and supporting local businesses.`,
+        impact: 'low',
+        actionable: true,
+        data: localServices
+      });
+    }
+
+    // Seasonal and timing insights
+    const currentMonth = new Date().getMonth();
+    const isWeddingSeason = [4, 5, 8, 9].includes(currentMonth);
+    
+    if (isWeddingSeason) {
+      insights.push({
+        type: 'trend',
+        title: '📅 Peak Wedding Season',
+        description: `Currently in peak wedding season. Book vendors quickly as availability fills up fast, and consider off-season alternatives for savings.`,
+        impact: 'medium',
+        actionable: true,
+        data: { season: 'peak', month: currentMonth }
+      });
+    } else {
+      insights.push({
+        type: 'opportunity',
+        title: '🌟 Off-Season Advantage',
+        description: `Planning during off-peak season gives you better vendor availability and potential discounts of 10-25%.`,
+        impact: 'medium',
+        actionable: true,
+        data: { season: 'off-peak', month: currentMonth }
+      });
+    }
+
+    // Portfolio and specialization insights
+    const specializedVendors = recommendations.filter(r => {
+      const service = services.find(s => s.id === r.serviceId);
+      return service && service.features && service.features.length >= 4;
+    });
+
+    if (specializedVendors.length > 0) {
+      insights.push({
+        type: 'opportunity',
+        title: '🎯 Specialized Vendors Available',
+        description: `${specializedVendors.length} vendors offer multiple specialties, potentially allowing you to bundle services for better coordination.`,
+        impact: 'medium',
+        actionable: true,
+        data: specializedVendors
+      });
+    }
+
+    // Diversity and balance insights
+    const categoryDistribution = recommendations.reduce((acc, rec) => {
+      acc[rec.category] = (acc[rec.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const dominantCategory = Object.entries(categoryDistribution)
+      .sort(([,a], [,b]) => b - a)[0];
+
+    if (dominantCategory && dominantCategory[1] > recommendations.length * 0.4) {
+      insights.push({
+        type: 'trend',
+        title: '⚖️ Category Imbalance',
+        description: `${dominantCategory[0]} dominates your recommendations (${dominantCategory[1]} services). Consider exploring other essential categories.`,
+        impact: 'low',
+        actionable: true,
+        data: categoryDistribution
+      });
+    }
+
+    return insights.slice(0, 8); // Limit to top 8 most relevant insights
+  }, [recommendations, analyzeBudget, getPopularCategories, services, budget, location]);
+
+  const getService = (serviceId: string) => services.find(s => s.id === serviceId);
+
+  const handleCategoryFilter = (category: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  const categories = [...new Set(services.map(s => s.category))];
+
+  if (!isOpen) return null;
+
+  // Show loading state while fetching real data
+  if (!dataLoaded && isAnalyzing) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4"
+      >
+        <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Smart Analysis in Progress</h3>
+          <p className="text-gray-600">Analyzing {realVendors.length + realServices.length} real vendors and services...</p>
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-blue-600">
+            <Target className="w-4 h-4 animate-pulse" />
+            <span>Intelligent recommendations loading</span>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        transition={{ type: "spring", duration: 0.5 }}
+        className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-[95vw] xl:max-w-7xl h-full max-h-[98vh] sm:max-h-[95vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Enhanced Header with Stunning Gradient */}
+        <div className="bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 p-3 sm:p-4 lg:p-6 text-white relative overflow-hidden">
+          {/* Animated Background Elements */}
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-0 left-0 w-20 h-20 sm:w-32 sm:h-32 bg-white rounded-full -translate-x-8 -translate-y-8 sm:-translate-x-16 sm:-translate-y-16 animate-pulse"></div>
+            <div className="absolute bottom-0 right-0 w-16 h-16 sm:w-24 sm:h-24 bg-white rounded-full translate-x-6 translate-y-6 sm:translate-x-12 sm:translate-y-12 animate-pulse delay-1000"></div>
+            <div className="absolute top-1/2 left-1/2 w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 opacity-30 animate-pulse delay-500"></div>
+          </div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-3 sm:mb-4 lg:mb-6">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 lg:p-3 bg-white/20 rounded-lg sm:rounded-xl backdrop-blur-sm ring-1 ring-white/30">
+                  <Target className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold tracking-tight">
+                    Smart Recommendation Engine
+                  </h2>
+                  <p className="text-white/90 text-xs sm:text-sm lg:text-base leading-relaxed">
+                    Intelligent vendor matching & package optimization
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-1.5 sm:p-2 hover:bg-white/20 rounded-lg sm:rounded-xl transition-all duration-200 hover:scale-105 hover:rotate-90 ring-1 ring-white/20 hover:ring-white/40"
+                title="Close Decision Support System"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+              </button>
+            </div>
+
+            {/* Data Status Indicator */}
+            {dataLoaded && (
+              <div className="mt-3 flex items-center justify-center gap-2 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-lg border border-white/20">
+                <CheckCircle2 className="w-4 h-4 text-green-300" />
+                <span className="text-sm text-white/90">
+                  Real data loaded: {realVendors.length} vendors, {realServices.length} services
+                </span>
+              </div>
+            )}
+            
+            {dataError && (
+              <div className="mt-3 flex items-center justify-center gap-2 px-3 py-1.5 bg-red-500/20 backdrop-blur-sm rounded-lg border border-red-300/30">
+                <AlertCircle className="w-4 h-4 text-red-300" />
+                <span className="text-sm text-red-200">{dataError}</span>
+              </div>
+            )}
+
+            {/* Enhanced Quick Stats Grid with Better Mobile Layout */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+              <div className="bg-white/15 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 border border-white/20 hover:bg-white/25 transition-all duration-300 hover:scale-105">
+                <div className="flex items-center gap-1 sm:gap-2 mb-1">
+                  <Target className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="text-xs sm:text-sm font-medium truncate">Budget</span>
+                </div>
+                <p className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold">{Math.round(analyzeBudget().percentageUsed)}%</p>
+                <div className="w-full bg-white/20 rounded-full h-1 sm:h-1.5 lg:h-2 mt-1">
+                  <div 
+                    className="bg-white rounded-full h-full transition-all duration-1000 ease-out"></div>
+                </div>
+              </div>
+              
+              <div className="bg-white/15 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 border border-white/20 hover:bg-white/25 transition-all duration-300 hover:scale-105">
+                <div className="flex items-center gap-1 sm:gap-2 mb-1">
+                  <Award className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="text-xs sm:text-sm font-medium truncate">Top Matches</span>
+                </div>
+                <p className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold">{recommendations.filter(r => r.priority === 'high').length}</p>
+                <p className="text-xs text-white/80">high priority</p>
+              </div>
+              
+              <div className="bg-white/15 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 border border-white/20 hover:bg-white/25 transition-all duration-300 hover:scale-105">
+                <div className="flex items-center gap-1 sm:gap-2 mb-1">
+                  <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="text-xs sm:text-sm font-medium truncate">Insights</span>
+                </div>
+                <p className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold">{insights.length}</p>
+                <p className="text-xs text-white/80">available</p>
+              </div>
+              
+              <div className="bg-white/15 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 border border-white/20 hover:bg-white/25 transition-all duration-300 hover:scale-105">
+                <div className="flex items-center gap-1 sm:gap-2 mb-1">
+                  <Zap className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="text-xs sm:text-sm font-medium truncate">Value Picks</span>
+                </div>
+                <p className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold">{recommendations.filter(r => r.valueRating >= 8).length}</p>
+                <p className="text-xs text-white/80">excellent value</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Enhanced Responsive Tabs */}
+        <div className="border-b border-gray-200 bg-white sticky top-0 z-20">
+          <nav className="flex overflow-x-auto scrollbar-hide">
+            {[
+              { id: 'recommendations', label: 'Smart Recommendations', shortLabel: 'Recs', icon: Lightbulb },
+              { id: 'packages', label: 'Wedding Packages', shortLabel: 'Packages', icon: Package },
+              { id: 'insights', label: 'Market Insights', shortLabel: 'Insights', icon: TrendingUp },
+              { id: 'budget', label: 'Budget Analysis', shortLabel: 'Budget', icon: DollarSign },
+              { id: 'comparison', label: 'Service Comparison', shortLabel: 'Compare', icon: BarChart3 }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={cn(
+                  "flex items-center gap-1 sm:gap-2 py-3 sm:py-4 px-3 sm:px-6 lg:px-8 border-b-2 font-medium text-xs sm:text-sm lg:text-base transition-all duration-200 whitespace-nowrap min-w-0 hover:bg-gray-50",
+                  activeTab === tab.id
+                    ? "border-purple-500 text-purple-600 bg-purple-50"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                )}
+              >
+                <tab.icon className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.shortLabel}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+        {/* Enhanced Content Area */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6">
+            <AnimatePresence mode="wait">
+              {/* Enhanced Recommendations Tab */}
+              {activeTab === 'recommendations' && (
+                <motion.div
+                  key="recommendations"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-4 sm:space-y-6"
+                >
+                  {/* Enhanced Filters */}
+                  <div className="bg-gradient-to-r from-gray-50 to-white rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-gray-200 shadow-sm">
+                    <div className="space-y-3 sm:space-y-4">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                        <div className="flex items-center gap-2">
+                          <Filter className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
+                          <span className="text-xs sm:text-sm font-medium text-gray-700">Filters:</span>
+                        </div>
+                        
+                        <select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value as any)}
+                          className="px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          title="Sort recommendations by"
+                          aria-label="Sort recommendations by"
+                        >
+                          <option value="score">🎯 Best Match</option>
+                          <option value="price">💰 Price: Low to High</option>
+                          <option value="rating">⭐ Highest Rated</option>
+                        </select>
+
+                        <div className="flex flex-wrap gap-1 sm:gap-2">
+                          {categories.slice(0, 6).map(category => (
+                            <button
+                              key={category}
+                              onClick={() => handleCategoryFilter(category)}
+                              className={cn(
+                                "px-2 sm:px-3 py-1 rounded-full text-xs font-medium transition-all duration-200",
+                                selectedCategories.includes(category)
+                                  ? "bg-purple-100 text-purple-700 border border-purple-300 shadow-sm"
+                                  : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 hover:shadow-sm"
+                              )}
+                            >
+                              {category}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Enhanced Budget Range */}
+                      <div className="bg-white rounded-lg p-3 border border-gray-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                          <span className="text-xs sm:text-sm font-medium text-gray-700">Budget Range:</span>
+                          <div className="flex-1 px-2">
+                            <input
+                              type="range"
+                              min="0"
+                              max={budget}
+                              value={priceRange[1]}
+                              onChange={(e) => setPriceRange([0, parseInt(e.target.value)])}
+                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                              title="Adjust maximum budget"
+                              aria-label={`Budget range: ₱0 to ₱${priceRange[1].toLocaleString()}`}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs sm:text-sm text-gray-600 min-w-0">
+                              ₱0 - ₱{priceRange[1].toLocaleString()}
+                            </span>
+                            <div className="px-2 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium">
+                              {Math.round((priceRange[1] / budget) * 100)}%
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Enhanced Recommendations List */}
+                  {isAnalyzing ? (
+                    <div className="flex items-center justify-center py-12 sm:py-16">
+                      <div className="text-center">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-gray-600 text-sm sm:text-base">Analyzing services with AI...</p>
+                        <p className="text-gray-500 text-xs sm:text-sm mt-1">Finding your perfect matches</p>
+                      </div>
+                    </div>
+                  ) : recommendations.length === 0 ? (
+                    <div className="text-center py-12 sm:py-16">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <AlertCircle className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No matches found</h3>
+                      <p className="text-gray-600 text-sm sm:text-base mb-4">Try adjusting your filters or budget range</p>
+                      <button
+                        onClick={() => {
+                          setSelectedCategories([]);
+                          setPriceRange([0, budget]);
+                        }}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                      >
+                        Reset Filters
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Batch Booking Section */}
+                      {recommendations.length > 1 && (
+                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-4 sm:p-6 mb-6">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <ShoppingBag className="h-5 w-5 text-purple-600" />
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                  Book All Recommended Services
+                                </h3>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-3">
+                                Book all {recommendations.length} services or chat with vendors to discuss your wedding.
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {recommendations.slice(0, 3).map((rec) => {
+                                  const service = getService(rec.serviceId);
+                                  if (!service) return null;
+                                  return (
+                                    <div key={rec.serviceId} className="flex items-center gap-1 bg-white/70 rounded-lg px-2 py-1 text-xs">
+                                      <span className="font-medium">{service.category}</span>
+                                      <span className="text-gray-500">•</span>
+                                      <span className="text-green-600 font-medium">₱{rec.estimatedCost.toLocaleString()}</span>
+                                    </div>
+                                  );
+                                })}
+                                {recommendations.length > 3 && (
+                                  <div className="flex items-center gap-1 bg-white/70 rounded-lg px-2 py-1 text-xs text-gray-500">
+                                    +{recommendations.length - 3} more
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                              <button
+                                onClick={handleBatchBookingRequest}
+                                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
+                              >
+                                <Calendar className="h-4 w-4" />
+                                Book All ({recommendations.length})
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  const recommendedServices = recommendations
+                                    .map(rec => getService(rec.serviceId))
+                                    .filter((service): service is Service => service !== null);
+                                  
+                                  await createGroupChatWithVendors(recommendedServices, { 
+                                    type: 'recommendations' 
+                                  });
+                                }}
+                                className="px-6 py-3 bg-white text-purple-600 border-2 border-purple-300 rounded-xl hover:bg-purple-50 transition-all duration-200 font-medium flex items-center gap-2"
+                              >
+                                <Heart className="h-4 w-4" />
+                                Chat with Vendors
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Recommendations Grid */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+                      {recommendations.map((rec, index) => {
+                        const service = getService(rec.serviceId);
+                        if (!service) return null;
+
+                        return (
+                          <motion.div
+                            key={rec.serviceId}
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:shadow-lg hover:shadow-purple-100/50 transition-all duration-200 hover:-translate-y-1"
+                          >
+                            <div className="flex flex-col gap-3 sm:gap-4">
+                              {/* Service Header */}
+                              <div className="flex items-start gap-3">
+                                <div className="relative flex-shrink-0">
+                                  <img
+                                    src={service.image}
+                                    alt={service.name}
+                                    className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg object-cover ring-2 ring-gray-100"
+                                    loading="lazy"
+                                  />
+                                  <div className={cn(
+                                    "absolute -top-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full text-white text-xs font-bold flex items-center justify-center",
+                                    rec.priority === 'high' ? "bg-green-500" :
+                                    rec.priority === 'medium' ? "bg-yellow-500" :
+                                    "bg-gray-400"
+                                  )}>
+                                    {rec.score}
+                                  </div>
+                                </div>
+                                
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-start justify-between mb-1">
+                                    <div className="min-w-0">
+                                      <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{service.name}</h3>
+                                      <p className="text-xs sm:text-sm text-gray-600">{service.category}</p>
+                                    </div>
+                                    <div className={cn(
+                                      "px-2 py-1 rounded-full text-xs font-medium ml-2 flex-shrink-0",
+                                      rec.priority === 'high' ? "bg-green-100 text-green-700" :
+                                      rec.priority === 'medium' ? "bg-yellow-100 text-yellow-700" :
+                                      "bg-gray-100 text-gray-700"
+                                    )}>
+                                      {rec.priority}
+                                    </div>
+                                  </div>
+
+                                  {/* Service Metrics */}
+                                  <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+                                    <div className="flex items-center gap-1">
+                                      <Star className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400 fill-current" />
+                                      <span className="font-medium">{service.rating}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
+                                      <span className="font-medium">₱{rec.estimatedCost.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
+                                      <span className="text-xs">Value: {rec.valueRating}/10</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Enhanced Reasons */}
+                              <div className="space-y-1 sm:space-y-2">
+                                {rec.reasons.slice(0, 3).map((reason, reasonIndex) => (
+                                  <div key={reasonIndex} className="flex items-start gap-2 text-xs sm:text-sm text-gray-600">
+                                    <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                    <span className="leading-tight">{reason}</span>
+                                  </div>
+                                ))}
+                                {rec.reasons.length > 3 && (
+                                  <div className="text-xs text-gray-500 ml-5">
+                                    +{rec.reasons.length - 3} more reasons
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Action Buttons */}
+                              <div className="flex gap-2 pt-2">
+                                <button
+                                  onClick={() => handleBookingRequest(service)}
+                                  className="flex-1 px-3 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg hover:from-pink-600 hover:to-purple-700 transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium shadow-sm hover:shadow-md transform hover:scale-105"
+                                >
+                                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  <span>Book Now</span>
+                                </button>
+                                <button
+                                  onClick={() => onServiceRecommend(rec.serviceId)}
+                                  className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-1 text-sm font-medium"
+                                  title="View service details"
+                                >
+                                  <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </button>
+                                <button
+                                  className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                                  title="Save for later"
+                                >
+                                  <Heart className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Load More Button - Enhanced */}
+                  {recommendations.length >= 20 && (
+                    <div className="text-center pt-6">
+                      <div className="inline-flex flex-col items-center gap-3">
+                        <button className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2">
+                          <ChevronRight className="h-4 w-4" />
+                          Show More Recommendations
+                        </button>
+                        <p className="text-xs text-gray-500">
+                          Showing top {Math.min(recommendations.length, 20)} of {recommendations.length} matches
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+            {/* Packages Tab */}
+            {activeTab === 'packages' && (
+              <motion.div
+                key="packages"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                {/* Package Filters */}
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <div className="flex flex-wrap items-center gap-4 mb-4">
+                    <div className="flex items-center gap-2">
+                      <ShoppingBag className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-700">Package Type:</span>
+                    </div>
+                    
+                    <select
+                      value={packageFilter}
+                      onChange={(e) => setPackageFilter(e.target.value as any)}
+                      className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                      title="Filter packages by type"
+                      aria-label="Filter packages by type"
+                    >
+                      <option value="all">All Packages</option>
+                      <option value="essential">Essential</option>
+                      <option value="standard">Standard</option>
+                      <option value="premium">Premium</option>
+                      <option value="luxury">Luxury</option>
+                    </select>
+
+                    <div className="flex items-center gap-2">
+                      <Heart className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-700">Wedding Style:</span>
+                    </div>
+                    
+                    <select
+                      value={selectedWeddingStyle}
+                      onChange={(e) => setSelectedWeddingStyle(e.target.value)}
+                      className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                      title="Select wedding style"
+                      aria-label="Select wedding style"
+                    >
+                      <option value="classic">Classic Traditional</option>
+                      <option value="modern">Modern Contemporary</option>
+                      <option value="rustic">Rustic Country</option>
+                      <option value="luxury">Luxury Glamorous</option>
+                    </select>
+                  </div>
+
+                  {/* Wedding Style Info */}
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Heart className="h-5 w-5 text-purple-600" />
+                      <h4 className="font-semibold text-gray-900">{weddingStyles[selectedWeddingStyle].style}</h4>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">{weddingStyles[selectedWeddingStyle].description}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {weddingStyles[selectedWeddingStyle].popularFeatures.map((feature, index) => (
+                        <span key={index} className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
+                          {feature}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Wedding Preferences Panel */}
+                <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Settings className="h-5 w-5 text-purple-600" />
+                    Wedding Preferences
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Guest Count</label>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-gray-400" />
+                        <input
+                          type="number"
+                          value={weddingPreferences.guestCount}
+                          onChange={(e) => setWeddingPreferences({
+                            ...weddingPreferences,
+                            guestCount: parseInt(e.target.value) || 100
+                          })}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="100"
+                          min="1"
+                          max="1000"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Wedding Date</label>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-gray-400" />
+                        <input
+                          type="date"
+                          value={weddingPreferences.weddingDate}
+                          onChange={(e) => setWeddingPreferences({
+                            ...weddingPreferences,
+                            weddingDate: e.target.value
+                          })}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Venue Location</label>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          value={weddingPreferences.venue}
+                          onChange={(e) => setWeddingPreferences({
+                            ...weddingPreferences,
+                            venue: e.target.value
+                          })}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="City or venue name"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Theme</label>
+                      <div className="flex items-center gap-2">
+                        <Palette className="h-4 w-4 text-gray-400" />
+                        <select
+                          value={weddingPreferences.theme}
+                          onChange={(e) => {
+                            setWeddingPreferences({
+                              ...weddingPreferences,
+                              theme: e.target.value
+                            });
+                            setSelectedWeddingStyle(e.target.value);
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        >
+                          <option value="classic">Classic</option>
+                          <option value="modern">Modern</option>
+                          <option value="rustic">Rustic</option>
+                          <option value="luxury">Luxury</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Real-time Budget Impact */}
+                  <div className="mt-4 p-4 bg-purple-50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-purple-900">Estimated Budget Impact</h4>
+                        <p className="text-sm text-purple-600">Based on your preferences</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xl font-bold text-purple-700">
+                          ₱{Math.round(budget * (weddingPreferences.guestCount / 100) * (selectedWeddingStyle === 'luxury' ? 1.3 : selectedWeddingStyle === 'rustic' ? 0.8 : 1.0)).toLocaleString()}
+                        </div>
+                        <div className="text-xs text-purple-500">
+                          {((weddingPreferences.guestCount / 100) * (selectedWeddingStyle === 'luxury' ? 1.3 : selectedWeddingStyle === 'rustic' ? 0.8 : 1.0) * 100 - 100).toFixed(0)}% from base
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Package Recommendations */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {packageRecommendations
+                    .filter(pkg => packageFilter === 'all' || pkg.category === packageFilter)
+                    .map((pkg) => (
+                    <motion.div
+                      key={pkg.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Package className="h-5 w-5 text-purple-600" />
+                            <h3 className="text-lg font-semibold text-gray-900">{pkg.name}</h3>
+                            <div className={cn(
+                              "px-2 py-1 rounded-full text-xs font-medium",
+                              pkg.category === 'essential' ? "bg-blue-100 text-blue-700" :
+                              pkg.category === 'standard' ? "bg-green-100 text-green-700" :
+                              pkg.category === 'premium' ? "bg-purple-100 text-purple-700" :
+                              "bg-yellow-100 text-yellow-700"
+                            )}>
+                              {pkg.category}
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-3">{pkg.description}</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-purple-600">{pkg.suitability}%</div>
+                          <div className="text-xs text-gray-500">Suitability</div>
+                        </div>
+                      </div>
+
+                      {/* Package Metrics */}
+                      <div className="grid grid-cols-3 gap-4 mb-4">
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-gray-900">₱{pkg.totalCost.toLocaleString()}</div>
+                          <div className="text-xs text-gray-500">Total Cost</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-green-600">₱{pkg.savings.toLocaleString()}</div>
+                          <div className="text-xs text-gray-500">You Save</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-blue-600">{pkg.services.length}</div>
+                          <div className="text-xs text-gray-500">Services</div>
+                        </div>
+                      </div>
+
+                      {/* Package Features */}
+                      <div className="space-y-2 mb-4">
+                        {pkg.reasons.map((reason, index) => (
+                          <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                            <CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0" />
+                            {reason}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Package Details */}
+                      <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {pkg.timeline}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Shield className="h-3 w-3" />
+                          {pkg.riskLevel} risk
+                        </div>
+                      </div>
+
+                      {/* Included Services with Categories */}
+                      <div className="mb-4">
+                        <h4 className="text-sm font-medium text-gray-900 mb-2">Included Services ({pkg.services.length} categories):</h4>
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {pkg.services.map((serviceId) => {
+                            const service = getService(serviceId);
+                            return service ? (
+                              <div key={serviceId} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                                <img 
+                                  src={service.image} 
+                                  alt={service.category}
+                                  className="w-8 h-8 rounded object-cover flex-shrink-0"
+                                />
+                                <div className="flex-1">
+                                  <div className="text-xs font-medium text-gray-900">{service.category}</div>
+                                  <div className="text-xs text-gray-600 truncate">{service.name}</div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                                  <span className="text-xs font-medium text-gray-700">{service.rating}</span>
+                                </div>
+                                <div className="text-xs font-medium text-green-600">
+                                  ₱{(service.basePrice || parsePriceRange(service.priceRange || '$$')).toLocaleString()}
+                                </div>
+                              </div>
+                            ) : null;
+                          })}
+                        </div>
+                        
+                        {/* Category Summary */}
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {[...new Set(pkg.services.map(serviceId => getService(serviceId)?.category).filter(Boolean))].map(category => (
+                            <span key={category} className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
+                              {category}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="space-y-2">
+                        {/* Primary Actions */}
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => {
+                              const servicesToBook = pkg.services
+                                .map(serviceId => getService(serviceId))
+                                .filter((service): service is Service => service !== null);
+                              setBatchBookingServices(servicesToBook);
+                              setShowBatchBookingModal(true);
+                            }}
+                            className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <ShoppingBag className="h-4 w-4" />
+                            Book Package (₱{pkg.totalCost.toLocaleString()})
+                          </button>
+                          <button 
+                            onClick={() => setCustomizingPackage(customizingPackage === pkg.id ? null : pkg.id)}
+                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                          >
+                            <Settings className="h-4 w-4" />
+                            {customizingPackage === pkg.id ? 'Close' : 'Customize'}
+                          </button>
+                        </div>
+
+                        {/* Group Chat Action */}
+                        <button 
+                          onClick={async () => {
+                            const packageServices = pkg.services
+                              .map(serviceId => getService(serviceId))
+                              .filter((service): service is Service => service !== null);
+                            
+                            if (packageServices.length > 0) {
+                              await createGroupChatWithVendors(packageServices, { 
+                                type: 'package', 
+                                packageName: pkg.name 
+                              });
+                            }
+                          }}
+                          className="w-full px-4 py-2 border-2 border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Users className="h-4 w-4" />
+                          Chat with Vendors
+                        </button>
+                      </div>
+
+                      {/* Package Customization Panel */}
+                      {customizingPackage === pkg.id && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-4 p-4 bg-gray-50 rounded-lg border-t border-gray-200"
+                        >
+                          <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                            <Edit3 className="h-4 w-4" />
+                            Customize Your Package
+                          </h4>
+                          
+                          {/* Service Selection */}
+                          <div className="space-y-3 mb-4">
+                            <p className="text-sm text-gray-600">Select services to include:</p>
+                            <div className="max-h-40 overflow-y-auto space-y-2">
+                              {pkg.services.map((serviceId) => {
+                                const service = getService(serviceId);
+                                if (!service) return null;
+                                
+                                const isSelected = customizedServices[pkg.id]?.includes(serviceId) ?? true;
+                                return (
+                                  <div key={serviceId} className="flex items-center justify-between p-2 bg-white rounded border">
+                                    <div className="flex items-center gap-3">
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={(e) => {
+                                          const current = customizedServices[pkg.id] || pkg.services;
+                                          const updated = e.target.checked
+                                            ? current.includes(serviceId) ? current : [...current, serviceId]
+                                            : current.filter(id => id !== serviceId);
+                                          setCustomizedServices({
+                                            ...customizedServices,
+                                            [pkg.id]: updated
+                                          });
+                                        }}
+                                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                      />
+                                      <img 
+                                        src={service.image} 
+                                        alt={service.name}
+                                        className="w-8 h-8 rounded object-cover"
+                                      />
+                                      <div>
+                                        <div className="text-sm font-medium text-gray-900">{service.name}</div>
+                                        <div className="text-xs text-gray-600">{service.category}</div>
+                                      </div>
+                                    </div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                      ₱{(service.basePrice || 3000).toLocaleString()}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Budget Adjustment */}
+                          <div className="space-y-2 mb-4">
+                            <label className="text-sm font-medium text-gray-700">Budget Adjustment:</label>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => setPackageBudgetAdjustments({
+                                  ...packageBudgetAdjustments,
+                                  [pkg.id]: Math.max(-0.3, (packageBudgetAdjustments[pkg.id] || 0) - 0.1)
+                                })}
+                                className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </button>
+                              <div className="flex-1 text-center">
+                                <div className="text-lg font-semibold text-gray-900">
+                                  {((packageBudgetAdjustments[pkg.id] || 0) * 100).toFixed(0)}%
+                                </div>
+                                <div className="text-xs text-gray-500">adjustment</div>
+                              </div>
+                              <button
+                                onClick={() => setPackageBudgetAdjustments({
+                                  ...packageBudgetAdjustments,
+                                  [pkg.id]: Math.min(0.5, (packageBudgetAdjustments[pkg.id] || 0) + 0.1)
+                                })}
+                                className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Customized Package Summary */}
+                          <div className="bg-white rounded-lg p-3 border">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-900">Customized Total:</span>
+                              <span className="text-lg font-bold text-purple-600">
+                                ₱{Math.round(pkg.totalCost * (1 + (packageBudgetAdjustments[pkg.id] || 0))).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <span>Services: {customizedServices[pkg.id]?.length || pkg.services.length}</span>
+                              <span>
+                                {packageBudgetAdjustments[pkg.id] > 0 ? '+' : ''}
+                                ₱{Math.round(pkg.totalCost * (packageBudgetAdjustments[pkg.id] || 0)).toLocaleString()} adjustment
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Save Customization */}
+                          <div className="flex gap-2 mt-4">
+                            <button 
+                              onClick={() => {
+                                const customServices = customizedServices[pkg.id]?.map(serviceId => getService(serviceId)).filter((service): service is Service => service !== null) || 
+                                  pkg.services.map(serviceId => getService(serviceId)).filter((service): service is Service => service !== null);
+                                setBatchBookingServices(customServices);
+                                setShowBatchBookingModal(true);
+                                setCustomizingPackage(null);
+                              }}
+                              className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <Save className="h-4 w-4" />
+                              Book Customized Package
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setCustomizedServices({...customizedServices, [pkg.id]: pkg.services});
+                                setPackageBudgetAdjustments({...packageBudgetAdjustments, [pkg.id]: 0});
+                              }}
+                              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                              Reset
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Package Comparison */}
+                {packageRecommendations.length > 1 && (
+                  <div className="bg-white border border-gray-200 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5 text-purple-600" />
+                      Package Comparison
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-2">Package</th>
+                            <th className="text-center py-2">Cost</th>
+                            <th className="text-center py-2">Categories</th>
+                            <th className="text-center py-2">Avg Rating</th>
+                            <th className="text-center py-2">Savings</th>
+                            <th className="text-center py-2">Timeline</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {packageRecommendations.slice(0, 4).map((pkg) => {
+                            const packageServices = pkg.services.map(id => getService(id)).filter((s): s is Service => s !== null);
+                            const avgRating = packageServices.reduce((sum, s) => sum + s.rating, 0) / packageServices.length;
+                            const categories = [...new Set(packageServices.map(s => s.category))];
+                            
+                            return (
+                              <tr key={pkg.id} className="border-b border-gray-100">
+                                <td className="py-3">
+                                  <div className="font-medium text-gray-900">{pkg.name}</div>
+                                  <div className="text-xs text-gray-500 flex flex-wrap gap-1 mt-1">
+                                    {categories.slice(0, 3).map(cat => (
+                                      <span key={cat} className="bg-gray-100 px-1 rounded text-xs">{cat}</span>
+                                    ))}
+                                    {categories.length > 3 && (
+                                      <span className="text-gray-400">+{categories.length - 3}</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="text-center py-3 font-medium">₱{pkg.totalCost.toLocaleString()}</td>
+                                <td className="text-center py-3">{categories.length}</td>
+                                <td className="text-center py-3 flex items-center justify-center gap-1">
+                                  <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                                  <span className="font-medium">{avgRating.toFixed(1)}</span>
+                                </td>
+                                <td className="text-center py-3 text-green-600 font-medium">₱{pkg.savings.toLocaleString()}</td>
+                                <td className="text-center py-3 text-xs">{pkg.timeline.split(' ')[0]}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Insights Tab */}
+            {activeTab === 'insights' && (
+              <motion.div
+                key="insights"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {insights.map((insight, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className={cn(
+                        "border rounded-xl p-6",
+                        insight.type === 'budget' ? "border-red-200 bg-red-50" :
+                        insight.type === 'trend' ? "border-blue-200 bg-blue-50" :
+                        insight.type === 'risk' ? "border-orange-200 bg-orange-50" :
+                        "border-green-200 bg-green-50"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={cn(
+                          "p-2 rounded-lg",
+                          insight.type === 'budget' ? "bg-red-100 text-red-600" :
+                          insight.type === 'trend' ? "bg-blue-100 text-blue-600" :
+                          insight.type === 'risk' ? "bg-orange-100 text-orange-600" :
+                          "bg-green-100 text-green-600"
+                        )}>
+                          {insight.type === 'budget' && <DollarSign className="h-5 w-5" />}
+                          {insight.type === 'trend' && <TrendingUp className="h-5 w-5" />}
+                          {insight.type === 'risk' && <AlertCircle className="h-5 w-5" />}
+                          {insight.type === 'opportunity' && <Lightbulb className="h-5 w-5" />}
+                        </div>
+                        
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 mb-1">{insight.title}</h3>
+                          <p className="text-sm text-gray-600 mb-3">{insight.description}</p>
+                          
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "px-2 py-1 rounded-full text-xs font-medium",
+                              insight.impact === 'high' ? "bg-red-100 text-red-700" :
+                              insight.impact === 'medium' ? "bg-yellow-100 text-yellow-700" :
+                              "bg-green-100 text-green-700"
+                            )}>
+                              {insight.impact} impact
+                            </span>
+                            
+                            {insight.actionable && (
+                              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                Actionable
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Budget Analysis Tab */}
+            {activeTab === 'budget' && (
+              <motion.div
+                key="budget"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Budget Overview */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold mb-4">Budget Overview</h3>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Total Budget</span>
+                        <span className="font-semibold">₱{budget.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Estimated Cost</span>
+                        <span className="font-semibold">₱{analyzeBudget().totalEstimated.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Remaining</span>
+                        <span className={cn(
+                          "font-semibold",
+                          budget - analyzeBudget().totalEstimated >= 0 ? "text-green-600" : "text-red-600"
+                        )}>
+                          ₱{(budget - analyzeBudget().totalEstimated).toLocaleString()}
+                        </span>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div 
+                          className={cn(
+                            "h-3 rounded-full transition-all duration-500",
+                            analyzeBudget().percentageUsed > 100 ? "bg-red-500" :
+                            analyzeBudget().percentageUsed > 80 ? "bg-yellow-500" : "bg-green-500"
+                          )}
+                          aria-label={`Budget usage: ${Math.round(analyzeBudget().percentageUsed)}%`}
+                        >
+                          <div className="w-full h-full rounded-full" />
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 text-center">
+                        {Math.round(analyzeBudget().percentageUsed)}% of budget used
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Category Breakdown */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold mb-4">Category Breakdown</h3>
+                    <div className="space-y-3">
+                      {Object.entries(analyzeBudget().categoryBreakdown).map(([category, amount]) => (
+                        <div key={category} className="flex justify-between items-center">
+                          <span className="text-gray-600 text-sm">{category}</span>
+                          <span className="font-medium">₱{amount.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recommendations */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                    <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                      <Lightbulb className="h-5 w-5" />
+                      Recommendations
+                    </h4>
+                    <ul className="space-y-2">
+                      {analyzeBudget().recommendations.map((rec, index) => (
+                        <li key={index} className="text-sm text-blue-800 flex items-start gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                          {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-6">
+                    <h4 className="font-semibold text-orange-900 mb-3 flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5" />
+                      Risk Areas
+                    </h4>
+                    <ul className="space-y-2">
+                      {analyzeBudget().riskAreas.map((risk, index) => (
+                        <li key={index} className="text-sm text-orange-800 flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 text-orange-600 flex-shrink-0 mt-0.5" />
+                          {risk}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+                    <h4 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
+                      <DollarSign className="h-5 w-5" />
+                      Saving Opportunities
+                    </h4>
+                    <ul className="space-y-2">
+                      {analyzeBudget().savingOpportunities.map((opportunity, index) => (
+                        <li key={index} className="text-sm text-green-800 flex items-start gap-2">
+                          <DollarSign className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                          {opportunity}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Comprehensive Vendor & Service Analytics */}
+                <div className="bg-white border border-gray-200 rounded-xl p-6">
+                  <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                    <Award className="h-5 w-5 text-purple-600" />
+                    Vendor Ratings & Service Summary
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Service Statistics */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-gray-900 mb-3">Service Analysis</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-purple-50 rounded-lg p-4 text-center">
+                          <div className="text-2xl font-bold text-purple-700">{services.length}</div>
+                          <div className="text-sm text-purple-600">Total Services</div>
+                        </div>
+                        <div className="bg-blue-50 rounded-lg p-4 text-center">
+                          <div className="text-2xl font-bold text-blue-700">{recommendations.length}</div>
+                          <div className="text-sm text-blue-600">Recommendations</div>
+                        </div>
+                        <div className="bg-green-50 rounded-lg p-4 text-center">
+                          <div className="text-2xl font-bold text-green-700">
+                            {recommendations.filter(r => r.priority === 'high').length}
+                          </div>
+                          <div className="text-sm text-green-600">High Priority</div>
+                        </div>
+                        <div className="bg-yellow-50 rounded-lg p-4 text-center">
+                          <div className="text-2xl font-bold text-yellow-700">
+                            {recommendations.filter(r => r.valueRating >= 8).length}
+                          </div>
+                          <div className="text-sm text-yellow-600">High Value</div>
+                        </div>
+                      </div>
+                      
+                      {/* Average Ratings by Category */}
+                      <div className="mt-4">
+                        <h5 className="font-medium text-gray-800 mb-3">Average Ratings by Category</h5>
+                        <div className="space-y-2">
+                          {Object.entries(
+                            services.reduce((acc, service) => {
+                              if (!acc[service.category]) {
+                                acc[service.category] = { total: 0, count: 0, sum: 0 };
+                              }
+                              acc[service.category].sum += service.rating;
+                              acc[service.category].count += 1;
+                              acc[service.category].total = acc[service.category].sum / acc[service.category].count;
+                              return acc;
+                            }, {} as Record<string, { total: number; count: number; sum: number }>)
+                          ).slice(0, 6).map(([category, stats]) => (
+                            <div key={category} className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">{category}</span>
+                              <div className="flex items-center">
+                                {Array.from({ length: 5 }, (_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={cn(
+                                      "h-3 w-3",
+                                      i < Math.floor(stats.total) ? "text-yellow-400 fill-current" : "text-gray-300"
+                                    )}
+                                  />
+                                ))}
+                                <span className="text-sm font-medium text-gray-700 ml-2">
+                                  {stats.total.toFixed(1)} ({stats.count})
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Price Range Analysis */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-gray-900 mb-3">Price Analysis</h4>
+                      <div className="space-y-3">
+                        {Object.entries(
+                          services.reduce((acc, service) => {
+                            const price = service.basePrice || parsePriceRange(service.priceRange || '$$$');
+                            if (!acc[service.category]) {
+                              acc[service.category] = { min: price, max: price, avg: price, count: 1, total: price };
+                            } else {
+                              acc[service.category].min = Math.min(acc[service.category].min, price);
+                              acc[service.category].max = Math.max(acc[service.category].max, price);
+                              acc[service.category].total += price;
+                              acc[service.category].count += 1;
+                              acc[service.category].avg = acc[service.category].total / acc[service.category].count;
+                            }
+                            return acc;
+                          }, {} as Record<string, { min: number; max: number; avg: number; count: number; total: number }>)
+                        ).slice(0, 6).map(([category, priceStats]) => (
+                          <div key={category} className="bg-gray-50 rounded-lg p-3">
+                            <div className="font-medium text-gray-900 mb-2">{category}</div>
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="text-center">
+                                <div className="font-medium text-gray-700">₱{priceStats.min.toLocaleString()}</div>
+                                <div className="text-gray-500">Min</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="font-medium text-gray-700">₱{Math.round(priceStats.avg).toLocaleString()}</div>
+                                <div className="text-gray-500">Avg</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="font-medium text-gray-700">₱{priceStats.max.toLocaleString()}</div>
+                                <div className="text-gray-500">Max</div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Top Recommended Services */}
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <h4 className="font-medium text-gray-900 mb-4">Top Recommended Services</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {recommendations.slice(0, 6).map((rec) => {
+                        const service = getService(rec.serviceId);
+                        if (!service) return null;
+                        return (
+                          <div key={rec.serviceId} className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                            <div className="flex items-center gap-3 mb-2">
+                              <img 
+                                src={service.image} 
+                                alt={service.name}
+                                className="w-10 h-10 rounded-lg object-cover"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-gray-900 truncate">{service.name}</div>
+                                <div className="text-xs text-gray-600">{service.category}</div>
+                              </div>
+                              <div className="text-sm font-bold text-purple-600">
+                                {rec.score}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-1">
+                                <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                                <span className="text-gray-600">{service.rating}</span>
+                              </div>
+                              <div className="font-medium text-gray-900">
+                                ₱{rec.estimatedCost.toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="mt-2">
+                              <div className={cn(
+                                "inline-block px-2 py-1 rounded-full text-xs font-medium",
+                                rec.priority === 'high' ? "bg-green-100 text-green-700" :
+                                rec.priority === 'medium' ? "bg-yellow-100 text-yellow-700" :
+                                "bg-gray-100 text-gray-700"
+                              )}>
+                                {rec.priority} priority
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Comparison Tab */}
+            {activeTab === 'comparison' && (
+              <motion.div
+                key="comparison"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                <div className="text-center py-16">
+                  <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Service Comparison</h3>
+                  <p className="text-gray-600">Compare multiple services side by side</p>
+                  <p className="text-gray-500 mt-2">Feature coming soon...</p>
+                </div>
+              </motion.div>
+            )}
+
+            </AnimatePresence>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Booking Modal */}
+      {showBookingModal && selectedServiceForBooking && (
+        <BookingRequestModal
+          service={convertToBookingService(selectedServiceForBooking)}
+          isOpen={showBookingModal}
+          onClose={() => {
+            setShowBookingModal(false);
+            setSelectedServiceForBooking(null);
+          }}
+          onBookingCreated={(booking) => {
+            console.log('📅 [DSS] Booking created from DSS:', booking);
+
+            // Close the booking modal
+            setShowBookingModal(false);
+            setSelectedServiceForBooking(null);
+
+            // Create a custom event for each service
+            const bookingCreatedEvent = new CustomEvent('bookingCreated', {
+              detail: {
+                serviceId: selectedServiceForBooking.id,
+                serviceName: selectedServiceForBooking.name,
+                vendorName: selectedServiceForBooking.vendorName,
+                status: 'quote_requested'
+              }
+            });
+            window.dispatchEvent(bookingCreatedEvent);
+          }}
+        />
+      )}
+
+      {/* Batch Booking Modal */}
+      <BatchBookingModal
+        isOpen={showBatchBookingModal}
+        onClose={() => {
+          setShowBatchBookingModal(false);
+          setBatchBookingServices([]);
+          setIsProcessingBatchBooking(false);
+          setBatchBookingProgress({ completed: 0, total: 0 });
+        }}
+        services={batchBookingServices}
+        onConfirmBooking={async (services) => {
+          setIsProcessingBatchBooking(true);
+          setBatchBookingProgress({ completed: 0, total: services.length });
+
+          for (let i = 0; i < services.length; i++) {
+            const service = services[i];
+            try {
+              console.log('📅 [DSS] Processing batch booking for:', service.name);
+              
+              // Simulate booking API call
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+              // Create a custom event for each service
+              const bookingCreatedEvent = new CustomEvent('bookingCreated', {
+                detail: {
+                  serviceId: service.id,
+                  serviceName: service.name,
+                  vendorName: service.vendorName,
+                  status: 'quote_requested'
+                }
+              });
+              window.dispatchEvent(bookingCreatedEvent);
+              
+              setBatchBookingProgress({ completed: i + 1, total: services.length });
+            } catch (error) {
+              console.error('❌ [DSS] Failed to create booking for', service.name, ':', error);
+            }
+          }
+
+          console.log('✅ [DSS] All bookings created successfully');
+        }}
+        onCreateGroupChat={createGroupChatWithVendors}
+      />
+    </motion.div>
+  );
+};

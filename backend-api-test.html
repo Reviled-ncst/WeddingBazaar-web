@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Backend API Endpoint Testing</h1>
+    
+    <div class="test" id="health-test">
+        <h3>1. Health Check</h3>
+        <div id="health-result">Testing...</div>
+    </div>
+    
+    <div class="test" id="bookings-get-test">
+        <h3>2. Get Bookings Endpoint</h3>
+        <div id="bookings-get-result">Testing...</div>
+    </div>
+    
+    <div class="test" id="bookings-post-test">
+        <h3>3. Create Booking Endpoint</h3>
+        <div id="bookings-post-result">Testing...</div>
+    </div>
+    
+    <div class="test" id="alternative-test">
+        <h3>4. Try Alternative Booking Endpoints</h3>
+        <div id="alternative-result">Testing...</div>
+    </div>
+
+    <script>
+        async function testAPI() {
+            // Test 1: Health check
+            try {
+                const healthResponse = await fetch('https://weddingbazaar-web.onrender.com/api/health');
+                const healthData = await healthResponse.json();
+                document.getElementById('health-result').innerHTML = `<pre>✅ ${JSON.stringify(healthData, null, 2)}</pre>`;
+                document.getElementById('health-test').classList.add('success');
+            } catch (error) {
+                document.getElementById('health-result').innerHTML = `<pre>❌ ${error.message}</pre>`;
+                document.getElementById('health-test').classList.add('error');
+            }
+            
+            // Test 2: Get bookings
+            try {
+                const getResponse = await fetch('https://weddingbazaar-web.onrender.com/api/bookings/enhanced?coupleId=1-2025-001&limit=5');
+                const getData = await getResponse.json();
+                document.getElementById('bookings-get-result').innerHTML = `<pre>✅ Status: ${getResponse.status}\\n${JSON.stringify(getData, null, 2)}</pre>`;
+                document.getElementById('bookings-get-test').classList.add('success');
+            } catch (error) {
+                document.getElementById('bookings-get-result').innerHTML = `<pre>❌ ${error.message}</pre>`;
+                document.getElementById('bookings-get-test').classList.add('error');
+            }
+            
+            // Test 3: Create booking
+            const bookingData = {
+                vendor_id: "2-2025-003",
+                service_id: "SRV-8305",
+                service_type: "cake_designer", 
+                service_name: "Test Cake Service",
+                event_date: "2025-06-15",
+                couple_id: "1-2025-001",
+                contact_phone: "123123123123"
+            };
+            
+            try {
+                const postResponse = await fetch('https://weddingbazaar-web.onrender.com/api/bookings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bookingData)
+                });
+                
+                if (postResponse.ok) {
+                    const postData = await postResponse.json();
+                    document.getElementById('bookings-post-result').innerHTML = `<pre>✅ Status: ${postResponse.status}\\n${JSON.stringify(postData, null, 2)}</pre>`;
+                    document.getElementById('bookings-post-test').classList.add('success');
+                } else {
+                    const errorText = await postResponse.text();
+                    document.getElementById('bookings-post-result').innerHTML = `<pre>❌ Status: ${postResponse.status}\\nError: ${errorText}</pre>`;
+                    document.getElementById('bookings-post-test').classList.add('error');
+                }
+            } catch (error) {
+                document.getElementById('bookings-post-result').innerHTML = `<pre>❌ ${error.message}</pre>`;
+                document.getElementById('bookings-post-test').classList.add('error');
+            }
+            
+            // Test 4: Try alternative endpoints
+            const alternatives = [
+                '/api/bookings/create',
+                '/api/bookings/request',
+                '/api/booking',
+                '/api/booking/create'
+            ];
+            
+            let alternativeResults = '';
+            for (const endpoint of alternatives) {
+                try {
+                    const altResponse = await fetch(`https://weddingbazaar-web.onrender.com${endpoint}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(bookingData)
+                    });
+                    
+                    if (altResponse.ok) {
+                        const altData = await altResponse.json();
+                        alternativeResults += `\\n✅ ${endpoint}: ${altResponse.status} - ${JSON.stringify(altData)}`;
+                    } else {
+                        const altError = await altResponse.text();
+                        alternativeResults += `\\n❌ ${endpoint}: ${altResponse.status} - ${altError.substring(0, 100)}...`;
+                    }
+                } catch (error) {
+                    alternativeResults += `\\n❌ ${endpoint}: ${error.message}`;
+                }
+            }
+            
+            document.getElementById('alternative-result').innerHTML = `<pre>${alternativeResults}</pre>`;
+        }
+        
+        // Run tests
+        testAPI();
+    </script>
+</body>
+</html>

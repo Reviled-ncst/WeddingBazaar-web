@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Flow Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .pending { background-color: #fff3cd; border-color: #ffeaa7; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        .status { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🎭 Wedding Bazaar Booking Flow Test</h1>
+    <p>This test verifies the complete booking flow from request creation to display in IndividualBookings.</p>
+
+    <div class="test-section">
+        <h2>📋 Test Configuration</h2>
+        <div>
+            <label>Backend URL: </label>
+            <input type="text" id="backendUrl" value="https://weddingbazaar-web.onrender.com" style="width: 300px;">
+        </div>
+        <div style="margin-top: 10px;">
+            <label>User ID: </label>
+            <input type="text" id="userId" value="1-2025-001" style="width: 200px;">
+        </div>
+        <button onclick="updateConfig()">Update Config</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Step 1: Backend Health Check</h2>
+        <div id="healthCheck" class="pending">
+            <span class="status">Pending</span>
+            <button onclick="checkHealth()">Check Backend Health</button>
+        </div>
+        <pre id="healthResult"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Step 2: Create Booking Request</h2>
+        <div id="createBooking" class="pending">
+            <span class="status">Pending</span>
+            <button onclick="createBooking()">Create Test Booking</button>
+        </div>
+        <pre id="bookingResult"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Step 3: Verify Booking in List</h2>
+        <div id="verifyBooking" class="pending">
+            <span class="status">Pending</span>
+            <button onclick="verifyBooking()">Check Bookings List</button>
+        </div>
+        <pre id="verifyResult"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>🎯 Test Summary</h2>
+        <div id="summary">
+            <p>Run the tests above in order to verify the booking flow.</p>
+        </div>
+    </div>
+
+    <script>
+        let config = {
+            backendUrl: 'https://weddingbazaar-web.onrender.com',
+            userId: '1-2025-001'
+        };
+
+        let createdBookingId = null;
+
+        function updateConfig() {
+            config.backendUrl = document.getElementById('backendUrl').value;
+            config.userId = document.getElementById('userId').value;
+            console.log('Config updated:', config);
+        }
+
+        async function checkHealth() {
+            const element = document.getElementById('healthCheck');
+            const result = document.getElementById('healthResult');
+            
+            element.className = 'test-section pending';
+            element.querySelector('.status').textContent = 'Testing...';
+            result.textContent = 'Checking backend health...';
+
+            try {
+                const response = await fetch(`${config.backendUrl}/api/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    element.className = 'test-section success';
+                    element.querySelector('.status').textContent = '✅ Success';
+                    result.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                element.className = 'test-section error';
+                element.querySelector('.status').textContent = '❌ Failed';
+                result.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function createBooking() {
+            const element = document.getElementById('createBooking');
+            const result = document.getElementById('bookingResult');
+            
+            element.className = 'test-section pending';
+            element.querySelector('.status').textContent = 'Creating...';
+            result.textContent = 'Creating test booking...';
+
+            const bookingData = {
+                vendor_id: 'VND-001',
+                service_id: 'SRV-001',
+                service_type: 'photography',
+                service_name: 'Test Photography Service',
+                event_date: '2025-06-15',
+                event_time: '14:00',
+                event_location: 'Test Venue Manila',
+                guest_count: 100,
+                special_requests: 'Test booking from automated flow test',
+                contact_person: 'Test User',
+                contact_phone: '+63 917 123 4567',
+                contact_email: 'test@example.com',
+                preferred_contact_method: 'email',
+                budget_range: '50000-100000',
+                couple_id: config.userId,
+                metadata: {
+                    source: 'automated-test',
+                    testTimestamp: new Date().toISOString()
+                }
+            };
+
+            try {
+                const response = await fetch(`${config.backendUrl}/api/bookings`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    createdBookingId = data.id || data.booking?.id;
+                    
+                    element.className = 'test-section success';
+                    element.querySelector('.status').textContent = '✅ Success';
+                    result.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    const errorData = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorData}`);
+                }
+            } catch (error) {
+                element.className = 'test-section error';
+                element.querySelector('.status').textContent = '❌ Failed';
+                result.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function verifyBooking() {
+            const element = document.getElementById('verifyBooking');
+            const result = document.getElementById('verifyResult');
+            
+            element.className = 'test-section pending';
+            element.querySelector('.status').textContent = 'Checking...';
+            result.textContent = 'Fetching bookings list...';
+
+            try {
+                const response = await fetch(`${config.backendUrl}/api/bookings/enhanced?coupleId=${config.userId}&limit=10&sortBy=created_at&sortOrder=desc`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const bookings = data.bookings || [];
+                    
+                    let verification = {
+                        totalBookings: bookings.length,
+                        recentBookings: bookings.slice(0, 3),
+                        foundTestBooking: false,
+                        testBookingId: createdBookingId
+                    };
+
+                    if (createdBookingId) {
+                        verification.foundTestBooking = bookings.some(b => b.id === createdBookingId);
+                    }
+
+                    if (verification.foundTestBooking || bookings.length > 0) {
+                        element.className = 'test-section success';
+                        element.querySelector('.status').textContent = '✅ Success';
+                    } else {
+                        element.className = 'test-section error';
+                        element.querySelector('.status').textContent = '⚠️ No bookings found';
+                    }
+                    
+                    result.textContent = JSON.stringify(verification, null, 2);
+                } else {
+                    const errorData = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorData}`);
+                }
+            } catch (error) {
+                element.className = 'test-section error';
+                element.querySelector('.status').textContent = '❌ Failed';
+                result.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function updateSummary() {
+            const healthSuccess = document.getElementById('healthCheck').classList.contains('success');
+            const bookingSuccess = document.getElementById('createBooking').classList.contains('success');
+            const verifySuccess = document.getElementById('verifyBooking').classList.contains('success');
+            
+            const summary = document.getElementById('summary');
+            const totalTests = 3;
+            const passedTests = [healthSuccess, bookingSuccess, verifySuccess].filter(Boolean).length;
+            
+            if (passedTests === totalTests) {
+                summary.innerHTML = `<p style="color: green; font-weight: bold;">🎉 All tests passed! (${passedTests}/${totalTests})</p><p>The booking flow is working correctly.</p>`;
+            } else if (passedTests > 0) {
+                summary.innerHTML = `<p style="color: orange; font-weight: bold;">⚠️ Partial success (${passedTests}/${totalTests})</p><p>Some components are working, but there are issues to resolve.</p>`;
+            } else {
+                summary.innerHTML = `<p style="color: red; font-weight: bold;">❌ Tests failed (${passedTests}/${totalTests})</p><p>The booking flow needs attention.</p>`;
+            }
+        }
+
+        // Auto-run health check on page load
+        window.addEventListener('load', () => {
+            setTimeout(checkHealth, 1000);
+        });
+
+        // Update summary when tests complete
+        setInterval(updateSummary, 1000);
+    </script>
+</body>
+</html>

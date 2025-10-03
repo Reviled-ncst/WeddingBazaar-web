@@ -408,7 +408,7 @@ export const EnhancedBookingList: React.FC<EnhancedBookingListProps> = ({
         </div>
       ) : (
         <div className={cn(
-          "grid gap-6",
+          "grid gap-8",
           viewMode === 'grid' 
             ? "grid-cols-1 lg:grid-cols-2 xl:grid-cols-3" 
             : "grid-cols-1"
@@ -416,9 +416,13 @@ export const EnhancedBookingList: React.FC<EnhancedBookingListProps> = ({
           {filteredBookings.map((booking, index) => (
             <motion.div
               key={booking.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ 
+                duration: 0.4, 
+                delay: index * 0.08,
+                ease: "easeOut"
+              }}
             >
               <EnhancedBookingCard
                 booking={booking}
@@ -428,7 +432,10 @@ export const EnhancedBookingList: React.FC<EnhancedBookingListProps> = ({
                 onAcceptQuote={onAcceptQuote}
                 onPayment={onPayment}
                 onContact={onContact}
-                className={viewMode === 'list' ? 'max-w-none' : ''}
+                className={cn(
+                  viewMode === 'list' ? 'max-w-none' : '',
+                  "hover:shadow-2xl transition-all duration-300"
+                )}
               />
             </motion.div>
           ))}

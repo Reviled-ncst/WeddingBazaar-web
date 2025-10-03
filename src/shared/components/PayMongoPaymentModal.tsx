@@ -17,6 +17,7 @@ import {
 import { cn } from '../../utils/cn';
 import { paymongoService } from '../services/payment/paymongoService';
 import { paymentWebhookHandler } from '../../services/paymentWebhookHandler';
+import bookingProcessService from '../../services/booking-process-tracking';
 import QRCodeDisplay from './payment/QRCodeDisplay';
 import type { PaymentWebhookData } from '../../services/paymentWebhookHandler';
 
@@ -182,6 +183,39 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
           
           if (!successCallbackCalled) {
             setSuccessCallbackCalled(true);
+            
+            // Log payment in booking process tracking
+            const logPaymentAsync = async () => {
+              try {
+                await bookingProcessService.logPayment(
+                  parseInt(booking.id),
+                  {
+                    payment_type: paymentType === 'downpayment' ? 'downpayment' : 'full',
+                    amount: amount,
+                    currency: currency || 'PHP',
+                    payment_method: selectedMethod || 'unknown',
+                    payment_provider: 'paymongo',
+                    payment_status: 'completed',
+                    transaction_id: data.paymentId,
+                    provider_reference: data.sourceId,
+                    metadata: {
+                      booking_reference: booking.bookingReference,
+                      vendor_name: booking.vendorName,
+                      service_type: booking.serviceType,
+                      event_date: booking.eventDate,
+                      display_amount: formatAmount(amount)
+                    }
+                  }
+                );
+                console.log('📋 [PROCESS] Payment logged in process tracking');
+              } catch (error) {
+                console.log('⚠️ [PROCESS] Could not log payment (process tracking may not be initialized):', error);
+              }
+            };
+            
+            // Log payment asynchronously (don't wait for it)
+            logPaymentAsync();
+            
             onPaymentSuccess(paymentData);
             console.log('✅ Success callback called from webhook');
           }
