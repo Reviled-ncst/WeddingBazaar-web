@@ -935,40 +935,54 @@ app.delete('/api/services/:serviceId', async (req, res) => {
 app.post('/api/bookings/request', async (req, res) => {
   try {
     console.log('📝 [BOOKING] POST /api/bookings/request called');
+    console.log('📦 [BOOKING] Request body:', req.body);
     
-    const {
-      vendorId,
-      serviceName,
-      eventDate,
-      guestCount,
-      budget,
-      message,
-      contactName,
-      contactEmail,
-      userId
-    } = req.body;
+    const bookingRequest = req.body;
     
-    if (!vendorId || !serviceName || !eventDate) {
-      return res.status(400).json({
-        success: false,
-        error: 'Vendor ID, service name, and event date are required',
-        timestamp: new Date().toISOString()
-      });
-    }
+    // FIXED: Handle both camelCase (coupleId) and snake_case (couple_id) from frontend
+    const coupleId = bookingRequest.coupleId || bookingRequest.couple_id || '1-2025-001';
     
-    // Insert booking into database
+    console.log('📥 [BookingRequest] FIXED - Received booking request:', {
+      originalRequest: bookingRequest,
+      extractedCoupleId: coupleId,
+      vendor_id: bookingRequest.vendorId || bookingRequest.vendor_id,
+      service_name: bookingRequest.serviceName || bookingRequest.service_name,
+      event_date: bookingRequest.eventDate || bookingRequest.event_date
+    });
+    
+    // Create a properly formatted booking object for the database
+    const properBookingData = {
+      couple_id: coupleId,
+      vendor_id: bookingRequest.vendorId || bookingRequest.vendor_id,
+      service_name: bookingRequest.serviceName || bookingRequest.service_name,
+      event_date: bookingRequest.eventDate || bookingRequest.event_date,
+      event_time: bookingRequest.eventTime || bookingRequest.event_time,
+      event_location: bookingRequest.eventLocation || bookingRequest.event_location,
+      guest_count: bookingRequest.guestCount || bookingRequest.guest_count,
+      contact_phone: bookingRequest.contactPhone || bookingRequest.contact_phone,
+      contact_email: bookingRequest.contactEmail || bookingRequest.contact_email,
+      budget_range: bookingRequest.budgetRange || bookingRequest.budget_range,
+      special_requests: bookingRequest.specialRequests || bookingRequest.special_requests,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    // FIXED: Direct database insertion with correct column names (couple_id not user_id)
     const bookingId = Date.now();
     const now = new Date();
     
     await sql`
       INSERT INTO bookings (
-        id, vendor_id, user_id, service_name, event_date,
-        guest_count, budget, message, contact_name, contact_email,
-        status, created_at, updated_at
+        id, couple_id, vendor_id, service_name, event_date, event_time,
+        event_location, guest_count, contact_phone, contact_email,
+        budget_range, special_requests, status, created_at, updated_at
       ) VALUES (
-        ${bookingId}, ${vendorId}, ${userId}, ${serviceName}, ${eventDate},
-        ${guestCount}, ${budget}, ${message}, ${contactName}, ${contactEmail},
-        'request', ${now}, ${now}
+        ${bookingId}, ${properBookingData.couple_id}, ${properBookingData.vendor_id}, 
+        ${properBookingData.service_name}, ${properBookingData.event_date}, ${properBookingData.event_time},
+        ${properBookingData.event_location}, ${properBookingData.guest_count}, ${properBookingData.contact_phone},
+        ${properBookingData.contact_email}, ${properBookingData.budget_range}, ${properBookingData.special_requests},
+        ${properBookingData.status}, ${now}, ${now}
       )
     `;
     
