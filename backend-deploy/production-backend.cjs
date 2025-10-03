@@ -969,7 +969,7 @@ app.post('/api/bookings/request', async (req, res) => {
     };
     
     // FIXED: Use only basic columns that exist in the database schema
-    const bookingId = Date.now();
+    const bookingId = Math.floor(Math.random() * 1000000); // Use smaller integer ID
     const now = new Date();
     
     // Start with minimal columns and only add what exists
