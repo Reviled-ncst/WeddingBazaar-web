@@ -176,8 +176,7 @@ app.post('/api/auth/login', async (req, res) => {
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,
-        role: user.user_type || 'couple',
-        businessName: user.business_name
+        role: user.user_type || 'couple'
       },
       message: 'Login successful',
       timestamp: new Date().toISOString()
@@ -225,9 +224,9 @@ app.post('/api/auth/register', async (req, res) => {
     const userType = role || 'couple';
     
     const newUsers = await sql`
-      INSERT INTO users (email, password_hash, first_name, last_name, user_type, phone, business_name, business_type, location, created_at)
-      VALUES (${email}, ${password}, ${firstName}, ${lastName}, ${userType}, ${phone || ''}, ${business_name || ''}, ${business_type || ''}, ${location || ''}, NOW())
-      RETURNING id, email, first_name, last_name, user_type, business_name
+      INSERT INTO users (email, password_hash, first_name, last_name, user_type, created_at)
+      VALUES (${email}, ${password}, ${firstName}, ${lastName}, ${userType}, NOW())
+      RETURNING id, email, first_name, last_name, user_type
     `;
     
     const user = newUsers[0];
@@ -256,8 +255,7 @@ app.post('/api/auth/register', async (req, res) => {
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,
-        role: user.user_type,
-        businessName: user.business_name
+        role: user.user_type
       },
       message: 'Registration successful',
       timestamp: new Date().toISOString()
@@ -311,7 +309,7 @@ app.post('/api/auth/verify', async (req, res) => {
     
     // Fetch current user data from database
     const userRows = await sql`
-      SELECT id, email, first_name, last_name, user_type, business_name 
+      SELECT id, email, first_name, last_name, user_type 
       FROM users 
       WHERE id = ${decoded.userId}
     `;
@@ -332,8 +330,7 @@ app.post('/api/auth/verify', async (req, res) => {
       email: user.email,
       firstName: user.first_name,
       lastName: user.last_name,
-      role: user.user_type || 'couple',
-      businessName: user.business_name
+      role: user.user_type || 'couple'
     };
     
     console.log(`✅ [AUTH] JWT verification successful: ${user.email}`);
