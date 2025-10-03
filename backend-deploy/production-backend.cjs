@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 const { neon } = require('@neondatabase/serverless');
 require('dotenv').config();
 
+// Updated 2025-10-03: Added payment status mapping support + JWT debugging
+
 // Real Neon database connection
 const sql = neon(process.env.DATABASE_URL);
 
@@ -192,6 +194,86 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Registration endpoint
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    console.log('📝 [AUTH] Registration attempt for:', req.body.email);
+    
+    const { email, password, firstName, lastName, role, phone, business_name, business_type, location } = req.body;
+    
+    // Validation
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email, password, first name, and last name are required',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Check if user already exists
+    const existingUsers = await sql`SELECT id FROM users WHERE email = ${email}`;
+    
+    if (existingUsers.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'User with this email already exists',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Create new user (for demo, we'll store password as plain text - don't do this in production!)
+    const userType = role || 'couple';
+    
+    const newUsers = await sql`
+      INSERT INTO users (email, password_hash, first_name, last_name, user_type, phone, business_name, business_type, location, created_at)
+      VALUES (${email}, ${password}, ${firstName}, ${lastName}, ${userType}, ${phone || ''}, ${business_name || ''}, ${business_type || ''}, ${location || ''}, NOW())
+      RETURNING id, email, first_name, last_name, user_type, business_name
+    `;
+    
+    const user = newUsers[0];
+    
+    // Generate JWT token
+    const tokenPayload = {
+      userId: user.id,
+      email: user.email,
+      role: user.user_type,
+      iat: Math.floor(Date.now() / 1000)
+    };
+    
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { 
+      expiresIn: JWT_EXPIRES_IN,
+      issuer: 'wedding-bazaar',
+      audience: 'wedding-bazaar-users'
+    });
+    
+    console.log(`✅ [AUTH] Registration successful for ${email}`);
+    
+    res.status(201).json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        role: user.user_type,
+        businessName: user.business_name
+      },
+      message: 'Registration successful',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [AUTH] Registration error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Registration failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 app.post('/api/auth/verify', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -216,10 +298,16 @@ app.post('/api/auth/verify', async (req, res) => {
     }
 
     // Verify JWT token
+    console.log('🔍 [AUTH] Attempting JWT verification...');
+    console.log('🔍 [AUTH] Token preview:', token.substring(0, 50) + '...');
+    console.log('🔍 [AUTH] JWT_SECRET defined:', !!JWT_SECRET);
+    
     const decoded = jwt.verify(token, JWT_SECRET, {
       issuer: 'wedding-bazaar',
       audience: 'wedding-bazaar-users'
     });
+    
+    console.log('✅ [AUTH] JWT decoded successfully:', { userId: decoded.userId, email: decoded.email });
     
     // Fetch current user data from database
     const userRows = await sql`
@@ -278,11 +366,15 @@ app.post('/api/auth/verify', async (req, res) => {
       });
     }
     
-    console.error('❌ [AUTH] Token verification error:', error);
+    console.error('❌ [AUTH] Token verification error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
     res.json({
       success: false,
       authenticated: false,
-      message: 'Token verification failed',
+      message: `Token verification failed: ${error.message}`,
       timestamp: new Date().toISOString()
     });
   }
@@ -1548,6 +1640,7 @@ app.patch('/api/bookings/:bookingId/status', async (req, res) => {
     const dbStatus = status === 'quote_requested' ? 'request' :
                     status === 'confirmed' ? 'approved' :
                     status === 'downpayment_paid' ? 'downpayment' :
+                    status === 'paid_in_full' ? 'paid' :
                     status;
     
     // Build update query with proper SQL syntax
