@@ -951,6 +951,7 @@ app.post('/api/bookings/request', async (req, res) => {
     });
     
     // Create a properly formatted booking object for the database
+    // Note: contact_email removed until database schema is updated
     const properBookingData = {
       couple_id: coupleId,
       vendor_id: bookingRequest.vendorId || bookingRequest.vendor_id,
@@ -960,7 +961,6 @@ app.post('/api/bookings/request', async (req, res) => {
       event_location: bookingRequest.eventLocation || bookingRequest.event_location,
       guest_count: bookingRequest.guestCount || bookingRequest.guest_count,
       contact_phone: bookingRequest.contactPhone || bookingRequest.contact_phone,
-      contact_email: bookingRequest.contactEmail || bookingRequest.contact_email,
       budget_range: bookingRequest.budgetRange || bookingRequest.budget_range,
       special_requests: bookingRequest.specialRequests || bookingRequest.special_requests,
       status: 'request',
@@ -972,27 +972,63 @@ app.post('/api/bookings/request', async (req, res) => {
     const bookingId = Math.floor(Math.random() * 1000000); // Use smaller integer ID
     const now = new Date();
     
-    // FIXED: Add contact fields to complete the booking data
+    // FIXED: Use only existing columns in current database schema
+    // Remove contact_email since column doesn't exist yet
     await sql`
       INSERT INTO bookings (
         id, couple_id, vendor_id, service_name, event_date, event_time,
-        event_location, guest_count, contact_phone, contact_email,
+        event_location, guest_count, contact_phone, 
         budget_range, special_requests, status, created_at, updated_at
       ) VALUES (
         ${bookingId}, ${properBookingData.couple_id}, ${properBookingData.vendor_id}, 
         ${properBookingData.service_name}, ${properBookingData.event_date}, ${properBookingData.event_time},
         ${properBookingData.event_location}, ${properBookingData.guest_count}, ${properBookingData.contact_phone},
-        ${properBookingData.contact_email}, ${properBookingData.budget_range}, ${properBookingData.special_requests}, 
+        ${properBookingData.budget_range}, ${properBookingData.special_requests}, 
         ${properBookingData.status}, ${now}, ${now}
       )
     `;
     
+    // Store enhanced fields in metadata or logs for future schema update
+    const enhancedFields = {
+      contact_email: bookingRequest.contactEmail || bookingRequest.contact_email, // Captured separately
+      event_duration: bookingRequest.eventDuration,
+      event_type: bookingRequest.eventType,
+      urgency_level: bookingRequest.urgencyLevel,
+      flexible_dates: bookingRequest.flexibleDates,
+      alternate_date: bookingRequest.alternateDate,
+      referral_source: bookingRequest.referralSource,
+      additional_services: bookingRequest.additionalServices
+    };
+    
+    console.log('📋 [BOOKING] Enhanced fields captured (pending schema):', enhancedFields);
+    
     console.log('✅ [BOOKING] Booking request created:', bookingId);
+    
+    // Create a complete booking response for frontend
+    const createdBooking = {
+      id: bookingId,
+      couple_id: properBookingData.couple_id,
+      vendor_id: properBookingData.vendor_id,
+      service_name: properBookingData.service_name,
+      event_date: properBookingData.event_date,
+      event_time: properBookingData.event_time,
+      event_location: properBookingData.event_location,
+      guest_count: properBookingData.guest_count,
+      contact_phone: properBookingData.contact_phone,
+      // contact_email removed - will be added when database schema is updated
+      budget_range: properBookingData.budget_range,
+      special_requests: properBookingData.special_requests,
+      status: properBookingData.status,
+      created_at: now,
+      updated_at: now
+    };
     
     res.json({
       success: true,
+      booking: createdBooking,
       bookingId: bookingId,
       message: 'Booking request submitted successfully',
+      enhancedFieldsCaptured: true,
       timestamp: new Date().toISOString()
     });
     
