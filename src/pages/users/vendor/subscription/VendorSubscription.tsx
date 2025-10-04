@@ -8,7 +8,6 @@ import {
   Shield,
   Users,
   BarChart3,
-  MessageSquare,
   Calendar,
   Camera,
   Globe,
@@ -38,7 +37,6 @@ const mockSubscription: VendorSubscriptionType = {
     portfolio_items_count: 25,
     monthly_bookings_count: 45,
     current_bookings_count: 8,
-    monthly_messages_count: 320,
     video_call_minutes_used: 180,
     featured_listing_active: true,
     social_integrations_count: 3,
@@ -286,14 +284,6 @@ export const VendorSubscriptionPage: React.FC = () => {
                 unlimited={subscription.plan.limits.max_monthly_bookings === -1}
               />
               
-              <FeatureUsageCard
-                title="Messages"
-                icon={<MessageSquare />}
-                usage={subscription.usage.monthly_messages_count}
-                limit={subscription.plan.limits.max_monthly_messages}
-                description="Messages sent this month"
-                unlimited={subscription.plan.limits.max_monthly_messages === -1}
-              />
               
               <FeatureUsageCard
                 title="Portfolio Items"
@@ -360,13 +350,6 @@ export const VendorSubscriptionPage: React.FC = () => {
                 requiredTier="Professional+"
               />
               
-              <FeatureAccessCard
-                title="Video Messaging"
-                icon={<MessageSquare />}
-                available={subscription.plan.limits.video_call_duration > 0}
-                description="Video calls with clients"
-                requiredTier="Premium+"
-              />
               
               <FeatureAccessCard
                 title="Featured Listings"
