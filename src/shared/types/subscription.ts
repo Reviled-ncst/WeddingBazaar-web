@@ -30,7 +30,9 @@ export interface SubscriptionLimits {
   max_concurrent_bookings: number;
   booking_advance_days: number;
   
-  // Communication Limits  
+  // Communication Limits
+  max_monthly_messages: number;
+  max_message_attachments: number;
   video_call_duration: number; // minutes
   
   // Marketing Features
@@ -83,6 +85,7 @@ export interface SubscriptionUsage {
   current_bookings_count: number;
   
   // Communication Usage (current month)
+  monthly_messages_count: number;
   video_call_minutes_used: number;
   
   // Marketing Usage
@@ -119,6 +122,8 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
       max_monthly_bookings: 20,
       max_concurrent_bookings: 5,
       booking_advance_days: 90,
+      max_monthly_messages: 100,
+      max_message_attachments: 1,
       video_call_duration: 0,
       featured_listing_days: 0,
       max_social_media_integrations: 1,
@@ -161,6 +166,8 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
       max_monthly_bookings: 100,
       max_concurrent_bookings: 20,
       booking_advance_days: 365,
+      max_monthly_messages: 500,
+      max_message_attachments: 5,
       video_call_duration: 60,
       featured_listing_days: 7,
       max_social_media_integrations: 5,
@@ -201,6 +208,8 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
       max_monthly_bookings: 500,
       max_concurrent_bookings: 50,
       booking_advance_days: 730,
+      max_monthly_messages: 2000,
+      max_message_attachments: 10,
       video_call_duration: 180,
       featured_listing_days: 30,
       max_social_media_integrations: 15,
@@ -239,6 +248,8 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
       max_monthly_bookings: -1,
       max_concurrent_bookings: -1,
       booking_advance_days: -1,
+      max_monthly_messages: -1,
+      max_message_attachments: -1,
       video_call_duration: -1,
       featured_listing_days: -1,
       max_social_media_integrations: -1,
@@ -275,7 +286,10 @@ export class SubscriptionAccess {
     return subscription.usage.monthly_bookings_count < subscription.plan.limits.max_monthly_bookings;
   }
 
-
+  static canSendMessage(subscription: VendorSubscription): boolean {
+    if (subscription.plan.limits.max_monthly_messages === -1) return true;
+    return subscription.usage.monthly_messages_count < subscription.plan.limits.max_monthly_messages;
+  }
 
   static canUseFeature(subscription: VendorSubscription, featureId: string): boolean {
     // Enterprise plan has access to all features
@@ -323,7 +337,9 @@ export class SubscriptionAccess {
         if (limits.max_monthly_bookings === -1) return '';
         return `${usage.monthly_bookings_count}/${limits.max_monthly_bookings} monthly bookings`;
       
-
+      case 'messages':
+        if (limits.max_monthly_messages === -1) return '';
+        return `${usage.monthly_messages_count}/${limits.max_monthly_messages} monthly messages`;
       
       default:
         return '';
@@ -343,7 +359,9 @@ export class SubscriptionAccess {
         if (limits.max_monthly_bookings === -1) return false;
         return usage.monthly_bookings_count / limits.max_monthly_bookings >= threshold;
       
-
+      case 'messages':
+        if (limits.max_monthly_messages === -1) return false;
+        return usage.monthly_messages_count / limits.max_monthly_messages >= threshold;
       
       default:
         return false;

@@ -7,6 +7,7 @@ import {
   User,
   Mail,
   Phone,
+  MessageSquare,
   FileText,
   Send,
   Edit,
@@ -62,6 +63,7 @@ interface VendorBookingDetailsModalProps {
   onClose: () => void;
   onUpdateStatus?: (bookingId: string, newStatus: string, message?: string) => void;
   onSendQuote?: (booking: VendorBooking) => void;
+  onContactClient?: (booking: VendorBooking) => void;
 }
 
 const statusConfig = {
@@ -83,7 +85,8 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
   isOpen,
   onClose,
   onUpdateStatus,
-  onSendQuote
+  onSendQuote,
+  onContactClient
 }) => {
   const [activeTab, setActiveTab] = useState<'client' | 'event' | 'business'>('client');
 
@@ -316,6 +319,17 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
                   </div>
                   
                   <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
+                      <MessageSquare className="w-5 h-5 text-purple-500" />
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-600">Preferred Contact</p>
+                        <p className="font-medium text-gray-900 capitalize">
+                          {booking.preferredContactMethod || 'Email'}
+                        </p>
+                        <p className="text-sm text-gray-500">Primary communication method</p>
+                      </div>
+                    </div>
+
                     {booking.budgetRange && (
                       <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
                         <Target className="w-5 h-5 text-orange-500" />
@@ -331,13 +345,18 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
 
                 {/* Quick Actions */}
                 <div className="mt-6 flex gap-3">
+                  <button
+                    onClick={() => onContactClient?.(booking)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    Message Client
+                  </button>
                   <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                     <Phone className="w-4 h-4" />
                     Call Client
                   </button>
-                  <button 
-                    onClick={() => window.open(`mailto:${booking.contactEmail}?subject=Regarding your wedding booking&body=Hi ${booking.coupleName},%0D%0A%0D%0AThank you for your inquiry about our services.%0D%0A%0D%0ABest regards`)}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                  <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
                     <Mail className="w-4 h-4" />
                     Send Email
                   </button>
@@ -894,14 +913,20 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
           <div className="flex flex-col lg:flex-row gap-4 justify-between">
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => onContactClient?.(booking)}
+                className="px-4 py-2 bg-white border border-rose-200 text-rose-700 rounded-lg hover:bg-rose-50 transition-colors flex items-center gap-2 font-medium"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Message Client
+              </button>
+              
               <button className="px-4 py-2 bg-white border border-green-200 text-green-700 rounded-lg hover:bg-green-50 transition-colors flex items-center gap-2 font-medium">
                 <Phone className="w-4 h-4" />
                 Call Client
               </button>
               
-              <button 
-                onClick={() => window.open(`mailto:${booking.contactEmail}?subject=Regarding your wedding booking&body=Hi ${booking.coupleName},%0D%0A%0D%0AThank you for your inquiry about our services.%0D%0A%0D%0ABest regards`)}
-                className="px-4 py-2 bg-white border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2 font-medium">
+              <button className="px-4 py-2 bg-white border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2 font-medium">
                 <Mail className="w-4 h-4" />
                 Send Email
               </button>
