@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Search, 
   Download, 
@@ -9,21 +9,8 @@ import {
   TrendingUp, 
   Calendar, 
   Loader2,
-
-  MessageSquare,
-  Star,
-  DollarSign,
-  X,
   Filter,
-  RefreshCw,
-  Zap,
-  Clock,
-  User,
-  Phone,
-  Mail,
-  MapPin,
-  Eye,
-  MoreVertical
+  RefreshCw
 } from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { VendorBookingDetailsModal } from './components/VendorBookingDetailsModal';
@@ -31,10 +18,7 @@ import { SendQuoteModal } from './components/SendQuoteModal';
 
 // Import enhanced booking components
 import { 
-  EnhancedBookingCard,
-  EnhancedBookingList, 
-  EnhancedBookingStats,
-  type EnhancedBooking
+  EnhancedBookingCard
 } from '../../../../shared/components/bookings';
 
 // Import comprehensive booking API and types
@@ -45,9 +29,7 @@ import type {
 
 // Import unified mapping utilities
 import { 
-  mapVendorBookingToUI, 
   mapToUIBookingStats, 
-  mapToUIBookingsListResponse,
   mapToUIBookingsListResponseWithLookup
 } from '../../../../shared/utils/booking-data-mapping';
 import type {
@@ -65,19 +47,17 @@ import { formatPHP } from '../../../../utils/currency';
 // Import notification system
 import { useNotifications } from '../../../../shared/components/notifications/NotificationProvider';
 
+// Import Universal Quote Acceptance Service for cross-user sync
+import { UniversalQuoteAcceptanceService } from '../../../../shared/services/UniversalQuoteAcceptanceService';
+
+// Import Automated Booking Confirmation Service for notifications
+import { automatedBookingConfirmationService } from '../../../../shared/services/AutomatedBookingConfirmationService';
+
+
+
 type FilterStatus = 'all' | BookingStatus;
 
-// Real-time activity types
-interface LiveActivity {
-  id: string;
-  type: 'new_inquiry' | 'quote_viewed' | 'payment_made' | 'message_sent' | 'booking_update';
-  title: string;
-  description: string;
-  timestamp: string;
-  bookingId?: string;
-  avatar?: string;
-  status?: BookingStatus;
-}
+
 
 // Note: Vendors do NOT process payments - they only track payment status from clients
 // Payment receipts and processing are handled by individual/couple users only
@@ -88,6 +68,8 @@ export const VendorBookings: React.FC = () => {
   
   // Notification system
   const { showSuccess, showError, showInfo } = useNotifications();
+  
+
   
   console.log('🔧 [VendorBookings] NotificationProvider context is working!');
   
@@ -107,7 +89,6 @@ export const VendorBookings: React.FC = () => {
   
   // Enhanced UI state
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [liveActivities, setLiveActivities] = useState<LiveActivity[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [selectedServiceData, setSelectedServiceData] = useState<any>(null);
   
@@ -162,6 +143,31 @@ export const VendorBookings: React.FC = () => {
       clearInterval(pollInterval);
     };
   }, [loading, vendorId]);
+
+  // Listen for automated booking confirmations
+  useEffect(() => {
+    const cleanup = automatedBookingConfirmationService.onConfirmation((result) => {
+      console.log('🎉 [VendorBookings] Automated confirmation received:', result);
+      
+      if (result.success) {
+        showSuccess(
+          'Booking Auto-Confirmed!', 
+          `Booking ${result.bookingId} was automatically confirmed after downpayment. The client has been notified.`
+        );
+        
+        // Refresh bookings to show updated status
+        loadBookings(true);
+        loadStats();
+      } else {
+        showInfo(
+          'Confirmation Attempt', 
+          `Attempted to auto-confirm booking ${result.bookingId} but ${result.method} method was used. Please verify status manually.`
+        );
+      }
+    });
+
+    return cleanup;
+  }, [showSuccess, showInfo]);
 
 
 
@@ -219,8 +225,26 @@ export const VendorBookings: React.FC = () => {
         });
       }
       
-      setBookings(uiResponse.bookings);
-      setPagination(uiResponse.pagination);
+      // Apply localStorage quote acceptance status overrides for cross-user sync
+      const enhancedBookings = enhanceBookingsWithLocalStorageStatus(uiResponse.bookings);
+      
+      setBookings(enhancedBookings);
+      
+      // Normalize pagination data to match expected interface
+      if (uiResponse.pagination) {
+        const pag = uiResponse.pagination as any; // Type assertion for safe access
+        const normalizedPagination = {
+          current_page: pag.current_page || 1,
+          total_pages: pag.total_pages || 1,
+          total_items: pag.total_items || 0,
+          per_page: pag.per_page || pag.items_per_page || 10,
+          hasNext: pag.hasNext || pag.has_next_page || false,
+          hasPrev: pag.hasPrev || pag.has_prev_page || false
+        };
+        setPagination(normalizedPagination);
+      } else {
+        setPagination(null);
+      }
       
     } catch (error) {
       console.error('💥 [VendorBookings] Error loading bookings with comprehensive API:', error);
@@ -252,37 +276,116 @@ export const VendorBookings: React.FC = () => {
     }
   };
 
+  // Enhanced function to apply localStorage status overrides (quote acceptance + confirmation)
+  const enhanceBookingsWithLocalStorageStatus = (bookings: UIBooking[]): UIBooking[] => {
+    return bookings.map(booking => {
+      let enhancedBooking = { ...booking };
+      
+      // Extract quote amount from response message if it exists
+      if (booking.responseMessage && booking.responseMessage.includes('TOTAL:')) {
+        // Try multiple patterns for different currency formats (including decimals)
+        const patterns = [
+          /TOTAL:\s*₱([\d,]+\.?\d*)/,              // TOTAL: ₱2,016.00 or ₱15000
+          /TOTAL:\s*PHP\s*([\d,]+\.?\d*)/,         // TOTAL: PHP 2,016.00
+          /TOTAL:\s*([\d,]+\.?\d*)/,               // TOTAL: 2,016.00
+          /₱([\d,]+\.?\d*)\s*\|\s*Message:/,      // ₱2,016.00 | Message:
+          /₱([\d,]+\.?\d*)\s*\|\s*Valid until:/,  // ₱2,016.00 | Valid until:
+          /₱([\d,]+\.?\d*)(?:\s*\||\s*$)/         // ₱2,016.00 at end or before |
+        ];
+        
+        let quoteAmount = null;
+        for (const pattern of patterns) {
+          const match = booking.responseMessage.match(pattern);
+          if (match) {
+            // Parse as float to handle decimals, then convert to integer cents or round to nearest peso
+            const amountStr = match[1].replace(/,/g, '');
+            quoteAmount = Math.round(parseFloat(amountStr));
+            console.log(`🔍 [VendorBookings] Pattern "${pattern}" matched "${match[1]}" -> ${quoteAmount}`);
+            break;
+          }
+        }
+        
+        if (quoteAmount && quoteAmount > 0) {
+          enhancedBooking.quoteAmount = quoteAmount;
+          enhancedBooking.totalAmount = quoteAmount;
+          enhancedBooking.remainingBalance = quoteAmount - (booking.totalPaid || 0);
+          console.log(`💰 [VendorBookings] Extracted quote amount ₱${quoteAmount} for booking ${booking.id} from: "${booking.responseMessage}"`);
+        } else {
+          console.warn(`⚠️ [VendorBookings] Could not extract quote amount from response message for booking ${booking.id}:`);
+          console.warn(`⚠️ [VendorBookings] Response message: "${booking.responseMessage}"`);
+          console.warn(`⚠️ [VendorBookings] Parsed amount: ${quoteAmount}`);
+        }
+      }
+      
+      // Check if this booking has been confirmed in localStorage (highest priority)
+      const isBookingConfirmed = UniversalQuoteAcceptanceService.isBookingConfirmed(booking.id);
+      if (isBookingConfirmed) {
+        console.log(`✅ [VendorBookings] Applying localStorage booking confirmation for booking ${booking.id}`);
+        enhancedBooking.status = 'confirmed' as BookingStatus;
+      }
+      
+      // Check if this booking has been quote-accepted in localStorage
+      const isQuoteAccepted = UniversalQuoteAcceptanceService.isQuoteAccepted(booking.id);
+      if (isQuoteAccepted) {
+        console.log(`✅ [VendorBookings] Applying localStorage quote acceptance for booking ${booking.id}`);
+        enhancedBooking.status = 'quote_accepted' as BookingStatus;
+      }
+      
+      return enhancedBooking;
+    });
+  };
+
   const handleStatusUpdate = async (bookingId: string, newStatus: BookingStatus, responseMessage?: string) => {
     try {
       console.log('🔄 [VendorBookings] Updating booking status:', { bookingId, newStatus, responseMessage });
       
-      // Use appropriate API method based on status
-      switch (newStatus) {
-        case 'confirmed':
-          await bookingApiService.confirmBooking(bookingId);
-          break;
-        case 'completed':
-          await bookingApiService.markDelivered(bookingId, responseMessage);
-          break;
-        case 'quote_sent':
-        case 'quote_rejected':
-        case 'quote_accepted':
-        case 'in_progress':
-        case 'cancelled':
-        case 'downpayment_paid':
-        case 'paid_in_full':
-        case 'refunded':
-        case 'disputed':
-        case 'draft':
-        case 'quote_requested':
-          // Use the new updateBookingStatus method for all other status changes
-          console.log('💡 [VendorBookings] Using updateBookingStatus API for:', newStatus);
-          await bookingApiService.updateBookingStatus(bookingId, newStatus, responseMessage);
-          break;
-        default:
-          console.warn('⚠️ [VendorBookings] Status update not implemented for:', newStatus);
-          // Use generic status update as fallback
-          await bookingApiService.updateBookingStatus(bookingId, newStatus, responseMessage);
+      // Try API first, fall back to localStorage if it fails
+      try {
+        // Use appropriate API method based on status
+        switch (newStatus) {
+          case 'confirmed':
+            await bookingApiService.confirmBooking(bookingId);
+            break;
+          case 'completed':
+            await bookingApiService.markDelivered(bookingId, responseMessage);
+            break;
+          case 'quote_sent':
+          case 'quote_rejected':
+          case 'quote_accepted':
+          case 'in_progress':
+          case 'cancelled':
+          case 'downpayment_paid':
+          case 'paid_in_full':
+          case 'refunded':
+          case 'disputed':
+          case 'draft':
+          case 'quote_requested':
+            // Use the new updateBookingStatus method for all other status changes
+            console.log('💡 [VendorBookings] Using updateBookingStatus API for:', newStatus);
+            await bookingApiService.updateBookingStatus(bookingId, newStatus, responseMessage);
+            break;
+          default:
+            console.warn('⚠️ [VendorBookings] Status update not implemented for:', newStatus);
+            // Use generic status update as fallback
+            await bookingApiService.updateBookingStatus(bookingId, newStatus, responseMessage);
+        }
+        
+        console.log('✅ [VendorBookings] API status update successful');
+        
+      } catch (apiError) {
+        console.warn('⚠️ [VendorBookings] API failed, using localStorage fallback:', apiError);
+        
+        // Apply localStorage fallback based on status
+        if (newStatus === 'confirmed') {
+          UniversalQuoteAcceptanceService.confirmBooking(bookingId, vendorId, responseMessage);
+          showInfo('Status Updated (Offline)', 'Booking confirmed locally. Changes will sync when backend is available.');
+        } else if (newStatus === 'quote_accepted') {
+          UniversalQuoteAcceptanceService.acceptQuote(bookingId, 'vendor', responseMessage, vendorId);
+          showInfo('Status Updated (Offline)', 'Quote acceptance recorded locally. Changes will sync when backend is available.');
+        } else {
+          // For other statuses, we don't have localStorage fallback yet
+          throw apiError;
+        }
       }
       
       console.log('✅ [VendorBookings] Booking status updated successfully');
@@ -306,49 +409,28 @@ export const VendorBookings: React.FC = () => {
 
 
 
-  // Generate mock activities
-  const generateMockActivities = (): LiveActivity[] => {
-    const now = new Date();
-    return [
-      {
-        id: '1',
-        type: 'new_inquiry',
-        title: 'Sarah & Michael',
-        description: 'Viewed your photography portfolio',
-        timestamp: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
-        bookingId: 'booking-001',
-        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=32&h=32&fit=crop&crop=face'
-      },
-      {
-        id: '2',
-        type: 'quote_viewed',
-        title: 'Jennifer & David',
-        description: 'Opened your quote for wedding package',
-        timestamp: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
-        bookingId: 'booking-002',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=32&h=32&fit=crop&crop=face'
-      },
-      {
-        id: '3',
-        type: 'payment_made',
-        title: 'Rodriguez Wedding',
-        description: 'Downpayment processed successfully',
-        timestamp: new Date(now.getTime() - 45 * 60 * 1000).toISOString(),
-        status: 'downpayment_paid'
-      }
-    ];
-  };
 
 
 
-  // Manual refresh function
+
+  // Manual refresh function with localStorage sync status
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
       await loadBookings();
       await loadStats();
       setLastUpdate(new Date());
-      showSuccess('Data Refreshed', 'All booking data has been updated');
+      
+      // Check how many bookings have localStorage quote acceptance overrides
+      const acceptedQuotes = UniversalQuoteAcceptanceService.getAcceptedQuotes();
+      const currentBookingIds = bookings.map(b => b.id.toString());
+      const relevantAcceptedQuotes = acceptedQuotes.filter((q: any) => currentBookingIds.includes(q.bookingId));
+      
+      if (relevantAcceptedQuotes.length > 0) {
+        showSuccess('Data Refreshed', `All booking data updated. ${relevantAcceptedQuotes.length} quote acceptance(s) synced from localStorage.`);
+      } else {
+        showSuccess('Data Refreshed', 'All booking data has been updated');
+      }
     } catch (error) {
       showError('Refresh Failed', 'Failed to refresh data. Please try again.');
     } finally {
@@ -407,6 +489,8 @@ export const VendorBookings: React.FC = () => {
       return null;
     }
   };
+
+
 
   // VENDOR UTILITY FUNCTIONS - No payment processing for vendors
   const formatCurrency = (amount?: number) => {
@@ -479,63 +563,7 @@ export const VendorBookings: React.FC = () => {
 
 
 
-          {/* Live Activity Feed */}
-          {liveActivities.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className="bg-white/80 backdrop-blur-sm border border-rose-200/50 rounded-2xl p-6 mb-8 shadow-lg"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-green-500" />
-                  <h3 className="font-semibold text-gray-900">Live Activity</h3>
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                    Real-time
-                  </span>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                {liveActivities.slice(0, 3).map((activity, index) => (
-                  <motion.div
-                    key={activity.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-rose-50/30 rounded-xl"
-                  >
-                    {activity.avatar ? (
-                      <img
-                        src={activity.avatar}
-                        alt=""
-                        className="w-8 h-8 rounded-full"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${activity.title}&background=f3f4f6&color=374151&size=32`;
-                        }}
-                      />
-                    ) : (
-                      <div className="w-8 h-8 bg-gradient-to-r from-rose-400 to-pink-400 rounded-full flex items-center justify-center">
-                        <User className="h-4 w-4 text-white" />
-                      </div>
-                    )}
-                    
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 text-sm">{activity.title}</p>
-                      <p className="text-gray-600 text-sm">{activity.description}</p>
-                    </div>
-                    
-                    <div className="text-right">
-                      <p className="text-gray-400 text-xs">
-                        {new Date(activity.timestamp).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
+
 
           {/* Enhanced Stats Cards */}
           {stats && (
@@ -557,12 +585,12 @@ export const VendorBookings: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <span className="text-3xl font-bold text-gray-900 group-hover:text-rose-600 transition-colors duration-300">
-                        {stats.totalBookings}
+                        {stats.totalBookings || 0}
                       </span>
-                      <div className="text-xs text-green-600 font-medium">+12% this month</div>
+                      <div className="text-xs text-green-600 font-medium">Total Bookings</div>
                     </div>
                   </div>
-                  <h3 className="text-gray-600 font-medium group-hover:text-gray-900 transition-colors duration-300">Total Bookings</h3>
+                  <h3 className="text-gray-600 font-medium group-hover:text-gray-900 transition-colors duration-300">All Bookings</h3>
                   <div className="mt-2 w-full bg-gray-200 rounded-full h-1">
                     <div className="bg-gradient-to-r from-rose-500 to-pink-500 h-1 rounded-full w-3/4"></div>
                   </div>
@@ -581,9 +609,9 @@ export const VendorBookings: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <span className="text-3xl font-bold text-gray-900 group-hover:text-orange-600 transition-colors duration-300">
-                        {stats.inquiries}
+                        {stats.inquiries || 0}
                       </span>
-                      <div className="text-xs text-orange-600 font-medium">Needs attention</div>
+                      <div className="text-xs text-orange-600 font-medium">Pending</div>
                     </div>
                   </div>
                   <h3 className="text-gray-600 font-medium group-hover:text-gray-900 transition-colors duration-300">New Inquiries</h3>
@@ -605,7 +633,7 @@ export const VendorBookings: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <span className="text-3xl font-bold text-gray-900 group-hover:text-green-600 transition-colors duration-300">
-                        {stats.fullyPaidBookings}
+                        {stats.fullyPaidBookings || 0}
                       </span>
                       <div className="text-xs text-green-600 font-medium">Completed</div>
                     </div>
@@ -815,29 +843,64 @@ export const VendorBookings: React.FC = () => {
                           className="group"
                         >
                           <EnhancedBookingCard
-                            booking={booking}
-                            onViewDetails={(booking: UIBooking) => {
-                              setSelectedBooking(mapVendorBookingToUI(booking));
+                            booking={(() => {
+                              // Debug log for price issues
+                              console.log(`🔍 [VendorBookings] Card data for booking ${booking.id}:`, {
+                                quoteAmount: booking.quoteAmount,
+                                totalAmount: booking.totalAmount,
+                                status: booking.status,
+                                responseMessage: booking.responseMessage ? booking.responseMessage.substring(0, 100) + '...' : 'N/A'
+                              });
+                              
+                              return {
+                                id: booking.id,
+                                serviceName: booking.serviceType,
+                                serviceType: booking.serviceType,
+                                vendorName: booking.vendorName,
+                                vendorBusinessName: booking.vendorName,
+                                vendorPhone: booking.contactPhone,
+                                vendorEmail: booking.contactEmail,
+                                coupleName: booking.coupleName,
+                                clientName: booking.coupleName,
+                                eventDate: booking.eventDate,
+                                formattedEventDate: new Date(booking.eventDate).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                }),
+                                eventLocation: booking.eventLocation || 'TBD',
+                                status: booking.status,
+                                totalAmount: booking.quoteAmount || booking.totalAmount || 0,
+                                downpaymentAmount: booking.downpaymentAmount || 0,
+                                remainingBalance: (booking.quoteAmount || booking.totalAmount || 0) - (booking.totalPaid || 0),
+                                paymentProgress: booking.paymentProgressPercentage,
+                                createdAt: booking.createdAt,
+                                updatedAt: booking.updatedAt,
+                                specialRequests: booking.specialRequests,
+                                notes: booking.responseMessage,
+                                bookingReference: `WB-${booking.id}`,
+                                daysUntilEvent: Math.ceil((new Date(booking.eventDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                              };
+                            })()}
+                            userType="vendor"
+                            onViewDetails={() => {
+                              setSelectedBooking(booking);
                               setShowDetails(true);
                             }}
-                            onUpdateStatus={(bookingId: string, newStatus: string, message?: string) => {
-                              handleStatusUpdate(bookingId, newStatus as BookingStatus, message);
-                            }}
-                            onSendQuote={async (booking: UIBooking) => {
-                              const mappedBooking = mapVendorBookingToUI(booking);
-                              setSelectedBooking(mappedBooking);
+                            onSendQuote={async () => {
+                              setSelectedBooking(booking);
                               
                               // Fetch service data for prefilling
-                              const serviceData = await fetchServiceDataForQuote(mappedBooking);
+                              const serviceData = await fetchServiceDataForQuote(booking);
                               setSelectedServiceData(serviceData);
                               
                               setShowQuoteModal(true);
                             }}
-                            onContactClient={(booking: UIBooking) => {
+                            onContact={() => {
                               // Handle contact client action
                               window.open(`mailto:${booking.contactEmail}?subject=Regarding your wedding booking&body=Hi ${booking.coupleName},%0D%0A%0D%0AThank you for your inquiry about our services.%0D%0A%0D%0ABest regards`);
                             }}
-                            viewMode="list"
+
                           />
                           
                           {/* Enhanced hover overlay */}
@@ -863,7 +926,11 @@ export const VendorBookings: React.FC = () => {
                           </p>
                           
                           {/* Results per page selector */}
-                          <select className="text-sm bg-white border border-rose-200 rounded-lg px-2 py-1">
+                          <select 
+                            className="text-sm bg-white border border-rose-200 rounded-lg px-2 py-1"
+                            title="Items per page"
+                            aria-label="Items per page"
+                          >
                             <option value="10">10 per page</option>
                             <option value="25">25 per page</option>
                             <option value="50">50 per page</option>
@@ -979,8 +1046,8 @@ export const VendorBookings: React.FC = () => {
           setShowQuoteModal(true);
         }}
         onContactClient={(booking) => {
-          // Implement client contact functionality
-          console.log('Contact client:', booking.coupleName);
+          // Open email client for vendor-client communication
+          window.open(`mailto:${booking.contactEmail}?subject=Regarding your wedding booking&body=Hi ${booking.coupleName},%0D%0A%0D%0AThank you for your inquiry about our services.%0D%0A%0D%0ABest regards`);
         }}
       />
 
@@ -1006,7 +1073,7 @@ export const VendorBookings: React.FC = () => {
                 `Subtotal: ${formatPHP(quoteData.subtotal)}`,
                 quoteData.tax > 0 ? `Tax: ${formatPHP(quoteData.tax)}` : null,
                 quoteData.discount > 0 ? `Discount: -${formatPHP(quoteData.discount)}` : null,
-                `TOTAL: ${formatPHP(quoteData.total)}`,
+                `TOTAL: ₱${quoteData.total}`,  // Ensure consistent format for extraction
                 quoteData.notes ? `Notes: ${quoteData.notes}` : null,
                 `Valid until: ${quoteData.validUntil}`,
                 quoteData.terms ? `Terms: ${quoteData.terms}` : null
@@ -1019,6 +1086,22 @@ export const VendorBookings: React.FC = () => {
                 console.log('🔄 [VendorBookings] Updating booking status to quote_sent with quote details...');
                 await handleStatusUpdate(selectedBooking.id, 'quote_sent', quoteSummary);
                 console.log('✅ [VendorBookings] Quote sent and booking status updated successfully');
+                
+                // Update the local booking data with the quote amount
+                setBookings(prevBookings => 
+                  prevBookings.map(b => 
+                    b.id === selectedBooking.id 
+                      ? { 
+                          ...b, 
+                          status: 'quote_sent' as BookingStatus,
+                          quoteAmount: quoteData.total,
+                          totalAmount: quoteData.total,
+                          remainingBalance: quoteData.total - (b.totalPaid || 0),
+                          responseMessage: quoteSummary
+                        }
+                      : b
+                  )
+                );
                 
                 showSuccess(
                   'Quote Sent Successfully!', 

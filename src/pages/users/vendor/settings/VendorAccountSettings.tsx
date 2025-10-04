@@ -18,14 +18,12 @@ import {
 interface NotificationSettings {
   emailNotifications: {
     newBookings: boolean;
-    messages: boolean;
     reviews: boolean;
     payments: boolean;
     marketing: boolean;
   };
   pushNotifications: {
     newBookings: boolean;
-    messages: boolean;
     reviews: boolean;
     urgentAlerts: boolean;
   };
@@ -53,14 +51,12 @@ export const VendorAccountSettings: React.FC = () => {
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
     emailNotifications: {
       newBookings: true,
-      messages: true,
       reviews: true,
       payments: true,
       marketing: false
     },
     pushNotifications: {
       newBookings: true,
-      messages: true,
       reviews: false,
       urgentAlerts: true
     },
@@ -233,13 +229,6 @@ export const VendorAccountSettings: React.FC = () => {
                   icon={<Calendar className="h-5 w-5 text-blue-600" />}
                 />
                 
-                <NotificationToggle
-                  label="Messages"
-                  description="Receive emails for new client messages"
-                  checked={notificationSettings.emailNotifications.messages}
-                  onChange={(value) => handleNotificationChange('emailNotifications', 'messages', value)}
-                  icon={<Mail className="h-5 w-5 text-green-600" />}
-                />
                 
                 <NotificationToggle
                   label="Reviews"
@@ -288,13 +277,6 @@ export const VendorAccountSettings: React.FC = () => {
                   icon={<Calendar className="h-5 w-5 text-blue-600" />}
                 />
                 
-                <NotificationToggle
-                  label="Messages"
-                  description="Real-time message notifications"
-                  checked={notificationSettings.pushNotifications.messages}
-                  onChange={(value) => handleNotificationChange('pushNotifications', 'messages', value)}
-                  icon={<Mail className="h-5 w-5 text-green-600" />}
-                />
                 
                 <NotificationToggle
                   label="Reviews"
