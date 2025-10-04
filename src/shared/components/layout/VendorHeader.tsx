@@ -11,6 +11,7 @@ import {
   Store,
   BarChart3,
   Calendar,
+  MessageSquare,
   Wallet,
   Briefcase,
   Settings,
@@ -140,6 +141,7 @@ export const VendorHeader: React.FC = () => {
     { name: 'Services', href: '/vendor/services', icon: Briefcase },
     { name: 'Analytics', href: '/vendor/analytics', icon: BarChart3 },
     { name: 'Finances', href: '/vendor/finances', icon: Wallet },
+    { name: 'Messages', href: '/vendor/messages', icon: MessageSquare },
   ];
 
   const handleLogout = () => {
@@ -304,11 +306,13 @@ export const VendorHeader: React.FC = () => {
                                 notification.type === 'booking_inquiry' ? 'bg-blue-100 text-blue-600' :
                                 notification.type === 'quote_accepted' ? 'bg-green-100 text-green-600' :
                                 notification.type === 'payment_received' ? 'bg-purple-100 text-purple-600' :
+                                notification.type === 'message_received' ? 'bg-yellow-100 text-yellow-600' :
                                 'bg-gray-100 text-gray-600'
                               }`}>
                                 {notification.type === 'booking_inquiry' && <Calendar className="h-4 w-4" />}
                                 {notification.type === 'quote_accepted' && <CheckCircle className="h-4 w-4" />}
                                 {notification.type === 'payment_received' && <DollarSign className="h-4 w-4" />}
+                                {notification.type === 'message_received' && <MessageSquare className="h-4 w-4" />}
                                 {notification.type === 'review_received' && <Star className="h-4 w-4" />}
                               </div>
                               

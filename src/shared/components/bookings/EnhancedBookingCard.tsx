@@ -15,7 +15,6 @@ import {
   DollarSign
 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
-import { formatPHP } from '../../../utils/currency';
 
 export interface EnhancedBooking {
   id: string;
@@ -274,7 +273,7 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
           <div className="relative flex items-center justify-between gap-3">
             <div className="flex-1">
               <div className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                {booking.totalAmount ? formatPHP(booking.totalAmount) : '₱0.00'}
+                ₱{booking.totalAmount?.toLocaleString() || '0'}
               </div>
               <div className="text-xs text-gray-500 font-medium">Total Amount</div>
             </div>
@@ -338,50 +337,25 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
             </button>
           )}
           
-          {/* Payment buttons for quote accepted/confirmed bookings */}
-          {userType === 'individual' && (booking.status === 'quote_accepted' || booking.status === 'confirmed') && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => onPayment?.(booking, 'downpayment')}
-                className="px-3 py-2 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 hover:from-emerald-600 hover:via-green-600 hover:to-emerald-700 text-white rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden group text-sm"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <span className="relative z-10">Pay Deposit</span>
-              </button>
-              <button
-                onClick={() => onPayment?.(booking, 'full_payment')}
-                className="px-3 py-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 hover:from-blue-600 hover:via-indigo-600 hover:to-blue-700 text-white rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden group text-sm"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <span className="relative z-10">Pay Full</span>
-              </button>
-            </div>
-          )}
-          
-          {/* Balance payment for downpayment_paid bookings */}
-          {userType === 'individual' && booking.status === 'downpayment_paid' && (
+          {userType === 'individual' && (booking.status === 'confirmed' || booking.status === 'downpayment_paid') && (
             <button
-              onClick={() => onPayment?.(booking, 'remaining_balance')}
+              onClick={() => onPayment?.(booking, booking.status === 'confirmed' ? 'downpayment' : 'remaining_balance')}
               className="px-3 py-2 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 hover:from-emerald-600 hover:via-green-600 hover:to-emerald-700 text-white rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden group text-sm"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <span className="relative z-10">Pay Balance</span>
+              <span className="relative z-10">{booking.status === 'confirmed' ? 'Pay Deposit' : 'Pay Balance'}</span>
             </button>
           )}
           
-          {          /* Enhanced Contact & Message Buttons */}
-          <div className="flex gap-2">
-            {onContact && (booking.vendorPhone || booking.vendorEmail) && (
-              <button
-                onClick={() => onContact?.(booking)}
-                className="p-2 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 backdrop-blur-sm border border-white/50"
-                title="Contact client"
-              >
-                {booking.vendorPhone ? <Phone className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
-              </button>
-            )}
-
-          </div>
+          {/* Enhanced Contact Button */}
+          {onContact && (booking.vendorPhone || booking.vendorEmail) && (
+            <button
+              onClick={() => onContact?.(booking)}
+              className="p-2 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 backdrop-blur-sm border border-white/50"
+            >
+              {booking.vendorPhone ? <Phone className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
+            </button>
+          )}
         </div>
       </div>
     </motion.div>

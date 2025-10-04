@@ -39,11 +39,6 @@ import { IndividualMessages } from '../pages/users/individual/messages/Individua
 import { WeddingTimeline } from '../pages/users/individual/timeline/WeddingTimeline';
 import { ForYouPage } from '../pages/users/individual/foryou/ForYouPage';
 
-// Payment Components
-import { PaymentSimulator } from '../shared/components/payment/PaymentSimulator';
-import { PaymentCallback } from '../shared/components/payment/PaymentCallback';
-import { PaymentDemo } from '../pages/shared/PaymentDemo';
-
 // Vendor Pages
 import { VendorDashboard } from '../pages/users/vendor/dashboard';
 import { VendorDashboardEnhanced } from '../pages/users/vendor/dashboard/VendorDashboardEnhanced';
@@ -52,7 +47,7 @@ import { VendorProfile } from '../pages/users/vendor/profile';
 import { VendorServices } from '../pages/users/vendor/services';
 import { VendorAnalytics } from '../pages/users/vendor/analytics';
 import { VendorFinances } from '../pages/users/vendor/finances';
-
+import { VendorMessages } from '../pages/users/vendor/messages';
 import { VendorMarketInsights } from '../pages/users/vendor/market-insights';
 import { VendorFeaturedListings } from '../pages/users/vendor/featured';
 import { VendorSEO } from '../pages/users/vendor/seo';
@@ -72,11 +67,11 @@ import { SubscriptionProvider } from '../shared/contexts/SubscriptionContext';
 
 // Universal Messaging System
 import { UniversalMessagingProvider } from '../shared/contexts/UniversalMessagingContext';
-import { GlobalMessengerProvider } from '../shared/contexts/GlobalMessengerContext';
 
 // Notification System
 import { NotificationProvider } from '../shared/components/notifications/NotificationProvider';
-import { ConditionalMessaging } from '../components/ConditionalMessaging';
+import { UniversalFloatingChat } from '../shared/components/messaging/UniversalFloatingChat';
+import { UniversalFloatingChatButton } from '../shared/components/messaging/UniversalFloatingChatButton';
 
 // Debug component
 import { RoleDebugger } from '../components/RoleDebugger';
@@ -86,9 +81,8 @@ export const AppRouter: React.FC = () => {
     <AuthProvider>
       <SubscriptionProvider>
         <NotificationProvider>
-          <GlobalMessengerProvider>
-            <UniversalMessagingProvider>
-              <Router>
+          <UniversalMessagingProvider>
+          <Router>
           <div className="min-h-screen flex flex-col">
             <RoleDebugger />
             <Routes>
@@ -230,7 +224,11 @@ export const AppRouter: React.FC = () => {
                 <VendorFinances />
               </ProtectedRoute>
             } />
-
+            <Route path="/vendor/messages" element={
+              <ProtectedRoute requireAuth={true}>
+                <VendorMessages />
+              </ProtectedRoute>
+            } />
             <Route path="/vendor/market-insights" element={
               <ProtectedRoute requireAuth={true}>
                 <VendorMarketInsights />
@@ -359,11 +357,6 @@ export const AppRouter: React.FC = () => {
               </ProtectedRoute>
             } />
             
-            {/* Payment Routes */}
-            <Route path="/payment-simulator/:method" element={<PaymentSimulator />} />
-            <Route path="/payment-callback" element={<PaymentCallback />} />
-            <Route path="/payment-demo" element={<PaymentDemo />} />
-            
             {/* Legacy redirect routes */}
             <Route path="/couples" element={<Navigate to="/individual" replace />} />
             <Route path="/couples/services" element={<Navigate to="/individual/services" replace />} />
@@ -373,12 +366,12 @@ export const AppRouter: React.FC = () => {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           
-          {/* Global Floating Chat Components - Disabled for Vendors */}
-          <ConditionalMessaging />
+          {/* Universal Floating Chat Components */}
+          <UniversalFloatingChatButton />
+          <UniversalFloatingChat />
         </div>
       </Router>
-            </UniversalMessagingProvider>
-          </GlobalMessengerProvider>
+          </UniversalMessagingProvider>
         </NotificationProvider>
       </SubscriptionProvider>
     </AuthProvider>
