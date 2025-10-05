@@ -284,6 +284,621 @@ app.get('/api/bookings/couple/:coupleId', async (req, res) => {
   }
 });
 
+// =============================================================================
+// AVAILABILITY ENDPOINTS
+// =============================================================================
+
+// Note: Using direct database queries instead of availability service to avoid import issues
+
+// Check vendor availability for a specific date
+app.post('/api/availability/check', async (req, res) => {
+  try {
+    const { vendorId, date } = req.body;
+    
+    if (!vendorId || !date) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        message: 'vendorId and date are required'
+      });
+    }
+
+    // Check if date is a valid format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({
+        error: 'Invalid date format',
+        message: 'Date must be in YYYY-MM-DD format'
+      });
+    }
+
+    // First check if vendor has set this as an off day
+    const query = `
+      SELECT * FROM vendor_off_days 
+      WHERE vendor_id = $1 AND date = $2 AND is_active = true
+    `;
+    
+    const offDayResult = await db.query(query, [vendorId, date]);
+    
+    if (offDayResult.rows.length > 0) {
+      return res.json({
+        available: false,
+        reason: 'off_day',
+        message: offDayResult.rows[0].reason || 'Vendor is not available on this date',
+        vendorId,
+        date
+      });
+    }
+
+    // If no off day found, check availability table
+    const availabilityQuery = `
+      SELECT * FROM vendor_availability 
+      WHERE vendor_id = $1 AND date = $2
+    `;
+    
+    const availabilityResult = await db.query(availabilityQuery, [vendorId, date]);
+    
+    if (availabilityResult.rows.length > 0) {
+      const availability = availabilityResult.rows[0];
+      return res.json({
+        available: availability.is_available,
+        reason: availability.reason || (availability.is_available ? 'available' : 'not_available'),
+        vendorId,
+        date,
+        maxBookings: availability.max_bookings,
+        currentBookings: availability.current_bookings
+      });
+    }
+
+    // If no specific availability record, assume available
+    res.json({
+      available: true,
+      reason: 'available',
+      vendorId,
+      date
+    });
+
+  } catch (error) {
+    console.error('❌ [Availability] Error checking availability:', error);
+    res.status(500).json({
+      error: 'Failed to check availability',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get vendor calendar (availability + off days for date range)
+app.get('/api/availability/calendar/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const { start, end } = req.query;
+
+    if (!start || !end) {
+      return res.status(400).json({
+        error: 'Missing date range',
+        message: 'start and end query parameters are required (YYYY-MM-DD format)'
+      });
+    }
+
+    // Get availability and off days for the date range
+    const query = `
+      SELECT 
+        date,
+        CASE 
+          WHEN od.id IS NOT NULL THEN false
+          WHEN va.is_available IS NOT NULL THEN va.is_available
+          ELSE true
+        END as is_available,
+        COALESCE(od.reason, va.reason, 'available') as reason,
+        va.max_bookings,
+        va.current_bookings
+      FROM generate_series($2::date, $3::date, '1 day') AS date
+      LEFT JOIN vendor_availability va ON va.vendor_id = $1 AND va.date = date
+      LEFT JOIN vendor_off_days od ON od.vendor_id = $1 AND od.date = date AND od.is_active = true
+      ORDER BY date
+    `;
+
+    const result = await db.query(query, [vendorId, start, end]);
+    
+    res.json({
+      vendorId,
+      startDate: start,
+      endDate: end,
+      availability: result.rows.map(row => ({
+        date: row.date.toISOString().split('T')[0],
+        isAvailable: row.is_available,
+        reason: row.reason,
+        maxBookings: row.max_bookings,
+        currentBookings: row.current_bookings
+      }))
+    });
+
+  } catch (error) {
+    console.error('❌ [Availability] Error getting calendar:', error);
+    res.status(500).json({
+      error: 'Failed to get calendar',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Set vendor off days
+app.post('/api/availability/off-days', async (req, res) => {
+  try {
+    const { vendorId, offDays } = req.body;
+
+    if (!vendorId || !offDays || !Array.isArray(offDays)) {
+      return res.status(400).json({
+        error: 'Invalid request',
+        message: 'vendorId and offDays array are required'
+      });
+    }
+
+    // Insert off days
+    const insertPromises = offDays.map(offDay => {
+      const { date, reason, isRecurring, recurringPattern, recurringEndDate } = offDay;
+      
+      const query = `
+        INSERT INTO vendor_off_days (
+          vendor_id, date, reason, is_recurring, recurring_pattern, recurring_end_date, is_active
+        ) VALUES ($1, $2, $3, $4, $5, $6, true)
+        ON CONFLICT (vendor_id, date) 
+        DO UPDATE SET 
+          reason = EXCLUDED.reason,
+          is_recurring = EXCLUDED.is_recurring,
+          recurring_pattern = EXCLUDED.recurring_pattern,
+          recurring_end_date = EXCLUDED.recurring_end_date,
+          is_active = true,
+          updated_at = CURRENT_TIMESTAMP
+        RETURNING *
+      `;
+      
+      return db.query(query, [
+        vendorId, 
+        date, 
+        reason || 'Off day', 
+        isRecurring || false,
+        recurringPattern || null,
+        recurringEndDate || null
+      ]);
+    });
+
+    const results = await Promise.all(insertPromises);
+    
+    res.json({
+      success: true,
+      message: 'Off days set successfully',
+      offDays: results.map(result => result.rows[0])
+    });
+
+  } catch (error) {
+    console.error('❌ [Availability] Error setting off days:', error);
+    res.status(500).json({
+      error: 'Failed to set off days',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get vendor off days
+app.get('/api/availability/off-days/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+
+    const query = `
+      SELECT * FROM vendor_off_days 
+      WHERE vendor_id = $1 AND is_active = true
+      ORDER BY date ASC
+    `;
+
+    const result = await db.query(query, [vendorId]);
+    
+    res.json({
+      vendorId,
+      offDays: result.rows.map(row => ({
+        id: row.id,
+        vendorId: row.vendor_id,
+        date: row.date,
+        reason: row.reason,
+        isRecurring: row.is_recurring,
+        recurringPattern: row.recurring_pattern,
+        recurringEndDate: row.recurring_end_date,
+        createdAt: row.created_at
+      }))
+    });
+
+  } catch (error) {
+    console.error('❌ [Availability] Error getting off days:', error);
+    res.status(500).json({
+      error: 'Failed to get off days',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Remove vendor off day
+app.delete('/api/availability/off-days/:offDayId', async (req, res) => {
+  try {
+    const { offDayId } = req.params;
+
+    const query = `
+      UPDATE vendor_off_days 
+      SET is_active = false, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `;
+
+    const result = await db.query(query, [offDayId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Off day not found',
+        message: `Off day with ID ${offDayId} not found`
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Off day removed successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ [Availability] Error removing off day:', error);
+    res.status(500).json({
+      error: 'Failed to remove off day',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// DSS ENDPOINTS
+// Decision Support System endpoints that integrate with availability data
+
+// Get all vendors and services for DSS analysis
+app.get('/api/dss/data', async (req, res) => {
+  try {
+    console.log('📊 [DSS] Fetching vendors and services data...');
+
+    // Fetch vendors
+    const vendorsQuery = `
+      SELECT 
+        id,
+        name as "businessName",
+        category as "businessType", 
+        description,
+        rating,
+        review_count as "reviewCount",
+        location,
+        price_range as "priceRange",
+        starting_price as "startingPrice",
+        years_experience as "yearsExperience",
+        verified,
+        portfolio_images as "portfolioImages",
+        portfolio_url as "portfolioUrl",
+        instagram_url as "instagramUrl", 
+        website_url as "websiteUrl",
+        profile_image as "profileImage",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      FROM vendors 
+      WHERE verified = true 
+      ORDER BY rating DESC
+    `;
+
+    const vendorsResult = await db.query(vendorsQuery);
+    const vendors = vendorsResult.rows.map(vendor => ({
+      ...vendor,
+      portfolioImages: Array.isArray(vendor.portfolioImages) ? vendor.portfolioImages : 
+        vendor.portfolioImages ? [vendor.portfolioImages] : []
+    }));
+
+    // Fetch services  
+    const servicesQuery = `
+      SELECT 
+        id,
+        vendor_id as "vendorId",
+        name,
+        title,
+        description, 
+        category,
+        price,
+        images,
+        featured,
+        is_active as "isActive",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      FROM services
+      WHERE is_active = true
+      ORDER BY featured DESC, price ASC
+    `;
+
+    const servicesResult = await db.query(servicesQuery);
+    const services = servicesResult.rows.map(service => ({
+      ...service,
+      images: Array.isArray(service.images) ? service.images :
+        service.images ? [service.images] : []
+    }));
+
+    console.log('✅ [DSS] Data fetched successfully:', {
+      vendors: vendors.length,
+      services: services.length
+    });
+
+    res.json({
+      vendors,
+      services,
+      success: true,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ [DSS] Error fetching data:', error);
+    res.status(500).json({
+      error: 'Failed to fetch DSS data',
+      details: error.message,
+      success: false
+    });
+  }
+});
+
+// Generate DSS recommendations with availability filtering
+app.post('/api/dss/recommendations', async (req, res) => {
+  try {
+    const { budget, location, weddingDate, guestCount, priorities, categories, priceRange } = req.body;
+    
+    console.log('🧠 [DSS] Generating recommendations with params:', {
+      budget,
+      location,
+      weddingDate,
+      guestCount,
+      priorities: priorities?.length || 0,
+      categories: categories?.length || 0,
+      priceRange
+    });
+
+    // First, get all vendors and services
+    const vendorsQuery = `
+      SELECT 
+        id,
+        name as "businessName",
+        category as "businessType", 
+        description,
+        rating,
+        review_count as "reviewCount",
+        location,
+        price_range as "priceRange",
+        starting_price as "startingPrice",
+        years_experience as "yearsExperience",
+        verified,
+        portfolio_images as "portfolioImages",
+        portfolio_url as "portfolioUrl",
+        instagram_url as "instagramUrl", 
+        website_url as "websiteUrl",
+        profile_image as "profileImage",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      FROM vendors 
+      WHERE verified = true 
+      ORDER BY rating DESC
+    `;
+
+    const vendorsResult = await db.query(vendorsQuery);
+    const allVendors = vendorsResult.rows.map(vendor => ({
+      ...vendor,
+      portfolioImages: Array.isArray(vendor.portfolioImages) ? vendor.portfolioImages : 
+        vendor.portfolioImages ? [vendor.portfolioImages] : []
+    }));
+
+    const servicesQuery = `
+      SELECT 
+        id,
+        vendor_id as "vendorId",
+        name,
+        title,
+        description, 
+        category,
+        price,
+        images,
+        featured,
+        is_active as "isActive",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      FROM services
+      WHERE is_active = true
+      ORDER BY featured DESC, price ASC
+    `;
+
+    const servicesResult = await db.query(servicesQuery);
+    const allServices = servicesResult.rows.map(service => ({
+      ...service,
+      images: Array.isArray(service.images) ? service.images :
+        service.images ? [service.images] : []
+    }));
+
+    // Filter out unavailable vendors if wedding date is provided
+    let availableVendorIds = new Set(allVendors.map(v => v.id));
+    
+    if (weddingDate) {
+      console.log('🗓️ [DSS] Filtering by availability for date:', weddingDate);
+      
+      const dateStr = new Date(weddingDate).toISOString().split('T')[0];
+      
+      // Check for vendors with off days on the wedding date
+      const offDaysQuery = `
+        SELECT DISTINCT vendor_id 
+        FROM vendor_off_days 
+        WHERE date = $1 AND is_recurring = false
+        UNION
+        SELECT DISTINCT vendor_id 
+        FROM vendor_off_days 
+        WHERE is_recurring = true 
+        AND (
+          EXTRACT(DOW FROM $1::date) = EXTRACT(DOW FROM date::date) OR
+          TO_CHAR($1::date, 'MM-DD') = TO_CHAR(date::date, 'MM-DD')
+        )
+      `;
+      
+      const offDaysResult = await db.query(offDaysQuery, [dateStr]);
+      const unavailableVendorIds = new Set(offDaysResult.rows.map(row => row.vendor_id));
+      
+      // Remove unavailable vendors
+      availableVendorIds = new Set([...availableVendorIds].filter(id => !unavailableVendorIds.has(id)));
+      
+      console.log('📊 [DSS] Availability filtering results:', {
+        totalVendors: allVendors.length,
+        unavailableVendors: unavailableVendorIds.size,
+        availableVendors: availableVendorIds.size
+      });
+    }
+
+    // Filter vendors and services by availability
+    const availableVendors = allVendors.filter(vendor => availableVendorIds.has(vendor.id));
+    const availableServices = allServices.filter(service => availableVendorIds.has(service.vendorId));
+
+    // Generate recommendations using available vendors/services
+    const recommendations: any[] = [];
+    
+    for (const service of availableServices) {
+      const vendor = availableVendors.find(v => v.id === service.vendorId);
+      if (!vendor) continue;
+
+      // Calculate recommendation score
+      let score = 50; // Base score
+      const reasons: string[] = [];
+
+      // Category matching
+      if (categories && categories.length > 0) {
+        if (categories.includes(service.category.toLowerCase())) {
+          score += 20;
+          reasons.push(`Matches your ${service.category} category preference`);
+        }
+      }
+
+      // Budget scoring
+      if (budget && service.price) {
+        const budgetPercentage = (service.price / budget) * 100;
+        if (budgetPercentage <= 80) {
+          score += 15;
+          reasons.push('Within your budget');
+        } else if (budgetPercentage <= 100) {
+          score += 5;
+          reasons.push('Close to your budget limit');
+        } else {
+          score -= 10;
+          reasons.push('Above your budget');
+        }
+      }
+
+      // Price range filtering
+      if (priceRange && service.price) {
+        if (service.price >= priceRange[0] && service.price <= priceRange[1]) {
+          score += 10;
+          reasons.push('Within your price range');
+        }
+      }
+
+      // Location matching
+      if (location && vendor.location) {
+        if (vendor.location.toLowerCase().includes(location.toLowerCase())) {
+          score += 15;
+          reasons.push('Located in your preferred area');
+        }
+      }
+
+      // Rating bonus
+      if (vendor.rating >= 4.5) {
+        score += 15;
+        reasons.push('Highly rated by customers');
+      } else if (vendor.rating >= 4.0) {
+        score += 8;
+        reasons.push('Well-rated by customers');
+      }
+
+      // Experience bonus
+      if (vendor.yearsExperience >= 10) {
+        score += 10;
+        reasons.push('Very experienced vendor');
+      } else if (vendor.yearsExperience >= 5) {
+        score += 5;
+        reasons.push('Experienced vendor');
+      }
+
+      // Featured service bonus
+      if (service.featured) {
+        score += 5;
+        reasons.push('Featured service');
+      }
+
+      // Verified vendor bonus
+      if (vendor.verified) {
+        score += 5;
+        reasons.push('Verified vendor');
+      }
+
+      // Determine priority and risk level
+      let priority = 'medium';
+      let riskLevel = 'medium';
+      
+      if (score >= 80) {
+        priority = 'high';
+        riskLevel = 'low';
+      } else if (score <= 40) {
+        priority = 'low';
+        riskLevel = 'high';
+      }
+
+      if (score > 30) { // Minimum threshold
+        recommendations.push({
+          serviceId: service.id,
+          vendorId: vendor.id,
+          score: Math.round(score),
+          reasons,
+          priority,
+          category: service.category,
+          estimatedCost: service.price || 0,
+          valueRating: Math.min(5, Math.round((score / 20) * 10) / 10),
+          riskLevel,
+          vendor,
+          service
+        });
+      }
+    }
+
+    // Sort by score and return top 50
+    const finalRecommendations = recommendations
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 50);
+
+    console.log('✅ [DSS] Recommendations generated:', {
+      total: finalRecommendations.length,
+      highPriority: finalRecommendations.filter(r => r.priority === 'high').length,
+      mediumPriority: finalRecommendations.filter(r => r.priority === 'medium').length,
+      lowPriority: finalRecommendations.filter(r => r.priority === 'low').length,
+      availabilityFiltered: weddingDate ? true : false
+    });
+
+    res.json({
+      recommendations: finalRecommendations,
+      meta: {
+        totalVendors: allVendors.length,
+        availableVendors: availableVendors.length,
+        totalServices: allServices.length,
+        availableServices: availableServices.length,
+        filterByDate: !!weddingDate,
+        generatedAt: new Date().toISOString()
+      },
+      success: true
+    });
+
+  } catch (error) {
+    console.error('❌ [DSS] Error generating recommendations:', error);
+    res.status(500).json({
+      error: 'Failed to generate recommendations',
+      details: error.message,
+      success: false
+    });
+  }
+});
+
 // Error handling middleware
 app.use('*', (req, res) => {
   res.status(404).json({
@@ -297,7 +912,12 @@ app.use('*', (req, res) => {
       'POST /api/auth/login',
       'POST /api/auth/verify',
       'POST /api/bookings/request',
-      'GET /api/bookings/couple/:coupleId'
+      'GET /api/bookings/couple/:coupleId',
+      'POST /api/availability/check',
+      'GET /api/availability/calendar/:vendorId',
+      'POST /api/availability/off-days',
+      'GET /api/availability/off-days/:vendorId',
+      'DELETE /api/availability/off-days/:offDayId'
     ]
   });
 });
