@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import BookingConfirmationModal from './BookingConfirmationModal';
+import { AvailabilityDatePicker } from '../../../shared/components/calendar/AvailabilityDatePicker';
+import { availabilityService } from '../../../services/availabilityService';
 
 // Import comprehensive types and API service
 import type { 
@@ -67,6 +69,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
   const [successBookingData, setSuccessBookingData] = useState<any>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingFormData, setPendingFormData] = useState<any>(null);
+  const [dateAvailable, setDateAvailable] = useState(true);
 
   // Enhanced form state to match database schema
   const [formData, setFormData] = useState({
@@ -257,6 +260,34 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
     await processBookingSubmission(dataToSubmit);
   };
 
+  // 🚀 PERFORMANCE OPTIMIZED: Availability check using cached range data
+  const checkAvailabilityBeforeBooking = async (date: string, vendorId: string): Promise<boolean> => {
+    try {
+      console.log('� [BookingModal] OPTIMIZED availability check using cached data for:', { date, vendorId });
+      
+      // ⚡ REVOLUTIONARY: Use cached range data instead of individual API call
+      // This leverages the already loaded calendar cache, eliminating individual checks
+      const availabilityMap = await availabilityService.checkAvailabilityRange(vendorId, date, date);
+      const availabilityCheck = availabilityMap.get(date);
+      
+      if (!availabilityCheck || !availabilityCheck.isAvailable) {
+        console.log('❌ [BookingModal] Date is not available (cached):', availabilityCheck);
+        const formattedDate = new Date(date).toLocaleDateString();
+        const reason = availabilityCheck?.reason || 'Please select a different date.';
+        setErrorMessage(`This date (${formattedDate}) is not available. ${reason}`);
+        setSubmitStatus('error');
+        return false;
+      }
+
+      console.log('✅ [BookingModal] Date is available for booking (REVOLUTIONARY cached verification)');
+      return true;
+    } catch (error) {
+      console.error('❌ [BookingModal] Error checking availability:', error);
+      // Don't block booking on availability check errors (for now)
+      return true;
+    }
+  };
+
   // Extracted booking submission logic
   const processBookingSubmission = async (submissionData: any) => {
     console.log('🚀 [BookingModal] Starting booking submission process');
@@ -270,6 +301,15 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
       setErrorMessage('Please fix the errors in the form and try again.');
       setSubmitStatus('error');
       return;
+    }
+
+    // 🚨 CRITICAL FIX: Check availability before booking
+    if (submissionData.eventDate && service?.vendorId) {
+      const isAvailable = await checkAvailabilityBeforeBooking(submissionData.eventDate, service.vendorId);
+      if (!isAvailable) {
+        console.log('❌ [BookingModal] Booking blocked due to unavailability');
+        return; // Stop booking process
+      }
     }
     
     // Use fallback user ID for testing if not logged in (same as IndividualBookings)
@@ -415,41 +455,17 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
             
             console.log('⚡ [BookingModal] Starting Promise.race...');
             createdBooking = await Promise.race([apiPromise, timeoutPromise]);
+            
+            // 🎉 ENHANCED SUCCESS CONFIRMATION
+            console.log('🎉 [BookingModal] REAL BOOKING CREATED SUCCESSFULLY!');
+            console.log('📊 [BookingModal] Booking details:', createdBooking);
+            
           } else {
-            console.log('🔄 [BookingModal] Backend booking API not available - using mock creation for better UX...');
+            console.log('🚨 [BookingModal] CRITICAL: Backend booking API not available!');
+            console.log('⚠️ [BookingModal] This should not happen in production');
             
-            // Create a mock booking response for development/testing
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API delay
-            
-            createdBooking = {
-              id: `BK-${Date.now()}`, // Generate unique booking ID
-              status: 'pending',
-              vendor_id: comprehensiveBookingRequest.vendor_id,
-              service_id: comprehensiveBookingRequest.service_id,
-              service_name: comprehensiveBookingRequest.service_name,
-              service_type: comprehensiveBookingRequest.service_type,
-              event_date: comprehensiveBookingRequest.event_date,
-              event_time: comprehensiveBookingRequest.event_time,
-              event_location: comprehensiveBookingRequest.event_location,
-              guest_count: comprehensiveBookingRequest.guest_count,
-              contact_phone: comprehensiveBookingRequest.contact_phone,
-              contact_email: comprehensiveBookingRequest.contact_email,
-              special_requests: comprehensiveBookingRequest.special_requests,
-              budget_range: comprehensiveBookingRequest.budget_range,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              mockBooking: true, // Flag to indicate this is a mock booking
-              message: 'Booking request created successfully. The vendor will be notified and will contact you soon.',
-              note: 'Backend booking API will be implemented soon for full functionality.'
-            };
-            
-            console.log('✅ [BookingModal] Mock booking created for better UX:', createdBooking);
-            
-            // Store mock booking locally for the bookings page
-            const existingMockBookings = JSON.parse(localStorage.getItem('mockBookings') || '[]');
-            existingMockBookings.push(createdBooking);
-            localStorage.setItem('mockBookings', JSON.stringify(existingMockBookings));
-            console.log('💾 [BookingModal] Stored mock booking locally for bookings page');
+            // Instead of creating mock booking, show proper error
+            throw new Error('Booking system is temporarily unavailable. Please try again later or contact support.');
           }
           
           console.log('🏁 [BookingModal] Direct API call completed successfully');
@@ -469,32 +485,90 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
             console.log('✅ [BookingModal] Booking request successful with comprehensive schema!');
             console.log('🎉 [BookingModal] Created booking:', createdBooking);
             
-            // Prepare success modal data
+            // 🎉 ENHANCED SUCCESS CONFIRMATION WITH PROPER FEEDBACK
             const successData = {
               id: createdBooking.id,
               serviceName: service.name,
               vendorName: service.vendorName,
               eventDate: formData.eventDate,
               eventTime: formData.eventTime,
-              eventLocation: formData.eventLocation
+              eventLocation: formData.eventLocation,
+              status: createdBooking.status || 'pending',
+              bookingType: 'real'
             };
+            
+            // Show enhanced success notification
+            const notification = document.createElement('div');
+            notification.innerHTML = `
+              <div class="flex items-center space-x-3">
+                <div class="flex-shrink-0">
+                  <div class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                  </div>
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-semibold text-white">🎉 Booking Request Submitted!</p>
+                  <p class="text-xs text-green-100">ID: ${createdBooking.id}</p>
+                  <p class="text-xs text-green-100">${service.vendorName} will contact you soon</p>
+                </div>
+              </div>
+            `;
+            notification.className = 'fixed top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-2xl z-[60] transform transition-all duration-300 max-w-md';
+            document.body.appendChild(notification);
+
+            // Auto-remove notification after 8 seconds
+            setTimeout(() => {
+              notification.style.transform = 'translateX(400px)';
+              setTimeout(() => {
+                document.body.removeChild(notification);
+              }, 300);
+            }, 8000);
             
             setSuccessBookingData(successData);
             setSubmitStatus('success');
             setShowSuccessModal(true);
             
             // Don't close immediately - let BookingSuccessModal handle the lifecycle
-            // onClose() will be called by BookingSuccessModal when user closes it
-            
             onBookingCreated?.(createdBooking);
             
           } else {
             console.error('❌ [BookingModal] Invalid booking response - no ID found');
             console.error('❌ [BookingModal] Received response:', createdBooking);
+            
+            // Show error notification
+            const errorNotification = document.createElement('div');
+            errorNotification.innerHTML = `
+              <div class="flex items-center space-x-3">
+                <div class="flex-shrink-0">
+                  <div class="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </div>
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-semibold text-white">❌ Booking Failed</p>
+                  <p class="text-xs text-red-100">Invalid response from server</p>
+                  <p class="text-xs text-red-100">Please check your bookings or try again</p>
+                </div>
+              </div>
+            `;
+            errorNotification.className = 'fixed top-4 right-4 bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-4 rounded-xl shadow-2xl z-[60] transform transition-all duration-300 max-w-md';
+            document.body.appendChild(errorNotification);
+
+            setTimeout(() => {
+              errorNotification.style.transform = 'translateX(400px)';
+              setTimeout(() => {
+                document.body.removeChild(errorNotification);
+              }, 300);
+            }, 6000);
+            
             setErrorMessage('Booking was created but response is invalid. Please check your bookings list.');
             setSubmitStatus('error');
             
-            // Still close modal and show success since booking might have been created
+            // Still close modal after showing error
             setTimeout(() => {
               onClose();
             }, 3000);
@@ -690,7 +764,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
   // Show existing booking if found
   if (existingBooking) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+      <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-[90] animate-in fade-in duration-200">
         <div className="bg-white rounded-3xl max-w-5xl w-full shadow-2xl border border-gray-100 animate-in slide-in-from-bottom-4 duration-300 mx-4">
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-8 rounded-t-3xl border-b border-gray-100">
@@ -782,7 +856,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-[90] animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl max-w-7xl w-full max-h-[95vh] overflow-y-auto shadow-2xl border border-gray-100 animate-in slide-in-from-bottom-4 duration-300 mx-4">
         {/* Header with gradient background */}
         <div className="bg-gradient-to-r from-rose-50 to-pink-50 p-8 rounded-t-3xl border-b border-gray-100">
@@ -1032,26 +1106,66 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                   </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="group">
+                <div className="group col-span-full">
                   <label className="flex items-center space-x-2 text-sm font-bold text-gray-800 mb-4">
                     <Calendar className="h-4 w-4 text-blue-600" />
                     <span>Event Date</span>
                     <span className="text-rose-500">*</span>
                   </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 text-blue-400 h-5 w-5 group-focus-within:text-blue-600 transition-colors" />
-                    <input
-                      type="date"
-                      required
-                      value={formData.eventDate}
-                      onChange={(e) => handleInputChange('eventDate', e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 bg-white shadow-sm hover:shadow-md text-lg font-medium"
-                      min={new Date().toISOString().split('T')[0]}
-                      title="Select event date"
-                      aria-label="Event date"
+                  
+                  {/* Enhanced Availability Date Picker */}
+                  <div className="mb-4">
+                    <AvailabilityDatePicker
+                      vendorId={service.vendorId}
+                      selectedDate={formData.eventDate}
+                      onDateSelect={(date, isAvailable) => {
+                        handleInputChange('eventDate', date);
+                        setDateAvailable(isAvailable);
+                        
+                        // Clear date error if a date is selected
+                        if (date && formErrors.eventDate) {
+                          setFormErrors(prev => {
+                            const updated = { ...prev };
+                            delete updated.eventDate;
+                            return updated;
+                          });
+                        }
+                        
+                        // Show availability warning if date is not available
+                        if (!isAvailable) {
+                          setFormErrors(prev => ({
+                            ...prev,
+                            eventDate: 'Selected date is not available. Please choose an alternative date.'
+                          }));
+                        }
+                      }}
+                      minDate={new Date().toISOString().split('T')[0]}
+                      className="border border-gray-200 rounded-xl"
                     />
-                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500/5 to-indigo-500/5 opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none"></div>
                   </div>
+                  
+                  {/* Availability Status */}
+                  {formData.eventDate && (
+                    <div className={cn(
+                      "flex items-center gap-2 p-3 rounded-lg text-sm",
+                      dateAvailable 
+                        ? "bg-green-50 text-green-800 border border-green-200" 
+                        : "bg-red-50 text-red-800 border border-red-200"
+                    )}>
+                      {dateAvailable ? (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          <span>Great! This date is available for booking.</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-4 h-4" />
+                          <span>This date is not available. Please select an alternative date.</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  
                   {formErrors.eventDate && (
                     <p className="mt-2 text-sm text-red-600">{formErrors.eventDate}</p>
                   )}
@@ -1230,7 +1344,6 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                           : "border-gray-200 focus:ring-purple-500/20 focus:border-purple-500"
                       )}
                       aria-label="Contact phone number"
-                      aria-invalid={!!formErrors.contactPhone ? "true" : "false"}
                       aria-describedby={formErrors.contactPhone ? "contactPhone-error" : undefined}
                     />
                     {formErrors.contactPhone && (
