@@ -405,7 +405,7 @@ app.post('/api/auth/logout', async (req, res) => {
 });
 
 // ================================
-// MESSAGING ENDPOINTS - FIXED
+// MESSAGING ENDPOINTS - COMPLETE SET
 // ================================
 
 // Get conversations for a specific user - FIXED VERSION
@@ -561,6 +561,59 @@ app.post('/api/conversations/:conversationId/messages', async (req, res) => {
       error: 'Failed to send message',
       message: error.message,
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Create new conversation - MISSING ENDPOINT ADDED
+app.post('/api/conversations', async (req, res) => {
+  try {
+    console.log('💬 [MESSAGING] POST /api/conversations called');
+    const { vendorId, vendorName, serviceName, userId, userName, initialMessage } = req.body;
+    
+    // Generate conversation ID
+    const conversationId = `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Create conversation in database
+    await sql`
+      INSERT INTO conversations (
+        id, participant_1_id, participant_1_name, participant_1_role, participant_1_avatar,
+        participant_2_id, participant_2_name, participant_2_role, participant_2_avatar,
+        last_message_id, last_message_content, last_message_sender_id,
+        last_message_timestamp, participant_1_unread_count, participant_2_unread_count
+      ) VALUES (
+        ${conversationId}, ${userId}, ${userName || 'User'}, 'individual', null,
+        ${vendorId}, ${vendorName || 'Vendor'}, 'vendor', null,
+        ${messageId}, ${initialMessage || 'Started conversation'}, ${userId},
+        NOW(), 0, 1
+      )
+    `;
+    
+    // Add initial message if provided
+    if (initialMessage) {
+      await sql`
+        INSERT INTO messages (
+          id, conversation_id, sender_id, sender_name, sender_role, content, message_type, status
+        ) VALUES (
+          ${messageId}, ${conversationId}, ${userId}, ${userName || 'User'}, 'individual', 
+          ${initialMessage}, 'text', 'sent'
+        )
+      `;
+    }
+    
+    console.log('✅ [MESSAGING] Conversation created:', conversationId);
+    res.json({
+      success: true,
+      conversationId,
+      message: 'Conversation created successfully'
+    });
+  } catch (error) {
+    console.error('❌ [MESSAGING] Error creating conversation:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to create conversation',
+      details: error.message 
     });
   }
 });
@@ -1527,20 +1580,35 @@ app.patch('/api/bookings/:bookingId/accept-quote', async (req, res) => {
   try {
     console.log('📊 [BOOKING] PATCH /api/bookings/:bookingId/accept-quote called');
     const { bookingId } = req.params;
-    const { status = 'approved', notes } = req.body;
+    const { status = 'request', notes } = req.body;
     
     console.log('🔍 [BOOKING] Accept quote params:', { bookingId, status, notes });
     
-    // Update booking status directly without triggering status history (to avoid constraint issues)
+    // Update booking status and manually handle status history to avoid trigger constraint
     const updatedBooking = await sql`
       UPDATE bookings 
       SET 
         status = ${status},
-        notes = COALESCE(notes, '') || ${notes ? `\n[${new Date().toISOString()}] ${notes}` : ''},
+        notes = COALESCE(notes, '') || ${notes ? `\n[${new Date().toISOString()}] Quote accepted by couple` : 'Quote accepted by couple'},
         updated_at = NOW()
       WHERE id = ${bookingId}
       RETURNING *
     `;
+    
+    // Manually insert into booking_status_history with proper user context
+    try {
+      await sql`
+        INSERT INTO booking_status_history (
+          booking_id, status_from, status_to, changed_by_user_type, 
+          changed_by_user_id, change_reason, created_at
+        ) VALUES (
+          ${bookingId}, 'quote_sent', ${status}, 'couple',
+          'couple-system', 'Quote accepted by couple', NOW()
+        )
+      `;
+    } catch (historyError) {
+      console.log('⚠️ [BOOKING] Could not log status history (may not be initialized):', historyError.message);
+    }
     
     if (updatedBooking.length === 0) {
       return res.status(404).json({
@@ -1601,167 +1669,167 @@ app.post('/api/bookings', async (req, res) => {
     
     console.log('📝 [BOOKINGS] POST /api/bookings - Creating new booking');
     
-    const bookingId = Date.now();
-    const now = new Date();
+          process_stage = 'quote_accepted',
+          progress_percentage = 50,
+          next_action = 'Process downpayment to secure booking',
+          next_action_by = 'couple',
+          last_activity_at = CURRENT_TIMESTAMP
+        WHERE id = ${bookingId}d, service_type, status,
+      `;wedding_date, event_location, special_requests,
+        couple_name, vendor_name, created_at, updated_at
+      console.log('📋 [PROCESS] Quote acceptance logged in process tracking system');
+    } catch (processError) {leId}, ${vendorId}, ${serviceType}, 'request',
+      console.log('⚠️ [PROCESS] Could not log quote acceptance (process tracking may not be initialized):', processError.message);
+    }   ${coupleName}, ${vendorName}, ${now}, ${now}
+      )
+    console.log(`✅ [BOOKING] Quotation accepted for booking ${bookingId}, status updated to ${status}`);
+  } catch (error) {
+    console.error('❌ [BOOKING] Error accepting quotation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to accept quotation',
+      message: error.message,
+      timestamp: new Date().toISOString()lly',
+    });timestamp: new Date().toISOString()
+  } });
+}); 
+  } catch (error) {
+    console.error('❌ [BOOKINGS] Error creating booking:', error);
+    res.status(500).json({
+// Create new booking endpoint
+app.post('/api/bookings', async (req, res) => {
+  try {essage: error.message,
+    const {tamp: new Date().toISOString()
+      coupleId,
+      vendorId,
+      serviceType,
+      weddingDate,
+      eventLocation,atus endpoint
+      specialRequests,gs/:bookingId/status', async (req, res) => {
+      coupleName,
+      vendorNameingId } = req.params;
+    } = req.body;s, quotedPrice, finalPrice, message } = req.body;
     
-    await sql`
-      INSERT INTO bookings (
+    console.log('📝 [BOOKINGS] POST /api/bookings - Creating new booking');
+    console.log(`📝 [BOOKINGS] New status: ${status}`);
+    const bookingId = Date.now();ssage: ${message ? message.substring(0, 100) + '...' : 'No message'}`);
+    const now = new Date();
+    // Special handling for quote_sent - don't change status, just update message
+    await sql` === 'quote_sent') {
+      INSERT INTO bookings (t update the response message without changing status
         id, couple_id, vendor_id, service_type, status,
         wedding_date, event_location, special_requests,
         couple_name, vendor_name, created_at, updated_at
-      ) VALUES (
+      ) VALUES ( = $3 
         ${bookingId}, ${coupleId}, ${vendorId}, ${serviceType}, 'request',
         ${weddingDate}, ${eventLocation}, ${specialRequests},
         ${coupleName}, ${vendorName}, ${now}, ${now}
-      )
+      )wait sql(updateQuery, queryParams);
     `;
-    
+      // PROCESS TRACKING: Log quote communication and process step
     console.log(`✅ [BOOKINGS] Created booking ${bookingId}`);
-    
-    res.json({
-      success: true,
-      bookingId: bookingId,
-      message: 'Booking created successfully',
+        // Log communication
+    res.json({sql`
+      success: true,O booking_communications (
+      bookingId: bookingId,munication_type, sender_type, sender_id, sender_name,
+      message: 'Booking created successfully',ect, content, metadata
       timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
+    });     ${bookingId}, 'quote', 'vendor', 'vendor-system', 'Vendor',
+            'couple', 'couple-system', 'Quote for Wedding Service', ${message}, 
+  } catch (error) {stringify({ quoted_price: quotedPrice, final_price: finalPrice })}
     console.error('❌ [BOOKINGS] Error creating booking:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to create booking',
       message: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Update booking status endpoint
-app.patch('/api/bookings/:bookingId/status', async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    const { status, quotedPrice, finalPrice, message } = req.body;
-    
-    console.log(`📝 [BOOKINGS] PATCH /api/bookings/${bookingId}/status`);
-    console.log(`📝 [BOOKINGS] New status: ${status}`);
-    console.log(`📝 [BOOKINGS] Message: ${message ? message.substring(0, 100) + '...' : 'No message'}`);
-    
-    // Special handling for quote_sent - don't change status, just update message
-    if (status === 'quote_sent') {
-      // For quote_sent, just update the response message without changing status
-      let updateQuery = `
-        UPDATE bookings 
-        SET response_message = $1, updated_at = $2
-        WHERE id = $3 
-      `;
-      let queryParams = [message, new Date(), bookingId];
-      
-      await sql(updateQuery, queryParams);
-      
-      // PROCESS TRACKING: Log quote communication and process step
-      try {
-        // Log communication
-        await sql`
-          INSERT INTO booking_communications (
-            booking_id, communication_type, sender_type, sender_id, sender_name,
-            recipient_type, recipient_id, subject, content, metadata
-          ) VALUES (
-            ${bookingId}, 'quote', 'vendor', 'vendor-system', 'Vendor',
-            'couple', 'couple-system', 'Quote for Wedding Service', ${message}, 
-            ${JSON.stringify({ quoted_price: quotedPrice, final_price: finalPrice })}
-          )
-        `;
-        
-        // Log process step
-        await sql`
-          INSERT INTO booking_process_log (
-            booking_id, process_step, process_status, description, 
-            metadata, created_by, created_by_type
-          ) VALUES (
+      timestamp: new Date().toISOString() (
+    });     booking_id, process_step, process_status, description, 
+  }         metadata, created_by, created_by_type
+});       ) VALUES (
             ${bookingId}, 'quote_sent', 'completed', 
             'Quote sent to couple with pricing details',
             ${JSON.stringify({ quoted_price: quotedPrice, message_preview: message?.substring(0, 100) })}, 
             'vendor-system', 'vendor'
-          )
-        `;
+          )ryParams = [dbStatus, new Date()];
+        `;ramIndex = 3;
         
-        // Update booking progress
-        await sql`
-          UPDATE bookings 
-          SET 
+        // Update booking progress {
+        await sql`+= `, quoted_price = $${paramIndex}`;
+          UPDATE bookings tedPrice);
+          SET ex++;
             process_stage = 'quote_sent',
             progress_percentage = 30,
             next_action = 'Couple to review and respond to quote',
-            next_action_by = 'couple',
+            next_action_by = 'couple',$${paramIndex}`;
             last_activity_at = CURRENT_TIMESTAMP
           WHERE id = ${bookingId}
         `;
         
         console.log('📋 [PROCESS] Quote communication and process step logged');
-      } catch (processError) {
+      } catch (processError) {se_message = $${paramIndex}`;
         console.log('⚠️ [PROCESS] Could not log quote process (tables may not exist yet):', processError.message);
-      }
+      }aramIndex++;
       
       console.log(`✅ [BOOKINGS] Updated booking ${bookingId} with quote message (status unchanged)`);
-      
-      res.json({
+      dateQuery += ` WHERE id = $${paramIndex}`;
+      res.json({push(bookingId);
         success: true,
         message: 'Quote sent successfully',
         processTracking: 'enabled',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString()ng ${bookingId} status to ${dbStatus}`);
       });
-      return;
-    }
-    
+      return;{
+    } success: true,
+      message: 'Booking status updated successfully',
     // Map frontend status back to database format for other statuses
     const dbStatus = status === 'quote_requested' ? 'request' :
                     status === 'confirmed' ? 'approved' :
                     status === 'downpayment_paid' ? 'downpayment' :
-                    status === 'paid_in_full' ? 'paid' :
+                    status === 'paid_in_full' ? 'paid' :tatus:', error);
                     status;
-    
+      success: false,
     // Build update query with proper SQL syntax
-    let updateQuery = `
-      UPDATE bookings 
+    let updateQuery = `ssage,
+      UPDATE bookings ate().toISOString()
       SET status = $1, updated_at = $2
     `;
     let queryParams = [dbStatus, new Date()];
     let paramIndex = 3;
-    
-    if (quotedPrice !== undefined) {
+    ===============================
+    if (quotedPrice !== undefined) {S
       updateQuery += `, quoted_price = $${paramIndex}`;
       queryParams.push(quotedPrice);
-      paramIndex++;
-    }
-    
-    if (finalPrice !== undefined) {
+      paramIndex++;ng process tracking database
+    }ost('/api/bookings/init-tracking', async (req, res) => {
+    y {
+    if (finalPrice !== undefined) {alizing booking process tracking tables...');
       updateQuery += `, final_price = $${paramIndex}`;
-      queryParams.push(finalPrice);
+      queryParams.push(finalPrice);able
       paramIndex++;
-    }
-    
-    if (message !== undefined) {
+    } CREATE TABLE IF NOT EXISTS booking_process_log (
+        id SERIAL PRIMARY KEY,
+    if (message !== undefined) {ULL,
       updateQuery += `, response_message = $${paramIndex}`;
-      queryParams.push(message);
-      paramIndex++;
-    }
-    
-    updateQuery += ` WHERE id = $${paramIndex}`;
-    queryParams.push(bookingId);
-    
+      queryParams.push(message);0) NOT NULL,
+      paramIndex++; TEXT,
+    }   metadata JSONB,
+        created_by VARCHAR(100),
+    updateQuery += ` WHERE id = $${paramIndex}`;ed_by_type IN ('couple', 'vendor', 'admin', 'system')),
+    queryParams.push(bookingId);AULT CURRENT_TIMESTAMP
+      )
     await sql(updateQuery, queryParams);
     
     console.log(`✅ [BOOKINGS] Updated booking ${bookingId} status to ${dbStatus}`);
-    
+      CREATE INDEX IF NOT EXISTS idx_booking_process_booking ON booking_process_log(booking_id)
     res.json({
       success: true,
       message: 'Booking status updated successfully',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString()ing_process_step ON booking_process_log(process_step)
     });
     
-  } catch (error) {
+  } catch (error) {nt tracking table
     console.error('❌ [BOOKINGS] Error updating booking status:', error);
-    res.status(500).json({
+    res.status(500).json({EXISTS booking_payments (
       success: false,
       error: 'Failed to update booking status',
       message: error.message,
@@ -1770,202 +1838,15 @@ app.patch('/api/bookings/:bookingId/status', async (req, res) => {
   }
 });
 
-// ================================
-// BOOKING PROCESS TRACKING ENDPOINTS
-// ================================
-
-// Initialize booking process tracking database
-app.post('/api/bookings/init-tracking', async (req, res) => {
-  try {
-    console.log('🔧 [PROCESS] Initializing booking process tracking tables...');
-    
-    // Create booking process log table
-    await sql`
-      CREATE TABLE IF NOT EXISTS booking_process_log (
-        id SERIAL PRIMARY KEY,
-        booking_id INTEGER NOT NULL,
-        process_step VARCHAR(50) NOT NULL,
-        process_status VARCHAR(30) NOT NULL,
-        description TEXT,
-        metadata JSONB,
-        created_by VARCHAR(100),
-        created_by_type VARCHAR(20) CHECK (created_by_type IN ('couple', 'vendor', 'admin', 'system')),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-    
-    await sql`
-      CREATE INDEX IF NOT EXISTS idx_booking_process_booking ON booking_process_log(booking_id)
-    `;
-    
-    await sql`
-      CREATE INDEX IF NOT EXISTS idx_booking_process_step ON booking_process_log(process_step)
-    `;
-    
-    // Create payment tracking table
-    await sql`
-      CREATE TABLE IF NOT EXISTS booking_payments (
-        id SERIAL PRIMARY KEY,
-        booking_id INTEGER NOT NULL,
-        payment_type VARCHAR(30) NOT NULL CHECK (payment_type IN ('downpayment', 'partial', 'full', 'refund')),
-        amount DECIMAL(10,2) NOT NULL,
-        currency VARCHAR(3) DEFAULT 'PHP',
-        payment_method VARCHAR(50),
-        payment_provider VARCHAR(50),
-        payment_status VARCHAR(30) NOT NULL CHECK (payment_status IN ('pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded')),
-        transaction_id VARCHAR(200),
-        provider_reference VARCHAR(200),
-        metadata JSONB,
-        processed_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-    
-    await sql`
-      CREATE INDEX IF NOT EXISTS idx_booking_payments_booking ON booking_payments(booking_id)
-    `;
-    
-    // Create communication tracking table
-    await sql`
-      CREATE TABLE IF NOT EXISTS booking_communications (
-        id SERIAL PRIMARY KEY,
-        booking_id INTEGER NOT NULL,
-        communication_type VARCHAR(50) NOT NULL CHECK (communication_type IN ('quote', 'message', 'call', 'meeting', 'email', 'contract')),
-        sender_type VARCHAR(20) NOT NULL CHECK (sender_type IN ('couple', 'vendor', 'admin', 'system')),
-        sender_id VARCHAR(100),
-        sender_name VARCHAR(200),
-        recipient_type VARCHAR(20) NOT NULL CHECK (recipient_type IN ('couple', 'vendor', 'admin', 'system')),
-        recipient_id VARCHAR(100),
-        subject VARCHAR(500),
-        content TEXT,
-        metadata JSONB,
-        is_read BOOLEAN DEFAULT FALSE,
-        read_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-    
-    // Add process tracking columns to bookings table
-    try {
-      await sql`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS process_stage VARCHAR(50) DEFAULT 'inquiry'`;
-      await sql`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS progress_percentage INTEGER DEFAULT 0`;
-      await sql`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS next_action VARCHAR(200)`;
-      await sql`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS next_action_by VARCHAR(20)`;
-      await sql`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`;
-    } catch (alterError) {
-      console.log('⚠️ [PROCESS] Some columns may already exist:', alterError.message);
-    }
-    
-    console.log('✅ [PROCESS] Booking process tracking initialized successfully');
-    
-    res.json({
-      success: true,
-      message: 'Booking process tracking initialized',
-      tables_created: ['booking_process_log', 'booking_payments', 'booking_communications'],
-      columns_added: ['process_stage', 'progress_percentage', 'next_action', 'next_action_by', 'last_activity_at'],
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ [PROCESS] Error initializing tracking:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to initialize booking process tracking',
-      message: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Log a process step
-app.post('/api/bookings/:bookingId/log-process', async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    const { 
-      process_step, 
-      process_status, 
-      description, 
-      metadata, 
-      created_by, 
-      created_by_type 
-    } = req.body;
-    
-    console.log('📋 [PROCESS] Logging process step for booking:', bookingId);
-    console.log('📝 [PROCESS] Step:', process_step, 'Status:', process_status);
-    
-    // Insert process log entry
-    const logEntry = await sql`
-      INSERT INTO booking_process_log (
-        booking_id, process_step, process_status, description, 
-        metadata, created_by, created_by_type
-      ) VALUES (
-        ${bookingId}, ${process_step}, ${process_status}, ${description},
-        ${JSON.stringify(metadata || {})}, ${created_by}, ${created_by_type}
-      ) RETURNING *
-    `;
-    
-    // Update booking progress based on process step
-    const progressMap = {
-      'inquiry': { progress: 10, next_action: 'Vendor to review and respond', next_action_by: 'vendor' },
-      'vendor_reviewed': { progress: 20, next_action: 'Vendor to send quote', next_action_by: 'vendor' },
-      'quote_sent': { progress: 30, next_action: 'Couple to review quote', next_action_by: 'couple' },
-      'quote_reviewed': { progress: 40, next_action: 'Couple to accept/decline quote', next_action_by: 'couple' },
-      'quote_accepted': { progress: 50, next_action: 'Process downpayment', next_action_by: 'couple' },
-      'contract_sent': { progress: 60, next_action: 'Couple to sign contract', next_action_by: 'couple' },
-      'downpayment_pending': { progress: 70, next_action: 'Complete payment processing', next_action_by: 'system' },
-      'downpayment_confirmed': { progress: 80, next_action: 'Await event and final payment', next_action_by: 'couple' },
-      'final_payment_due': { progress: 90, next_action: 'Process final payment', next_action_by: 'couple' },
-      'completed': { progress: 100, next_action: 'Service delivery completed', next_action_by: 'vendor' },
-      'cancelled': { progress: 0, next_action: 'Process refund if applicable', next_action_by: 'admin' }
-    };
-    
-    const progressInfo = progressMap[process_step] || { progress: 0, next_action: 'Pending', next_action_by: 'system' };
-    
-    // Update booking with new progress information
-    await sql`
-      UPDATE bookings 
-      SET 
-        process_stage = ${process_step},
-        progress_percentage = ${progressInfo.progress},
-        next_action = ${progressInfo.next_action},
-        next_action_by = ${progressInfo.next_action_by},
-        last_activity_at = CURRENT_TIMESTAMP,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${bookingId}
-    `;
-    
-    console.log('✅ [PROCESS] Process step logged and booking updated');
-    
-    res.json({
-      success: true,
-      log_entry: logEntry[0],
-      progress_updated: progressInfo,
-      message: 'Process step logged successfully',
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ [PROCESS] Error logging process step:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to log process step',
-      message: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Log payment
-app.post('/api/bookings/:bookingId/log-payment', async (req, res) => {
-  try {
+// Log payment(payment_status === 'pending') {
+app.post('/api/bookings/:bookingId/log-payment', async (req, res) => {ing' : 'final_payment_due';
+  try {rocessDescription = `${payment_type} payment of ${amount} ${currency} is pending`;
     const { bookingId } = req.params;
     const {
       payment_type,
       amount,
-      currency = 'PHP',
+      currency,
       payment_method,
-      payment_provider,
       payment_status,
       transaction_id,
       provider_reference,
@@ -1979,17 +1860,17 @@ app.post('/api/bookings/:bookingId/log-payment', async (req, res) => {
     const paymentEntry = await sql`
       INSERT INTO booking_payments (
         booking_id, payment_type, amount, currency, payment_method,
-        payment_provider, payment_status, transaction_id, provider_reference, metadata,
-        processed_at
+        payment_status, transaction_id, provider_reference, metadata,
+        created_at, updated_at
       ) VALUES (
         ${bookingId}, ${payment_type}, ${amount}, ${currency}, ${payment_method},
-        ${payment_provider}, ${payment_status}, ${transaction_id}, ${provider_reference},
-        ${JSON.stringify(metadata || {})}, 
-        ${payment_status === 'completed' ? new Date() : null}
+        ${payment_status}, ${transaction_id}, ${provider_reference},
+        ${JSON.stringify(metadata || {})},
+        NOW(), NOW()
       ) RETURNING *
     `;
     
-    // Auto-log process step based on payment
+    // Update booking process based on payment status
     let processStep = '';
     let processDescription = '';
     
@@ -1999,9 +1880,6 @@ app.post('/api/bookings/:bookingId/log-payment', async (req, res) => {
     } else if (payment_type === 'full' && payment_status === 'completed') {
       processStep = 'completed';
       processDescription = `Full payment of ${amount} ${currency} completed via ${payment_method}`;
-    } else if (payment_status === 'pending') {
-      processStep = payment_type === 'downpayment' ? 'downpayment_pending' : 'final_payment_due';
-      processDescription = `${payment_type} payment of ${amount} ${currency} is pending`;
     }
     
     if (processStep) {
@@ -2010,12 +1888,24 @@ app.post('/api/bookings/:bookingId/log-payment', async (req, res) => {
           booking_id, process_step, process_status, description, 
           metadata, created_by, created_by_type
         ) VALUES (
-          ${bookingId}, ${processStep}, ${payment_status}, ${processDescription},
+          ${bookingId}, ${processStep}, 'completed', ${processDescription},
           ${JSON.stringify({ payment_id: paymentEntry[0].id, ...metadata })}, 
           'system', 'system'
         )
       `;
     }
+    
+    // Update booking with new process information
+    await sql`
+      UPDATE bookings 
+      SET 
+        process_stage = ${processStep},
+        progress_percentage = 100,
+        next_action = 'Service delivery completed',
+        next_action_by = 'vendor',
+        last_activity_at = CURRENT_TIMESTAMP
+      WHERE id = ${bookingId}
+    `;
     
     console.log('✅ [PAYMENT] Payment logged and process updated');
     
