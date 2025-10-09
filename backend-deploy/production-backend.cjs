@@ -222,17 +222,19 @@ app.post('/api/conversations', async (req, res) => {
     const conversationId = `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date();
     
-    // Insert new conversation into database
+    // Insert new conversation into database using correct schema
     await sql`
       INSERT INTO conversations (
         id, participant_id, participant_name, participant_type,
-        conversation_type, service_name, service_type, vendor_business_name,
-        created_at, updated_at, last_message_time
+        creator_id, creator_type, conversation_type, 
+        service_name, service_category, created_at, updated_at
       ) VALUES (
         ${conversationId}, ${participantId}, ${participantName}, ${participantType},
-        ${conversationType || 'business'}, ${serviceInfo?.serviceName || 'General Inquiry'}, 
-        ${serviceInfo?.serviceType || 'other'}, ${serviceInfo?.vendorBusinessName || participantName},
-        ${now}, ${now}, ${now}
+        ${req.body.creatorId || 'anonymous'}, ${req.body.creatorType || 'couple'}, 
+        ${conversationType || 'individual'}, 
+        ${serviceInfo?.serviceName || req.body.serviceName || 'General Inquiry'}, 
+        ${serviceInfo?.serviceType || req.body.serviceCategory || 'other'},
+        ${now}, ${now}
       )
     `;
     
@@ -240,12 +242,13 @@ app.post('/api/conversations', async (req, res) => {
     
     res.status(201).json({
       success: true,
+      conversationId: conversationId,  // Frontend expects this field
       conversation: {
         id: conversationId,
         participantId: participantId,
         participantName: participantName,
         participantType: participantType,
-        conversationType: conversationType || 'business',
+        conversationType: conversationType || 'individual',
         serviceInfo: serviceInfo,
         createdAt: now.toISOString(),
         updatedAt: now.toISOString()
