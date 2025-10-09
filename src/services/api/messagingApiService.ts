@@ -18,24 +18,33 @@ export interface MessagingApiResponse<T> {
 
 export class MessagingApiService {
   // Helper method to handle API errors consistently
+  private static silentMode = false;
+
+  // Set silent mode to suppress error logging when fallbacks are available
+  static setSilentMode(silent: boolean) {
+    this.silentMode = silent;
+  }
+
   private static handleApiError(error: any, operation: string): never {
-    console.error(`❌ ${operation} failed:`, error);
+    if (!this.silentMode) {
+      console.error(`❌ ${operation} failed:`, error);
+    }
     
     if (error.message?.includes('404')) {
-      throw new Error(`Messaging API endpoint not available. The backend messaging system needs to be implemented. (${operation})`);
+      throw new Error(`Failed to ${operation.toLowerCase()}: `);
     }
     
     if (error.message?.includes('Failed to fetch')) {
-      throw new Error(`Unable to connect to the messaging server. Please check your internet connection. (${operation})`);
+      throw new Error(`Failed to ${operation.toLowerCase()}: `);
     }
     
-    throw error;
+    throw new Error(`Failed to ${operation.toLowerCase()}: `);
   }
 
-  // Get all conversations for a vendor
-  static async getConversations(vendorId: string): Promise<Conversation[]> {
+  // Get all conversations for a user (vendor or individual)
+  static async getConversations(userId: string): Promise<Conversation[]> {
     try {
-      const apiUrl = `${getApiBaseUrl()}/conversations?vendorId=${vendorId}`;
+      const apiUrl = `${getApiBaseUrl()}/conversations/${userId}`;
       console.log('🔍 Fetching conversations from:', apiUrl);
       
       const response = await fetch(apiUrl);
@@ -56,8 +65,13 @@ export class MessagingApiService {
         throw new Error('Server configuration error. Please contact support.');
       }
       
-      const data: MessagingApiResponse<Conversation[]> = await response.json();
+      const data: any = await response.json();
       console.log('✅ Conversations data received:', data);
+      
+      // Backend returns {success: true, conversations: [...]}
+      if (data.success && data.conversations) {
+        return data.conversations;
+      }
       
       return data.conversations || [];
     } catch (error) {
@@ -121,7 +135,13 @@ export class MessagingApiService {
         throw new Error(`Failed to fetch messages: ${response.statusText}`);
       }
       
-      const data: MessagingApiResponse<Message[]> = await response.json();
+      const data: any = await response.json();
+      
+      // Backend returns {success: true, messages: [...]}
+      if (data.success && data.messages) {
+        return data.messages;
+      }
+      
       return data.messages || [];
     } catch (error) {
       return this.handleApiError(error, 'Get Messages');
@@ -159,13 +179,25 @@ export class MessagingApiService {
         throw new Error(`Failed to send message: ${response.statusText}`);
       }
       
-      const data: MessagingApiResponse<Message> = await response.json();
+      const data: any = await response.json();
       
-      if (!data.message) {
-        throw new Error('No message returned from server');
+      // Backend returns {success: true, messageId: ..., conversationId: ..., timestamp: ...}
+      // We need to construct a message object from the response
+      if (data.success && data.messageId) {
+        const message: Message = {
+          id: data.messageId,
+          conversationId: data.conversationId || conversationId,
+          senderId,
+          senderName,
+          senderRole: senderType,
+          content,
+          timestamp: data.timestamp,
+          type: messageType,
+        };
+        return message;
       }
       
-      return data.message;
+      throw new Error('Failed to send message - invalid response from server');
     } catch (error) {
       return this.handleApiError(error, 'Send Message');
     }

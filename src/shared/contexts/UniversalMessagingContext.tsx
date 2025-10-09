@@ -909,10 +909,100 @@ export const UniversalMessagingProvider: React.FC<{ children: React.ReactNode }>
   );
 };
 
-export const useUniversalMessaging = (): UniversalMessagingContextType => {
-  const context = useContext(UniversalMessagingContext);
-  if (!context) {
-    throw new Error('useUniversalMessaging must be used within a UniversalMessagingProvider');
-  }
-  return context;
+// COMPATIBILITY LAYER - Provide fallback to prevent crashes
+export const useUniversalMessaging = (): any => {
+  console.warn('⚠️ [DEPRECATED] useUniversalMessaging is deprecated. Use useUnifiedMessaging from UnifiedMessagingContext instead.');
+  
+  // Provide a safe fallback to prevent application crashes
+  return {
+    conversations: [],
+    messages: [],
+    activeConversation: null,
+    unreadCount: 0,
+    loading: false,
+    sending: false,
+    error: 'UniversalMessaging is deprecated - please migrate to UnifiedMessaging',
+    
+    // Core actions (no-op implementations with warnings)
+    loadConversations: async () => { 
+      console.warn('🚨 [DEPRECATED] loadConversations called on deprecated useUniversalMessaging'); 
+    },
+    loadMessages: async () => { 
+      console.warn('🚨 [DEPRECATED] loadMessages called on deprecated useUniversalMessaging'); 
+    },
+    sendMessage: async () => { 
+      console.warn('🚨 [DEPRECATED] sendMessage called on deprecated useUniversalMessaging'); 
+    },
+    createConversation: async () => { 
+      console.warn('🚨 [DEPRECATED] createConversation called on deprecated useUniversalMessaging'); 
+      return null; 
+    },
+    setActiveConversation: () => { 
+      console.warn('🚨 [DEPRECATED] setActiveConversation called on deprecated useUniversalMessaging'); 
+    },
+    markAsRead: async () => { 
+      console.warn('🚨 [DEPRECATED] markAsRead called on deprecated useUniversalMessaging'); 
+    },
+    
+    // UI states
+    isFloatingChatOpen: false,
+    isModalOpen: false,
+    setFloatingChatOpen: () => { 
+      console.warn('🚨 [DEPRECATED] setFloatingChatOpen called on deprecated useUniversalMessaging'); 
+    },
+    setModalOpen: () => { 
+      console.warn('🚨 [DEPRECATED] setModalOpen called on deprecated useUniversalMessaging'); 
+    },
+    
+    // Business context helpers
+    createBusinessConversation: async () => { 
+      console.warn('🚨 [DEPRECATED] createBusinessConversation called on deprecated useUniversalMessaging'); 
+      return null; 
+    },
+    
+    // Legacy compatibility methods
+    startConversationWith: async () => {
+      console.warn('🚨 [DEPRECATED] startConversationWith called on deprecated useUniversalMessaging');
+      return null;
+    },
+    
+    // Navigation actions
+    openConversation: () => { 
+      console.warn('🚨 [DEPRECATED] openConversation called on deprecated useUniversalMessaging'); 
+    },
+    closeChat: () => { 
+      console.warn('🚨 [DEPRECATED] closeChat called on deprecated useUniversalMessaging'); 
+    },
+    minimizeChat: () => { 
+      console.warn('🚨 [DEPRECATED] minimizeChat called on deprecated useUniversalMessaging'); 
+    },
+    expandChat: () => { 
+      console.warn('🚨 [DEPRECATED] expandChat called on deprecated useUniversalMessaging'); 
+    },
+    
+    // Search and utility
+    searchConversations: () => {
+      console.warn('� [DEPRECATED] searchConversations called on deprecated useUniversalMessaging');
+      return [];
+    },
+    getConversationWithUser: () => {
+      console.warn('🚨 [DEPRECATED] getConversationWithUser called on deprecated useUniversalMessaging');
+      return null;
+    },
+    getMessages: () => {
+      console.warn('🚨 [DEPRECATED] getMessages called on deprecated useUniversalMessaging');
+      return [];
+    },
+    getOtherParticipants: () => {
+      console.warn('🚨 [DEPRECATED] getOtherParticipants called on deprecated useUniversalMessaging');
+      return [];
+    },
+    getConversationTitle: () => {
+      console.warn('🚨 [DEPRECATED] getConversationTitle called on deprecated useUniversalMessaging');
+      return 'Deprecated';
+    },
+    refresh: async () => {
+      console.warn('🚨 [DEPRECATED] refresh called on deprecated useUniversalMessaging');
+    }
+  };
 };

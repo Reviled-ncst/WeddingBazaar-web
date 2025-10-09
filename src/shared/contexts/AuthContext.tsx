@@ -79,9 +79,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Only verify token if one exists
         const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
         
-        // Create timeout promise to prevent hanging
+        // First check if backend is responsive
+        console.log('🌐 Checking backend status before authentication...');
+        const backendOnline = await checkBackendStatus(apiBaseUrl);
+        
+        if (!backendOnline) {
+          console.log('⚠️ Backend appears offline - proceeding with offline mode');
+          // In offline mode, we'll assume the user is authenticated if they have a token
+          // The app will function in read-only mode until backend comes back online
+          const cachedUserData = localStorage.getItem('cached_user_data');
+          if (cachedUserData) {
+            try {
+              const userData = JSON.parse(cachedUserData);
+              console.log('📦 Using cached user data for offline mode:', userData);
+              setUser(userData);
+              
+              // Show a toast notification about offline mode (if toast service is available)
+              if ('showToast' in window && typeof (window as any).showToast === 'function') {
+                (window as any).showToast('App is running in offline mode. Some features may be limited.', 'warning');
+              }
+            } catch (e) {
+              console.log('❌ Failed to parse cached user data');
+            }
+          }
+          setIsLoading(false);
+          return;
+        }
+        
+        // Create timeout promise to prevent hanging (very short for better UX)
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Authentication timeout after 10 seconds')), 10000);
+          setTimeout(() => reject(new Error('Authentication timeout after 8 seconds - backend may be sleeping')), 8000);
         });
         
         const fetchPromise = fetch(`${apiBaseUrl}/api/auth/verify`, {
@@ -103,6 +130,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // Ensure token is in both storages for persistence
             localStorage.setItem('auth_token', token);
             sessionStorage.setItem('auth_token', token);
+            // Cache user data for offline mode
+            localStorage.setItem('cached_user_data', JSON.stringify(data.user));
           } else {
             console.log('❌ Invalid verify response:', data);
             localStorage.removeItem('auth_token');
@@ -143,13 +172,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       console.log('🔐 Attempting login to:', fullUrl);
       
-      const response = await fetch(fullUrl, {
+      // Check if backend is awake first, wake it up if needed
+      const backendAwake = await checkBackendStatus(apiBaseUrl, 1);
+      if (!backendAwake) {
+        console.log('⏰ Backend appears to be sleeping, attempting to wake it up...');
+        // Send a wake-up request
+        try {
+          await fetch(`${apiBaseUrl}/api/health`, { method: 'GET' });
+        } catch (e) {
+          console.log('🔔 Wake-up request sent, backend should start warming up');
+        }
+        
+        throw new Error('Our server is starting up. Please wait 30-60 seconds and try again.');
+      }
+      
+      // Add timeout to prevent hanging during login
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Login timeout - please try again.')), 20000);
+      });
+      
+      const fetchPromise = fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
       });
+      
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
 
       console.log('🔐 Login response status:', response.status);
       
@@ -238,15 +288,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('🔐 Login error:', error);
       
-      // Simple, user-friendly error handling
+      // Handle different error types with user-friendly messages
+      if (error instanceof Error) {
+        // Check for timeout errors (backend sleeping)
+        if (error.message.includes('timeout') || error.message.includes('waking up')) {
+          throw new Error('Our server is starting up. Please wait 30 seconds and try again.');
+        }
+        
+        // Check for network errors
+        if (error.message.includes('fetch') || error.message.includes('network')) {
+          throw new Error('Connection problem. Please check your internet and try again.');
+        }
+        
+        // Re-throw specific errors as-is (they should already be user-friendly)
+        throw error;
+      }
+      
       if (error instanceof TypeError) {
         // Network/connection issues
         throw new Error('Connection problem. Please check your internet and try again.');
-      }
-      
-      // Re-throw the error as-is (it should already be user-friendly from above)
-      if (error instanceof Error) {
-        throw error;
       }
       
       // Handle unknown error types
@@ -356,6 +416,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (typeof window !== 'undefined') {
       window.location.href = '/';
     }
+  };
+
+  // Helper function to check backend status with optimized timeout for sleeping services
+  const checkBackendStatus = async (apiBaseUrl: string, retries = 1): Promise<boolean> => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        // Quick ping with short timeout - if it fails, backend is likely sleeping
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Backend check timeout')), 5000); // Very short timeout for quick detection
+        });
+        
+        const fetchPromise = fetch(`${apiBaseUrl}/api/health`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        const response = await Promise.race([fetchPromise, timeoutPromise]);
+        
+        if (response.ok) {
+          console.log(`✅ Backend is responsive (attempt ${i + 1})`);
+          return true;
+        }
+      } catch (error) {
+        console.log(`⚠️ Backend check failed (attempt ${i + 1}): ${error}`);
+        // Don't retry for sleeping backends - fail fast and use offline mode
+      }
+    }
+    console.log('❌ Backend appears to be offline or sleeping - proceeding with offline mode');
+    return false;
   };
 
   const value: AuthContextType = {
