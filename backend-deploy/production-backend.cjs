@@ -207,16 +207,39 @@ app.post('/api/auth/verify', async (req, res) => {
 // Create a new conversation - FIXED WITH PROPER VALIDATION
 app.post('/api/conversations', async (req, res) => {
   try {
-    const { participantId, participantName, participantType, conversationType, serviceInfo } = req.body;
-    
     console.log('💬 [MESSAGING] POST /api/conversations - Creating new conversation');
     console.log('💬 [MESSAGING] Full request body:', JSON.stringify(req.body, null, 2));
+    
+    // Support both old and new request formats for backward compatibility
+    let participantId, participantName, participantType, conversationType, serviceInfo;
+    
+    if (req.body.vendorId && req.body.vendorName) {
+      // New frontend format: {conversationId, vendorId, vendorName, serviceName, userId, userName, userType}
+      participantId = req.body.vendorId;
+      participantName = req.body.vendorName;
+      participantType = 'vendor'; // vendor is always the participant in this flow
+      conversationType = 'individual';
+      serviceInfo = {
+        serviceName: req.body.serviceName,
+        serviceType: 'other'
+      };
+      console.log('💬 [MESSAGING] Using NEW frontend format');
+    } else {
+      // Old format: {participantId, participantName, participantType, conversationType, serviceInfo}
+      participantId = req.body.participantId;
+      participantName = req.body.participantName;
+      participantType = req.body.participantType;
+      conversationType = req.body.conversationType;
+      serviceInfo = req.body.serviceInfo;
+      console.log('💬 [MESSAGING] Using OLD format');
+    }
+    
     console.log('💬 [MESSAGING] Participant:', participantName, '(' + participantType + ')');
     
     if (!participantId || !participantName || !participantType) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: participantId, participantName, participantType',
+        error: 'Missing required fields: participantId/vendorId, participantName/vendorName, participantType',
         timestamp: new Date().toISOString()
       });
     }
@@ -236,7 +259,7 @@ app.post('/api/conversations', async (req, res) => {
       conversationType: normalizedConversationType
     });
 
-    const creatorId = req.body.creatorId || 'anonymous';
+    const creatorId = req.body.userId || req.body.creatorId || 'anonymous';
     
     // Check for existing conversation first to avoid unique constraint violation
     console.log('💬 [MESSAGING] Checking for existing conversation...');
