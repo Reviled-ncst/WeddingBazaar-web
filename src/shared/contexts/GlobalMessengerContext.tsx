@@ -91,6 +91,13 @@ interface ChatVendor {
   rating?: number;
   verified?: boolean;
   image?: string;
+  // Support for vendor-initiated conversations
+  clientInfo?: {
+    name: string;
+    email: string;
+    id?: string;
+  };
+  clientId?: string;
 }
 
 interface Message {
@@ -107,6 +114,12 @@ interface Conversation {
   unreadCount: number;
   lastActivity: Date;
   isTyping?: boolean;
+  // Support for vendor-initiated conversations
+  clientInfo?: {
+    name: string;
+    email: string;
+    id?: string;
+  };
 }
 
 interface GlobalMessengerContextType {
@@ -625,10 +638,63 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
           timestamp: new Date()
         });
       }, 2000);
+    } else if (currentUserRole === 'vendor') {
+      // Allow vendors to initiate conversations with clients
+      const conversationId = generateConversationId(vendor);
+      
+      // For vendor-initiated conversations, we need client information
+      // This should be passed in the vendor object when calling from VendorBookings
+      const clientInfo = vendor.clientInfo || { name: 'Wedding Client', email: 'client@example.com' };
+      
+      const newConversation: Conversation = {
+        id: conversationId,
+        vendor: {
+          ...vendor,
+          name: user?.businessName || vendor.name // Use vendor's business name
+        },
+        messages: [{
+          id: `${conversationId}_vendor_initial`,
+          text: `Hello ${clientInfo.name}! I wanted to follow up regarding your inquiry about our "${vendor.service}" service. I'd be happy to discuss any questions you might have or provide additional information.`,
+          sender: 'vendor',
+          timestamp: new Date()
+        }],
+        unreadCount: 0,
+        lastActivity: new Date(),
+        isTyping: false,
+        clientInfo // Store client info for reference
+      };
+
+      setConversations(prev => {
+        const updated = [...prev, newConversation];
+        console.log('✅ [GlobalMessenger] Vendor initiated new conversation:', conversationId, updated.length);
+        return updated;
+      });
+      setActiveConversationId(conversationId);
+      setShowFloatingChat(true);
+      setIsMinimized(false);
+
+      // Create conversation in database if vendor is authenticated
+      if (user?.id) {
+        try {
+          await MessagingApiService.createConversation({
+            conversationId,
+            vendorId: user.id, // Current vendor
+            vendorName: user.businessName || vendor.name,
+            serviceName: vendor.service,
+            userId: vendor.clientId || 'unknown', // Client ID should be passed from booking
+            userName: clientInfo.name,
+            userType: 'vendor' // Conversation initiated by vendor
+          });
+          console.log('✅ [GlobalMessenger] Vendor-initiated conversation created in database successfully');
+        } catch (error) {
+          console.error('❌ [GlobalMessenger] Failed to create vendor conversation in database:', error);
+          // Continue with local conversation even if database creation fails
+        }
+      }
     } else {
-      // Vendors cannot initiate new conversations - they can only respond to existing ones
-      console.log('⚠️ [GlobalMessenger] Vendors cannot initiate new conversations');
-      alert('As a vendor, you can only respond to existing customer inquiries. New conversations are initiated by couples looking for services.');
+      // Fallback for other user types
+      console.log('⚠️ [GlobalMessenger] User role not supported for conversation initiation:', currentUserRole);
+      alert('Unable to start conversation. Please ensure you are logged in with the correct user type.');
     }
   };
 
