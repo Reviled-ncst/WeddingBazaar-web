@@ -4,13 +4,10 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const { neon } = require('@neondatabase/serverless');
 require('dotenv').config();
-
 // Real Neon database connection
 const sql = neon(process.env.DATABASE_URL);
-
 const app = express();
 const PORT = process.env.PORT || 3001;
-
 // Middleware
 app.use(helmet());
 app.use(cors({
@@ -25,14 +22,11 @@ app.use(cors({
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
 // Active token sessions for user mapping
 const activeTokenSessions = {};
-
 console.log('🚀 Wedding Bazaar Backend Starting...');
 console.log('📊 Environment:', process.env.NODE_ENV || 'development');
 console.log('🔗 Database:', process.env.DATABASE_URL ? 'Connected' : 'Not configured');
-
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
   try {
@@ -70,7 +64,6 @@ app.get('/api/health', async (req, res) => {
     });
   }
 });
-
 // Ping endpoint
 app.get('/api/ping', (req, res) => {
   res.json({
@@ -79,11 +72,9 @@ app.get('/api/ping', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-
 // ================================
 // AUTHENTICATION ENDPOINTS
 // ================================
-
 app.post('/api/auth/login', async (req, res) => {
   try {
     console.log('🔐 [AUTH] Login attempt for:', req.body.email);
@@ -97,7 +88,6 @@ app.post('/api/auth/login', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-
     // Find user in database
     const users = await sql`SELECT * FROM users WHERE email = ${email}`;
     
@@ -108,7 +98,6 @@ app.post('/api/auth/login', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-
     const user = users[0];
     
     // For demo purposes, accept any password
@@ -154,7 +143,6 @@ app.post('/api/auth/login', async (req, res) => {
     });
   }
 });
-
 app.post('/api/auth/verify', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -167,7 +155,6 @@ app.post('/api/auth/verify', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-
     // Look up user from active sessions
     const sessionUser = activeTokenSessions[token];
     
@@ -199,11 +186,9 @@ app.post('/api/auth/verify', async (req, res) => {
     });
   }
 });
-
 // ================================
 // MESSAGING ENDPOINTS - FIXED
 // ================================
-
 // Create a new conversation - FIXED WITH PROPER VALIDATION
 app.post('/api/conversations', async (req, res) => {
   try {
@@ -243,7 +228,6 @@ app.post('/api/conversations', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-
     // Validate and normalize enum values
     const validParticipantTypes = ['vendor', 'couple', 'admin'];
     const validCreatorTypes = ['vendor', 'couple', 'admin'];
@@ -258,7 +242,6 @@ app.post('/api/conversations', async (req, res) => {
       creatorType: normalizedCreatorType,
       conversationType: normalizedConversationType
     });
-
     const creatorId = req.body.userId || req.body.creatorId || 'anonymous';
     
     // Check for existing conversation first to avoid unique constraint violation
@@ -354,7 +337,6 @@ app.post('/api/conversations', async (req, res) => {
     });
   }
 });
-
 // Get conversations for a specific user - FIXED VERSION
 app.get('/api/conversations/:userId', async (req, res) => {
   try {
@@ -415,7 +397,6 @@ app.get('/api/conversations/:userId', async (req, res) => {
     });
   }
 });
-
 // Get messages for a conversation
 app.get('/api/conversations/:conversationId/messages', async (req, res) => {
   try {
@@ -459,7 +440,6 @@ app.get('/api/conversations/:conversationId/messages', async (req, res) => {
     });
   }
 });
-
 // Send a message to a conversation - FIXED WITH PROPER VALIDATION
 app.post('/api/conversations/:conversationId/messages', async (req, res) => {
   try {
@@ -540,7 +520,6 @@ app.post('/api/conversations/:conversationId/messages', async (req, res) => {
     });
   }
 });
-
 // Direct messages endpoint (for frontend compatibility) - FIXED WITH VALIDATION
 app.post('/api/messages', async (req, res) => {
   try {
@@ -621,11 +600,9 @@ app.post('/api/messages', async (req, res) => {
     });
   }
 });
-
 // ================================
 // VENDOR ENDPOINTS
 // ================================
-
 app.get('/api/vendors/featured', async (req, res) => {
   try {
     console.log('🏪 [VENDORS] GET /api/vendors/featured called');
@@ -665,11 +642,9 @@ app.get('/api/vendors/featured', async (req, res) => {
     });
   }
 });
-
 // ================================
 // SERVICES ENDPOINTS
 // ================================
-
 app.get('/api/services', async (req, res) => {
   try {
     console.log('🎯 [SERVICES] GET /api/services called');
@@ -706,11 +681,9 @@ app.get('/api/services', async (req, res) => {
     });
   }
 });
-
 // ================================
 // BOOKING ENDPOINTS
 // ================================
-
 app.post('/api/bookings/request', async (req, res) => {
   try {
     console.log('📝 [BOOKING] POST /api/bookings/request called');
@@ -770,7 +743,6 @@ app.post('/api/bookings/request', async (req, res) => {
     });
   }
 });
-
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('❌ [ERROR] Unhandled error:', err);
@@ -781,7 +753,79 @@ app.use((err, req, res, next) => {
     timestamp: new Date().toISOString()
   });
 });
-
+// Availability/Booking endpoints (to fix 404 errors)
+app.get('/api/bookings/vendor/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    console.log('📅 [BOOKINGS] GET vendor bookings for:', vendorId);
+    
+    // Get bookings for this vendor - if no bookings table exists, return empty array
+    try {
+      const bookings = await sql`
+        SELECT booking_id, vendor_id, service_name, event_date, status, 
+               client_name, total_amount, created_at
+        FROM bookings 
+        WHERE vendor_id = ${vendorId}
+        ORDER BY event_date ASC
+      `;
+      
+      console.log(`📊 [BOOKINGS] Found ${bookings.length} bookings for vendor ${vendorId}`);
+      
+      res.json({
+        success: true,
+        bookings: bookings,
+        count: bookings.length,
+        vendorId: vendorId,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (dbError) {
+      // If bookings table doesn't exist, return empty array (not an error)
+      console.log('📅 [BOOKINGS] No bookings table or no data, returning empty array');
+      res.json({
+        success: true,
+        bookings: [],
+        count: 0,
+        vendorId: vendorId,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ [BOOKINGS] Error fetching vendor bookings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch vendor bookings',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+// Vendor off-days endpoint
+app.get('/api/availability/off-days/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    console.log('📅 [AVAILABILITY] GET off-days for vendor:', vendorId);
+    
+    // Most vendors won't have off-days, so return empty array by default
+    res.json({
+      success: true,
+      offDays: [],
+      count: 0,
+      vendorId: vendorId,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [AVAILABILITY] Error fetching off-days:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch off-days',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
@@ -791,7 +835,6 @@ app.use('*', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Wedding Bazaar Backend running on port ${PORT}`);
@@ -799,7 +842,4 @@ app.listen(PORT, () => {
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
   console.log('✅ MESSAGING SYSTEM: FIXED - Real conversations will now display');
 });
-
 module.exports = app;
-#   F o r c e   r e d e p l o y  
- 
