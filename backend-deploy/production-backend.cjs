@@ -50,7 +50,7 @@ app.get('/api/health', async (req, res) => {
         error: ''
       },
       environment: process.env.NODE_ENV || 'production',
-      version: '2.1.0-AUTO-1759983693214',
+      version: '2.1.0-AUTO-1759984140134',
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       endpoints: {
@@ -499,8 +499,6 @@ app.get('/api/vendors/featured', async (req, res) => {
         business_name as name,
         'other' as category,
         rating,
-        location,
-        description,
         specialties
       FROM vendors 
       ORDER BY rating DESC 
