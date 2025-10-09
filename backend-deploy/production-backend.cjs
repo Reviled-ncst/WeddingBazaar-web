@@ -497,12 +497,11 @@ app.get('/api/vendors/featured', async (req, res) => {
       SELECT 
         id,
         business_name as name,
-        COALESCE(category, 'other') as category,
+        'other' as category,
         rating,
         location,
         contact_email,
         description,
-        image_url,
         specialties
       FROM vendors 
       ORDER BY rating DESC 
