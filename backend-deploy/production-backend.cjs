@@ -50,7 +50,7 @@ app.get('/api/health', async (req, res) => {
         error: ''
       },
       environment: process.env.NODE_ENV || 'production',
-      version: '2.1.0-AUTO-1759984244466',
+      version: '2.1.0-AUTO-1759984517434',
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       endpoints: {
