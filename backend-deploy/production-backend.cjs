@@ -50,7 +50,7 @@ app.get('/api/health', async (req, res) => {
         error: ''
       },
       environment: process.env.NODE_ENV || 'production',
-      version: '2.1.0-AUTO-1759984913234',
+      version: '2.1.0-AUTO-1759985389544',
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       endpoints: {
@@ -236,45 +236,88 @@ app.post('/api/conversations', async (req, res) => {
       conversationType: normalizedConversationType
     });
 
-    const conversationId = `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date();
+    const creatorId = req.body.creatorId || 'anonymous';
     
-    // Insert new conversation into database using correct schema and validated enum values
-    await sql`
-      INSERT INTO conversations (
-        id, participant_id, participant_name, participant_type,
-        creator_id, creator_type, conversation_type, 
-        service_name, service_category, created_at, updated_at
-      ) VALUES (
-        ${conversationId}, 
-        ${participantId}, 
-        ${participantName}, 
-        ${normalizedParticipantType},
-        ${req.body.creatorId || 'anonymous'}, 
-        ${normalizedCreatorType}, 
-        ${normalizedConversationType}, 
-        ${serviceInfo?.serviceName || req.body.serviceName || 'General Inquiry'}, 
-        ${serviceInfo?.serviceType || req.body.serviceCategory || 'other'},
-        ${now}, 
-        ${now}
-      )
+    // Check for existing conversation first to avoid unique constraint violation
+    console.log('💬 [MESSAGING] Checking for existing conversation...');
+    const existingConversations = await sql`
+      SELECT id, participant_id, participant_name, created_at, service_name
+      FROM conversations 
+      WHERE participant_id = ${participantId} 
+      AND creator_id = ${creatorId}
+      ORDER BY created_at DESC
+      LIMIT 1
     `;
     
-    console.log('✅ [MESSAGING] Conversation created successfully:', conversationId);
+    let conversationId;
+    let isNewConversation = false;
     
-    res.status(201).json({
+    if (existingConversations.length > 0) {
+      // Use existing conversation
+      conversationId = existingConversations[0].id;
+      console.log('💬 [MESSAGING] Found existing conversation:', conversationId);
+      
+      // Optionally update the conversation with new service info
+      const now = new Date();
+      await sql`
+        UPDATE conversations 
+        SET service_name = ${serviceInfo?.serviceName || req.body.serviceName || existingConversations[0].service_name},
+            service_category = ${serviceInfo?.serviceType || req.body.serviceCategory || 'other'},
+            updated_at = ${now}
+        WHERE id = ${conversationId}
+      `;
+      
+    } else {
+      // Create new conversation
+      conversationId = `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const now = new Date();
+      isNewConversation = true;
+      
+      console.log('💬 [MESSAGING] Creating new conversation:', conversationId);
+      
+      // Insert new conversation into database using correct schema and validated enum values
+      await sql`
+        INSERT INTO conversations (
+          id, participant_id, participant_name, participant_type,
+          creator_id, creator_type, conversation_type, 
+          service_name, service_category, created_at, updated_at
+        ) VALUES (
+          ${conversationId}, 
+          ${participantId}, 
+          ${participantName}, 
+          ${normalizedParticipantType},
+          ${creatorId}, 
+          ${normalizedCreatorType}, 
+          ${normalizedConversationType}, 
+          ${serviceInfo?.serviceName || req.body.serviceName || 'General Inquiry'}, 
+          ${serviceInfo?.serviceType || req.body.serviceCategory || 'other'},
+          ${now}, 
+          ${now}
+        )
+      `;
+    }
+    
+    const successMessage = isNewConversation ? 
+      'Conversation created successfully' : 
+      'Using existing conversation';
+    
+    console.log(`✅ [MESSAGING] ${successMessage}:`, conversationId);
+    
+    res.status(isNewConversation ? 201 : 200).json({
       success: true,
       conversationId: conversationId,  // Frontend expects this field
+      isNew: isNewConversation,
       conversation: {
         id: conversationId,
         participantId: participantId,
         participantName: participantName,
-        participantType: participantType,
-        conversationType: conversationType || 'individual',
+        participantType: normalizedParticipantType,
+        conversationType: normalizedConversationType,
         serviceInfo: serviceInfo,
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       },
+      message: successMessage,
       timestamp: new Date().toISOString()
     });
     
