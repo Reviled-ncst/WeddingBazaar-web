@@ -424,6 +424,66 @@ app.post('/api/conversations/:conversationId/messages', async (req, res) => {
   }
 });
 
+// Direct messages endpoint (for frontend compatibility)
+app.post('/api/messages', async (req, res) => {
+  try {
+    const { conversationId, senderId, senderName, senderType, content, messageType = 'text' } = req.body;
+    
+    console.log('📤 [MESSAGING] POST /api/messages - Direct message endpoint');
+    console.log('📤 [MESSAGING] Conversation:', conversationId);
+    console.log('📤 [MESSAGING] From:', senderName, '(' + senderId + ')');
+    
+    if (!conversationId || !senderId || !senderName || !content) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: conversationId, senderId, senderName, content',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date();
+    
+    // Insert message into database
+    await sql`
+      INSERT INTO messages (
+        id, conversation_id, sender_id, sender_name, sender_type,
+        content, message_type, timestamp, is_read, created_at
+      ) VALUES (
+        ${messageId}, ${conversationId}, ${senderId}, ${senderName}, ${senderType || 'couple'},
+        ${content}, ${messageType}, ${now}, false, ${now}
+      )
+    `;
+    
+    // Update conversation last message
+    await sql`
+      UPDATE conversations 
+      SET last_message = ${content}, 
+          last_message_time = ${now},
+          updated_at = ${now}
+      WHERE id = ${conversationId}
+    `;
+    
+    console.log('✅ [MESSAGING] Message sent successfully via direct endpoint:', messageId);
+    
+    res.json({
+      success: true,
+      messageId: messageId,
+      conversationId: conversationId,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [MESSAGING] Error sending message via direct endpoint:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send message',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // ================================
 // VENDOR ENDPOINTS
 // ================================
