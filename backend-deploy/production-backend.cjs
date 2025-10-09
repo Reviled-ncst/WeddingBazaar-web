@@ -17,7 +17,8 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'https://weddingbazaar-4171e.web.app',
-    'https://weddingbazaar-web.web.app'
+    'https://weddingbazaar-web.web.app',
+    'https://weddingbazaarph.web.app'  // Add the current Firebase hosting URL
   ],
   credentials: true
 }));
