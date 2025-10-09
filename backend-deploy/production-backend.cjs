@@ -500,7 +500,6 @@ app.get('/api/vendors/featured', async (req, res) => {
         'other' as category,
         rating,
         location,
-        contact_email,
         description,
         specialties
       FROM vendors 
