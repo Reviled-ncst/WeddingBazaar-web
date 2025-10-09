@@ -50,7 +50,7 @@ app.get('/api/health', async (req, res) => {
         error: ''
       },
       environment: process.env.NODE_ENV || 'production',
-      version: '2.1.0-AUTO-1759984517434',
+      version: '2.1.0-AUTO-1759984913234',
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       endpoints: {
@@ -204,12 +204,13 @@ app.post('/api/auth/verify', async (req, res) => {
 // MESSAGING ENDPOINTS - FIXED
 // ================================
 
-// Create a new conversation - CRITICAL MISSING ENDPOINT
+// Create a new conversation - FIXED WITH PROPER VALIDATION
 app.post('/api/conversations', async (req, res) => {
   try {
     const { participantId, participantName, participantType, conversationType, serviceInfo } = req.body;
     
     console.log('💬 [MESSAGING] POST /api/conversations - Creating new conversation');
+    console.log('💬 [MESSAGING] Full request body:', JSON.stringify(req.body, null, 2));
     console.log('💬 [MESSAGING] Participant:', participantName, '(' + participantType + ')');
     
     if (!participantId || !participantName || !participantType) {
@@ -220,22 +221,42 @@ app.post('/api/conversations', async (req, res) => {
       });
     }
 
+    // Validate and normalize enum values
+    const validParticipantTypes = ['vendor', 'couple', 'admin'];
+    const validCreatorTypes = ['vendor', 'couple', 'admin'];
+    const validConversationTypes = ['individual', 'group'];
+    
+    const normalizedParticipantType = validParticipantTypes.includes(participantType) ? participantType : 'vendor';
+    const normalizedCreatorType = validCreatorTypes.includes(req.body.creatorType) ? req.body.creatorType : 'couple';
+    const normalizedConversationType = validConversationTypes.includes(conversationType) ? conversationType : 'individual';
+    
+    console.log('💬 [MESSAGING] Normalized values:', {
+      participantType: normalizedParticipantType,
+      creatorType: normalizedCreatorType,
+      conversationType: normalizedConversationType
+    });
+
     const conversationId = `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date();
     
-    // Insert new conversation into database using correct schema
+    // Insert new conversation into database using correct schema and validated enum values
     await sql`
       INSERT INTO conversations (
         id, participant_id, participant_name, participant_type,
         creator_id, creator_type, conversation_type, 
         service_name, service_category, created_at, updated_at
       ) VALUES (
-        ${conversationId}, ${participantId}, ${participantName}, ${participantType},
-        ${req.body.creatorId || 'anonymous'}, ${req.body.creatorType || 'couple'}, 
-        ${conversationType || 'individual'}, 
+        ${conversationId}, 
+        ${participantId}, 
+        ${participantName}, 
+        ${normalizedParticipantType},
+        ${req.body.creatorId || 'anonymous'}, 
+        ${normalizedCreatorType}, 
+        ${normalizedConversationType}, 
         ${serviceInfo?.serviceName || req.body.serviceName || 'General Inquiry'}, 
         ${serviceInfo?.serviceType || req.body.serviceCategory || 'other'},
-        ${now}, ${now}
+        ${now}, 
+        ${now}
       )
     `;
     
@@ -373,26 +394,55 @@ app.get('/api/conversations/:conversationId/messages', async (req, res) => {
   }
 });
 
-// Send a message to a conversation
+// Send a message to a conversation - FIXED WITH PROPER VALIDATION
 app.post('/api/conversations/:conversationId/messages', async (req, res) => {
   try {
     const { conversationId } = req.params;
     const { senderId, senderName, senderType, content, messageType = 'text' } = req.body;
     
     console.log('📤 [MESSAGING] POST message to conversation:', conversationId);
+    console.log('📤 [MESSAGING] Full message data:', JSON.stringify(req.body, null, 2));
     console.log('📤 [MESSAGING] From:', senderName, '(' + senderId + ')');
+    
+    if (!senderId || !senderName || !content) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: senderId, senderName, content',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Validate and normalize enum values
+    const validSenderTypes = ['vendor', 'couple', 'admin'];
+    const validMessageTypes = ['text', 'image', 'file', 'system'];
+    
+    const normalizedSenderType = validSenderTypes.includes(senderType) ? senderType : 'couple';
+    const normalizedMessageType = validMessageTypes.includes(messageType) ? messageType : 'text';
+    
+    console.log('📤 [MESSAGING] Normalized values:', {
+      senderType: normalizedSenderType,
+      messageType: normalizedMessageType
+    });
     
     const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date();
     
-    // Insert message into database
+    // Insert message into database with validated enum values
     await sql`
       INSERT INTO messages (
         id, conversation_id, sender_id, sender_name, sender_type,
         content, message_type, timestamp, is_read, created_at
       ) VALUES (
-        ${messageId}, ${conversationId}, ${senderId}, ${senderName}, ${senderType},
-        ${content}, ${messageType}, ${now}, false, ${now}
+        ${messageId}, 
+        ${conversationId}, 
+        ${senderId}, 
+        ${senderName}, 
+        ${normalizedSenderType},
+        ${content}, 
+        ${normalizedMessageType}, 
+        ${now}, 
+        false, 
+        ${now}
       )
     `;
     
@@ -425,12 +475,13 @@ app.post('/api/conversations/:conversationId/messages', async (req, res) => {
   }
 });
 
-// Direct messages endpoint (for frontend compatibility)
+// Direct messages endpoint (for frontend compatibility) - FIXED WITH VALIDATION
 app.post('/api/messages', async (req, res) => {
   try {
     const { conversationId, senderId, senderName, senderType, content, messageType = 'text' } = req.body;
     
     console.log('📤 [MESSAGING] POST /api/messages - Direct message endpoint');
+    console.log('📤 [MESSAGING] Full request data:', JSON.stringify(req.body, null, 2));
     console.log('📤 [MESSAGING] Conversation:', conversationId);
     console.log('📤 [MESSAGING] From:', senderName, '(' + senderId + ')');
     
@@ -442,17 +493,37 @@ app.post('/api/messages', async (req, res) => {
       });
     }
     
+    // Validate and normalize enum values
+    const validSenderTypes = ['vendor', 'couple', 'admin'];
+    const validMessageTypes = ['text', 'image', 'file', 'system'];
+    
+    const normalizedSenderType = validSenderTypes.includes(senderType) ? senderType : 'couple';
+    const normalizedMessageType = validMessageTypes.includes(messageType) ? messageType : 'text';
+    
+    console.log('📤 [MESSAGING] Normalized values:', {
+      senderType: normalizedSenderType,
+      messageType: normalizedMessageType
+    });
+    
     const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date();
     
-    // Insert message into database
+    // Insert message into database with validated enum values
     await sql`
       INSERT INTO messages (
         id, conversation_id, sender_id, sender_name, sender_type,
         content, message_type, timestamp, is_read, created_at
       ) VALUES (
-        ${messageId}, ${conversationId}, ${senderId}, ${senderName}, ${senderType || 'couple'},
-        ${content}, ${messageType}, ${now}, false, ${now}
+        ${messageId}, 
+        ${conversationId}, 
+        ${senderId}, 
+        ${senderName}, 
+        ${normalizedSenderType},
+        ${content}, 
+        ${normalizedMessageType}, 
+        ${now}, 
+        false, 
+        ${now}
       )
     `;
     
