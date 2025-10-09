@@ -544,8 +544,7 @@ app.get('/api/services', async (req, res) => {
         category,
         vendor_id,
         price,
-        description,
-        image_url
+        description
       FROM services 
       ORDER BY category, name
       LIMIT 100
