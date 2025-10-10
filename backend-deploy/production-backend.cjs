@@ -166,8 +166,23 @@ app.post('/api/services-debug', authenticateToken, async (req, res) => {
     console.log('🔧 [SERVICES] About to execute SQL insert...');
     
     // Format images array for PostgreSQL array syntax
-    const formattedImages = images && images.length > 0 ? `{${images.join(',')}}` : '{}';
-    console.log('🔧 [SERVICES] Formatted images:', formattedImages);
+    console.log('🔧 [SERVICES] Raw images value:', images);
+    console.log('🔧 [SERVICES] Images type:', typeof images);
+    console.log('🔧 [SERVICES] Images isArray:', Array.isArray(images));
+    
+    let processedImages = images;
+    if (typeof images === 'string') {
+      try {
+        processedImages = JSON.parse(images);
+        console.log('🔧 [SERVICES] Parsed images from string:', processedImages);
+      } catch (e) {
+        console.log('🔧 [SERVICES] Failed to parse images string, using as-is');
+        processedImages = [images];
+      }
+    }
+    
+    const formattedImages = processedImages && processedImages.length > 0 ? `{${processedImages.join(',')}}` : '{}';
+    console.log('🔧 [SERVICES] Final formatted images:', formattedImages);
     
     const result = await sql`
       INSERT INTO services (
