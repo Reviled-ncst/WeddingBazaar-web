@@ -181,4 +181,42 @@
     -webkit-backdrop-filter: blur(128px);
     backdrop-filter: blur(128px);
   }
+
+  /* Custom Scrollbar Styles for Messages */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thumb-pink-300::-webkit-scrollbar-thumb {
+    background-color: #f9a8d4;
+    border-radius: 6px;
+    border: 1px solid #fce7f3;
+  }
+
+  .scrollbar-thumb-pink-400::-webkit-scrollbar-thumb {
+    background-color: #f472b6;
+  }
+
+  .scrollbar-track-pink-100::-webkit-scrollbar-track {
+    background-color: #fce7f3;
+    border-radius: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-corner {
+    background-color: #fce7f3;
+  }
+
+  /* Smooth scrolling transitions */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+
+  .overscroll-contain {
+    overscroll-behavior: contain;
+  }
 }

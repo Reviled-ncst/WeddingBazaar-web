@@ -41,6 +41,8 @@ export const ModernMessagesPage: React.FC<ModernMessagesPageProps> = ({ userType
 
   const [searchTerm, setSearchTerm] = useState('');
   const [newMessage, setNewMessage] = useState('');
+  const [visibleMessageCount, setVisibleMessageCount] = useState(50); // Limit visible messages
+  const [showLoadMore, setShowLoadMore] = useState(false);
 
   // Load conversations on mount
   useEffect(() => {
@@ -52,8 +54,18 @@ export const ModernMessagesPage: React.FC<ModernMessagesPageProps> = ({ userType
     if (activeConversation?.id) {
       loadMessages(activeConversation.id);
       markAsRead(activeConversation.id);
+      setVisibleMessageCount(50); // Reset visible count for new conversation
     }
   }, [activeConversation?.id, loadMessages, markAsRead]);
+
+  // Check if we need to show "Load More" button
+  useEffect(() => {
+    if (messages && messages.length > visibleMessageCount) {
+      setShowLoadMore(true);
+    } else {
+      setShowLoadMore(false);
+    }
+  }, [messages, visibleMessageCount]);
 
   // Filter conversations based on search
   const filteredConversations = (conversations || []).filter(conv => {
@@ -83,6 +95,21 @@ export const ModernMessagesPage: React.FC<ModernMessagesPageProps> = ({ userType
       handleSendMessage();
     }
   };
+
+  const handleLoadMoreMessages = () => {
+    setVisibleMessageCount(prev => prev + 30); // Load 30 more messages
+  };
+
+  // Get visible messages (slice to limit rendering)
+  const getVisibleMessages = () => {
+    if (!messages || messages.length <= visibleMessageCount) {
+      return messages || [];
+    }
+    // Show the most recent messages up to the visible count
+    return messages.slice(-visibleMessageCount);
+  };
+
+  const visibleMessages = getVisibleMessages();
 
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString([], { 
@@ -141,15 +168,19 @@ export const ModernMessagesPage: React.FC<ModernMessagesPageProps> = ({ userType
 
   // Smart auto-scroll: only scroll within messages container, not the whole page
   useEffect(() => {
-    if (!messagesEndRef.current || !messagesContainerRef.current || !messages) return;
+    if (!messagesEndRef.current || !messagesContainerRef.current || !visibleMessages) return;
 
-    const currentMessageCount = messages.length;
+    const currentMessageCount = visibleMessages.length;
     const previousMessageCount = previousMessageCountRef.current;
+    const totalMessages = messages?.length || 0;
 
     // Only auto-scroll if:
     // 1. Messages were just loaded for the first time (go to bottom immediately)
     // 2. New messages were added (currentCount > previousCount)
-    if (previousMessageCount === 0 || currentMessageCount > previousMessageCount) {
+    // 3. We're showing the most recent messages (not browsing history)
+    const isShowingLatest = !messages || visibleMessageCount >= totalMessages;
+    
+    if ((previousMessageCount === 0 || currentMessageCount > previousMessageCount) && isShowingLatest) {
       // Use timeout to ensure DOM has updated
       setTimeout(() => {
         if (messagesContainerRef.current && messagesEndRef.current) {
@@ -160,7 +191,7 @@ export const ModernMessagesPage: React.FC<ModernMessagesPageProps> = ({ userType
     }
 
     previousMessageCountRef.current = currentMessageCount;
-  }, [messages]);
+  }, [visibleMessages, visibleMessageCount, messages]);
 
   const getDateSeparator = (date: string) => {
     const messageDate = new Date(date);
@@ -183,7 +214,7 @@ export const ModernMessagesPage: React.FC<ModernMessagesPageProps> = ({ userType
   };
 
   return (
-    <div className="h-full flex bg-gradient-to-br from-rose-50 via-white to-pink-50 relative overflow-hidden">
+    <div className="h-full max-h-full flex bg-gradient-to-br from-rose-50 via-white to-pink-50 relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-10 left-10 w-32 h-32 bg-gradient-to-r from-pink-200/20 to-rose-200/20 rounded-full blur-3xl animate-pulse"></div>
@@ -460,7 +491,7 @@ export const ModernMessagesPage: React.FC<ModernMessagesPageProps> = ({ userType
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {activeConversation ? (
           <>
             {/* Chat Header */}
@@ -510,7 +541,10 @@ export const ModernMessagesPage: React.FC<ModernMessagesPageProps> = ({ userType
             </motion.div>
 
             {/* Messages */}
-            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-white/20 to-pink-50/20">
+            <div 
+              ref={messagesContainerRef} 
+              className="overflow-y-auto p-2 bg-gradient-to-b from-white/20 to-pink-50/20 h-40 max-h-40 sm:h-44 sm:max-h-44 md:h-48 md:max-h-48 scroll-smooth overscroll-contain scrollbar-thin scrollbar-thumb-pink-300 scrollbar-track-pink-100 hover:scrollbar-thumb-pink-400"
+            >
               {!messages || messages.length === 0 ? (
                 <motion.div 
                   className="text-center py-16"
@@ -526,11 +560,28 @@ export const ModernMessagesPage: React.FC<ModernMessagesPageProps> = ({ userType
                   <p className="text-pink-500">Send your first message to begin this wonderful conversation!</p>
                 </motion.div>
               ) : (
-                <div className="space-y-6">
-                  {(messages || []).map((message, index) => {
+                <div className="space-y-6 pb-4">
+                  {/* Load More Button */}
+                  {showLoadMore && (
+                    <motion.div 
+                      className="text-center py-4"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <button
+                        onClick={handleLoadMoreMessages}
+                        className="px-6 py-3 bg-gradient-to-r from-pink-100 to-rose-100 hover:from-pink-200 hover:to-rose-200 text-pink-600 font-medium rounded-full border border-pink-200 transition-all duration-300 shadow-sm hover:shadow-md"
+                      >
+                        Load Previous Messages ({messages?.length - visibleMessageCount} more)
+                      </button>
+                    </motion.div>
+                  )}
+                  
+                  {visibleMessages.map((message, index) => {
                     const isFromCurrentUser = message.senderId === user?.id;
                     const showDateSeparator = index === 0 || 
-                      getDateSeparator(message.timestamp) !== getDateSeparator((messages || [])[index - 1]?.timestamp);
+                      getDateSeparator(message.timestamp) !== getDateSeparator(visibleMessages[index - 1]?.timestamp);
                     
                     return (
                       <div key={message.id}>

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Sending Fix Verification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .info { color: #2196F3; }
+        .warning { color: #ff9800; }
+        button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Message Sending Fix Verification</h1>
+        <p class="info">This test suite verifies that the message sending schema fix is working correctly.</p>
+        
+        <div class="test-section">
+            <h2>1. Backend Health Check</h2>
+            <button onclick="testBackendHealth()">Test Backend Health</button>
+            <div id="health-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Authentication Test</h2>
+            <button onclick="testAuthentication()">Test Login</button>
+            <div id="auth-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Load Conversations</h2>
+            <button onclick="testLoadConversations()">Load Conversations</button>
+            <div id="conversations-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Message Sending Test</h2>
+            <button onclick="testMessageSending()">Send Test Message</button>
+            <div id="message-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>5. Load Messages</h2>
+            <button onclick="testLoadMessages()">Load Messages</button>
+            <div id="load-messages-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>6. End-to-End Messaging Flow</h2>
+            <button onclick="testFullMessagingFlow()">Test Complete Flow</button>
+            <div id="full-flow-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test Results Summary</h2>
+            <div id="summary" class="result">
+                <p>Click the tests above to verify messaging functionality.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com';
+        let authToken = null;
+        let userId = null;
+        let testConversationId = 'conv-1760025319248-op58182ys'; // Use existing conversation
+        let testResults = {};
+
+        async function makeRequest(url, method = 'GET', data = null, useAuth = false) {
+            const options = {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+
+            if (useAuth && authToken) {
+                options.headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+
+            try {
+                const response = await fetch(url, options);
+                const result = await response.json();
+                return { success: response.ok, status: response.status, data: result };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        async function testBackendHealth() {
+            const resultDiv = document.getElementById('health-result');
+            resultDiv.innerHTML = '<p class="info">Testing backend health...</p>';
+
+            const result = await makeRequest(`${API_BASE}/api/health`);
+            
+            if (result.success) {
+                resultDiv.innerHTML = `
+                    <p class="success">✅ Backend is healthy!</p>
+                    <pre>${JSON.stringify(result.data, null, 2)}</pre>
+                `;
+                testResults.health = true;
+            } else {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Backend health check failed</p>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+                testResults.health = false;
+            }
+            updateSummary();
+        }
+
+        async function testAuthentication() {
+            const resultDiv = document.getElementById('auth-result');
+            resultDiv.innerHTML = '<p class="info">Testing authentication...</p>';
+
+            const loginData = {
+                email: 'vendor0@gmail.com',
+                password: 'password123'
+            };
+
+            const result = await makeRequest(`${API_BASE}/api/auth/login`, 'POST', loginData);
+            
+            if (result.success && result.data.success && result.data.token) {
+                authToken = result.data.token;
+                userId = result.data.user.id;
+                resultDiv.innerHTML = `
+                    <p class="success">✅ Authentication successful!</p>
+                    <p>User ID: ${userId}</p>
+                    <p>User: ${result.data.user.email}</p>
+                    <pre>${JSON.stringify(result.data.user, null, 2)}</pre>
+                `;
+                testResults.auth = true;
+            } else {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Authentication failed</p>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+                testResults.auth = false;
+            }
+            updateSummary();
+        }
+
+        async function testLoadConversations() {
+            const resultDiv = document.getElementById('conversations-result');
+            
+            if (!authToken || !userId) {
+                resultDiv.innerHTML = '<p class="warning">⚠️ Please authenticate first</p>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<p class="info">Loading conversations...</p>';
+
+            const result = await makeRequest(`${API_BASE}/api/conversations/${userId}`, 'GET', null, true);
+            
+            if (result.success && result.data.success) {
+                resultDiv.innerHTML = `
+                    <p class="success">✅ Conversations loaded successfully!</p>
+                    <p>Found ${result.data.count} conversations</p>
+                    <pre>${JSON.stringify(result.data.conversations, null, 2)}</pre>
+                `;
+                testResults.conversations = true;
+            } else {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Failed to load conversations</p>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+                testResults.conversations = false;
+            }
+            updateSummary();
+        }
+
+        async function testMessageSending() {
+            const resultDiv = document.getElementById('message-result');
+            
+            if (!authToken || !userId) {
+                resultDiv.innerHTML = '<p class="warning">⚠️ Please authenticate first</p>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<p class="info">Sending test message...</p>';
+
+            const messageData = {
+                conversationId: testConversationId,
+                senderId: userId,
+                senderName: 'vendor0@gmail.com',
+                senderType: 'vendor',
+                content: `🧪 Schema fix test message - ${new Date().toISOString()}`,
+                messageType: 'text'
+            };
+
+            // Test the /api/messages compatibility endpoint
+            const result = await makeRequest(`${API_BASE}/api/messages`, 'POST', messageData, true);
+            
+            if (result.success && result.data.success) {
+                resultDiv.innerHTML = `
+                    <p class="success">✅ Message sent successfully!</p>
+                    <p>Message ID: ${result.data.messageId}</p>
+                    <p>Conversation ID: ${result.data.conversationId}</p>
+                    <p>Timestamp: ${result.data.timestamp}</p>
+                    <pre>${JSON.stringify(result.data, null, 2)}</pre>
+                `;
+                testResults.messaging = true;
+            } else {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Failed to send message</p>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+                testResults.messaging = false;
+            }
+            updateSummary();
+        }
+
+        async function testLoadMessages() {
+            const resultDiv = document.getElementById('load-messages-result');
+            
+            if (!authToken) {
+                resultDiv.innerHTML = '<p class="warning">⚠️ Please authenticate first</p>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<p class="info">Loading messages...</p>';
+
+            const result = await makeRequest(`${API_BASE}/api/conversations/${testConversationId}/messages`, 'GET', null, true);
+            
+            if (result.success && result.data.success) {
+                const messages = result.data.messages;
+                resultDiv.innerHTML = `
+                    <p class="success">✅ Messages loaded successfully!</p>
+                    <p>Found ${messages.length} messages</p>
+                    <div class="result">
+                        ${messages.map(msg => `
+                            <div style="margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                                <strong>${msg.sender_name} (${msg.sender_type})</strong>
+                                <p>${msg.content}</p>
+                                <small>${new Date(msg.timestamp).toLocaleString()}</small>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                testResults.loadMessages = true;
+            } else {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Failed to load messages</p>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+                testResults.loadMessages = false;
+            }
+            updateSummary();
+        }
+
+        async function testFullMessagingFlow() {
+            const resultDiv = document.getElementById('full-flow-result');
+            resultDiv.innerHTML = '<p class="info">Running complete messaging flow test...</p>';
+
+            try {
+                // Step 1: Health check
+                const health = await makeRequest(`${API_BASE}/api/health`);
+                if (!health.success) throw new Error('Health check failed');
+
+                // Step 2: Auth (if not already done)
+                if (!authToken) {
+                    const auth = await makeRequest(`${API_BASE}/api/auth/login`, 'POST', {
+                        email: 'vendor0@gmail.com',
+                        password: 'password123'
+                    });
+                    if (!auth.success || !auth.data.success) throw new Error('Authentication failed');
+                    authToken = auth.data.token;
+                    userId = auth.data.user.id;
+                }
+
+                // Step 3: Load conversations
+                const conversations = await makeRequest(`${API_BASE}/api/conversations/${userId}`, 'GET', null, true);
+                if (!conversations.success) throw new Error('Failed to load conversations');
+
+                // Step 4: Send message
+                const message = await makeRequest(`${API_BASE}/api/messages`, 'POST', {
+                    conversationId: testConversationId,
+                    senderId: userId,
+                    senderName: 'vendor0@gmail.com',
+                    senderType: 'vendor',
+                    content: `🚀 Full flow test - ${new Date().toISOString()}`,
+                    messageType: 'text'
+                }, true);
+                if (!message.success) throw new Error('Failed to send message');
+
+                // Step 5: Load messages to verify
+                const messages = await makeRequest(`${API_BASE}/api/conversations/${testConversationId}/messages`, 'GET', null, true);
+                if (!messages.success) throw new Error('Failed to load messages');
+
+                resultDiv.innerHTML = `
+                    <p class="success">✅ Complete messaging flow successful!</p>
+                    <div class="result">
+                        <h4>Flow Summary:</h4>
+                        <p>✅ Health check passed</p>
+                        <p>✅ Authentication successful</p>
+                        <p>✅ Conversations loaded (${conversations.data.count} found)</p>
+                        <p>✅ Message sent (ID: ${message.data.messageId})</p>
+                        <p>✅ Messages retrieved (${messages.data.messages.length} found)</p>
+                        <p><strong>🎉 All messaging functionality is working correctly!</strong></p>
+                    </div>
+                `;
+                testResults.fullFlow = true;
+
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Full flow test failed</p>
+                    <p>Error: ${error.message}</p>
+                `;
+                testResults.fullFlow = false;
+            }
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const summaryDiv = document.getElementById('summary');
+            const total = Object.keys(testResults).length;
+            const passed = Object.values(testResults).filter(r => r).length;
+            
+            let status = '';
+            if (total === 0) {
+                status = '<p class="info">No tests run yet</p>';
+            } else if (passed === total) {
+                status = `<p class="success">🎉 All tests passed! (${passed}/${total})</p>`;
+            } else {
+                status = `<p class="warning">⚠️ Some tests failed (${passed}/${total} passed)</p>`;
+            }
+
+            summaryDiv.innerHTML = `
+                ${status}
+                <div style="margin-top: 15px;">
+                    ${Object.entries(testResults).map(([test, result]) => 
+                        `<p class="${result ? 'success' : 'error'}">${result ? '✅' : '❌'} ${test}</p>`
+                    ).join('')}
+                </div>
+            `;
+        }
+
+        // Auto-run health check on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            testBackendHealth();
+        });
+    </script>
+</body>
+</html>
