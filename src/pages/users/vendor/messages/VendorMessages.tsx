@@ -6,7 +6,7 @@ export const VendorMessages: React.FC = () => {
   return (
     <div className="h-screen bg-gradient-to-b from-blue-50 via-white to-indigo-50 flex flex-col">
       <VendorHeader />
-      <div className="flex-1">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <ModernMessagesPage userType="vendor" />
       </div>
     </div>
