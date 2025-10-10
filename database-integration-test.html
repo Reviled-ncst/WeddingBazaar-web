@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Bazaar Database Integration Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .result { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 4px; border-left: 4px solid #007bff; }
+        .success { border-left-color: #28a745; background: #d4edda; }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        .warning { border-left-color: #ffc107; background: #fff3cd; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        button.test-btn { background: #28a745; }
+        button.test-btn:hover { background: #1e7e34; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+        .endpoint-group { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .endpoint-group h3 { margin-top: 0; color: #495057; }
+        .status-badge { padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .status-success { background: #d4edda; color: #155724; }
+        .status-error { background: #f8d7da; color: #721c24; }
+        .status-pending { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Wedding Bazaar Database Integration Test</h1>
+        <p>Testing real database endpoints with version <strong>2.4.0-MESSAGING-SERVICES-COMPLETE</strong></p>
+        
+        <div id="results"></div>
+        
+        <div class="endpoint-group">
+            <h3>🏥 System Health</h3>
+            <button onclick="testHealth()">Test Backend Health</button>
+            <button onclick="testAuth()">Test Authentication</button>
+        </div>
+        
+        <div class="endpoint-group">
+            <h3>💬 Messaging Endpoints</h3>
+            <button onclick="testConversations()">Test Conversations</button>
+            <button onclick="testMessages()">Test Messages</button>
+            <button onclick="sendTestMessage()">Send Test Message</button>
+        </div>
+        
+        <div class="endpoint-group">
+            <h3>🛠️ Services Endpoints</h3>
+            <button onclick="testVendorServices()">Test Vendor Services</button>
+            <button onclick="testAllServices()">Test All Services</button>
+            <button onclick="testAltServicesRoute()">Test Alt Services Route</button>
+        </div>
+        
+        <div class="endpoint-group">
+            <h3>🔔 Notifications</h3>
+            <button onclick="testNotifications()">Test Vendor Notifications</button>
+            <button onclick="markNotificationRead()">Mark Notification Read</button>
+        </div>
+        
+        <div class="endpoint-group">
+            <h3>📅 Bookings</h3>
+            <button onclick="testVendorBookings()">Test Vendor Bookings</button>
+            <button onclick="testBookingStats()">Test Booking Stats</button>
+        </div>
+        
+        <div class="endpoint-group">
+            <h3>🧪 Comprehensive Tests</h3>
+            <button class="test-btn" onclick="runAllTests()">Run All Tests</button>
+            <button onclick="clearResults()">Clear Results</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com/api';
+        let notificationId = null;
+        
+        function addResult(title, content, status = null, statusText = '') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            
+            let statusBadge = '';
+            if (status !== null) {
+                const badgeClass = status ? 'status-success' : 'status-error';
+                statusBadge = `<span class="${badgeClass} status-badge">${statusText || (status ? 'SUCCESS' : 'ERROR')}</span>`;
+            }
+            
+            div.className = `result ${status === true ? 'success' : status === false ? 'error' : status === 'warning' ? 'warning' : ''}`;
+            div.innerHTML = `<h3>${title} ${statusBadge}</h3><pre>${JSON.stringify(content, null, 2)}</pre>`;
+            results.appendChild(div);
+            div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        async function testHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                addResult('🏥 Backend Health', data, 
+                    data.version === '2.4.0-MESSAGING-SERVICES-COMPLETE',
+                    data.version === '2.4.0-MESSAGING-SERVICES-COMPLETE' ? 'VERSION CORRECT' : 'VERSION MISMATCH'
+                );
+            } catch (error) {
+                addResult('🏥 Backend Health', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testAuth() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'couple@test.com', password: 'test123' })
+                });
+                const data = await response.json();
+                addResult('🔐 Authentication Test', data, data.success);
+            } catch (error) {
+                addResult('🔐 Authentication Test', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testConversations() {
+            try {
+                const response = await fetch(`${API_BASE}/conversations/2-2025-003`);
+                const data = await response.json();
+                addResult('💬 Vendor Conversations', data, data.success, `Found ${data.count || 0} conversations`);
+            } catch (error) {
+                addResult('💬 Vendor Conversations', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testMessages() {
+            try {
+                const response = await fetch(`${API_BASE}/conversations/conv-1760025319248-op58182ys/messages`);
+                const data = await response.json();
+                addResult('💬 Conversation Messages', data, data.success, `Found ${data.count || 0} messages`);
+            } catch (error) {
+                addResult('💬 Conversation Messages', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function sendTestMessage() {
+            try {
+                const response = await fetch(`${API_BASE}/conversations/conv-1760025319248-op58182ys/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        senderId: '2-2025-003',
+                        senderType: 'vendor',
+                        content: 'Test message from database integration test'
+                    })
+                });
+                const data = await response.json();
+                addResult('📤 Send Test Message', data, data.success);
+            } catch (error) {
+                addResult('📤 Send Test Message', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testVendorServices() {
+            try {
+                const response = await fetch(`${API_BASE}/services/vendor/2-2025-003`);
+                const data = await response.json();
+                addResult('🛠️ Vendor Services', data, data.success, `Found ${data.count || 0} services`);
+            } catch (error) {
+                addResult('🛠️ Vendor Services', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testAllServices() {
+            try {
+                const response = await fetch(`${API_BASE}/services?vendorId=2-2025-003`);
+                const data = await response.json();
+                addResult('🛠️ All Services (with vendor filter)', data, data.success, `Found ${data.count || 0} services`);
+            } catch (error) {
+                addResult('🛠️ All Services', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testAltServicesRoute() {
+            try {
+                const response = await fetch(`${API_BASE}/vendors/2-2025-003/services`);
+                const data = await response.json();
+                addResult('🛠️ Alt Services Route', data, data.success, `Found ${data.count || 0} services`);
+            } catch (error) {
+                addResult('🛠️ Alt Services Route', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testNotifications() {
+            try {
+                const response = await fetch(`${API_BASE}/notifications/vendor/2-2025-003`);
+                const data = await response.json();
+                
+                if (data.success && data.notifications && data.notifications.length > 0) {
+                    notificationId = data.notifications[0].id;
+                }
+                
+                addResult('🔔 Vendor Notifications', data, data.success, 
+                    `Found ${data.count || 0} notifications, ${data.unreadCount || 0} unread`);
+            } catch (error) {
+                addResult('🔔 Vendor Notifications', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function markNotificationRead() {
+            if (!notificationId) {
+                addResult('📖 Mark Notification Read', 'No notification ID available. Run notifications test first.', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/notifications/${notificationId}/read`, {
+                    method: 'PATCH'
+                });
+                const data = await response.json();
+                addResult('📖 Mark Notification Read', data, data.success);
+            } catch (error) {
+                addResult('📖 Mark Notification Read', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testVendorBookings() {
+            try {
+                const response = await fetch(`${API_BASE}/bookings/vendor/2-2025-001?page=1&limit=10`);
+                const data = await response.json();
+                addResult('📅 Vendor Bookings', data, data.success, `Found ${data.count || 0} bookings`);
+            } catch (error) {
+                addResult('📅 Vendor Bookings', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testBookingStats() {
+            try {
+                const response = await fetch(`${API_BASE}/bookings/stats?vendorId=2-2025-001`);
+                const data = await response.json();
+                addResult('📊 Booking Statistics', data, data.success, 
+                    data.success ? `Total: ${data.stats?.total_bookings || 0} bookings` : '');
+            } catch (error) {
+                addResult('📊 Booking Statistics', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function runAllTests() {
+            clearResults();
+            addResult('🚀 Starting Comprehensive Test Suite', 'Running all database integration tests...', 'warning', 'IN PROGRESS');
+            
+            const tests = [
+                testHealth,
+                testAuth,
+                testConversations,
+                testMessages,
+                testVendorServices,
+                testAllServices,
+                testAltServicesRoute,
+                testNotifications,
+                testVendorBookings,
+                testBookingStats
+            ];
+            
+            for (let i = 0; i < tests.length; i++) {
+                await tests[i]();
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between tests
+            }
+            
+            addResult('✅ Test Suite Complete', 'All database integration tests have been executed.', true, 'COMPLETE');
+        }
+        
+        // Auto-run health check on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            testHealth();
+        });
+    </script>
+</body>
+</html>

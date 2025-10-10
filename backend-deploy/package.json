@@ -1,13 +1,13 @@
 {
   "name": "wedding-bazaar-backend",
-  "version": "2.4.0",
-  "description": "Wedding Bazaar Backend API - Real Database Integration Complete",
-  "main": "auth-fix-backend.cjs",
+  "version": "2.5.0",
+  "description": "Wedding Bazaar Backend API - Modular Architecture Complete",
+  "main": "server-modular.cjs",
   "scripts": {
-    "build": "echo 'Build complete - using auth-fix-backend.cjs with full database integration'",
-    "start": "node auth-fix-backend.cjs",
-    "dev": "node auth-fix-backend.cjs",
-    "test": "node auth-fix-backend.cjs"
+    "build": "echo 'Build complete - using modular architecture with separated route files'",
+    "start": "node server-modular.cjs",
+    "dev": "node server-modular.cjs",
+    "test": "node server-modular.cjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.6.1",
