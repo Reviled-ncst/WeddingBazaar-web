@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const { neon } = require('@neondatabase/serverless');
 require('dotenv').config();
 
@@ -386,12 +387,21 @@ app.post('/api/auth/register', async (req, res) => {
     console.log('🎯 [AUTH] POST /api/auth/register called');
     console.log('🎯 [AUTH] Request body:', req.body);
     
-    const { email, password, first_name, last_name, user_type = 'individual' } = req.body;
+    const { email, password, first_name, last_name, user_type = 'couple' } = req.body;
     
     if (!email || !password || !first_name) {
       return res.status(400).json({
         success: false,
         error: 'Email, password, and first_name are required'
+      });
+    }
+    
+    // Validate user_type
+    const validUserTypes = ['couple', 'vendor', 'admin'];
+    if (!validUserTypes.includes(user_type)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid user_type. Must be one of: couple, vendor, admin'
       });
     }
     
@@ -407,12 +417,14 @@ app.post('/api/auth/register', async (req, res) => {
       });
     }
     
-    // For now, store password as plain text (should use bcrypt in production)
+    // Hash password using bcrypt
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
     const userId = 'USR-' + Date.now().toString().slice(-8);
     
     const result = await sql`
       INSERT INTO users (id, email, password, first_name, last_name, user_type, created_at)
-      VALUES (${userId}, ${email}, ${password}, ${first_name}, ${last_name || ''}, ${user_type}, NOW())
+      VALUES (${userId}, ${email}, ${hashedPassword}, ${first_name}, ${last_name || ''}, ${user_type}, NOW())
       RETURNING id, email, first_name, last_name, user_type
     `;
     
@@ -480,8 +492,10 @@ app.post('/api/auth/login', async (req, res) => {
     
     const user = users[0];
     
-    // For now, simple password comparison (should use bcrypt.compare in production)
-    if (user.password !== password) {
+    // Compare password using bcrypt
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      console.log('❌ [AUTH] Password comparison failed');
       return res.status(401).json({
         success: false,
         error: 'Invalid email or password'
