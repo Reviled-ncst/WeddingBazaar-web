@@ -165,6 +165,10 @@ app.post('/api/services-debug', authenticateToken, async (req, res) => {
     // Insert new service (simplified for debugging)
     console.log('🔧 [SERVICES] About to execute SQL insert...');
     
+    // Format images array for PostgreSQL array syntax
+    const formattedImages = images && images.length > 0 ? `{${images.join(',')}}` : '{}';
+    console.log('🔧 [SERVICES] Formatted images:', formattedImages);
+    
     const result = await sql`
       INSERT INTO services (
         id,
@@ -183,7 +187,7 @@ app.post('/api/services-debug', authenticateToken, async (req, res) => {
         ${category},
         ${description || ''},
         ${price || 0},
-        ${JSON.stringify(images || [])},
+        ${formattedImages},
         ${serviceActive},
         ${featured || false}
       )
@@ -262,6 +266,10 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
     
     const serviceName = title || name;
     
+    // Format images array for PostgreSQL array syntax
+    const formattedImages = images && images.length > 0 ? `{${images.join(',')}}` : '{}';
+    console.log('🔧 [SERVICES] UPDATE - Formatted images:', formattedImages);
+    
     const result = await sql`
       UPDATE services 
       SET 
@@ -272,7 +280,7 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
         price = ${price || 0},
         is_active = ${is_active !== undefined ? is_active : true},
         featured = ${featured || false},
-        images = ${JSON.stringify(images || [])},
+        images = ${formattedImages},
         updated_at = NOW()
       WHERE id = ${id}
       RETURNING *
