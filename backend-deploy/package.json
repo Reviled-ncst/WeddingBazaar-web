@@ -1,10 +1,10 @@
 {
   "name": "wedding-bazaar-backend",
-  "version": "2.3.0",
-  "description": "Wedding Bazaar Backend API - Authentication Fix Complete",
+  "version": "2.4.0",
+  "description": "Wedding Bazaar Backend API - Real Database Integration Complete",
   "main": "auth-fix-backend.cjs",
   "scripts": {
-    "build": "echo 'Build complete - using auth-fix-backend.cjs with authentication debugging'",
+    "build": "echo 'Build complete - using auth-fix-backend.cjs with full database integration'",
     "start": "node auth-fix-backend.cjs",
     "dev": "node auth-fix-backend.cjs",
     "test": "node auth-fix-backend.cjs"

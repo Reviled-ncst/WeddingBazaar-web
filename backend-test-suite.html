@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Bazaar Backend Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .result { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 4px; border-left: 4px solid #007bff; }
+        .success { border-left-color: #28a745; background: #d4edda; }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Wedding Bazaar Backend Test Suite</h1>
+        <p>Testing the deployed backend at: <strong>https://weddingbazaar-web.onrender.com</strong></p>
+        
+        <div id="results"></div>
+        
+        <div>
+            <button onclick="testHealth()">Test Health Endpoint</button>
+            <button onclick="testVendors()">Test Vendors Endpoint</button>
+            <button onclick="testLogin()">Test Login (couple@test.com)</button>
+            <button onclick="testUsers()">Test Debug Users</button>
+            <button onclick="testAll()">Run All Tests</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com/api';
+        
+        function addResult(title, content, isSuccess = null) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${isSuccess === true ? 'success' : isSuccess === false ? 'error' : ''}`;
+            div.innerHTML = `<h3>${title}</h3><pre>${JSON.stringify(content, null, 2)}</pre>`;
+            results.appendChild(div);
+        }
+        
+        async function testHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                addResult('🏥 Health Check', data, data.status === 'OK');
+                
+                if (data.version === '2.3.0-AUTHENTICATION-FIX-COMPLETE') {
+                    addResult('✅ Version Check', 'New authentication-focused backend is deployed!', true);
+                } else {
+                    addResult('❌ Version Check', `Still using old version: ${data.version}`, false);
+                }
+            } catch (error) {
+                addResult('🏥 Health Check', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testVendors() {
+            try {
+                const response = await fetch(`${API_BASE}/vendors/featured`);
+                const data = await response.json();
+                addResult('🏪 Vendors Check', `Found ${data.count} vendors`, data.success);
+            } catch (error) {
+                addResult('🏪 Vendors Check', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testLogin() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'couple@test.com',
+                        password: 'test123'
+                    })
+                });
+                const data = await response.json();
+                addResult('🔐 Login Test', data, data.success);
+                
+                if (data.success) {
+                    addResult('🎉 AUTHENTICATION FIXED!', 'Login is now working correctly!', true);
+                }
+            } catch (error) {
+                addResult('🔐 Login Test', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testUsers() {
+            try {
+                const response = await fetch(`${API_BASE}/debug/users`);
+                const data = await response.json();
+                addResult('👥 Users Debug', data, data.success);
+            } catch (error) {
+                addResult('👥 Users Debug', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testAll() {
+            document.getElementById('results').innerHTML = '';
+            addResult('🚀 Starting Full Test Suite', 'Running all tests...');
+            
+            await testHealth();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testUsers();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testVendors();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testLogin();
+            
+            addResult('✅ Test Suite Complete', 'All tests have been executed.');
+        }
+        
+        // Auto-run health check on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            testHealth();
+        });
+    </script>
+</body>
+</html>
