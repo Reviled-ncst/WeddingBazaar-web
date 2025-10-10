@@ -10,32 +10,49 @@ router.get('/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     
-    // Get conversations with detailed information including service names and participant details
-    const conversations = await sql`
-      SELECT 
-        c.*,
-        s.name as service_name,
-        s.category as service_category,
-        v.business_name as vendor_business_name,
-        v.contact_person as vendor_contact_person,
-        u1.first_name as creator_first_name,
-        u1.last_name as creator_last_name,
-        u1.email as creator_email,
-        u2.first_name as participant_first_name,
-        u2.last_name as participant_last_name,
-        u2.email as participant_email,
-        CASE 
-          WHEN c.creator_id = ${userId} THEN CONCAT(u2.first_name, ' ', u2.last_name)
-          ELSE CONCAT(u1.first_name, ' ', u1.last_name)
-        END as other_participant_name
-      FROM conversations c
-      LEFT JOIN services s ON c.service_id = s.id
-      LEFT JOIN vendors v ON c.vendor_id = v.id
-      LEFT JOIN users u1 ON c.creator_id = u1.id
-      LEFT JOIN users u2 ON c.participant_id = u2.id
-      WHERE c.participant_id = ${userId} OR c.creator_id = ${userId}
-      ORDER BY c.last_message_time DESC NULLS LAST, c.created_at DESC
-    `;
+    // Get conversations with basic information first (simple query that works)
+    let conversations;
+    try {
+      conversations = await sql`
+        SELECT c.* FROM conversations c 
+        WHERE c.participant_id = ${userId} OR c.creator_id = ${userId}
+        ORDER BY c.last_message_time DESC NULLS LAST, c.created_at DESC
+      `;
+      console.log(`✅ Found ${conversations.length} basic conversations for user ${userId}`);
+      
+      // If we have conversations, try to enhance with additional data
+      if (conversations.length > 0) {
+        try {
+          conversations = await sql`
+            SELECT 
+              c.*,
+              s.name as service_name,
+              s.category as service_category,
+              v.business_name as vendor_business_name,
+              u1.first_name as creator_first_name,
+              u1.last_name as creator_last_name,
+              u1.email as creator_email,
+              u2.first_name as participant_first_name,
+              u2.last_name as participant_last_name,
+              u2.email as participant_email
+            FROM conversations c
+            LEFT JOIN services s ON c.service_id = s.id
+            LEFT JOIN vendors v ON c.vendor_id = v.id
+            LEFT JOIN users u1 ON c.creator_id = u1.id
+            LEFT JOIN users u2 ON c.participant_id = u2.id
+            WHERE c.participant_id = ${userId} OR c.creator_id = ${userId}
+            ORDER BY c.last_message_time DESC NULLS LAST, c.created_at DESC
+          `;
+          console.log(`✅ Enhanced ${conversations.length} conversations with additional data`);
+        } catch (enhanceError) {
+          console.log('⚠️ Enhancement failed, using basic conversations:', enhanceError.message);
+          // Keep the basic conversations if enhancement fails
+        }
+      }
+    } catch (basicError) {
+      console.error('❌ Basic conversation query failed:', basicError);
+      conversations = [];
+    }
     
     console.log(`✅ Found ${conversations.length} conversations for user ${userId}`);
     
