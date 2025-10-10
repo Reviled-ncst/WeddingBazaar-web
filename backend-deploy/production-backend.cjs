@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 const { neon } = require('@neondatabase/serverless');
 require('dotenv').config();
 
-// Updated 2025-10-03: Added payment status mapping support + JWT debugging
+// Updated 2025-10-10: Added complete service CRUD endpoints + authentication + error handling
 
 // Real Neon database connection
 const sql = neon(process.env.DATABASE_URL);
