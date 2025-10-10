@@ -471,6 +471,32 @@ app.post('/api/test-array-format', (req, res) => {
   }
 });
 
+// DEBUG ENDPOINT: Check vendors table content
+app.get('/api/debug/vendors', async (req, res) => {
+  try {
+    console.log('🔍 [DEBUG] Checking vendors table content...');
+    
+    const vendors = await sql`SELECT id, name, category, rating FROM vendors LIMIT 10`;
+    
+    console.log('🔍 [DEBUG] Found vendors:', vendors);
+    
+    res.json({
+      success: true,
+      count: vendors.length,
+      vendors: vendors,
+      message: 'Vendors table content'
+    });
+    
+  } catch (error) {
+    console.error('❌ [DEBUG] Error querying vendors:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: 'Failed to query vendors table'
+    });
+  }
+});
+
 // Start server
 app.listen(PORT, async () => {
   console.log('🚀 Wedding Bazaar Backend running on port ' + PORT);
