@@ -928,6 +928,369 @@ app.get('/api/services/search/:query', async (req, res) => {
   }
 });
 
+// CREATE SERVICE - POST /api/services
+app.post('/api/services', async (req, res) => {
+  try {
+    console.log('📤 [POST /api/services] Creating new service:', {
+      vendor_id: req.body.vendor_id,
+      title: req.body.title,
+      category: req.body.category
+    });
+
+    const {
+      vendor_id,
+      vendorId, // Accept both field names for compatibility
+      title,
+      name, // Accept both field names for compatibility  
+      description,
+      category,
+      price,
+      location,
+      images,
+      features,
+      is_active = true,
+      featured = false,
+      contact_info,
+      tags,
+      keywords,
+      location_coordinates,
+      location_details,
+      price_range
+    } = req.body;
+
+    // Validate required fields
+    if (!title && !name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Service title/name is required'
+      });
+    }
+
+    if (!category) {
+      return res.status(400).json({
+        success: false,
+        error: 'Service category is required'
+      });
+    }
+
+    if (!vendor_id && !vendorId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Vendor ID is required'
+      });
+    }
+
+    // Use vendor_id or fallback to vendorId
+    const finalVendorId = vendor_id || vendorId;
+    const finalTitle = title || name;
+
+    // Prepare service data for database
+    const serviceData = {
+      vendor_id: finalVendorId,
+      title: finalTitle,
+      description: description || '',
+      category: category,
+      price: price ? parseFloat(price) : null,
+      location: location || '',
+      images: Array.isArray(images) ? images : [],
+      features: Array.isArray(features) ? features : [],
+      is_active: Boolean(is_active),
+      featured: Boolean(featured),
+      contact_info: contact_info || {},
+      tags: Array.isArray(tags) ? tags : [],
+      keywords: keywords || '',
+      location_coordinates: location_coordinates || null,
+      location_details: location_details || null,
+      price_range: price_range || '₱'
+    };
+
+    console.log('💾 [POST /api/services] Inserting service data:', serviceData);
+
+    // Insert into database
+    const sql = db.neonSql;
+    const result = await sql`
+      INSERT INTO services (
+        vendor_id, title, description, category, price, location, images, 
+        featured, is_active, created_at, updated_at
+      ) VALUES (
+        ${serviceData.vendor_id},
+        ${serviceData.title},
+        ${serviceData.description},
+        ${serviceData.category},
+        ${serviceData.price},
+        ${serviceData.location},
+        ${JSON.stringify(serviceData.images)},
+        ${serviceData.featured},
+        ${serviceData.is_active},
+        NOW(),
+        NOW()
+      )
+      RETURNING *
+    `;
+
+    console.log('✅ [POST /api/services] Service created successfully:', result[0]);
+
+    // Return the created service
+    const createdService = result[0];
+    
+    res.status(201).json({
+      success: true,
+      message: 'Service created successfully',
+      service: {
+        id: createdService.id,
+        vendor_id: createdService.vendor_id,
+        title: createdService.title,
+        description: createdService.description,
+        category: createdService.category,
+        price: createdService.price,
+        location: createdService.location,
+        images: createdService.images,
+        featured: createdService.featured,
+        is_active: createdService.is_active,
+        created_at: createdService.created_at,
+        updated_at: createdService.updated_at
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [POST /api/services] Error creating service:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create service',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// UPDATE SERVICE - PUT /api/services/:id
+app.put('/api/services/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('📝 [PUT /api/services/:id] Updating service:', id);
+
+    const {
+      title,
+      name, // Accept both field names
+      description,
+      category,
+      price,
+      location,
+      images,
+      features,
+      is_active,
+      featured,
+      contact_info,
+      tags,
+      keywords,
+      location_coordinates,
+      location_details,
+      price_range
+    } = req.body;
+
+    // Prepare update data (only include fields that are provided)
+    const updateData: any = {};
+    if (title || name) updateData.title = title || name;
+    if (description !== undefined) updateData.description = description;
+    if (category) updateData.category = category;
+    if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
+    if (location !== undefined) updateData.location = location;
+    if (images !== undefined) updateData.images = JSON.stringify(Array.isArray(images) ? images : []);
+    if (is_active !== undefined) updateData.is_active = Boolean(is_active);
+    if (featured !== undefined) updateData.featured = Boolean(featured);
+
+    // Always update the updated_at timestamp
+    updateData.updated_at = 'NOW()';
+
+    console.log('💾 [PUT /api/services/:id] Update data:', updateData);
+
+    // Execute update query with all possible fields
+    const sql = db.neonSql;
+    
+    // Use a comprehensive update approach
+    const result = await sql`
+      UPDATE services 
+      SET 
+        title = COALESCE(${updateData.title}, title),
+        description = COALESCE(${updateData.description}, description),
+        category = COALESCE(${updateData.category}, category),
+        price = COALESCE(${updateData.price}, price),
+        location = COALESCE(${updateData.location}, location),
+        images = COALESCE(${updateData.images ? JSON.stringify(updateData.images) : null}, images),
+        is_active = COALESCE(${updateData.is_active}, is_active),
+        featured = COALESCE(${updateData.featured}, featured),
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found'
+      });
+    }
+
+    console.log('✅ [PUT /api/services/:id] Service updated successfully:', result[0]);
+
+    const updatedService = result[0];
+    res.json({
+      success: true,
+      message: 'Service updated successfully',
+      service: {
+        id: updatedService.id,
+        vendor_id: updatedService.vendor_id,
+        title: updatedService.title,
+        description: updatedService.description,
+        category: updatedService.category,
+        price: updatedService.price,
+        location: updatedService.location,
+        images: updatedService.images,
+        featured: updatedService.featured,
+        is_active: updatedService.is_active,
+        created_at: updatedService.created_at,
+        updated_at: updatedService.updated_at
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [PUT /api/services/:id] Error updating service:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update service',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// DELETE SERVICE - DELETE /api/services/:id
+app.delete('/api/services/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { vendorId } = req.query; // Optional: verify ownership
+    
+    console.log('🗑️ [DELETE /api/services/:id] Deleting service:', { id, vendorId });
+
+    const sql = db.neonSql;
+
+    // Check if service exists and get vendor info for ownership verification
+    const existingService = await sql`
+      SELECT id, vendor_id, title 
+      FROM services 
+      WHERE id = ${id}
+    `;
+
+    if (existingService.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found'
+      });
+    }
+
+    // Optional: Verify vendor ownership
+    if (vendorId && existingService[0].vendor_id !== vendorId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: You can only delete your own services'
+      });
+    }
+
+    // Check if service has any active bookings (soft delete if it does)
+    const activeBookings = await sql`
+      SELECT COUNT(*) as booking_count
+      FROM bookings 
+      WHERE service_id = ${id} 
+      AND status IN ('pending', 'confirmed', 'in_progress')
+    `;
+
+    const hasActiveBookings = parseInt(activeBookings[0].booking_count) > 0;
+
+    if (hasActiveBookings) {
+      // Soft delete: Mark as inactive instead of hard delete
+      const result = await sql`
+        UPDATE services 
+        SET is_active = false, updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `;
+
+      console.log('🔄 [DELETE /api/services/:id] Service soft deleted (has active bookings):', result[0]);
+
+      res.json({
+        success: true,
+        message: 'Service deactivated (has active bookings)',
+        action: 'soft_delete',
+        service: result[0]
+      });
+    } else {
+      // Hard delete: Remove completely
+      const result = await sql`
+        DELETE FROM services 
+        WHERE id = ${id}
+        RETURNING *
+      `;
+
+      console.log('✅ [DELETE /api/services/:id] Service hard deleted:', result[0]);
+
+      res.json({
+        success: true,
+        message: 'Service deleted successfully',
+        action: 'hard_delete',
+        service: result[0]
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ [DELETE /api/services/:id] Error deleting service:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete service',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET VENDOR SERVICES - Enhanced endpoint for vendor dashboard
+app.get('/api/services/vendor/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const { includeInactive = 'false' } = req.query;
+    
+    console.log('🔍 [GET /api/services/vendor/:vendorId] Fetching services for vendor:', vendorId);
+
+    const sql = db.neonSql;
+    
+    // Build query based on whether to include inactive services
+    const services = includeInactive === 'true' 
+      ? await sql`
+          SELECT * FROM services 
+          WHERE vendor_id = ${vendorId}
+          ORDER BY featured DESC, created_at DESC
+        `
+      : await sql`
+          SELECT * FROM services 
+          WHERE vendor_id = ${vendorId} AND is_active = true
+          ORDER BY featured DESC, created_at DESC
+        `;
+
+    console.log('✅ [GET /api/services/vendor/:vendorId] Found services:', services.length);
+
+    res.json({
+      success: true,
+      services: services,
+      count: services.length,
+      vendor_id: vendorId
+    });
+
+  } catch (error) {
+    console.error('❌ [GET /api/services/vendor/:vendorId] Error fetching vendor services:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch vendor services',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // ============================================================================
 // REVIEWS ENDPOINTS
 // ============================================================================

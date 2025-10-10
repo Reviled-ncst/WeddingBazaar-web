@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Status Test</title>
+</head>
+<body>
+    <h1>Authentication Status Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        function displayResults(content) {
+            document.getElementById('results').innerHTML += content + '<br>';
+        }
+        
+        displayResults('<h2>Local Storage Data:</h2>');
+        
+        // Check localStorage
+        const token = localStorage.getItem('auth_token');
+        const cachedUserData = localStorage.getItem('cached_user_data');
+        
+        displayResults('Token exists: ' + !!token);
+        displayResults('Cached user data exists: ' + !!cachedUserData);
+        
+        if (cachedUserData) {
+            try {
+                const userData = JSON.parse(cachedUserData);
+                displayResults('<h3>Current User Data:</h3>');
+                displayResults('ID: ' + userData.id);
+                displayResults('Email: ' + userData.email);
+                displayResults('Name: ' + userData.firstName + ' ' + userData.lastName);
+                displayResults('Role: ' + userData.role);
+                displayResults('Business Name: ' + (userData.businessName || 'N/A'));
+                displayResults('Vendor ID: ' + (userData.vendorId || 'N/A'));
+                
+                // Check role detection logic
+                const isVendorByRole = userData.role === 'vendor';
+                const isVendorById = userData.id?.startsWith('2-2025-');
+                
+                displayResults('<h3>Role Detection Analysis:</h3>');
+                displayResults('Is vendor by role: ' + isVendorByRole);
+                displayResults('Is vendor by ID pattern: ' + isVendorById);
+                displayResults('Combined vendor check: ' + (isVendorByRole || isVendorById));
+                
+                if (!isVendorByRole && isVendorById) {
+                    displayResults('<span style="color: red;">🚨 ROLE MISMATCH: User has vendor ID pattern but role is not "vendor"</span>');
+                    displayResults('<span style="color: red;">This could explain why vendor pages are not working correctly</span>');
+                }
+                
+                // Test route logic
+                displayResults('<h3>Expected Route:</h3>');
+                switch (userData.role) {
+                    case 'couple':
+                        displayResults('Should route to: /individual');
+                        break;
+                    case 'vendor':
+                        displayResults('Should route to: /vendor');
+                        break;
+                    case 'admin':
+                        displayResults('Should route to: /admin');
+                        break;
+                    default:
+                        displayResults('Unknown role, would default to: /individual');
+                }
+                
+            } catch (error) {
+                displayResults('Error parsing cached user data: ' + error.message);
+            }
+        }
+        
+        // Test API authentication if token exists
+        if (token) {
+            displayResults('<h2>API Authentication Test:</h2>');
+            displayResults('Testing API authentication...');
+            
+            fetch('https://weddingbazaar-web.onrender.com/api/auth/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('API auth verification failed: ' + response.status);
+                }
+            })
+            .then(data => {
+                displayResults('✅ API auth verification successful');
+                displayResults('Success: ' + data.success);
+                displayResults('Authenticated: ' + data.authenticated);
+                displayResults('User role from API: ' + (data.user?.role || 'N/A'));
+                displayResults('User ID from API: ' + (data.user?.id || 'N/A'));
+                
+                // Compare cached vs API data
+                if (cachedUserData) {
+                    const cachedUser = JSON.parse(cachedUserData);
+                    if (cachedUser.role !== data.user?.role) {
+                        displayResults('<span style="color: red;">🚨 ROLE MISMATCH between cached and API data:</span>');
+                        displayResults('<span style="color: red;">Cached role: ' + cachedUser.role + '</span>');
+                        displayResults('<span style="color: red;">API role: ' + data.user?.role + '</span>');
+                    } else {
+                        displayResults('<span style="color: green;">✅ Role consistency: Cached and API roles match</span>');
+                    }
+                }
+            })
+            .catch(error => {
+                displayResults('❌ API auth test error: ' + error.message);
+            });
+        }
+    </script>
+</body>
+</html>

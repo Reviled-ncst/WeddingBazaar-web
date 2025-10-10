@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Name Fix Verification Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f4f6, #e8dde0);
+        }
+        .header {
+            background: linear-gradient(135deg, #ff6b9d, #c44569);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: linear-gradient(135deg, #ff6b9d, #c44569);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-weight: bold;
+        }
+        .test-button:hover {
+            background: linear-gradient(135deg, #e55a89, #b33e5e);
+            transform: translateY(-2px);
+        }
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .info {
+            color: #3498db;
+            font-weight: bold;
+        }
+        .result {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .json-display {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .test-steps {
+            background: #e8f5e8;
+            border: 1px solid #27ae60;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .test-steps h4 {
+            color: #27ae60;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 Vendor Name Fix Verification Test</h1>
+        <p>Complete workflow test: Services → Messaging → Correct Vendor Names</p>
+        <p><strong>Deployed URLs:</strong></p>
+        <p>Frontend: <a href="https://weddingbazaarph.web.app" target="_blank" style="color: #fff;">https://weddingbazaarph.web.app</a></p>
+        <p>Backend: <a href="https://weddingbazaar-web.onrender.com" target="_blank" style="color: #fff;">https://weddingbazaar-web.onrender.com</a></p>
+    </div>
+
+    <div class="test-section">
+        <h2>📋 Test Overview</h2>
+        <div class="test-steps">
+            <h4>What We're Testing:</h4>
+            <ol>
+                <li><strong>Services Page:</strong> Load real services from backend API</li>
+                <li><strong>Vendor Names:</strong> Ensure services show actual vendor names (not mock data)</li>
+                <li><strong>Conversation Creation:</strong> When user clicks "Contact Vendor", pass the correct vendor name</li>
+                <li><strong>Messaging Context:</strong> Verify conversations are created with real vendor names (not "Vendor Name")</li>
+                <li><strong>Backend Integration:</strong> Confirm vendor name is stored and retrieved correctly</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 1. Backend API Tests</h2>
+        <button class="test-button" onclick="testBackendHealth()">Test Backend Health</button>
+        <button class="test-button" onclick="testServicesAPI()">Test Services API</button>
+        <button class="test-button" onclick="testVendorsAPI()">Test Vendors API</button>
+        <div id="backend-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📱 2. Frontend Services Page Test</h2>
+        <button class="test-button" onclick="testFrontendServices()">Test Services Page</button>
+        <button class="test-button" onclick="openServicesPage()">Open Services Page</button>
+        <div id="frontend-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>💬 3. Messaging Integration Test</h2>
+        <p><strong>Manual Test Instructions:</strong></p>
+        <div class="test-steps">
+            <h4>Follow These Steps:</h4>
+            <ol>
+                <li>Go to <a href="https://weddingbazaarph.web.app/individual/services" target="_blank">Services Page</a></li>
+                <li>Find a service and click the "Contact Vendor" button</li>
+                <li>Check the browser console for logs showing vendor name being passed</li>
+                <li>Verify that the conversation is created with the correct vendor name</li>
+                <li>Check that the conversation appears in the messaging interface with the real vendor name</li>
+            </ol>
+        </div>
+        <button class="test-button" onclick="showMessagingLogs()">Show Expected Console Logs</button>
+        <div id="messaging-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎯 4. Code Changes Summary</h2>
+        <div class="result">
+            <h4>Files Modified:</h4>
+            <ul>
+                <li><strong>UnifiedMessagingContext.tsx:</strong> Fixed hardcoded "Vendor Name" to use passed vendorName parameter</li>
+                <li><strong>Services_Simple.tsx:</strong> Updated to pass vendor name (4th parameter) to createBusinessConversation()</li>
+            </ul>
+            <h4>Key Fix:</h4>
+            <div class="json-display">
+// BEFORE (Line 259 in UnifiedMessagingContext.tsx):
+vendorName: targetUserType === 'vendor' ? 'Vendor Name' : (user.businessName || user.email || 'Unknown'),
+
+// AFTER:
+vendorName: targetUserType === 'vendor' ? (targetUserName || 'Vendor Name') : (user.businessName || user.email || 'Unknown'),
+
+// BEFORE (Services_Simple.tsx):
+await createBusinessConversation(
+  service.vendorId,
+  undefined, // bookingId
+  service.category // serviceType
+);
+
+// AFTER:
+await createBusinessConversation(
+  service.vendorId,
+  undefined, // bookingId
+  service.category, // serviceType
+  service.vendorName // vendorName - NOW PASSED!
+);
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>✅ Test Results Summary</h2>
+        <div id="test-summary">
+            <p>Run the tests above to see results...</p>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://weddingbazaar-web.onrender.com';
+        const FRONTEND_URL = 'https://weddingbazaarph.web.app';
+        
+        let testResults = {
+            backendHealth: false,
+            servicesAPI: false,
+            vendorsAPI: false,
+            frontendServices: false
+        };
+
+        function updateSummary() {
+            const passed = Object.values(testResults).filter(Boolean).length;
+            const total = Object.keys(testResults).length;
+            const summaryDiv = document.getElementById('test-summary');
+            
+            summaryDiv.innerHTML = `
+                <h4>Automated Tests: ${passed}/${total} Passed</h4>
+                <ul>
+                    <li>Backend Health: ${testResults.backendHealth ? '✅ PASS' : '❌ FAIL'}</li>
+                    <li>Services API: ${testResults.servicesAPI ? '✅ PASS' : '❌ FAIL'}</li>
+                    <li>Vendors API: ${testResults.vendorsAPI ? '✅ PASS' : '❌ FAIL'}</li>
+                    <li>Frontend Services: ${testResults.frontendServices ? '✅ PASS' : '❌ FAIL'}</li>
+                </ul>
+                <p><strong>Manual Test Required:</strong> Conversation creation with correct vendor names (see step 3 above)</p>
+            `;
+        }
+
+        async function testBackendHealth() {
+            const resultsDiv = document.getElementById('backend-results');
+            resultsDiv.innerHTML = '<p class="info">Testing backend health...</p>';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/health`);
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'OK') {
+                    testResults.backendHealth = true;
+                    resultsDiv.innerHTML = `
+                        <div class="result">
+                            <p class="success">✅ Backend Health: PASS</p>
+                            <div class="json-display">${JSON.stringify(data, null, 2)}</div>
+                        </div>
+                    `;
+                } else {
+                    testResults.backendHealth = false;
+                    resultsDiv.innerHTML = `<p class="error">❌ Backend Health: FAIL - ${data.message || 'Unknown error'}</p>`;
+                }
+            } catch (error) {
+                testResults.backendHealth = false;
+                resultsDiv.innerHTML = `<p class="error">❌ Backend Health: FAIL - ${error.message}</p>`;
+            }
+            updateSummary();
+        }
+
+        async function testServicesAPI() {
+            const resultsDiv = document.getElementById('backend-results');
+            resultsDiv.innerHTML += '<p class="info">Testing services API...</p>';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/services`);
+                const data = await response.json();
+                
+                if (response.ok && Array.isArray(data) && data.length > 0) {
+                    testResults.servicesAPI = true;
+                    const serviceWithVendor = data.find(s => s.vendor_name || s.vendorName);
+                    resultsDiv.innerHTML += `
+                        <div class="result">
+                            <p class="success">✅ Services API: PASS - Found ${data.length} services</p>
+                            <p>Sample service with vendor name:</p>
+                            <div class="json-display">${JSON.stringify(serviceWithVendor || data[0], null, 2)}</div>
+                        </div>
+                    `;
+                } else {
+                    testResults.servicesAPI = false;
+                    resultsDiv.innerHTML += `<p class="error">❌ Services API: FAIL - No services found</p>`;
+                }
+            } catch (error) {
+                testResults.servicesAPI = false;
+                resultsDiv.innerHTML += `<p class="error">❌ Services API: FAIL - ${error.message}</p>`;
+            }
+            updateSummary();
+        }
+
+        async function testVendorsAPI() {
+            const resultsDiv = document.getElementById('backend-results');
+            resultsDiv.innerHTML += '<p class="info">Testing vendors API...</p>';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/vendors`);
+                const data = await response.json();
+                
+                if (response.ok && Array.isArray(data) && data.length > 0) {
+                    testResults.vendorsAPI = true;
+                    resultsDiv.innerHTML += `
+                        <div class="result">
+                            <p class="success">✅ Vendors API: PASS - Found ${data.length} vendors</p>
+                            <p>Sample vendor:</p>
+                            <div class="json-display">${JSON.stringify(data[0], null, 2)}</div>
+                        </div>
+                    `;
+                } else {
+                    testResults.vendorsAPI = false;
+                    resultsDiv.innerHTML += `<p class="error">❌ Vendors API: FAIL - No vendors found</p>`;
+                }
+            } catch (error) {
+                testResults.vendorsAPI = false;
+                resultsDiv.innerHTML += `<p class="error">❌ Vendors API: FAIL - ${error.message}</p>`;
+            }
+            updateSummary();
+        }
+
+        async function testFrontendServices() {
+            const resultsDiv = document.getElementById('frontend-results');
+            resultsDiv.innerHTML = '<p class="info">Testing frontend services page...</p>';
+            
+            try {
+                // Test if the services page loads without error
+                const response = await fetch(`${FRONTEND_URL}/individual/services`);
+                
+                if (response.ok) {
+                    testResults.frontendServices = true;
+                    resultsDiv.innerHTML = `
+                        <div class="result">
+                            <p class="success">✅ Frontend Services Page: ACCESSIBLE</p>
+                            <p>✅ Status: ${response.status} ${response.statusText}</p>
+                            <p>🔗 URL: <a href="${FRONTEND_URL}/individual/services" target="_blank">${FRONTEND_URL}/individual/services</a></p>
+                            <p><strong>Next:</strong> Open the page and verify services load with real vendor names</p>
+                        </div>
+                    `;
+                } else {
+                    testResults.frontendServices = false;
+                    resultsDiv.innerHTML = `<p class="error">❌ Frontend Services Page: FAIL - Status ${response.status}</p>`;
+                }
+            } catch (error) {
+                testResults.frontendServices = false;
+                resultsDiv.innerHTML = `<p class="error">❌ Frontend Services Page: FAIL - ${error.message}</p>`;
+            }
+            updateSummary();
+        }
+
+        function openServicesPage() {
+            window.open(`${FRONTEND_URL}/individual/services`, '_blank');
+        }
+
+        function showMessagingLogs() {
+            const resultsDiv = document.getElementById('messaging-results');
+            resultsDiv.innerHTML = `
+                <div class="result">
+                    <h4>Expected Console Logs When Creating Conversation:</h4>
+                    <div class="json-display">
+1. "Contacting vendor: [ACTUAL_VENDOR_NAME]" (from Services_Simple.tsx)
+2. "🆕 [UnifiedMessaging] Creating conversation with: {targetUserId: 'vendor-id', targetUserType: 'vendor'}"
+3. "📤 [UnifiedMessaging] API call successful: {...}" 
+4. "✅ [UnifiedMessaging] Conversation created and added to top: conv_..."
+
+🎯 KEY VERIFICATION POINTS:
+- Step 1 should show the REAL vendor name (e.g., "Perfect Moments Studio")
+- NOT generic names like "Vendor Name" or "Wedding Professional"
+- The conversation should be created with the actual vendor name from the service
+                    </div>
+                    <p><strong>How to Check:</strong></p>
+                    <ol>
+                        <li>Open browser Developer Tools (F12)</li>
+                        <li>Go to Console tab</li>
+                        <li>Visit the services page and click "Contact Vendor"</li>
+                        <li>Look for the logs above with real vendor names</li>
+                    </ol>
+                </div>
+            `;
+        }
+
+        // Auto-run basic tests on page load
+        window.onload = function() {
+            updateSummary();
+            console.log('🚀 Vendor Name Fix Verification Test Page Loaded');
+            console.log('Backend URL:', BACKEND_URL);
+            console.log('Frontend URL:', FRONTEND_URL);
+        };
+    </script>
+</body>
+</html>

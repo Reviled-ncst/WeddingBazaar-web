@@ -18,9 +18,10 @@ import {
 import { cn } from '../../../../utils/cn';;
 
 import { CoupleHeader } from '../landing/CoupleHeader';
-import { useUniversalMessaging } from '../../../../shared/contexts/UniversalMessagingContext';
+import { useUnifiedMessaging } from '../../../../shared/contexts/UnifiedMessagingContext';
 import { ServiceDetailsModal } from '../../../../modules/services/components/ServiceDetailsModal';
 import { DecisionSupportSystem } from './dss/DecisionSupportSystem';
+import { ServiceAvailabilityManager, ServiceAvailabilityPreview } from '../../../../shared/components/availability';
 import { serviceManager } from '../../../../shared/services/CentralizedServiceManager';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 
@@ -180,7 +181,7 @@ export const Services: React.FC = () => {
   const [connectionSpeed, setConnectionSpeed] = useState<'slow' | 'medium' | 'fast'>('medium');
   const [optimizationActive, setOptimizationActive] = useState(false);
   
-  const { startConversationWith } = useUniversalMessaging();
+  const { createBusinessConversation, setModalOpen } = useUnifiedMessaging();
 
   // Monitor connection speed and optimization status
   useEffect(() => {
@@ -662,26 +663,14 @@ export const Services: React.FC = () => {
   const handleContactVendor = async (service: Service) => {
     
     try {
-      // Start conversation with vendor using universal messaging
-      const vendor = {
-        id: service.vendorId,
-        name: service.vendorName,
-        role: 'vendor' as const,
-        businessName: service.vendorName,
-        serviceCategory: service.category
-      };
-
-      // Detailed service information for conversation context
-      const serviceInfo = {
-        id: service.id,
-        name: service.name,
-        category: service.category,
-        description: service.description,
-        priceRange: service.priceRange,
-        location: service.location
-      };
-
-      await startConversationWith(vendor, serviceInfo);
+      // Start conversation with vendor using unified messaging
+      await createBusinessConversation(
+        service.vendorId || `vendor-${Date.now()}`,
+        undefined, // bookingId
+        service.category,
+        service.vendorName
+      );
+      setModalOpen(true);
       
       // Optional: Send an initial message to provide context
       // This helps both parties understand what service is being discussed
@@ -689,14 +678,11 @@ export const Services: React.FC = () => {
       
     } catch (error) {
       // Fallback to basic conversation
-      const vendor = {
-        id: service.vendorId || `vendor-${Date.now()}`,
-        name: service.vendorName,
-        role: 'vendor' as const
-      };
+      const vendorId = service.vendorId || `vendor-${Date.now()}`;
       
       try {
-        await startConversationWith(vendor);
+        await createBusinessConversation(vendorId, undefined, undefined, service.vendorName);
+        setModalOpen(true);
       } catch (fallbackError) {
         // Silent fallback - messaging system will handle errors
       }
@@ -720,6 +706,8 @@ export const Services: React.FC = () => {
   const handleCloseDSS = () => {
     setShowDSS(false);
   };
+
+
 
   const handleServiceRecommend = (serviceId: string) => {
     const service = services.find(s => s.id === serviceId);
@@ -914,25 +902,53 @@ export const Services: React.FC = () => {
                 </div>
               </div>
 
-              {/* Always Visible DSS Button - Prominently placed */}
-              <div className="flex justify-center mb-8">
-                <button
-                  onClick={handleOpenDSS}
-                  className="group flex items-center space-x-4 px-12 py-6 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white rounded-3xl hover:from-purple-600 hover:via-indigo-600 hover:to-blue-600 transition-all duration-500 shadow-2xl hover:shadow-3xl transform hover:scale-110 hover:-translate-y-2 font-bold text-2xl border-2 border-white/30 backdrop-blur-sm relative overflow-hidden"
-                  title="AI Decision Support System - Get Personalized Wedding Service Recommendations"
-                  aria-label="Open AI Decision Support System for personalized recommendations"
-                >
-                  {/* Background glow effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-blue-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
-                  
-                  <Brain className="h-8 w-8 group-hover:animate-pulse group-hover:scale-125 transition-all duration-300 relative z-10" />
-                  <span className="relative z-10">🤖 AI Wedding Planner</span>
-                  <div className="w-4 h-4 bg-white/90 rounded-full animate-bounce shadow-lg relative z-10"></div>
-                  
-                  {/* Floating particles */}
-                  <div className="absolute -top-2 -right-2 w-3 h-3 bg-white/60 rounded-full animate-bounce opacity-80"></div>
-                  <div className="absolute -bottom-2 -left-2 w-2 h-2 bg-white/60 rounded-full animate-bounce-delayed opacity-80"></div>
-                </button>
+              {/* DSS Options - Choose Your Planning Style */}
+              <div className="flex flex-col items-center mb-8 space-y-4">
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">🤖 AI Wedding Planning</h3>
+                <p className="text-gray-600 text-center max-w-2xl mb-6">
+                  Choose your preferred planning experience to get personalized recommendations
+                </p>
+                
+                <div className="flex flex-col md:flex-row gap-4 w-full max-w-4xl">
+                  {/* NEW: Phased DSS - Step by Step */}
+                  <button
+                    onClick={handleOpenDSS}
+                    className="group flex-1 flex items-center space-x-4 px-8 py-6 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white rounded-2xl hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 transition-all duration-500 shadow-xl hover:shadow-2xl transform hover:scale-105 hover:-translate-y-1 font-semibold text-lg border-2 border-white/30 backdrop-blur-sm relative overflow-hidden"
+                    title="NEW: Step-by-Step Planning - Guided workflow with date availability checking"
+                    aria-label="Open Step-by-Step AI Planning with availability checking"
+                  >
+                    {/* Background glow effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-cyan-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
+                    
+                    <Calendar className="h-7 w-7 group-hover:animate-pulse group-hover:scale-125 transition-all duration-300 relative z-10" />
+                    <div className="flex-1 text-left relative z-10">
+                      <div className="font-bold">📅 Step-by-Step Planner</div>
+                      <div className="text-sm text-emerald-100 font-normal">NEW! Guided workflow with date availability</div>
+                    </div>
+                    <div className="w-3 h-3 bg-white/90 rounded-full animate-bounce shadow-lg relative z-10"></div>
+                    
+                    {/* NEW badge */}
+                    <div className="absolute -top-1 -right-1 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full animate-pulse">NEW</div>
+                  </button>
+
+                  {/* Original DSS - Quick Recommendations */}
+                  <button
+                    onClick={handleOpenDSS}
+                    className="group flex-1 flex items-center space-x-4 px-8 py-6 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white rounded-2xl hover:from-purple-600 hover:via-indigo-600 hover:to-blue-600 transition-all duration-500 shadow-xl hover:shadow-2xl transform hover:scale-105 hover:-translate-y-1 font-semibold text-lg border-2 border-white/30 backdrop-blur-sm relative overflow-hidden"
+                    title="Quick AI Recommendations - All options at once"
+                    aria-label="Open Quick AI Recommendations"
+                  >
+                    {/* Background glow effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-blue-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
+                    
+                    <Brain className="h-7 w-7 group-hover:animate-pulse group-hover:scale-125 transition-all duration-300 relative z-10" />
+                    <div className="flex-1 text-left relative z-10">
+                      <div className="font-bold">⚡ Quick Recommendations</div>
+                      <div className="text-sm text-purple-100 font-normal">All options at once, advanced filters</div>
+                    </div>
+                    <div className="w-3 h-3 bg-white/90 rounded-full animate-bounce shadow-lg relative z-10"></div>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1315,9 +1331,17 @@ export const Services: React.FC = () => {
                     </div>
 
                     {/* Location */}
-                    <div className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
+                    <div className="flex items-center space-x-2 text-sm text-gray-600 mb-3">
                       <MapPin className="h-4 w-4 flex-shrink-0 text-rose-500" />
                       <span className="truncate font-medium">{service.location}</span>
+                    </div>
+
+                    {/* Availability Preview */}
+                    <div className="mb-4">
+                      <ServiceAvailabilityPreview
+                        vendorId={service.vendorId}
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Service description */}
@@ -1434,6 +1458,8 @@ export const Services: React.FC = () => {
             priorities={selectedCategory !== 'all' ? [selectedCategory] : []}
           />
         )}
+
+
       </div>
     </div>
   );

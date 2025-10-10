@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
   MapPin, 
@@ -15,66 +14,17 @@ import {
   Filter,
   SlidersHorizontal,
   Brain,
-  Calendar
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../../../utils/cn';
 import { CoupleHeader } from '../landing/CoupleHeader';
-import { useAuth } from '../../../../shared/contexts/AuthContext';
 import { useUnifiedMessaging } from '../../../../shared/contexts/UnifiedMessagingContext';
 import { serviceManager, SERVICE_CATEGORIES } from '../../../../shared/services/CentralizedServiceManager';
 import { BookingRequestModal } from '../../../../modules/services/components/BookingRequestModal';
 import { DecisionSupportSystem } from './dss/DecisionSupportSystem';
-import { PhasedDecisionSupportSystem } from './dss/PhasedDecisionSupportSystem';
-import { ServiceDetailModal } from './components/ServiceDetailModal';
-import { ServiceCard } from './components/ServiceCard';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 import type { Service as BookingService } from '../../../../modules/services/types';
-
-// Helper function to combine all image sources into a comprehensive gallery
-const getAllServiceImages = (service: any): string[] => {
-  const images: string[] = [];
-  
-  // Add primary image first
-  if (service.image) {
-    images.push(service.image);
-  }
-  
-  // Add images array (if it's an array)
-  if (service.images && Array.isArray(service.images)) {
-    images.push(...service.images);
-  } else if (service.images && typeof service.images === 'string') {
-    // Handle case where images might be a JSON string
-    try {
-      const parsed = JSON.parse(service.images);
-      if (Array.isArray(parsed)) {
-        images.push(...parsed);
-      }
-    } catch {
-      // If not JSON, treat as single image
-      images.push(service.images);
-    }
-  }
-  
-  // Add gallery array
-  if (service.gallery && Array.isArray(service.gallery)) {
-    images.push(...service.gallery);
-  }
-  
-  // Remove duplicates and filter out invalid URLs
-  const uniqueImages = [...new Set(images)].filter(img => 
-    img && typeof img === 'string' && img.trim() !== ''
-  );
-  
-  console.log('🖼️ Combined images for', service.name, ':', {
-    primary: service.image,
-    images: service.images,
-    gallery: service.gallery,
-    combined: uniqueImages
-  });
-  
-  return uniqueImages;
-};
 
 // Helper function to convert Service to BookingService format
 const convertToBookingService = (service: Service): BookingService => {
@@ -99,8 +49,6 @@ const convertToBookingService = (service: Service): BookingService => {
 
   const mappedCategory = categoryMap[service.category] || 'other';
 
-  const allImages = getAllServiceImages(service);
-  
   return {
     id: service.id,
     vendorId: service.vendorId || service.vendor_id,
@@ -109,8 +57,8 @@ const convertToBookingService = (service: Service): BookingService => {
     description: service.description,
     basePrice: service.price,
     priceRange: service.priceRange,
-    image: allImages[0] || service.image,
-    gallery: allImages,
+    image: service.image,
+    gallery: service.images || service.gallery || [service.image].filter(Boolean),
     features: service.features || [],
     availability: service.availability,
     location: service.location,
@@ -185,53 +133,273 @@ export function Services() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<Service | null>(null);
   const [showDSS, setShowDSS] = useState(false);
-  const [showPhasedDSS, setShowPhasedDSS] = useState(false);
   
-  const { user } = useAuth();
-  const { createOrFindBusinessConversation, setActiveConversation } = useUnifiedMessaging();
-  const navigate = useNavigate();
+  const { createBusinessConversation, setModalOpen, setActiveConversation } = useUnifiedMessaging();
 
-  // Load services using centralized service manager
+  // Load services with enhanced data from multiple APIs
   useEffect(() => {
-    console.log('🚀 [Services] *** USEEFFECT TRIGGERED ***');
-    console.log('🔧 [Services] Component filters:', { selectedCategory, featuredOnly, ratingFilter });
+    console.log('🚀 [Services] *** LOADING ENHANCED SERVICES ***');
     
-    const loadServices = async () => {
-      console.log('📋 [Services] *** CALLING LOADSERVICES FUNCTION ***');
+    const loadEnhancedServices = async () => {
       setLoading(true);
-      console.log('🔄 [Services] Loading services with centralized manager...');
-      
-      const filters = {
-        category: selectedCategory !== 'All' ? selectedCategory : undefined,
-        featured: featuredOnly || undefined,
-        rating: ratingFilter || undefined,
-        limit: 50
-      };
-
-      console.log('🔧 [Services] *** ABOUT TO CALL SERVICEMANAGER ***');
-      console.log('🔧 [Services] Filters being passed:', filters);
+      console.log('� [Services] Loading services with vendor data...');
       
       try {
-        console.log('� [Services] Using CentralizedServiceManager to load ALL services...');
-        
-        const result = await serviceManager.getAllServices(filters);
-        
-        if (result.success && result.services.length > 0) {
-          console.log('✅ [Services] Loaded services from centralized manager:', result.services.length);
-          setServices(result.services);
+        // Load services and vendors in parallel
+        const [servicesResponse, vendorsResponse] = await Promise.all([
+          fetch('https://weddingbazaar-web.onrender.com/api/services'),
+          fetch('https://weddingbazaar-web.onrender.com/api/vendors/featured')
+        ]);
+
+        const servicesData = await servicesResponse.json();
+        const vendorsData = await vendorsResponse.json();
+
+        console.log('📊 [Services] Raw services data:', servicesData.services?.length || 0);
+        console.log('� [Services] Vendors data:', vendorsData.vendors?.length || 0);
+
+        if (servicesData.success && servicesData.services) {
+          // Create vendor lookup map
+          const vendorMap = new Map();
+          if (vendorsData.success && vendorsData.vendors) {
+            vendorsData.vendors.forEach((vendor: any) => {
+              vendorMap.set(vendor.id, vendor);
+            });
+          }
+
+          // Enhance services with vendor data and real/fallback images
+          const enhancedServices = servicesData.services.map((service: any) => {
+            const vendor = vendorMap.get(service.vendor_id);
+            
+            // Use real service images from database
+            const getServiceImages = (service: any, category: string) => {
+              console.log('🔍 [Services] Checking images for service:', service.name || service.id, 'Raw service data:', service);
+              
+              // First priority: Check if service has an images array (from database)
+              if (service.images) {
+                if (Array.isArray(service.images) && service.images.length > 0) {
+                  console.log('✅ [Services] Using real images array for service:', service.name || service.id, 'Count:', service.images.length);
+                  return service.images;
+                }
+                
+                // Sometimes images might be stored as a string (JSON array or single URL)
+                if (typeof service.images === 'string') {
+                  try {
+                    // Try to parse as JSON array
+                    const parsedImages = JSON.parse(service.images);
+                    if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+                      console.log('✅ [Services] Using parsed real images for service:', service.name || service.id, 'Count:', parsedImages.length);
+                      return parsedImages;
+                    }
+                  } catch (e) {
+                    // If not JSON, treat as single URL
+                    console.log('✅ [Services] Using single real image string for service:', service.name || service.id);
+                    return [service.images];
+                  }
+                }
+              }
+              
+              // Second priority: Check if service has a single image field
+              if (service.image && typeof service.image === 'string') {
+                console.log('✅ [Services] Using single real image for service:', service.name || service.id);
+                return [service.image];
+              }
+              
+              // Third priority: Check if vendor has images
+              if (vendor && vendor.images && Array.isArray(vendor.images) && vendor.images.length > 0) {
+                console.log('✅ [Services] Using vendor images for service:', service.name || service.id);
+                return vendor.images;
+              }
+              
+              if (vendor && vendor.image && typeof vendor.image === 'string') {
+                console.log('✅ [Services] Using vendor image for service:', service.name || service.id);
+                return [vendor.image];
+              }
+              
+              console.log('⚠️ [Services] No real images found, using category fallback for:', service.name || service.id, 'Category:', category);
+              
+              // Fallback to category-based placeholder images only when no real images exist
+              const imageCategories: Record<string, string[]> = {
+                'Photography': [
+                  'https://images.unsplash.com/photo-1606800052052-a08af7148866?w=800',
+                  'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800',
+                  'https://images.unsplash.com/photo-1519741497674-611481863552?w=800',
+                  'https://images.unsplash.com/photo-1520854221256-17451cc331bf?w=800'
+                ],
+                'Photographer & Videographer': [
+                  'https://images.unsplash.com/photo-1606800052052-a08af7148866?w=800',
+                  'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800',
+                  'https://images.unsplash.com/photo-1519741497674-611481863552?w=800',
+                  'https://images.unsplash.com/photo-1520854221256-17451cc331bf?w=800'
+                ],
+                'Caterer': [
+                  'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800',
+                  'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800',
+                  'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800',
+                  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800'
+                ],
+                'Florist': [
+                  'https://images.unsplash.com/photo-1594736797933-d0f15b985449?w=800',
+                  'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800',
+                  'https://images.unsplash.com/photo-1565620468-d82c1b6d6b48?w=800',
+                  'https://images.unsplash.com/photo-1495703571435-15ad1c4a4ec8?w=800'
+                ],
+                'DJ/Band': [
+                  'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800',
+                  'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800',
+                  'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=800',
+                  'https://images.unsplash.com/photo-1582654596830-b9453fa7b9c0?w=800'
+                ],
+                'Wedding Planner': [
+                  'https://images.unsplash.com/photo-1519741497674-611481863552?w=800',
+                  'https://images.unsplash.com/photo-1464207687429-7505649dae38?w=800',
+                  'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=800',
+                  'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=800'
+                ],
+                'Hair & Makeup Artists': [
+                  'https://images.unsplash.com/photo-1457972729786-0411a3b2b626?w=800',
+                  'https://images.unsplash.com/photo-1534531173927-aeb928d54385?w=800',
+                  'https://images.unsplash.com/photo-1541123603104-512919d6a96c?w=800',
+                  'https://images.unsplash.com/photo-1458670572128-986fd2b12e25?w=800'
+                ],
+                'Cake Designer': [
+                  'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800',
+                  'https://images.unsplash.com/photo-1535141192574-5d4897c12636?w=800',
+                  'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=800',
+                  'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800'
+                ],
+                'Event Rentals': [
+                  'https://images.unsplash.com/photo-1519167758481-83f29c1c30be?w=800',
+                  'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800',
+                  'https://images.unsplash.com/photo-1464207687429-7505649dae38?w=800',
+                  'https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=800'
+                ],
+                'Dress Designer/Tailor': [
+                  'https://images.unsplash.com/photo-1594736797933-d0f15b985449?w=800',
+                  'https://images.unsplash.com/photo-1566174924442-dbe0077ea5b8?w=800',
+                  'https://images.unsplash.com/photo-1502635385003-ee1e6a1a742d?w=800',
+                  'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=800'
+                ],
+                'Officiant': [
+                  'https://images.unsplash.com/photo-1519741497674-611481863552?w=800',
+                  'https://images.unsplash.com/photo-1464207687429-7505649dae38?w=800',
+                  'https://images.unsplash.com/photo-1520854221256-17451cc331bf?w=800',
+                  'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=800'
+                ],
+                'Transportation Services': [
+                  'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=800',
+                  'https://images.unsplash.com/photo-1553440569-bcc63803a83d?w=800',
+                  'https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800',
+                  'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800'
+                ],
+                'Venue Coordinator': [
+                  'https://images.unsplash.com/photo-1519167758481-83f29c1c30be?w=800',
+                  'https://images.unsplash.com/photo-1464207687429-7505649dae38?w=800',
+                  'https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=800',
+                  'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800'
+                ],
+                'Sounds & Lights': [
+                  'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800',
+                  'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800',
+                  'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=800',
+                  'https://images.unsplash.com/photo-1582654596830-b9453fa7b9c0?w=800'
+                ],
+                'Stationery Designer': [
+                  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
+                  'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=800',
+                  'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800',
+                  'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800'
+                ],
+                'Security & Guest Management': [
+                  'https://images.unsplash.com/photo-1464207687429-7505649dae38?w=800',
+                  'https://images.unsplash.com/photo-1519167758481-83f29c1c30be?w=800',
+                  'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800',
+                  'https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=800'
+                ]
+              };
+
+              const defaultImages = [
+                'https://images.unsplash.com/photo-1519741497674-611481863552?w=800',
+                'https://images.unsplash.com/photo-1464207687429-7505649dae38?w=800',
+                'https://images.unsplash.com/photo-1520854221256-17451cc331bf?w=800',
+                'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=800'
+              ];
+
+              return imageCategories[category] || defaultImages;
+            };
+
+            const serviceImages = getServiceImages(service, service.category);
+            
+            // Create features based on category
+            const getCategoryFeatures = (category: string) => {
+              const featureMap: Record<string, string[]> = {
+                'Photography': ['Professional Equipment', 'Editing Included', 'Online Gallery', 'Print Rights'],
+                'Photographer & Videographer': ['Professional Equipment', 'Editing Included', 'Online Gallery', 'Print Rights', 'Drone Footage'],
+                'Caterer': ['Professional Staff', 'Custom Menu', 'Setup/Cleanup', 'Dietary Options'],
+                'Florist': ['Fresh Flowers', 'Custom Arrangements', 'Setup Included', 'Seasonal Options'],
+                'DJ/Band': ['Professional Equipment', 'Music Library', 'MC Services', 'Lighting'],
+                'Wedding Planner': ['Full Coordination', 'Vendor Management', 'Timeline Creation', 'Day-of Support'],
+                'Hair & Makeup Artists': ['Professional Products', 'Trial Session', 'Touch-up Kit', 'Bridal Party'],
+                'Cake Designer': ['Custom Design', 'Fresh Ingredients', 'Dietary Options', 'Delivery Included'],
+                'Event Rentals': ['Setup/Breakdown', 'Clean Equipment', 'Delivery Included', 'Variety of Options'],
+                'Dress Designer/Tailor': ['Custom Fitting', 'Quality Materials', 'Alterations', 'Style Consultation'],
+                'Officiant': ['Ceremony Creation', 'Rehearsal', 'Legal Documentation', 'Personalized Vows'],
+                'Transportation Services': ['Professional Driver', 'Luxury Vehicle', 'On-time Service', 'Special Occasions'],
+                'Venue Coordinator': ['Setup Management', 'Vendor Coordination', 'Timeline Execution', 'Problem Resolution'],
+                'Sounds & Lights': ['Professional Equipment', 'Technical Support', 'Wireless Microphones', 'Ambient Lighting'],
+                'Stationery Designer': ['Custom Design', 'Premium Paper', 'Professional Printing', 'Cohesive Suite'],
+                'Security & Guest Management': ['Professional Security', 'Crowd Management', 'Emergency Response', 'Discreet Service']
+              };
+              
+              return featureMap[category] || ['Professional Service', 'Quality Guaranteed', 'Experienced Team', 'Customer Support'];
+            };
+
+            return {
+              id: service.id,
+              title: service.name,
+              name: service.name || `${service.category} Service`,
+              category: service.category,
+              vendor_id: service.vendor_id,
+              vendorId: service.vendor_id,
+              vendorName: vendor?.name || 'Professional Vendor',
+              vendorImage: vendor?.image || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+              description: service.description || `Professional ${service.category.toLowerCase()} services for your special day.`,
+              price: parseFloat(service.price) || 0,
+              priceRange: vendor?.price_range || `₱${service.price}`,
+              location: vendor?.location || 'Metro Manila, Philippines',
+              rating: parseFloat(vendor?.rating) || 4.5,
+              reviewCount: vendor?.review_count || Math.floor(Math.random() * 50) + 10,
+              image: serviceImages[0],
+              images: serviceImages,
+              gallery: serviceImages,
+              features: getCategoryFeatures(service.category),
+              is_active: true,
+              availability: true,
+              featured: Math.random() > 0.7, // 30% chance of being featured
+              created_at: service.created_at || new Date().toISOString(),
+              updated_at: service.updated_at || new Date().toISOString(),
+              contactInfo: {
+                phone: '+63 917 123 4567',
+                email: `contact@${(vendor?.name || 'vendor').toLowerCase().replace(/\s+/g, '')}.com`,
+                website: `https://${(vendor?.name || 'vendor').toLowerCase().replace(/\s+/g, '')}.com`
+              }
+            };
+          });
+
+          console.log('✅ [Services] Enhanced services created:', enhancedServices.length);
+          setServices(enhancedServices);
         } else {
           console.log('⚠️ [Services] No services found');
           setServices([]);
         }
       } catch (error) {
-        console.error('❌ [Services] Error loading services:', error);
+        console.error('❌ [Services] Error loading enhanced services:', error);
         setServices([]);
       } finally {
         setLoading(false);
       }
     };
 
-    loadServices();
+    loadEnhancedServices();
   }, [selectedCategory, featuredOnly, ratingFilter]);
 
   // Filter and search services
@@ -403,42 +571,10 @@ Best regards`;
   };
 
   const handleMessageVendor = async (service: Service) => {
-    console.log('🗨️ [Services] ===== STARTING MESSAGE VENDOR PROCESS =====');
-    console.log('🗨️ [Services] Vendor:', service.vendorName, '| Service:', service.name);
-    console.log('🗨️ [Services] Vendor ID:', service.vendorId, '| Service ID:', service.id);
-    
-    // CRITICAL DEBUG: Check user authentication first
-    console.log('👤 [Services] ===== USER AUTHENTICATION CHECK =====');
-    console.log('👤 [Services] User object:', user);
-    console.log('👤 [Services] User ID:', user?.id);
-    console.log('👤 [Services] User authenticated:', !!user?.id);
-    console.log('👤 [Services] User role:', user?.role);
-    console.log('👤 [Services] User email:', user?.email);
-    
-    if (!user?.id) {
-      console.error('❌ [Services] ===== CRITICAL: USER NOT AUTHENTICATED =====');
-      console.error('❌ [Services] Cannot create conversation without authenticated user');
-      alert('Please log in to message vendors');
-      return;
-    }
-    
-    // CRITICAL DEBUG: Check messaging context availability
-    console.log('🔧 [Services] ===== MESSAGING CONTEXT AVAILABILITY CHECK =====');
-    console.log('🔧 [Services] createOrFindBusinessConversation function:', typeof createOrFindBusinessConversation);
-    console.log('🔧 [Services] setActiveConversation function:', typeof setActiveConversation);
-    console.log('🔧 [Services] Context functions available:', {
-      createOrFind: !!createOrFindBusinessConversation,
-      setActive: !!setActiveConversation
-    });
-    
-    if (!createOrFindBusinessConversation) {
-      console.error('❌ [Services] ===== CRITICAL: MESSAGING CONTEXT NOT AVAILABLE =====');
-      console.error('❌ [Services] createOrFindBusinessConversation function is missing');
-      alert('Messaging system not available. Please refresh the page.');
-      return;
-    }
+    console.log('🗨️ [Services] Starting conversation with vendor:', service.vendorName);
     
     try {
+      // Create a business conversation using the UnifiedMessaging context
       const vendor = {
         id: service.vendorId,
         name: service.vendorName,
@@ -447,176 +583,34 @@ Best regards`;
         serviceCategory: service.category
       };
 
-      // Detailed service information for conversation context
-      const serviceInfo = {
-        id: service.id,
-        name: service.name,
-        category: service.category,
-        description: service.description,
-        priceRange: service.priceRange,
-        location: service.location
-      };
-
-      console.log('🔍 [Services] ===== SEARCHING FOR EXISTING CONVERSATION =====');
-      console.log('🔍 [Services] Search criteria:', {
-        vendorId: vendor.id,
-        serviceType: serviceInfo.category,
-        serviceName: serviceInfo.name
-      });
-
-      console.log('🚀 [Services] ===== CALLING MESSAGING CONTEXT =====');
-      console.log('🚀 [Services] About to call createOrFindBusinessConversation...');
-      console.log('🚀 [Services] Parameters:', {
-        vendorId: vendor.id,
-        bookingId: undefined,
-        serviceType: serviceInfo.category,
-        serviceName: serviceInfo.name
-      });
-
-      // Use enhanced conversation lookup to prevent duplicates
-      const conversationId = await createOrFindBusinessConversation(
+      // Create conversation name focused on the service
+      const conversationName = `${service.name} Inquiry`;
+      
+      // Create conversation with service-specific context
+      const conversationId = await createBusinessConversation(
         vendor.id, 
-        undefined, // bookingId
-        serviceInfo.category, // serviceType
-        serviceInfo.name // serviceName
+        undefined, 
+        conversationName, 
+        service.vendorName
       );
       
-      console.log('🔄 [Services] ===== MESSAGING CONTEXT RESPONSE =====');
-      console.log('🔄 [Services] Received conversation ID:', conversationId);
-      console.log('🔄 [Services] Type of response:', typeof conversationId);
-      console.log('🔄 [Services] Is null?', conversationId === null);
-      console.log('🔄 [Services] Is undefined?', conversationId === undefined);
-      console.log('🔄 [Services] Is falsy?', !conversationId);
-      console.log('🔄 [Services] String value:', String(conversationId));
-      console.log('🔄 [Services] JSON stringify:', JSON.stringify(conversationId));
-      
       if (conversationId) {
-        console.error('✅ [Services] ===== CONVERSATION RESULT =====');
-        console.log('✅ [Services] Conversation ID found/created:', conversationId);
-        console.log('✅ [Services] This conversation will be used for messaging');
+        console.log('✅ [Services] Service-focused conversation created:', conversationId);
         
-        console.log('🚀 [Services] ===== NAVIGATION TO MESSAGES PAGE =====');
-        console.log('🚀 [Services] Navigating to: /individual/messages');
-        console.log('🚀 [Services] Target conversation:', conversationId);
+        // Set the active conversation and open modal
+        setActiveConversation(conversationId);
+        setModalOpen(true);
         
-        // Navigate to the dedicated messages page for better UX
-        navigate('/individual/messages');
+        console.log('📱 [Services] Opening messaging modal for service conversation:', conversationId);
         
-        // Set active conversation after navigation
-        // The messaging context now has better retry logic built-in
-        console.log('🎯 [Services] ===== SETTING ACTIVE CONVERSATION =====');
-        console.log('🎯 [Services] Setting active conversation ID:', conversationId);
-        console.log('🎯 [Services] This will load the conversation in the messages page');
-        
-        // Set active conversation after navigation with proper Promise handling
-        console.log('🎯 [Services] ===== SETTING ACTIVE CONVERSATION =====');
-        console.log('🎯 [Services] Setting active conversation ID:', conversationId);
-        console.log('🎯 [Services] This will load the conversation in the messages page');
-        
-        // CRITICAL FIX: Use standard activation method with enhanced retry logic
-        // The conversation should now be guaranteed to be in state due to the cache fix
-        setTimeout(async () => {
-          try {
-            console.log('🔄 [Services] ===== ATTEMPTING CONVERSATION ACTIVATION =====');
-            console.log('🔄 [Services] Target conversation ID:', conversationId);
-            console.log('🔄 [Services] Using enhanced messaging context with cache support');
-            
-            // Use standard activation method (now has better retry logic and cache support)
-            const activationSuccess = await setActiveConversation(conversationId);
-            
-            if (activationSuccess !== false) {
-              console.log('🎉 [Services] ===== CONVERSATION ACTIVATION SUCCESSFUL =====');
-              console.log('🎉 [Services] Conversation is now active and loaded');
-              console.log('🎉 [Services] User should see the conversation immediately');
-            } else {
-              console.error('❌ [Services] ===== ACTIVATION FAILED - CRITICAL ISSUE =====');
-              console.error('❌ [Services] Conversation ID:', conversationId);
-              console.error('❌ [Services] This indicates a deeper messaging system problem');
-              
-              // Show user-friendly error
-              alert('Unable to open conversation. Please try refreshing the page or contact support.');
-            }
-          } catch (error) {
-            console.error('❌ [Services] ===== CRITICAL ERROR IN CONVERSATION ACTIVATION =====');
-            console.error('❌ [Services] Error details:', error);
-            console.error('❌ [Services] Conversation ID:', conversationId);
-            
-            // Show user-friendly error
-            alert('Error opening conversation. Please try again later.');
-          }
-        }, 100); // Minimal delay since conversation is now guaranteed to be in cache
-        
-        console.log('💬 [Services] ===== ROUTING COMPLETE =====');
-        console.log('💬 [Services] Successfully routed to messages page');
-        console.log('💬 [Services] User can now see conversation with:', service.vendorName);
+        // Show success message
+        console.log(`✅ [Services] Started conversation about "${service.name}" with ${service.vendorName}`);
       } else {
-        console.error('⚠️ [Services] ===== CONVERSATION CREATION FAILED =====');
-        console.error('⚠️ [Services] Conversation creation returned null/undefined/falsy');
-        console.error('⚠️ [Services] This indicates messaging context issue');
-        console.error('⚠️ [Services] Raw response value:', conversationId);
-        console.error('⚠️ [Services] CRITICAL: Will route without conversation');
-        
-        // Still route to messages page to show the issue
-        console.error('🚀 [Services] ===== ROUTING TO MESSAGES (NO CONVERSATION) =====');
-        navigate('/individual/messages');
+        throw new Error('Failed to create conversation');
       }
     } catch (error) {
-      console.error('❌ [Services] ===== ERROR IN MESSAGE VENDOR PROCESS =====');
-      console.error('❌ [Services] Error starting conversation:', error);
-      console.error('❌ [Services] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-      console.log('🔄 [Services] ===== ATTEMPTING FALLBACK CONVERSATION =====');
-      
-      // Fallback to basic conversation
-      const vendor = {
-        id: service.vendorId || `vendor-${Date.now()}`,
-        name: service.vendorName,
-        role: 'vendor' as const
-      };
-      
-      console.log('🔄 [Services] Fallback vendor info:', vendor);
-      
-      try {
-        const fallbackConversationId = await createOrFindBusinessConversation(vendor.id);
-        if (fallbackConversationId) {
-          console.log('✅ [Services] ===== FALLBACK CONVERSATION SUCCESS =====');
-          console.log('✅ [Services] Fallback conversation ID:', fallbackConversationId);
-          console.log('🚀 [Services] Navigating to messages page with fallback conversation');
-          
-          navigate('/individual/messages');
-          
-          const setFallbackActiveWithRetry = async (retryCount = 0) => {
-            const maxRetries = 3;
-            console.log(`🎯 [Services] Setting fallback conversation as active (attempt ${retryCount + 1}):`, fallbackConversationId);
-            
-            try {
-              await setActiveConversation(fallbackConversationId);
-              console.log('✅ [Services] Fallback conversation activated successfully');
-            } catch (error) {
-              console.error(`❌ [Services] Error setting fallback conversation (attempt ${retryCount + 1}):`, error);
-              
-              if (retryCount < maxRetries) {
-                const delay = (retryCount + 1) * 200;
-                console.log(`🔄 [Services] Retrying fallback in ${delay}ms...`);
-                setTimeout(() => setFallbackActiveWithRetry(retryCount + 1), delay);
-              } else {
-                console.error('❌ [Services] All fallback attempts failed');
-              }
-            }
-          };
-          
-          setTimeout(() => setFallbackActiveWithRetry(), 500);
-          
-          console.log('💬 [Services] ===== FALLBACK ROUTING COMPLETE =====');
-          console.log('💬 [Services] User routed to basic conversation with:', service.vendorName);
-        } else {
-          console.error('❌ [Services] ===== FALLBACK FAILED =====');
-          console.error('❌ [Services] Even fallback conversation creation failed');
-        }
-      } catch (fallbackError) {
-        console.error('❌ [Services] ===== CRITICAL MESSAGING FAILURE =====');
-        console.error('❌ [Services] Both primary and fallback conversation failed:', fallbackError);
-        console.error('❌ [Services] User will not be able to message this vendor');
-      }
+      console.error('❌ [Services] Error opening service conversation:', error);
+      alert('Unable to start conversation at this time. Please try again later.');
     }
   };
 
@@ -648,14 +642,7 @@ Best regards`;
     }
   };
 
-  // Phased DSS handlers
-  const handleOpenPhasedDSS = () => {
-    setShowPhasedDSS(true);
-  };
 
-  const handleClosePhasedDSS = () => {
-    setShowPhasedDSS(false);
-  };
 
   if (loading) {
     return (
@@ -695,139 +682,183 @@ Best regards`;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50 relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-20 left-20 w-40 h-40 bg-gradient-to-r from-pink-200/20 to-rose-200/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-32 right-32 w-56 h-56 bg-gradient-to-r from-rose-200/20 to-pink-300/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-pink-100/10 to-rose-100/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+      </div>
+      
       <CoupleHeader />
       
-      <div className="pt-24 pb-16">
+      <div className="pt-24 pb-16 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header Section */}
-          <div className="text-center mb-12">
+          <div className="text-center mb-12 relative">
+            {/* Floating decorative elements */}
+            <motion.div 
+              className="absolute -top-8 left-1/4 text-pink-300"
+              animate={{ 
+                y: [0, -10, 0],
+                rotate: [0, 10, -10, 0] 
+              }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <Heart className="h-6 w-6" />
+            </motion.div>
+            <motion.div 
+              className="absolute -top-4 right-1/4 text-rose-300"
+              animate={{ 
+                y: [0, -8, 0],
+                scale: [1, 1.2, 1] 
+              }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+            >
+              <Sparkles className="h-5 w-5" />
+            </motion.div>
+            
             <motion.h1 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-5xl font-bold text-gray-900 mb-4"
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: "spring", stiffness: 100 }}
+              className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-gray-900 via-pink-800 to-rose-800 bg-clip-text text-transparent mb-6"
             >
               Wedding Services
             </motion.h1>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-xl text-gray-600 max-w-3xl mx-auto"
+              transition={{ delay: 0.2 }}
+              className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-6"
             >
-              Discover professional wedding services from verified vendors to make your special day perfect
+              Discover premium wedding services from verified vendors to make your special day absolutely perfect ✨
             </motion.p>
-            <div className="flex items-center justify-center mt-4 text-sm text-gray-500">
-              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full">
-                {filteredServices.length} services available
+            <motion.div 
+              className="flex items-center justify-center gap-4 mt-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <span className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-4 py-2 rounded-full border border-green-200 shadow-sm">
+                <span className="font-semibold">{filteredServices.length}</span> services available
               </span>
-            </div>
+              <span className="bg-gradient-to-r from-pink-100 to-rose-100 text-pink-800 px-4 py-2 rounded-full border border-pink-200 shadow-sm">
+                <Heart className="h-4 w-4 inline mr-1" />
+                Premium quality
+              </span>
+            </motion.div>
           </div>
 
           {/* Search and Filter Bar */}
-          <div className="mb-8">
-            <div className="bg-white rounded-2xl shadow-xl p-6 backdrop-blur-sm bg-opacity-90">
-              <div className="flex flex-col lg:flex-row gap-4">
+          <motion.div 
+            className="mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-pink-100/50 relative overflow-hidden">
+              {/* Background gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-r from-pink-50/30 via-white to-rose-50/30 rounded-3xl"></div>
+              
+              <div className="flex flex-col lg:flex-row gap-6 relative z-10">
                 {/* Search Input */}
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <motion.div
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 text-pink-400"
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <Search className="h-5 w-5" />
+                  </motion.div>
                   <input
                     type="text"
                     placeholder="Search services, vendors, or descriptions..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-pink-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
+                    className="w-full pl-12 pr-6 py-4 border-2 border-pink-200 rounded-2xl focus:ring-4 focus:ring-pink-200/50 focus:border-pink-400 transition-all duration-300 text-gray-700 placeholder-pink-400 bg-white/80 backdrop-blur-sm shadow-inner"
                   />
                 </div>
 
-                {/* DSS Options - Choose Your Planning Style */}
-                <div className="flex flex-col items-center space-y-4 w-full">
-                  <h3 className="text-xl font-bold text-gray-900">🤖 AI Wedding Planning</h3>
-                  <p className="text-gray-600 text-center max-w-2xl text-sm">
-                    Choose your preferred planning experience to get personalized recommendations
-                  </p>
-                  
-                  <div className="flex flex-col md:flex-row gap-3 w-full max-w-4xl">
-                    {/* NEW: Phased DSS - Step by Step */}
-                    <button
-                      onClick={handleOpenPhasedDSS}
-                      className="group flex-1 flex items-center space-x-3 px-6 py-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white rounded-xl hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 transition-all duration-500 shadow-lg hover:shadow-xl transform hover:scale-105 hover:-translate-y-1 font-semibold text-sm border border-white/20 backdrop-blur-sm relative overflow-hidden"
-                      title="NEW: Step-by-Step Planning - Guided workflow with date availability checking"
-                      aria-label="Open Step-by-Step AI Planning with availability checking"
-                    >
-                      {/* Background glow effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-cyan-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
-                      
-                      <Calendar className="h-5 w-5 group-hover:animate-pulse group-hover:scale-125 transition-all duration-300 relative z-10" />
-                      <div className="flex-1 text-left relative z-10">
-                        <div className="font-bold text-sm">📅 Step-by-Step Planner</div>
-                        <div className="text-xs text-emerald-100 font-normal">NEW! Guided workflow with date availability</div>
-                      </div>
-                      <div className="w-2 h-2 bg-white/90 rounded-full animate-bounce shadow-lg relative z-10"></div>
-                      
-                      {/* NEW badge */}
-                      <div className="absolute -top-1 -right-1 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full animate-pulse">NEW</div>
-                    </button>
-
-                    {/* Original DSS - Quick Recommendations */}
-                    <button
-                      onClick={handleOpenDSS}
-                      className="group flex-1 flex items-center space-x-3 px-6 py-4 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white rounded-xl hover:from-purple-600 hover:via-indigo-600 hover:to-blue-600 transition-all duration-500 shadow-lg hover:shadow-xl transform hover:scale-105 hover:-translate-y-1 font-semibold text-sm border border-white/20 backdrop-blur-sm relative overflow-hidden"
-                      title="Quick AI Recommendations - All options at once"
-                      aria-label="Open Quick AI Recommendations"
-                    >
-                      {/* Background glow effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-blue-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
-                      
-                      <Brain className="h-5 w-5 group-hover:animate-pulse group-hover:scale-125 transition-all duration-300 relative z-10" />
-                      <div className="flex-1 text-left relative z-10">
-                        <div className="font-bold text-sm">⚡ Quick Recommendations</div>
-                        <div className="text-xs text-purple-100 font-normal">All options at once, advanced filters</div>
-                      </div>
-                      <div className="w-2 h-2 bg-white/90 rounded-full animate-bounce shadow-lg relative z-10"></div>
-                    </button>
-                  </div>
-                </div>
+                {/* AI Planning Button */}
+                <motion.button
+                  onClick={handleOpenDSS}
+                  className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-purple-500 via-purple-600 to-indigo-600 text-white rounded-2xl hover:from-purple-600 hover:via-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-xl border border-purple-300/50"
+                  title="AI Wedding Recommendations"
+                  whileHover={{ 
+                    scale: 1.05,
+                    boxShadow: "0 20px 25px -5px rgba(139, 92, 246, 0.3)"
+                  }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <motion.div
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <Brain className="h-5 w-5" />
+                  </motion.div>
+                  <span>AI Planner</span>
+                  <Sparkles className="h-4 w-4 animate-pulse" />
+                </motion.button>
 
                 {/* View Mode Toggle */}
-                <div className="flex items-center bg-pink-50 rounded-xl p-1">
-                  <button
+                <div className="flex items-center bg-gradient-to-r from-pink-50 to-rose-50 rounded-2xl p-1 border border-pink-100/50 shadow-inner">
+                  <motion.button
                     onClick={() => setViewMode('grid')}
                     className={cn(
-                      'p-2 rounded-lg transition-all duration-200',
+                      'p-3 rounded-xl transition-all duration-300 font-medium',
                       viewMode === 'grid' 
-                        ? 'bg-white text-pink-600 shadow-sm' 
-                        : 'text-gray-500 hover:text-pink-600'
+                        ? 'bg-white text-pink-600 shadow-lg border border-pink-200/50' 
+                        : 'text-gray-500 hover:text-pink-600 hover:bg-white/50'
                     )}
+                    title="Grid view"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     <Grid className="h-5 w-5" />
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
                     onClick={() => setViewMode('list')}
                     className={cn(
-                      'p-2 rounded-lg transition-all duration-200',
+                      'p-3 rounded-xl transition-all duration-300 font-medium',
                       viewMode === 'list' 
-                        ? 'bg-white text-pink-600 shadow-sm' 
-                        : 'text-gray-500 hover:text-pink-600'
+                        ? 'bg-white text-pink-600 shadow-lg border border-pink-200/50' 
+                        : 'text-gray-500 hover:text-pink-600 hover:bg-white/50'
                     )}
+                    title="List view"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     <List className="h-5 w-5" />
-                  </button>
+                  </motion.button>
                 </div>
 
                 {/* Advanced Filters Toggle */}
-                <button
+                <motion.button
                   onClick={() => setShowFilters(!showFilters)}
                   className={cn(
-                    'flex items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200',
+                    'flex items-center gap-3 px-6 py-4 rounded-2xl transition-all duration-300 font-semibold shadow-lg border',
                     showFilters 
-                      ? 'bg-pink-600 text-white' 
-                      : 'bg-pink-50 text-pink-600 hover:bg-pink-100'
+                      ? 'bg-gradient-to-r from-pink-600 to-rose-600 text-white border-pink-400/50' 
+                      : 'bg-gradient-to-r from-pink-50 to-rose-50 text-pink-600 hover:from-pink-100 hover:to-rose-100 border-pink-200/50'
                   )}
+                  whileHover={{ 
+                    scale: 1.05,
+                    boxShadow: showFilters 
+                      ? "0 20px 25px -5px rgba(236, 72, 153, 0.3)"
+                      : "0 10px 15px -3px rgba(236, 72, 153, 0.2)"
+                  }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <SlidersHorizontal className="h-5 w-5" />
+                  <motion.div
+                    animate={{ rotate: showFilters ? 180 : 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <SlidersHorizontal className="h-5 w-5" />
+                  </motion.div>
                   <span>Filters</span>
-                </button>
+                  {showFilters && <Sparkles className="h-4 w-4 animate-pulse" />}
+                </motion.button>
               </div>
 
               {/* Advanced Filters */}
@@ -847,6 +878,7 @@ Best regards`;
                           value={priceRange}
                           onChange={(e) => setPriceRange(e.target.value)}
                           className="w-full p-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500"
+                          title="Select price range"
                         >
                           <option value="all">All Prices</option>
                           <option value="budget">Budget (Under ₱50K)</option>
@@ -862,6 +894,7 @@ Best regards`;
                           value={locationFilter}
                           onChange={(e) => setLocationFilter(e.target.value)}
                           className="w-full p-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500"
+                          title="Select location"
                         >
                           <option value="all">All Locations</option>
                           {getAvailableLocations().map(location => (
@@ -877,6 +910,7 @@ Best regards`;
                           value={ratingFilter}
                           onChange={(e) => setRatingFilter(Number(e.target.value))}
                           className="w-full p-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500"
+                          title="Select minimum rating"
                         >
                           <option value={0}>Any Rating</option>
                           <option value={4}>4+ Stars</option>
@@ -891,6 +925,7 @@ Best regards`;
                           value={sortBy}
                           onChange={(e) => setSortBy(e.target.value as 'rating' | 'price' | 'reviews')}
                           className="w-full p-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500"
+                          title="Select sort option"
                         >
                           <option value="rating">Highest Rated</option>
                           <option value="reviews">Most Reviews</option>
@@ -914,27 +949,62 @@ Best regards`;
                 )}
               </AnimatePresence>
             </div>
-          </div>
+          </motion.div>
 
           {/* Category Filter */}
-          <div className="mb-8">
-            <div className="flex flex-wrap gap-3 justify-center">
-              {categories.map((category) => (
-                <button
+          <motion.div 
+            className="mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <div className="flex flex-wrap gap-4 justify-center">
+              {categories.map((category, index) => (
+                <motion.button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
                   className={cn(
-                    'px-6 py-3 rounded-full transition-all duration-200 font-medium',
+                    'px-8 py-4 rounded-full transition-all duration-300 font-semibold border-2 relative overflow-hidden',
                     selectedCategory === category
-                      ? 'bg-pink-600 text-white shadow-lg scale-105'
-                      : 'bg-white text-gray-600 hover:bg-pink-50 hover:text-pink-600 shadow-md hover:shadow-lg'
+                      ? 'bg-gradient-to-r from-pink-600 via-pink-700 to-rose-600 text-white shadow-xl border-pink-400/50 ring-4 ring-pink-200/30'
+                      : 'bg-white text-gray-600 hover:bg-gradient-to-r hover:from-pink-50 hover:to-rose-50 hover:text-pink-600 shadow-lg hover:shadow-xl border-pink-200/50 hover:border-pink-300'
                   )}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ 
+                    scale: 1.05,
+                    y: -2,
+                    boxShadow: selectedCategory === category 
+                      ? "0 20px 25px -5px rgba(236, 72, 153, 0.4)"
+                      : "0 15px 20px -3px rgba(236, 72, 153, 0.2)"
+                  }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  {category === 'All' ? 'All Services' : category}
-                </button>
+                  {selectedCategory === category && (
+                    <motion.div 
+                      className="absolute inset-0 bg-gradient-to-r from-pink-200/20 to-rose-200/20 rounded-full"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  )}
+                  <span className="relative z-10">
+                    {category === 'All' ? 'All Services ✨' : category}
+                  </span>
+                  {selectedCategory === category && (
+                    <motion.div 
+                      className="absolute top-1 right-2 text-pink-200"
+                      animate={{ rotate: [0, 360] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Sparkles className="h-3 w-3" />
+                    </motion.div>
+                  )}
+                </motion.button>
               ))}
             </div>
-          </div>
+          </motion.div>
 
           {/* Services Grid/List */}
           {filteredServices.length === 0 ? (
@@ -1106,25 +1176,459 @@ Best regards`;
         />
       )}
 
-      {/* NEW: Phased Decision Support System Modal */}
-      {showPhasedDSS && (
-        <PhasedDecisionSupportSystem
-          isOpen={showPhasedDSS}
-          onClose={handleClosePhasedDSS}
-          onServiceRecommend={(service) => {
-            // Handle service recommendation from phased DSS
-            if (service) {
-              setSelectedService(service);
-              setShowBookingModal(true);
-              setShowPhasedDSS(false);
-            }
-          }}
-        />
-      )}
+
     </div>
   );
 }
 
+// Service Card Component
+interface ServiceCardProps {
+  service: Service;
+  viewMode: 'grid' | 'list';
+  index: number;
+  onSelect: (service: Service) => void;
+  onMessage: (service: Service) => void;
+  onFavorite: (service: Service) => void;
+  onBookingRequest: (service: Service) => void;
+  onShare?: (service: Service) => void;
+}
 
+function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite, onBookingRequest, onShare }: ServiceCardProps) {
+  if (viewMode === 'list') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: index * 0.05 }}
+        className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-pink-100"
+      >
+        <div className="flex flex-col md:flex-row">
+          <div className="md:w-1/3 relative">
+            {/* Main Image for List View */}
+            <div className="relative">
+              <img
+                src={service.image}
+                alt={service.name}
+                className="w-full h-64 md:h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600';
+                }}
+              />
+              {service.featured && (
+                <div className="absolute top-4 left-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                  Featured
+                </div>
+              )}
+            </div>
+            {/* Small Gallery Row Below - Only for List View */}
+            {(service.gallery && service.gallery.length > 1) || (service.images && service.images.length > 1) ? (
+              <div className="absolute bottom-2 left-2 right-2">
+                <div className="flex gap-1 overflow-x-auto">
+                  {(service.gallery?.slice(1, 5) || service.images?.slice(1, 5) || []).map((img, idx) => (
+                    <div key={idx} className="flex-shrink-0 w-10 h-10 rounded-md overflow-hidden border border-white shadow-sm">
+                      <img
+                        src={img}
+                        alt={`${service.name} ${idx + 2}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=100';
+                        }}
+                      />
+                    </div>
+                  ))}
+                  {((service.gallery?.length || service.images?.length || 1) > 5) && (
+                    <div className="flex-shrink-0 w-10 h-10 rounded-md bg-black/60 border border-white shadow-sm flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">
+                        +{((service.gallery?.length || service.images?.length || 1) - 4)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <div className="md:w-2/3 p-6 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-pink-600 bg-pink-50 px-3 py-1 rounded-full">
+                  {service.category}
+                </span>
+                <div className="flex items-center gap-1 text-amber-500">
+                  <Star className="h-4 w-4 fill-current" />
+                  <span className="text-sm font-medium text-gray-900">{service.rating}</span>
+                  <span className="text-sm text-gray-500">({service.reviewCount})</span>
+                </div>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">{service.name}</h3>
+              <p className="text-gray-600 mb-3 line-clamp-2">{service.description}</p>
+              <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                <div className="flex items-center gap-1">
+                  <MapPin className="h-4 w-4" />
+                  <span>{service.location}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="font-medium text-pink-600">{service.priceRange}</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {service.features.slice(0, 3).map((feature, idx) => (
+                  <span key={idx} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                    {feature}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => onSelect(service)}
+                className="flex-1 bg-pink-600 text-white py-2 px-4 rounded-xl hover:bg-pink-700 transition-colors font-medium"
+                title="View service details"
+              >
+                View Details
+              </button>
+              <button
+                onClick={() => onMessage(service)}
+                className="px-4 py-2 border-2 border-pink-600 text-pink-600 rounded-xl hover:bg-pink-50 transition-colors"
+                title="Message vendor"
+              >
+                <MessageCircle className="h-5 w-5" />
+              </button>
+              {service.contactInfo.phone && (
+                <button
+                  onClick={() => window.open(`tel:${service.contactInfo.phone}`, '_self')}
+                  className="px-4 py-2 border-2 border-green-600 text-green-600 rounded-xl hover:bg-green-50 transition-colors"
+                  title="Call vendor"
+                >
+                  <Phone className="h-5 w-5" />
+                </button>
+              )}
+              <button
+                onClick={() => onFavorite(service)}
+                className="px-4 py-2 border-2 border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors"
+                title="Add to favorites"
+              >
+                <Heart className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => onBookingRequest(service)}
+                className="px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-colors text-sm font-medium"
+                title="Request booking"
+              >
+                Book
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className="group cursor-pointer"
+      onClick={() => onSelect(service)}
+    >
+      <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-pink-100 group-hover:scale-105">
+        <div className="relative">
+          {/* Main Image */}
+          <img
+            src={service.image}
+            alt={service.name}
+            className="w-full h-64 object-cover"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600';
+            }}
+          />
+          {/* Gallery Preview - Show additional images if available */}
+          {(service.gallery && service.gallery.length > 1) || (service.images && service.images.length > 1) && (
+            <div className="absolute bottom-2 right-2 flex gap-1">
+              {(service.gallery?.slice(1, 4) || service.images?.slice(1, 4) || []).map((img, idx) => (
+                <div key={idx} className="w-12 h-12 rounded-lg overflow-hidden border-2 border-white shadow-sm">
+                  <img
+                    src={img}
+                    alt={`${service.name} ${idx + 2}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=100';
+                    }}
+                  />
+                </div>
+              ))}
+              {((service.gallery?.length || service.images?.length || 1) > 4) && (
+                <div className="w-12 h-12 rounded-lg bg-black/60 backdrop-blur-sm border-2 border-white shadow-sm flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">
+                    +{((service.gallery?.length || service.images?.length || 1) - 3)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          {service.featured && (
+            <div className="absolute top-4 left-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+              Featured
+            </div>
+          )}
+          <div className="absolute top-4 right-4">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onFavorite(service);
+              }}
+              className="p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white/90 transition-colors"
+              title="Add to favorites"
+            >
+              <Heart className="h-5 w-5 text-gray-600 hover:text-pink-600" />
+            </button>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-pink-600 bg-pink-50 px-3 py-1 rounded-full">
+              {service.category}
+            </span>
+            <div className="flex items-center gap-1 text-amber-500">
+              <Star className="h-4 w-4 fill-current" />
+              <span className="text-sm font-medium text-gray-900">{service.rating}</span>
+              <span className="text-sm text-gray-500">({service.reviewCount})</span>
+            </div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-pink-600 transition-colors">
+            {service.name}
+          </h3>
+          <p className="text-gray-600 mb-3 line-clamp-2">{service.description}</p>
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+            <MapPin className="h-4 w-4" />
+            <span>{service.location}</span>
+          </div>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {service.features.slice(0, 2).map((feature, idx) => (
+              <span key={idx} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                {feature}
+              </span>
+            ))}
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-pink-600">{service.priceRange}</span>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMessage(service);
+                }}
+                className="p-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors"
+                title="Message vendor"
+              >
+                <MessageCircle className="h-5 w-5" />
+              </button>
+              {service.contactInfo.phone && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(`tel:${service.contactInfo.phone}`, '_self');
+                  }}
+                  className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
+                  title="Call vendor"
+                >
+                  <Phone className="h-5 w-5" />
+                </button>
+              )}
+              {onShare && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShare(service);
+                  }}
+                  className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                  title="Share service"
+                >
+                  <Globe className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// Service Detail Modal Component
+interface ServiceDetailModalProps {
+  service: Service | null;
+  onClose: () => void;
+  onContact: (service: Service) => void;
+  onEmail: (service: Service) => void;
+  onWebsite: (service: Service) => void;
+  onMessage: (service: Service) => void;
+  onBookingRequest: (service: Service) => void;
+  onOpenGallery: (images: string[], startIndex: number) => void;
+}
+
+function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, onMessage, onBookingRequest, onOpenGallery }: ServiceDetailModalProps) {
+  if (!service) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="relative">
+            <img
+              src={service.image}
+              alt={service.name}
+              className="w-full h-80 object-cover rounded-t-3xl"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=800';
+              }}
+            />
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
+              title="Close details"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            {service.featured && (
+              <div className="absolute top-4 left-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-medium">
+                Featured Vendor
+              </div>
+            )}
+          </div>
+          <div className="p-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">{service.name}</h2>
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                  <MapPin className="h-4 w-4" />
+                  <span>{service.location}</span>
+                </div>
+                <div className="flex items-center gap-2 text-amber-500 mb-2">
+                  <Star className="h-4 w-4 fill-current" />
+                  <span className="font-medium text-gray-900">{service.rating}</span>
+                  <span className="text-gray-500">({service.reviewCount} reviews)</span>
+                </div>
+                <span className="inline-block bg-pink-50 text-pink-600 px-3 py-1 rounded-full text-xs font-medium mb-2">
+                  {service.category}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-semibold text-pink-600">{service.priceRange}</span>
+                <div className="mt-2 flex gap-2 justify-end">
+                  <button
+                    onClick={() => onMessage(service)}
+                    className="p-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors"
+                    title="Message vendor"
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => onContact(service)}
+                    className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
+                    title="Call vendor"
+                  >
+                    <Phone className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => onEmail(service)}
+                    className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                    title="Email vendor"
+                  >
+                    <Mail className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => onWebsite(service)}
+                    className="p-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Visit vendor website"
+                  >
+                    <Globe className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-6 mb-6 text-gray-600">
+              <img
+                src={service.vendorImage}
+                alt={service.vendorName}
+                className="w-14 h-14 rounded-full object-cover border-2 border-pink-200 shadow"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150';
+                }}
+              />
+              <div>
+                <div className="font-semibold text-gray-900">{service.vendorName}</div>
+                <div className="text-xs text-gray-500">Verified Vendor</div>
+              </div>
+            </div>
+            <div className="mb-8">
+              <h4 className="font-semibold text-gray-900 mb-2">Service Description</h4>
+              <p className="text-gray-700 mb-2 whitespace-pre-line">{service.description}</p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {service.features.map((feature, idx) => (
+                  <span key={idx} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                    {feature}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="mb-8">
+              <h4 className="font-semibold text-gray-900 mb-2">Gallery</h4>
+              <div className="flex gap-2 overflow-x-auto">
+                {service.gallery.map((img, idx) => (
+                  <img
+                    key={idx}
+                    src={img}
+                    alt={`${service.name} gallery ${idx + 1}`}
+                    className="w-32 h-24 object-cover rounded-lg border border-pink-100 cursor-pointer hover:scale-105 transition-transform"
+                    onClick={() => onOpenGallery(service.gallery, idx)}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=100';
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-4 justify-end">
+              <button
+                onClick={() => onBookingRequest(service)}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-colors font-semibold shadow-lg"
+                title="Request booking"
+              >
+                Request Booking
+              </button>
+              <button
+                onClick={() => onMessage(service)}
+                className="px-6 py-3 border-2 border-pink-600 text-pink-600 rounded-xl hover:bg-pink-50 transition-colors font-semibold"
+                title="Message vendor"
+              >
+                Message Vendor
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
 
 export default Services;

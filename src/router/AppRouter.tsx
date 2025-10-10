@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Header } from '../shared/components/layout/Header';
 import { Footer } from '../shared/components/layout/Footer';
 import { ProtectedRoute } from './ProtectedRoute';
+import { RoleProtectedRoute } from './RoleProtectedRoute';
 
 // Landing Pages
 import { Homepage } from '../pages/homepage/Homepage';
@@ -66,25 +67,22 @@ import { AuthProvider } from '../shared/contexts/AuthContext';
 import { SubscriptionProvider } from '../shared/contexts/SubscriptionContext';
 
 // Universal Messaging System
-import { UniversalMessagingProvider } from '../shared/contexts/UniversalMessagingContext';
+import { UnifiedMessagingProvider } from '../shared/contexts/UnifiedMessagingContext';
 
 // Notification System
 import { NotificationProvider } from '../shared/components/notifications/NotificationProvider';
-import { UniversalFloatingChat } from '../shared/components/messaging/UniversalFloatingChat';
-import { UniversalFloatingChatButton } from '../shared/components/messaging/UniversalFloatingChatButton';
+// import { GlobalFloatingChat } from '../shared/components/messaging/GlobalFloatingChat'; // Temporarily disabled
 
-// Debug component
-import { RoleDebugger } from '../components/RoleDebugger';
+
 
 export const AppRouter: React.FC = () => {
   return (
     <AuthProvider>
       <SubscriptionProvider>
         <NotificationProvider>
-          <UniversalMessagingProvider>
+          <UnifiedMessagingProvider>
           <Router>
           <div className="min-h-screen flex flex-col">
-            <RoleDebugger />
             <Routes>
               {/* Public Homepage - redirect to user's landing page if authenticated */}
               <Route path="/" element={
@@ -99,16 +97,16 @@ export const AppRouter: React.FC = () => {
                 </ProtectedRoute>
               } />
             
-            {/* User Type Landing Pages - require authentication */}
+            {/* User Type Landing Pages - require authentication and role-based access */}
             <Route path="/individual" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['couple', 'individual']} requireAuth={true}>
                 <IndividualLanding />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorLanding />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/admin" element={
               <ProtectedRoute requireAuth={true}>
@@ -118,14 +116,14 @@ export const AppRouter: React.FC = () => {
             
             {/* Individual/Couple specific pages */}
             <Route path="/individual/dashboard" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['couple', 'individual']} requireAuth={true}>
                 <IndividualDashboard />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/individual/services" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['couple', 'individual']} requireAuth={true}>
                 <Services />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/individual/timeline" element={
               <ProtectedRoute requireAuth={true}>
@@ -190,24 +188,24 @@ export const AppRouter: React.FC = () => {
             
             {/* Vendor specific pages */}
             <Route path="/vendor/dashboard" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorDashboardEnhanced />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/dashboard-classic" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorDashboard />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/profile" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorProfile />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/services" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorServices />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/bookings" element={
               <ProtectedRoute requireAuth={true}>
@@ -366,12 +364,11 @@ export const AppRouter: React.FC = () => {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           
-          {/* Universal Floating Chat Components */}
-          <UniversalFloatingChatButton />
-          <UniversalFloatingChat />
+          {/* Unified Floating Chat Components - Single Source of Truth */}
+          {/* <GlobalFloatingChat /> - Temporarily disabled, using UnifiedMessaging system */}
         </div>
       </Router>
-          </UniversalMessagingProvider>
+          </UnifiedMessagingProvider>
         </NotificationProvider>
       </SubscriptionProvider>
     </AuthProvider>

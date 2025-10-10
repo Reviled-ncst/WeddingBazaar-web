@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useUniversalMessaging } from '../../../../shared/contexts/UniversalMessagingContext';
+import { useUnifiedMessaging } from '../../../../shared/contexts/UnifiedMessagingContext';
 import { InstructionDialog, weddingPlanningInstructions, quickStartInstructions } from '../../../../shared/components/InstructionDialog';
 import {
   Logo,
@@ -20,7 +20,7 @@ export const CoupleHeader: React.FC = () => {
   const [notificationCount] = useState(3);
 
   // Hooks
-  const { showFloatingChat, expandChat, closeChat } = useUniversalMessaging();
+  const { isFloatingChatOpen, setFloatingChatOpen } = useUnifiedMessaging();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -73,7 +73,7 @@ export const CoupleHeader: React.FC = () => {
 
             {/* Desktop Navigation - Centered */}
             <div className="hidden lg:flex flex-1 justify-center">
-              <Navigation onMessengerOpen={expandChat} />
+              <Navigation onMessengerOpen={() => setFloatingChatOpen(true)} />
             </div>
 
             {/* Desktop User Menu */}
@@ -106,7 +106,7 @@ export const CoupleHeader: React.FC = () => {
           <MobileMenu 
             isOpen={isMobileMenuOpen}
             onClose={handleMobileMenuClose}
-            onMessengerOpen={expandChat}
+            onMessengerOpen={() => setFloatingChatOpen(true)}
             onInstructionOpen={handleInstructionOpen}
           />
         </div>

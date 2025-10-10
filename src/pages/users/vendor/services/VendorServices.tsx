@@ -99,6 +99,7 @@ export const VendorServices: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -163,8 +164,23 @@ export const VendorServices: React.FC = () => {
           if (result.success && result.services.length > 0) {
             console.log('✅ [VendorServices] Loaded services from API:', result.services.length);
             
+            // SECURITY: Filter to ensure only current vendor's services are shown
+            const vendorOnlyServices = result.services.filter((service: any) => {
+              const serviceVendorId = service.vendorId || service.vendor_id;
+              const isOwnService = serviceVendorId === vendorId;
+              if (!isOwnService) {
+                console.warn('🚨 [VendorServices] SECURITY: Filtered out service not owned by vendor:', {
+                  serviceId: service.id,
+                  serviceName: service.name,
+                  serviceVendorId,
+                  currentVendorId: vendorId
+                });
+              }
+              return isOwnService;
+            });
+
             // Map API response to component interface
-            const mappedServices = result.services.map((service: any) => ({
+            const mappedServices = vendorOnlyServices.map((service: any) => ({
               id: service.id,
               vendorId: service.vendorId || service.vendor_id,
               name: service.name,
@@ -185,6 +201,7 @@ export const VendorServices: React.FC = () => {
               updated_at: service.updated_at
             }));
             
+            console.log(`🔒 [VendorServices] SECURITY CHECK: Showing ${mappedServices.length} services for vendor ${vendorId}`);
             setServices(mappedServices);
             return;
           }
@@ -196,7 +213,23 @@ export const VendorServices: React.FC = () => {
         
         if (result.success && result.services.length > 0) {
           console.log('✅ [VendorServices] Loaded services from centralized manager:', result.services.length);
-          const mappedServices = result.services.map((service: any) => ({
+          
+          // SECURITY: Double-check that centralized manager only returned vendor's services
+          const vendorOnlyServices = result.services.filter((service: any) => {
+            const serviceVendorId = service.vendorId || service.vendor_id;
+            const isOwnService = serviceVendorId === vendorId;
+            if (!isOwnService) {
+              console.warn('🚨 [VendorServices] SECURITY: Centralized manager returned non-vendor service:', {
+                serviceId: service.id,
+                serviceName: service.name || service.title,
+                serviceVendorId,
+                currentVendorId: vendorId
+              });
+            }
+            return isOwnService;
+          });
+
+          const mappedServices = vendorOnlyServices.map((service: any) => ({
             id: service.id,
             vendorId: service.vendorId || service.vendor_id,
             name: service.name || service.title,
@@ -216,6 +249,8 @@ export const VendorServices: React.FC = () => {
             created_at: service.created_at,
             updated_at: service.updated_at
           }));
+          
+          console.log(`🔒 [VendorServices] SECURITY CHECK: Centralized manager returned ${mappedServices.length} verified vendor services`);
           setServices(mappedServices);
         } else {
           console.log('⚠️ [VendorServices] No services found for vendor');
@@ -246,6 +281,14 @@ export const VendorServices: React.FC = () => {
 
   // Handle form submission
   const handleSubmit = async (serviceData: any) => {
+    if (isSubmitting) {
+      console.log('⏳ [VendorServices] Already submitting, ignoring duplicate request');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setError(null);
+    
     try {
       console.log('💾 [VendorServices] Saving service:', serviceData);
       
@@ -264,20 +307,45 @@ export const VendorServices: React.FC = () => {
       
       console.log(`🔄 [VendorServices] ${method} ${url}`, payload);
       
+      // Get authentication token
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authentication if token exists
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        console.log('🔐 [VendorServices] Adding authentication token to request');
+      } else {
+        console.log('⚠️ [VendorServices] No authentication token found');
+      }
+      
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to ${editingService ? 'update' : 'create'} service`);
+        console.error(`❌ [VendorServices] HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error(`❌ [VendorServices] Response body:`, errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText || `HTTP ${response.status}: ${response.statusText}` };
+        }
+        
+        throw new Error(errorData.message || errorData.error || `Failed to ${editingService ? 'update' : 'create'} service`);
       }
 
-      const result = await response.json();
+      const responseText = await response.text();
+      console.log('📤 [VendorServices] Raw response:', responseText);
+      
+      const result = JSON.parse(responseText);
       console.log('✅ [VendorServices] Service saved successfully:', result);
 
       // Close form and refresh services
@@ -290,6 +358,8 @@ export const VendorServices: React.FC = () => {
       console.error('❌ [VendorServices] Error saving service:', errorMessage);
       setError(errorMessage);
       throw err; // Re-throw so AddServiceForm can handle it
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1269,7 +1339,7 @@ export const VendorServices: React.FC = () => {
           updated_at: editingService.updated_at || new Date().toISOString()
         } : null}
         vendorId={vendorId}
-        isLoading={false}
+        isLoading={isSubmitting}
       />
 
       {/* Upgrade Prompt Modal */}

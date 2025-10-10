@@ -118,6 +118,424 @@ app.get('/api/vendors/featured', async (req, res) => {
   }
 });
 
+// ============================================================================
+// SERVICES ENDPOINTS
+// ============================================================================
+
+// GET ALL SERVICES - GET /api/services
+app.get('/api/services', async (req, res) => {
+  try {
+    console.log('🔍 [GET /api/services] Fetching all services');
+    
+    // Build query parameters
+    const limit = parseInt(String(req.query.limit || 12));
+    const offset = parseInt(String((req.query.page || 1) - 1)) * limit;
+    
+    console.log('🔍 [GET /api/services] Query params:', { limit, offset });
+    
+    // Get services from database
+    const servicesResult = await db.query(`
+      SELECT 
+        s.id, s.vendor_id, s.title, s.description, s.category, s.price, s.images, s.featured, s.is_active, s.created_at, s.updated_at,
+        v.business_name as vendor_business_name,
+        v.profile_image as vendor_profile_image,
+        v.website_url as vendor_website_url,
+        v.business_type as vendor_business_type
+      FROM services s
+      LEFT JOIN vendors v ON s.vendor_id = v.id
+      WHERE s.is_active = true
+      ORDER BY s.featured DESC, s.created_at DESC
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+
+    console.log('🔍 [GET /api/services] Query returned:', servicesResult.rows.length, 'services');
+
+    // Get total count
+    const countResult = await db.query(`
+      SELECT COUNT(*) as total 
+      FROM services s
+      WHERE s.is_active = true
+    `);
+
+    const total = parseInt(countResult.rows[0].total);
+    console.log('🔍 [GET /api/services] Total active services:', total);
+
+    const response = {
+      success: true,
+      services: servicesResult.rows,
+      pagination: {
+        page: parseInt(String(req.query.page || 1)),
+        limit: limit,
+        total: total,
+        totalPages: Math.ceil(total / limit)
+      },
+      total: total
+    };
+
+    console.log('✅ [GET /api/services] Response:', { 
+      success: response.success, 
+      servicesCount: response.services.length,
+      total: response.total 
+    });
+
+    res.json(response);
+
+  } catch (error) {
+    console.error('❌ [GET /api/services] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch services',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      services: []
+    });
+  }
+});
+
+// CREATE SERVICE - POST /api/services
+app.post('/api/services', async (req, res) => {
+  try {
+    console.log('📤 [POST /api/services] Creating new service:', {
+      vendor_id: req.body.vendor_id,
+      title: req.body.title,
+      category: req.body.category
+    });
+
+    const {
+      vendor_id,
+      vendorId, // Accept both field names for compatibility
+      title,
+      name, // Accept both field names for compatibility  
+      description,
+      category,
+      price,
+      location,
+      images,
+      features,
+      is_active = true,
+      featured = false,
+      contact_info,
+      tags,
+      keywords,
+      location_coordinates,
+      location_details,
+      price_range
+    } = req.body;
+
+    // Validate required fields
+    if (!title && !name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Service title/name is required'
+      });
+    }
+
+    if (!category) {
+      return res.status(400).json({
+        success: false,
+        error: 'Service category is required'
+      });
+    }
+
+    if (!vendor_id && !vendorId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Vendor ID is required'
+      });
+    }
+
+    // Use vendor_id or fallback to vendorId
+    const finalVendorId = vendor_id || vendorId;
+    const finalTitle = title || name;
+
+    console.log('💾 [POST /api/services] Inserting service data:', {
+      vendor_id: finalVendorId,
+      title: finalTitle,
+      category,
+      price: price ? parseFloat(price) : null
+    });
+
+    // Insert into database
+    const result = await db.query(`
+      INSERT INTO services (
+        vendor_id, title, description, category, price, location, images, 
+        featured, is_active, created_at, updated_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()
+      )
+      RETURNING *
+    `, [
+      finalVendorId,
+      finalTitle,
+      description || '',
+      category,
+      price ? parseFloat(price) : null,
+      location || '',
+      JSON.stringify(Array.isArray(images) ? images : []),
+      Boolean(featured),
+      Boolean(is_active)
+    ]);
+
+    console.log('✅ [POST /api/services] Service created successfully:', result.rows[0]);
+
+    // Return the created service
+    const createdService = result.rows[0];
+    
+    res.status(201).json({
+      success: true,
+      message: 'Service created successfully',
+      service: createdService
+    });
+
+  } catch (error) {
+    console.error('❌ [POST /api/services] Error creating service:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create service',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// UPDATE SERVICE - PUT /api/services/:id
+app.put('/api/services/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('📝 [PUT /api/services/:id] Updating service:', id);
+
+    const {
+      title,
+      name, // Accept both field names
+      description,
+      category,
+      price,
+      location,
+      images,
+      is_active,
+      featured
+    } = req.body;
+
+    const finalTitle = title || name;
+
+    console.log('💾 [PUT /api/services/:id] Update data:', {
+      title: finalTitle,
+      category,
+      price: price ? parseFloat(price) : null
+    });
+
+    // Execute update query
+    const result = await db.query(`
+      UPDATE services 
+      SET 
+        title = COALESCE($2, title),
+        description = COALESCE($3, description),
+        category = COALESCE($4, category),
+        price = COALESCE($5, price),
+        location = COALESCE($6, location),
+        images = COALESCE($7, images),
+        is_active = COALESCE($8, is_active),
+        featured = COALESCE($9, featured),
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [
+      id,
+      finalTitle,
+      description,
+      category,
+      price ? parseFloat(price) : null,
+      location,
+      images ? JSON.stringify(Array.isArray(images) ? images : []) : null,
+      is_active !== undefined ? Boolean(is_active) : null,
+      featured !== undefined ? Boolean(featured) : null
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found'
+      });
+    }
+
+    console.log('✅ [PUT /api/services/:id] Service updated successfully:', result.rows[0]);
+
+    const updatedService = result.rows[0];
+    res.json({
+      success: true,
+      message: 'Service updated successfully',
+      service: updatedService
+    });
+
+  } catch (error) {
+    console.error('❌ [PUT /api/services/:id] Error updating service:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update service',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// DELETE SERVICE - DELETE /api/services/:id
+app.delete('/api/services/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { vendorId } = req.query; // Optional: verify ownership
+    
+    console.log('🗑️ [DELETE /api/services/:id] Deleting service:', { id, vendorId });
+
+    // Check if service exists and get vendor info for ownership verification
+    const existingService = await db.query(`
+      SELECT id, vendor_id, title 
+      FROM services 
+      WHERE id = $1
+    `, [id]);
+
+    if (existingService.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found'
+      });
+    }
+
+    // Optional: Verify vendor ownership
+    if (vendorId && existingService.rows[0].vendor_id !== vendorId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: You can only delete your own services'
+      });
+    }
+
+    // Check if service has any active bookings (soft delete if it does)
+    const activeBookings = await db.query(`
+      SELECT COUNT(*) as booking_count
+      FROM bookings 
+      WHERE service_name = $1 
+      AND status IN ('pending', 'confirmed', 'in_progress')
+    `, [existingService.rows[0].title]);
+
+    const hasActiveBookings = parseInt(activeBookings.rows[0].booking_count) > 0;
+
+    if (hasActiveBookings) {
+      // Soft delete: Mark as inactive instead of hard delete
+      const result = await db.query(`
+        UPDATE services 
+        SET is_active = false, updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [id]);
+
+      console.log('🔄 [DELETE /api/services/:id] Service soft deleted (has active bookings):', result.rows[0]);
+
+      res.json({
+        success: true,
+        message: 'Service deactivated (has active bookings)',
+        action: 'soft_delete',
+        service: result.rows[0]
+      });
+    } else {
+      // Hard delete: Remove completely
+      const result = await db.query(`
+        DELETE FROM services 
+        WHERE id = $1
+        RETURNING *
+      `, [id]);
+
+      console.log('✅ [DELETE /api/services/:id] Service hard deleted:', result.rows[0]);
+
+      res.json({
+        success: true,
+        message: 'Service deleted successfully',
+        action: 'hard_delete',
+        service: result.rows[0]
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ [DELETE /api/services/:id] Error deleting service:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete service',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET VENDOR SERVICES - GET /api/services/vendor/:vendorId
+app.get('/api/services/vendor/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const { includeInactive = 'false' } = req.query;
+    
+    console.log('🔍 [GET /api/services/vendor/:vendorId] Fetching services for vendor:', vendorId);
+
+    // Build query based on whether to include inactive services
+    const query = includeInactive === 'true' 
+      ? `SELECT * FROM services WHERE vendor_id = $1 ORDER BY featured DESC, created_at DESC`
+      : `SELECT * FROM services WHERE vendor_id = $1 AND is_active = true ORDER BY featured DESC, created_at DESC`;
+
+    const result = await db.query(query, [vendorId]);
+
+    console.log('✅ [GET /api/services/vendor/:vendorId] Found services:', result.rows.length);
+
+    res.json({
+      success: true,
+      services: result.rows,
+      count: result.rows.length,
+      vendor_id: vendorId
+    });
+
+  } catch (error) {
+    console.error('❌ [GET /api/services/vendor/:vendorId] Error fetching vendor services:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch vendor services',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET SERVICE BY ID - GET /api/services/:id
+app.get('/api/services/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('🔍 [GET /api/services/:id] Fetching service:', id);
+
+    const result = await db.query(`
+      SELECT 
+        s.*,
+        v.business_name as vendor_business_name,
+        v.profile_image as vendor_profile_image,
+        v.website_url as vendor_website_url,
+        v.business_type as vendor_business_type
+      FROM services s
+      LEFT JOIN vendors v ON s.vendor_id = v.id
+      WHERE s.id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found'
+      });
+    }
+
+    console.log('✅ [GET /api/services/:id] Service found:', result.rows[0]);
+
+    res.json({
+      success: true,
+      service: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('❌ [GET /api/services/:id] Error fetching service:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch service',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Authentication endpoints
 app.post('/api/auth/login', async (req, res) => {
   try {
