@@ -2,12 +2,12 @@
   "name": "wedding-bazaar-backend",
   "version": "2.0.0",
   "description": "Wedding Bazaar Backend API - Production Version",
-  "main": "emergency-rollback.cjs",
+  "main": "production-backend.cjs",
   "scripts": {
     "build": "echo 'Build complete - using production-backend.cjs with working service CRUD'",
-    "start": "node emergency-rollback.cjs",
-    "dev": "node emergency-rollback.cjs",
-    "test": "node emergency-rollback.cjs"
+    "start": "node production-backend.cjs",
+    "dev": "node production-backend.cjs",
+    "test": "node production-backend.cjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.6.1",
