@@ -298,28 +298,43 @@ export const VendorServices: React.FC = () => {
       
       const method = editingService ? 'PUT' : 'POST';
       
-      // Ensure vendor_id is included
+      // Prepare payload with all required fields for backend
       const payload = {
-        ...serviceData,
-        vendor_id: serviceData.vendor_id || vendorId,
-        vendorId: serviceData.vendorId || vendorId
+        // Core identification
+        vendor_id: vendorId,
+        vendorId: vendorId, // Send both for compatibility
+        
+        // Service details  
+        title: serviceData.title,
+        name: serviceData.title, // Backend accepts both title and name
+        description: serviceData.description,
+        category: serviceData.category,
+        
+        // Optional fields
+        price: serviceData.price,
+        location: serviceData.location,
+        images: serviceData.images || [],
+        features: serviceData.features || [],
+        is_active: serviceData.is_active !== undefined ? serviceData.is_active : true,
+        featured: serviceData.featured || false,
+        
+        // Additional data
+        contact_info: serviceData.contact_info || {},
+        tags: serviceData.tags || [],
+        keywords: serviceData.keywords || '',
+        price_range: serviceData.price_range || '₱',
+        location_coordinates: serviceData.location_coordinates || null,
+        location_details: serviceData.location_details || null
       };
       
       console.log(`🔄 [VendorServices] ${method} ${url}`, payload);
       
-      // Get authentication token
-      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+      // Simple headers - backend uses vendor_id in payload, not auth headers
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
       
-      // Add authentication if token exists
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-        console.log('🔐 [VendorServices] Adding authentication token to request');
-      } else {
-        console.log('⚠️ [VendorServices] No authentication token found');
-      }
+      console.log('🆔 [VendorServices] Using vendor ID for identification:', vendorId);
       
       const response = await fetch(url, {
         method,
