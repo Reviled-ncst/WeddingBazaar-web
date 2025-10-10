@@ -1,13 +1,13 @@
 import React from 'react';
 import { CoupleHeader } from '../landing/CoupleHeader';
-import { UniversalMessagesPage } from '../../../../shared/components/messaging/UniversalMessagesPage';
+import { ModernMessagesPage } from '../../../../shared/components/messaging/ModernMessagesPage';
 
 export const IndividualMessages: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-rose-50">
+    <div className="h-screen bg-gradient-to-b from-pink-50 via-white to-rose-50 flex flex-col">
       <CoupleHeader />
-      <div className="pt-20">
-        <UniversalMessagesPage userType="couple" />
+      <div className="flex-1">
+        <ModernMessagesPage userType="couple" />
       </div>
     </div>
   );

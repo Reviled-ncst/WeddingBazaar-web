@@ -368,17 +368,29 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     }
   };
 
-  // Handle image upload (placeholder functionality)
-  const handleImageUpload = (files: FileList | null, isMain = false) => {
+  // Handle image upload (real Cloudinary upload)
+  const handleImageUpload = async (files: FileList | null, isMain = false) => {
     if (!files) return;
     
     setIsUploading(true);
     
-    // Simulate upload process
-    setTimeout(() => {
-      const newImages = Array.from(files).map((_, index) => 
-        PLACEHOLDER_IMAGES[index % PLACEHOLDER_IMAGES.length]
-      );
+    try {
+      const { cloudinaryService } = await import('../../../../../services/cloudinaryService');
+      
+      const uploadPromises = Array.from(files).map(async (file) => {
+        try {
+          console.log('📤 [AddServiceForm] Uploading image:', file.name);
+          const result = await cloudinaryService.uploadImage(file, 'vendor-services');
+          console.log('✅ [AddServiceForm] Image uploaded:', result.secure_url);
+          return result.secure_url;
+        } catch (error) {
+          console.error('❌ [AddServiceForm] Error uploading image:', error);
+          // Fallback to placeholder on error
+          return PLACEHOLDER_IMAGES[0];
+        }
+      });
+      
+      const newImages = await Promise.all(uploadPromises);
       
       if (isMain) {
         setFormData(prev => ({ ...prev, images: [newImages[0], ...prev.images.slice(1)] }));
@@ -386,8 +398,21 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         setFormData(prev => ({ ...prev, images: [...prev.images, ...newImages] }));
       }
       
+    } catch (error) {
+      console.error('❌ [AddServiceForm] Error in image upload process:', error);
+      // Fallback to placeholder images on error
+      const fallbackImages = Array.from(files).map((_, index) => 
+        PLACEHOLDER_IMAGES[index % PLACEHOLDER_IMAGES.length]
+      );
+      
+      if (isMain) {
+        setFormData(prev => ({ ...prev, images: [fallbackImages[0], ...prev.images.slice(1)] }));
+      } else {
+        setFormData(prev => ({ ...prev, images: [...prev.images, ...fallbackImages] }));
+      }
+    } finally {
       setIsUploading(false);
-    }, 1500);
+    }
   };
 
   // Helper functions

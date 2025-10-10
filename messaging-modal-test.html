@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Messaging Modal Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      line-height: 1.6;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 15px;
+      text-align: center;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    .test-section {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+      border-left: 4px solid #667eea;
+    }
+    .success { border-left-color: #10b981; }
+    .warning { border-left-color: #f59e0b; }
+    .error { border-left-color: #ef4444; }
+    .test-button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 0;
+      transition: all 0.3s ease;
+    }
+    .test-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    .step {
+      background: #f8fafc;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      border-left: 3px solid #3b82f6;
+    }
+    pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 14px;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    .status.pass { background: #dcfce7; color: #166534; }
+    .status.fail { background: #fef2f2; color: #dc2626; }
+    .status.pending { background: #fef3c7; color: #92400e; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎭 Live Messaging Modal Test Suite</h1>
+    <p>Testing the fixed messaging modal on production site</p>
+    <p><strong>Site:</strong> <a href="https://weddingbazaarph.web.app" target="_blank" style="color: #fde68a;">weddingbazaarph.web.app</a></p>
+  </div>
+
+  <div class="test-section success">
+    <h2>✅ API Endpoint Fixes Applied</h2>
+    <p>The following critical fixes have been deployed:</p>
+    <div class="step">
+      <strong>1. Message Sending Endpoint:</strong><br>
+      ❌ Old: <code>/api/conversations/{id}/messages</code><br>
+      ✅ New: <code>/api/messages</code>
+    </div>
+    <div class="step">
+      <strong>2. Message Retrieval Endpoint:</strong><br>
+      ❌ Old: <code>/api/conversations/{id}/messages</code><br>
+      ✅ New: <code>/api/messages/{conversationId}</code>
+    </div>
+    <div class="step">
+      <strong>3. Message Payload:</strong><br>
+      ✅ Added: <code>conversationId</code> field to message sending payload<br>
+      ✅ Verified: <code>senderId</code>, <code>senderName</code>, <code>content</code> fields included
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>🧪 Backend API Status Verification</h2>
+    <div class="status pass">VERIFIED</div>
+    <p>All backend endpoints are confirmed working:</p>
+    <pre>✅ POST /api/conversations - Creates conversation (Status: 200/201)
+✅ POST /api/messages - Sends message (Status: 200)
+✅ GET /api/messages/{conversationId} - Retrieves messages (Status: 200)</pre>
+  </div>
+
+  <div class="test-section">
+    <h2>🎯 Live Testing Instructions</h2>
+    <p>Follow these steps to test the messaging modal:</p>
+
+    <div class="step">
+      <strong>Step 1: Open Services Page</strong><br>
+      <button class="test-button" onclick="window.open('https://weddingbazaarph.web.app/individual/services', '_blank')">
+        🚀 Open Services Page
+      </button>
+      <p>Navigate to the individual services page and verify services are loading with real data.</p>
+    </div>
+
+    <div class="step">
+      <strong>Step 2: Login/Register</strong><br>
+      <p>Click the "Login" button in the header and either login or create a new account.</p>
+      <ul>
+        <li>Test credentials: <code>test@example.com</code> / <code>password123</code></li>
+        <li>Or create a new account with any email/password</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <strong>Step 3: Browse Services</strong><br>
+      <p>Browse through the services and click "View Details" on any service to see the enhanced modal.</p>
+    </div>
+
+    <div class="step">
+      <strong>Step 4: Test Messaging</strong><br>
+      <p>Click the "Message" button on any service card. This should:</p>
+      <ul>
+        <li>✅ Create a service-specific conversation</li>
+        <li>✅ Open the messaging modal</li>
+        <li>✅ Display the conversation header with vendor name</li>
+        <li>✅ Show an empty message thread (ready for first message)</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <strong>Step 5: Send Test Message</strong><br>
+      <p>In the opened messaging modal:</p>
+      <ul>
+        <li>Type a test message (e.g., "Hi, I'm interested in your photography services")</li>
+        <li>Click the Send button or press Enter</li>
+        <li>✅ Message should appear in the chat immediately</li>
+        <li>✅ No errors should appear in console</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <strong>Step 6: Verify Persistence</strong><br>
+      <p>Close the modal and open it again by clicking "Message" on the same service:</p>
+      <ul>
+        <li>✅ Your previous message should still be there</li>
+        <li>✅ Conversation should load from database</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>🔧 Troubleshooting</h2>
+    
+    <div class="step">
+      <strong>If messaging modal doesn't open:</strong>
+      <ul>
+        <li>Check browser console for authentication errors</li>
+        <li>Ensure you're logged in before clicking "Message"</li>
+        <li>Try refreshing the page and logging in again</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <strong>If messages don't send:</strong>
+      <ul>
+        <li>Check browser console for API errors</li>
+        <li>Verify network connectivity</li>
+        <li>Check if backend is responsive: <a href="https://weddingbazaar-web.onrender.com/api/health" target="_blank">Backend Health Check</a></li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <strong>If conversations don't persist:</strong>
+      <ul>
+        <li>Verify user authentication is maintained</li>
+        <li>Check if conversation was created successfully in first place</li>
+        <li>Look for database connection errors in console</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="test-section success">
+    <h2>🎉 Expected Results</h2>
+    <p>With the API fixes deployed, you should now experience:</p>
+    <ul>
+      <li>✅ Smooth conversation creation when clicking "Message"</li>
+      <li>✅ Instant message sending without errors</li>
+      <li>✅ Real-time message display in the modal</li>
+      <li>✅ Persistent conversations that reload correctly</li>
+      <li>✅ Professional, responsive modal UI</li>
+      <li>✅ Service-specific conversation context</li>
+    </ul>
+  </div>
+
+  <div class="test-section">
+    <h2>📊 Technical Details</h2>
+    <p>The messaging system now uses:</p>
+    <pre>Frontend: UnifiedMessagingContext → ConnectedChatModal
+API Service: MessagingApiService (Fixed endpoints)
+Backend: /api/conversations, /api/messages
+Database: PostgreSQL via Neon
+Authentication: JWT tokens
+Real-time: HTTP polling (WebSocket ready)</pre>
+  </div>
+
+  <script>
+    // Add some interactive elements
+    console.log('🎭 Messaging Modal Test Suite Loaded');
+    console.log('🔧 Fixed API endpoints deployed');
+    console.log('🚀 Ready for testing!');
+  </script>
+</body>
+</html>

@@ -52,7 +52,7 @@
     "status:full": "npm run health:full",
     "dev:production": "npm run env:production && npm run dev",
     "verify": "node scripts/verify-setup.js",
-    "postinstall": "node scripts/verify-setup.js"
+    "comment": "postinstall removed - causing issues"
   },
   "dependencies": {
     "@faker-js/faker": "^10.0.0",

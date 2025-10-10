@@ -19,7 +19,7 @@ import {
 import { cn } from '../../../../utils/cn';
 
 import { CoupleHeader } from '../landing/CoupleHeader';
-import { useUniversalMessaging } from '../../../../shared/contexts/UniversalMessagingContext';
+import { useUnifiedMessaging } from '../../../../shared/contexts/UnifiedMessagingContext';
 import { ServiceDetailsModal } from '../../../../modules/services/components/ServiceDetailsModal';
 import { DecisionSupportSystem } from './dss/DecisionSupportSystem';
 import { LocationSearch } from '../../../../shared/components/location/LocationSearch';
@@ -264,7 +264,7 @@ export const EnhancedServices: React.FC = () => {
   const [selectedLocationData, setSelectedLocationData] = useState<PhilippineLocation | null>(null);
   const [showNearMeOnly, setShowNearMeOnly] = useState(false);
   
-  const { startConversationWith } = useUniversalMessaging();
+  const { createBusinessConversation, setModalOpen } = useUnifiedMessaging();
 
   const filterOptions: FilterOptions = {
     categories: [
@@ -439,24 +439,13 @@ export const EnhancedServices: React.FC = () => {
 
   const handleContactVendor = async (service: Service) => {
     try {
-      const vendor = {
-        id: service.vendorId,
-        name: service.vendorName,
-        role: 'vendor' as const,
-        businessName: service.vendorName,
-        serviceCategory: service.category
-      };
-
-      const serviceInfo = {
-        id: service.id,
-        name: service.name,
-        category: service.category,
-        description: service.description,
-        priceRange: service.priceRange,
-        location: service.location
-      };
-
-      await startConversationWith(vendor, serviceInfo);
+      await createBusinessConversation(
+        service.vendorId || `vendor-${Date.now()}`,
+        undefined, // bookingId
+        service.category,
+        service.vendorName
+      );
+      setModalOpen(true);
     } catch (error) {
       console.error('Error starting conversation:', error);
     }

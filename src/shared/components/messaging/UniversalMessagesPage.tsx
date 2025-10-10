@@ -17,13 +17,14 @@ import {
   Send
 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
-import { useUniversalMessaging } from '../../contexts/UniversalMessagingContext';
+import { useUnifiedMessaging } from '../../contexts/UnifiedMessagingContext';
 
 interface UniversalMessagesPageProps {
   userType: 'vendor' | 'couple' | 'admin';
   title?: string;
   subtitle?: string;
   headerComponent?: React.ReactNode;
+  isModal?: boolean;
 }
 
 export const UniversalMessagesPage: React.FC<UniversalMessagesPageProps> = ({
@@ -34,15 +35,16 @@ export const UniversalMessagesPage: React.FC<UniversalMessagesPageProps> = ({
 }) => {
   const {
     conversations,
-    currentUser,
-    isLoading,
+    activeConversation,
+    messages,
+    loading,
     error,
-    openConversation,
-    getOtherParticipants,
     sendMessage,
     unreadCount,
-    getMessages
-  } = useUniversalMessaging();
+    loadMessages,
+    setActiveConversation,
+    markAsRead
+  } = useUnifiedMessaging();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'unread' | 'archived'>('all');

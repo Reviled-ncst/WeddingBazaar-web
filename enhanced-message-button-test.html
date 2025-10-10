@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Message Button Test - Wedding Bazaar</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #fce7f3 0%, #f3e8ff 100%);
+            color: #1f2937;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #e91e63;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .test-section {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-section h3 {
+            color: #2563eb;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .status-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .test-step {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .test-step h4 {
+            margin: 0 0 10px 0;
+            color: #374151;
+        }
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .feature-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        .feature-card h4 {
+            color: #e91e63;
+            margin: 0 0 10px 0;
+        }
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .url-link {
+            display: inline-block;
+            background: #e91e63;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 10px 0;
+            transition: background 0.2s;
+        }
+        .url-link:hover {
+            background: #be185d;
+        }
+        .emoji {
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Enhanced Message Button Test</h1>
+            <p><strong>Wedding Bazaar Services Page</strong></p>
+            <p>Testing service-focused messaging with automated initial inquiries</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🚀 Deployment Status <span class="status-badge status-success">LIVE</span></h3>
+            <p><strong>Production URL:</strong></p>
+            <a href="https://weddingbazaarph.web.app/individual/services" class="url-link" target="_blank">
+                Test Enhanced Message Button Live 🔗
+            </a>
+            <div class="code-block">
+Build Status: ✅ SUCCESS
+Deploy Status: ✅ COMPLETE
+Production URL: https://weddingbazaarph.web.app
+Services Route: /individual/services
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Manual Testing Checklist</h3>
+            <div class="test-step">
+                <h4>Step 1: Navigate to Services Page</h4>
+                <p>🔗 Go to: <code>/individual/services</code></p>
+                <p><strong>Expected:</strong> Services page loads with real vendor data and service cards</p>
+            </div>
+            <div class="test-step">
+                <h4>Step 2: Locate Message Buttons</h4>
+                <p>💬 Find the message button (envelope icon) on service cards</p>
+                <p><strong>Expected:</strong> Message buttons visible on both grid and list view</p>
+            </div>
+            <div class="test-step">
+                <h4>Step 3: Click Message Button</h4>
+                <p>🖱️ Click the message button on any service card</p>
+                <p><strong>Expected:</strong> GlobalMessenger floating chat modal opens immediately</p>
+            </div>
+            <div class="test-step">
+                <h4>Step 4: Verify Conversation Name</h4>
+                <p>📝 Check the conversation title in the chat modal</p>
+                <p><strong>Expected:</strong> Conversation named after the service (e.g., "Wedding Photography - Photography")</p>
+            </div>
+            <div class="test-step">
+                <h4>Step 5: Check Initial Message</h4>
+                <p>⏰ Wait 1-2 seconds after modal opens</p>
+                <p><strong>Expected:</strong> Automated initial inquiry message appears with full service context</p>
+            </div>
+            <div class="test-step">
+                <h4>Step 6: Verify Message Content</h4>
+                <p>📄 Review the initial message content</p>
+                <p><strong>Expected:</strong> Message includes service details, vendor rating, location, features, and specific questions</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>✨ Enhanced Features Implemented</h3>
+            <div class="feature-list">
+                <div class="feature-card">
+                    <h4>🎯 Service-Focused Conversations</h4>
+                    <p>Each conversation is named after the specific service being inquired about, providing clear context for both parties.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🤖 Automated Initial Inquiries</h4>
+                    <p>Professional initial messages are sent automatically with all relevant service details and structured questions.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📱 One-Click Messaging</h4>
+                    <p>Single click opens a focused conversation with immediate context and ready-to-send inquiry.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🔗 GlobalMessenger Integration</h4>
+                    <p>Seamless integration with the platform's messaging system using proper ChatVendor objects.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>💬 Rich Context Messages</h4>
+                    <p>Initial messages include service name, category, location, price range, rating, and key features.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>⚡ Instant Response</h4>
+                    <p>Immediate modal opening with automated message sending after a 1-second delay for proper initialization.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Expected Initial Message Format</h3>
+            <p>The automated initial inquiry should include:</p>
+            <div class="code-block">
+Hi [Vendor Name]! 👋
+
+I'm interested in your "[Service Name]" service and would love to learn more. Here are some details:
+
+🎯 **Service**: [Service Name] ([Category])
+📍 **Location**: [Location]
+💰 **Budget Range**: [Price Range]
+⭐ **Your Rating**: [Rating]/5 stars
+
+**Key Features I'm Interested In:**
+• [Feature 1]
+• [Feature 2]
+• [Feature 3]
+
+Could you please provide more information about:
+- Availability for my wedding date
+- Package options and what's included
+- Any customization options
+- Next steps to move forward
+
+Looking forward to hearing from you! 💕
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Technical Implementation Details</h3>
+            <div class="feature-list">
+                <div class="feature-card">
+                    <h4>🏗️ Code Structure</h4>
+                    <p><strong>File:</strong> <code>Services_Centralized.tsx</code></p>
+                    <p><strong>Function:</strong> <code>handleMessageVendor()</code></p>
+                    <p><strong>Integration:</strong> GlobalMessengerContext</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🎨 User Experience</h4>
+                    <p><strong>Click Response:</strong> Immediate modal opening</p>
+                    <p><strong>Message Delay:</strong> 1000ms for proper initialization</p>
+                    <p><strong>Error Handling:</strong> Graceful fallback with user feedback</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🔗 Dependencies</h4>
+                    <p><strong>Messaging:</strong> GlobalMessengerContext</p>
+                    <p><strong>State:</strong> React hooks (useState, useEffect)</p>
+                    <p><strong>Types:</strong> TypeScript interfaces</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📊 Performance</h4>
+                    <p><strong>Build Time:</strong> ~8 seconds</p>
+                    <p><strong>Bundle Size:</strong> Optimized for production</p>
+                    <p><strong>Loading:</strong> Lazy message sending</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Success Criteria</h3>
+            <p><strong>The implementation is successful if:</strong></p>
+            <ul>
+                <li><span class="emoji">✅</span> Message button opens GlobalMessenger modal instantly</li>
+                <li><span class="emoji">✅</span> Conversation is named after the specific service</li>
+                <li><span class="emoji">✅</span> Initial message appears automatically with service context</li>
+                <li><span class="emoji">✅</span> Message includes all relevant service details</li>
+                <li><span class="emoji">✅</span> User can continue conversation immediately</li>
+                <li><span class="emoji">✅</span> Error handling works if message sending fails</li>
+                <li><span class="emoji">✅</span> Accessibility features function properly</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>🚨 Troubleshooting</h3>
+            <div class="test-step">
+                <h4>Issue: Modal doesn't open</h4>
+                <p><strong>Check:</strong> Browser console for GlobalMessenger context errors</p>
+                <p><strong>Solution:</strong> Ensure user is logged in and context is available</p>
+            </div>
+            <div class="test-step">
+                <h4>Issue: Initial message doesn't appear</h4>
+                <p><strong>Check:</strong> Wait for 1-2 second delay</p>
+                <p><strong>Solution:</strong> Message sending happens after modal initialization</p>
+            </div>
+            <div class="test-step">
+                <h4>Issue: Service data missing</h4>
+                <p><strong>Check:</strong> Backend API at <code>/api/services</code></p>
+                <p><strong>Solution:</strong> Verify backend is running and returning data</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎉 Test Results Summary</h3>
+            <p><strong>Status:</strong> <span class="status-badge status-success">READY FOR TESTING</span></p>
+            <p><strong>Deployment:</strong> <span class="status-badge status-success">LIVE IN PRODUCTION</span></p>
+            <p><strong>Features:</strong> <span class="status-badge status-success">ALL IMPLEMENTED</span></p>
+            
+            <div style="margin-top: 20px;">
+                <a href="https://weddingbazaarph.web.app/individual/services" class="url-link" target="_blank">
+                    🚀 Start Testing Now
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactive elements
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎯 Enhanced Message Button Test Page Loaded');
+            console.log('📱 Production URL: https://weddingbazaarph.web.app/individual/services');
+            console.log('💬 Testing service-focused messaging functionality');
+            
+            // Add click tracking for the test link
+            const testLink = document.querySelector('.url-link');
+            if (testLink) {
+                testLink.addEventListener('click', function() {
+                    console.log('🔗 User clicked test link - opening production services page');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -10,26 +10,23 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
-import { useGlobalMessenger } from '../../contexts/GlobalMessengerContext';
+import { useUnifiedMessaging } from '../../contexts/UnifiedMessagingContext';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const GlobalFloatingChat: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const { 
-    showFloatingChat, 
     conversations,
-    activeConversationId,
-    isMinimized, 
-    totalUnreadCount,
-    closeFloatingChat, 
-    minimizeChat, 
-    expandChat,
+    activeConversation,
+    messages,
+    unreadCount,
+    isFloatingChatOpen,
+    setFloatingChatOpen,
+    sendMessage,
     markAsRead,
-    switchConversation,
-    addMessage,
-    setTypingStatus,
-    getActiveConversation
-  } = useGlobalMessenger();
+    setActiveConversation,
+    loadMessages
+  } = useUnifiedMessaging();
   
   const [message, setMessage] = useState('');
   const [showConversationList, setShowConversationList] = useState(false);

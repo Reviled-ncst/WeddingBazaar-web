@@ -37,7 +37,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     console.log('🔄 ProtectedRoute: User is authenticated, redirecting from public route');
     console.log('🔄 User object:', user);
     console.log('🔄 User role:', JSON.stringify(user?.role));
-    const userRedirect = redirectTo || getUserLandingPage(user?.role);
+    const userRedirect = redirectTo || getUserLandingPage(user?.role, user);
     console.log('🔄 Final redirect URL:', userRedirect);
     return <Navigate to={userRedirect} replace />;
   }
@@ -46,12 +46,55 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 };
 
 // Helper function to get the appropriate landing page based on user role
-const getUserLandingPage = (role?: string): string => {
+const getUserLandingPage = (role?: string, user?: any): string => {
   console.log('🚦 getUserLandingPage called with role:', JSON.stringify(role), 'type:', typeof role);
+  console.log('🚦 getUserLandingPage user context:', { 
+    id: user?.id, 
+    email: user?.email, 
+    businessName: user?.businessName,
+    vendorId: user?.vendorId 
+  });
   
-  switch (role) {
+  // ROLE MAPPING FIX: Handle backend role inconsistencies
+  let normalizedRole = role;
+  
+  // Enhanced vendor detection with detailed logging
+  const hasBusinessName = !!user?.businessName;
+  const hasVendorId = !!user?.vendorId;
+  const hasVendorIdPattern = user?.id && user.id.startsWith('2-2025-');
+  const hasVendorEmailPattern = user?.email && (
+    user.email.includes('vendor') || 
+    user.email.includes('business') || 
+    user.email.includes('company')
+  );
+  const isVendorByProperties = hasBusinessName || hasVendorId || hasVendorIdPattern || hasVendorEmailPattern;
+  
+  console.log('🔍 Vendor detection analysis:', {
+    originalRole: role,
+    hasBusinessName,
+    hasVendorId,
+    hasVendorIdPattern,
+    hasVendorEmailPattern,
+    isVendorByProperties
+  });
+  
+  // If user has vendor-like properties, treat as vendor regardless of role
+  if (isVendorByProperties) {
+    console.log('🔧 Role Detection: User has vendor properties, treating as vendor');
+    normalizedRole = 'vendor';
+  }
+  
+  // Handle potential backend role variations
+  if (role === 'individual' && !user?.businessName) {
+    normalizedRole = 'couple'; // individual users are couples in our system
+  }
+  
+  console.log('🔄 Role mapping:', role, '=>', normalizedRole);
+  
+  switch (normalizedRole) {
     case 'couple':
-      console.log('✅ Routing to /individual for couple');
+    case 'individual': // Handle backend inconsistency
+      console.log('✅ Routing to /individual for couple/individual');
       return '/individual';
     case 'vendor':
       console.log('✅ Routing to /vendor for vendor');

@@ -600,61 +600,18 @@ export class CentralizedServiceManager {
         }
       }
 
-      // FALLBACK: Get all services and filter by vendorId client-side
-      console.log('⚠️ [ServiceManager] Vendor-specific endpoints failed - trying fallback with client-side filtering...');
+      // STRICT POLICY: NO FALLBACK FOR VENDOR SERVICES
+      // We should NEVER show all services to a vendor - only their own services or empty
+      console.warn('⚠️ [ServiceManager] VENDOR-SPECIFIC ENDPOINTS FAILED - NO FALLBACK FOR SECURITY');
+      console.warn('� [ServiceManager] Security Policy: Vendors can only see their own services');
+      console.warn('🔧 [ServiceManager] Backend needs to implement proper vendor-specific endpoints');
       
-      try {
-        console.log('🔄 [ServiceManager] *** FALLBACK: Get all services and filter by vendor ***');
-        const allServicesResponse = await fetch(`${this.apiUrl}/api/services`, {
-          method: 'GET',
-          mode: 'cors',
-          credentials: 'omit',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache',
-            'Accept': 'application/json'
-          }
-        });
-        
-        if (allServicesResponse.ok) {
-          const allServicesData = await allServicesResponse.json();
-          console.log('📡 [ServiceManager] All services response:', allServicesData.services?.length || 0, 'total services');
-          
-          if (allServicesData.success && allServicesData.services?.length > 0) {
-            // Filter services by vendorId
-            const vendorServices = allServicesData.services.filter((service: any) => {
-              const serviceVendorId = service.vendorId || service.vendor_id || service.created_by;
-              const matches = serviceVendorId === vendorId;
-              if (matches) {
-                console.log('🎯 [ServiceManager] Found matching service:', service.name || service.title, 'for vendor:', vendorId);
-              }
-              return matches;
-            });
-            
-            console.log(`✅ [ServiceManager] Filtered ${vendorServices.length} services for vendor ${vendorId}`);
-            
-            if (vendorServices.length > 0) {
-              const mappedServices = vendorServices.map((service: any) => 
-                this.mapDatabaseServiceToFrontend(service)
-              );
-              
-              const result = {
-                services: mappedServices,
-                success: true
-              };
-              
-              this.setCache(cacheKey, result);
-              console.log('🎯 [ServiceManager] *** FALLBACK SUCCESS: Returning', result.services.length, 'vendor services ***');
-              return result;
-            } else {
-              console.log('⚠️ [ServiceManager] No services found for vendor after filtering');
-              return { services: [], success: true }; // Empty but successful
-            }
-          }
-        }
-      } catch (fallbackError) {
-        console.error('❌ [ServiceManager] Vendor services fallback also failed:', fallbackError);
-      }
+      // Return empty result instead of showing all services
+      console.log('🛡️ [ServiceManager] Returning empty services list for security - vendor should only see own services');
+      return { 
+        services: [], 
+        success: true 
+      };
       
       // No services found for this vendor
       console.log('⚠️ [ServiceManager] No vendor services found for:', vendorId);
@@ -772,8 +729,7 @@ export class CentralizedServiceManager {
     }
 
     try {
-      // Use ServiceAPI for data operations
-      const { serviceAPI } = await import('./ServiceAPI');
+      // Direct API call to create service
       const formData = {
         title: serviceData.title || serviceData.name || '',
         description: serviceData.description || '',
@@ -783,29 +739,39 @@ export class CentralizedServiceManager {
         images: serviceData.images || [],
         features: serviceData.features || [],
         is_active: serviceData.is_active !== false,
-        featured: serviceData.featured || false
+        featured: serviceData.featured || false,
+        vendor_id: vendorId
       };
 
-      // Add vendor ID to form data
-      const result = await serviceAPI.createService({
-        ...formData,
-        vendor_id: vendorId
-      } as any);
+      console.log('🔄 [ServiceManager] Creating service for vendor:', vendorId);
       
-      if (result.success) {
-        // Clear cache
+      const response = await fetch(`${this.apiUrl}/api/services`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Clear cache to ensure fresh data
         this.clearVendorCache(vendorId);
+        
+        console.log('✅ [ServiceManager] Service created successfully');
         
         return {
           success: true,
-          service: result.service
+          service: this.mapDatabaseServiceToFrontend(data.service)
+        };
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        return {
+          success: false,
+          error: errorData.error || `API error: ${response.status}`
         };
       }
-
-      return {
-        success: false,
-        error: result.error || 'Failed to create service'
-      };
     } catch (error) {
       console.error('❌ [ServiceManager] Error creating service:', error);
       return {
