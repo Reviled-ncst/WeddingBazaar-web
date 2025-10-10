@@ -301,21 +301,80 @@ app.get('/api/services/vendor/:vendorId', async (req, res) => {
 // Basic vendor endpoints for compatibility
 app.get('/api/vendors/featured', async (req, res) => {
   try {
+    console.log('🎯 [VENDORS] GET /api/vendors/featured called');
+    
     const vendors = await sql`
-      SELECT id, name, category, rating, review_count as "reviewCount", 
-             location, description, image_url as "imageUrl"
+      SELECT 
+        id, 
+        business_name as name, 
+        business_type as category, 
+        rating, 
+        review_count as "reviewCount", 
+        location, 
+        description, 
+        profile_image as "imageUrl",
+        years_experience as "yearsExperience",
+        starting_price as "startingPrice"
       FROM vendors 
-      WHERE featured = true 
-      LIMIT 10
+      WHERE rating IS NOT NULL 
+      ORDER BY rating DESC, review_count DESC
+      LIMIT 5
     `;
+    
+    console.log(`✅ [VENDORS] Found ${vendors.length} featured vendors`);
     
     res.json({
       success: true,
       vendors: vendors
     });
   } catch (error) {
-    console.error('Error fetching featured vendors:', error);
-    res.status(500).json({ success: false, error: 'Database error' });
+    console.error('❌ [VENDORS] Error fetching featured vendors:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Database error',
+      message: error.message 
+    });
+  }
+});
+
+// Get all vendors
+app.get('/api/vendors', async (req, res) => {
+  try {
+    console.log('🎯 [VENDORS] GET /api/vendors called');
+    
+    const vendors = await sql`
+      SELECT 
+        id, 
+        business_name as name, 
+        business_type as category, 
+        rating, 
+        review_count as "reviewCount", 
+        location, 
+        description, 
+        profile_image as "imageUrl",
+        years_experience as "yearsExperience",
+        starting_price as "startingPrice",
+        verified,
+        website_url as "websiteUrl",
+        instagram_url as "instagramUrl"
+      FROM vendors 
+      ORDER BY created_at DESC
+    `;
+    
+    console.log(`✅ [VENDORS] Found ${vendors.length} total vendors`);
+    
+    res.json({
+      success: true,
+      vendors: vendors,
+      count: vendors.length
+    });
+  } catch (error) {
+    console.error('❌ [VENDORS] Error fetching vendors:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Database error',
+      message: error.message 
+    });
   }
 });
 
