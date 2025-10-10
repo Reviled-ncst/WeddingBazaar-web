@@ -325,13 +325,14 @@ app.get('/api/vendors/featured', async (req, res) => {
 app.post('/api/auth/register', async (req, res) => {
   try {
     console.log('🎯 [AUTH] POST /api/auth/register called');
+    console.log('🎯 [AUTH] Request body:', req.body);
     
-    const { email, password, name, userType = 'individual' } = req.body;
+    const { email, password, first_name, last_name, user_type = 'individual' } = req.body;
     
-    if (!email || !password || !name) {
+    if (!email || !password || !first_name) {
       return res.status(400).json({
         success: false,
-        error: 'Email, password, and name are required'
+        error: 'Email, password, and first_name are required'
       });
     }
     
@@ -351,9 +352,9 @@ app.post('/api/auth/register', async (req, res) => {
     const userId = 'USR-' + Date.now().toString().slice(-8);
     
     const result = await sql`
-      INSERT INTO users (id, email, password, name, user_type, created_at)
-      VALUES (${userId}, ${email}, ${password}, ${name}, ${userType}, NOW())
-      RETURNING id, email, name, user_type
+      INSERT INTO users (id, email, password, first_name, last_name, user_type, created_at)
+      VALUES (${userId}, ${email}, ${password}, ${first_name}, ${last_name || ''}, ${user_type}, NOW())
+      RETURNING id, email, first_name, last_name, user_type
     `;
     
     // Generate JWT token
@@ -367,7 +368,13 @@ app.post('/api/auth/register', async (req, res) => {
     
     res.json({
       success: true,
-      user: result[0],
+      user: {
+        id: result[0].id,
+        email: result[0].email,
+        first_name: result[0].first_name,
+        last_name: result[0].last_name,
+        user_type: result[0].user_type
+      },
       token,
       message: 'User registered successfully'
     });
@@ -386,6 +393,7 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     console.log('🎯 [AUTH] POST /api/auth/login called');
+    console.log('🎯 [AUTH] Request body:', req.body);
     
     const { email, password } = req.body;
     
@@ -396,9 +404,9 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
     
-    // Find user by email
+    // Find user by email - use correct column names
     const users = await sql`
-      SELECT id, email, password, name, user_type 
+      SELECT id, email, password, first_name, last_name, user_type 
       FROM users 
       WHERE email = ${email} 
       LIMIT 1
@@ -435,7 +443,8 @@ app.post('/api/auth/login', async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        first_name: user.first_name,
+        last_name: user.last_name,
         user_type: user.user_type
       },
       token,
