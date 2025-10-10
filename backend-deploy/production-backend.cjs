@@ -429,6 +429,48 @@ app.get('/api/conversations/:userId', (req, res) => {
   });
 });
 
+// TEST ENDPOINT: Array formatting test (no database)
+app.post('/api/test-array-format', (req, res) => {
+  try {
+    console.log('🧪 [TEST] Array formatting test called');
+    const { images } = req.body;
+    
+    console.log('🔧 [TEST] Raw images value:', images);
+    console.log('🔧 [TEST] Images type:', typeof images);
+    console.log('🔧 [TEST] Images isArray:', Array.isArray(images));
+    
+    let processedImages = images;
+    if (typeof images === 'string') {
+      try {
+        processedImages = JSON.parse(images);
+        console.log('🔧 [TEST] Parsed images from string:', processedImages);
+      } catch (e) {
+        console.log('🔧 [TEST] Failed to parse images string, using as-is');
+        processedImages = [images];
+      }
+    }
+    
+    const formattedImages = processedImages && processedImages.length > 0 ? `{${processedImages.join(',')}}` : '{}';
+    console.log('🔧 [TEST] Final formatted images:', formattedImages);
+    
+    res.json({
+      success: true,
+      original: images,
+      processed: processedImages,
+      formatted: formattedImages,
+      originalType: typeof images,
+      isArray: Array.isArray(images)
+    });
+    
+  } catch (error) {
+    console.error('❌ [TEST] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Start server
 app.listen(PORT, async () => {
   console.log('🚀 Wedding Bazaar Backend running on port ' + PORT);
