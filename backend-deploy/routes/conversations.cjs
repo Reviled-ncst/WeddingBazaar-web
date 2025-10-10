@@ -80,26 +80,27 @@ router.post('/:conversationId/messages', async (req, res) => {
   
   try {
     const { conversationId } = req.params;
-    const { senderId, senderType, content, messageType = 'text' } = req.body;
+    const { senderId, senderType, senderName, content, messageType = 'text' } = req.body;
     
-    if (!senderId || !senderType || !content) {
+    if (!senderId || !senderType || !senderName || !content) {
       return res.status(400).json({
         success: false,
-        error: 'senderId, senderType, and content are required',
+        error: 'senderId, senderType, senderName, and content are required',
         timestamp: new Date().toISOString()
       });
     }
     
     const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date();
     
-    // Insert message
+    // Insert message with correct schema fields
     const message = await sql`
       INSERT INTO messages (
-        id, conversation_id, sender_id, sender_type, content, 
-        message_type, created_at, updated_at
+        id, conversation_id, sender_id, sender_name, sender_type, 
+        content, message_type, timestamp, created_at, is_read
       ) VALUES (
-        ${messageId}, ${conversationId}, ${senderId}, ${senderType}, ${content},
-        ${messageType}, NOW(), NOW()
+        ${messageId}, ${conversationId}, ${senderId}, ${senderName}, ${senderType},
+        ${content}, ${messageType}, ${now.toISOString()}, ${now.toISOString()}, false
       ) RETURNING *
     `;
     
@@ -107,8 +108,7 @@ router.post('/:conversationId/messages', async (req, res) => {
     await sql`
       UPDATE conversations 
       SET last_message = ${content}, 
-          last_message_time = NOW(),
-          updated_at = NOW()
+          last_message_time = NOW()
       WHERE id = ${conversationId}
     `;
     
@@ -122,6 +122,7 @@ router.post('/:conversationId/messages', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Send message error:', error);
+    console.error('❌ Full error details:', error.message);
     res.status(500).json({
       success: false,
       error: error.message,

@@ -86,6 +86,64 @@ app.get('/api/ping', (req, res) => {
   });
 });
 
+// COMPATIBILITY ENDPOINTS - Direct message sending endpoint for frontend compatibility
+app.post('/api/messages', async (req, res) => {
+  console.log('🔄 Compatibility endpoint: /api/messages called');
+  
+  try {
+    const { sql } = require('./config/database.cjs');
+    const { conversationId, senderId, senderType, senderName, content, messageType = 'text' } = req.body;
+    
+    if (!conversationId || !senderId || !senderType || !senderName || !content) {
+      return res.status(400).json({
+        success: false,
+        error: 'conversationId, senderId, senderType, senderName, and content are required',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date();
+    
+    // Insert message with correct schema fields
+    const message = await sql`
+      INSERT INTO messages (
+        id, conversation_id, sender_id, sender_name, sender_type, 
+        content, message_type, timestamp, created_at, is_read
+      ) VALUES (
+        ${messageId}, ${conversationId}, ${senderId}, ${senderName}, ${senderType},
+        ${content}, ${messageType}, ${now.toISOString()}, ${now.toISOString()}, false
+      ) RETURNING *
+    `;
+    
+    // Update conversation last message
+    await sql`
+      UPDATE conversations 
+      SET last_message = ${content}, 
+          last_message_time = NOW()
+      WHERE id = ${conversationId}
+    `;
+    
+    console.log(`✅ Message sent via compatibility endpoint: ${messageId}`);
+    
+    res.json({
+      success: true,
+      messageId: messageId,
+      conversationId: conversationId,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Compatibility message send error:', error);
+    console.error('❌ Full error details:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/conversations', conversationRoutes);
