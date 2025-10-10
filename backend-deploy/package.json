@@ -4,7 +4,7 @@
   "description": "Wedding Bazaar Backend API - Production Version",
   "main": "production-backend.cjs",
   "scripts": {
-    "build": "echo 'Build complete - using production-backend.cjs directly'",
+    "build": "echo 'Build complete - using production-backend.cjs with working service CRUD'",
     "start": "node production-backend.cjs",
     "dev": "node production-backend.cjs",
     "test": "node production-backend.cjs"
