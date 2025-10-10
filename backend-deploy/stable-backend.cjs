@@ -49,7 +49,7 @@ app.get('/api/health', async (req, res) => {
         error: ''
       },
       environment: process.env.NODE_ENV || 'production',
-      version: '2.1.2-STABLE-FIX',
+      version: '2.1.3-SCHEMA-FIXED',
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       endpoints: {
