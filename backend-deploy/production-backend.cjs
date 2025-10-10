@@ -92,6 +92,38 @@ app.get('/api/ping', (req, res) => {
   });
 });
 
+// DEBUG: Test database tables
+app.get('/api/debug/tables', async (req, res) => {
+  try {
+    console.log('🔍 [DEBUG] Checking database tables');
+    
+    // Try to get table info
+    const tables = await sql`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+    `;
+    
+    console.log('✅ [DEBUG] Found tables:', tables);
+    
+    res.json({
+      success: true,
+      tables: tables,
+      count: tables.length,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [DEBUG] Table check error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check tables',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // ================================
 // AUTHENTICATION ENDPOINTS
 // ================================
