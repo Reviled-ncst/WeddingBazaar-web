@@ -72,9 +72,45 @@ const authenticateToken = (req, res, next) => {
 };
 
 // CREATE SERVICE - POST /api/services
-app.post('/api/services', authenticateToken, async (req, res) => {
+app.post('/api/services', async (req, res) => {
+  console.log('🎯 [SERVICES] POST /api/services called at', new Date().toISOString());
+  console.log('📄 Request body:', JSON.stringify(req.body, null, 2));
+  
   try {
-    console.log('🎯 [SERVICES] POST /api/services called');
+    // Send immediate response to prevent timeout
+    res.json({
+      success: true,
+      message: 'Service creation endpoint reached - processing...',
+      timestamp: new Date().toISOString(),
+      received_data: {
+        vendor_id: req.body.vendor_id || req.body.vendorId,
+        title: req.body.title || req.body.name,
+        category: req.body.category,
+        has_images: !!(req.body.images && req.body.images.length > 0)
+      }
+    });
+    
+    console.log('✅ [SERVICES] Response sent successfully');
+    
+  } catch (error) {
+    console.error('❌ [SERVICES] Error in service creation:', error);
+    console.error('❌ [SERVICES] Error stack:', error.stack);
+    
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        error: 'Service creation failed',
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+});
+
+// TEMP: Original service creation for debugging
+app.post('/api/services-debug', authenticateToken, async (req, res) => {
+  try {
+    console.log('🎯 [SERVICES] POST /api/services-debug called');
     console.log('📄 Request body keys:', Object.keys(req.body));
     console.log('📄 Vendor ID from body:', req.body.vendor_id || req.body.vendorId);
     console.log('📄 Title from body:', req.body.title || req.body.name);
