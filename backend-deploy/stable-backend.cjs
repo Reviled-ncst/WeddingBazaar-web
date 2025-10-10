@@ -202,21 +202,22 @@ app.get('/api/vendors/featured', async (req, res) => {
     const vendors = await sql`
       SELECT 
         id,
-        name,
-        category,
+        business_name as name,
+        business_type as category,
         rating,
         review_count,
         location,
         description,
-        image_url,
-        contact_phone,
-        contact_email,
+        profile_image as image_url,
         website_url,
         years_experience,
-        specialties
+        portfolio_images,
+        verified,
+        starting_price,
+        price_range
       FROM vendors 
-      WHERE status = 'active'
-      ORDER BY rating DESC, review_count DESC 
+      WHERE verified = true
+      ORDER BY CAST(rating AS DECIMAL) DESC, review_count DESC 
       LIMIT 6
     `;
 
@@ -240,10 +241,10 @@ app.get('/api/vendors/featured', async (req, res) => {
 app.get('/api/services', async (req, res) => {
   try {
     const services = await sql`
-      SELECT DISTINCT category as name, COUNT(*) as vendor_count
+      SELECT DISTINCT business_type as name, COUNT(*) as vendor_count
       FROM vendors 
-      WHERE status = 'active'
-      GROUP BY category
+      WHERE verified = true
+      GROUP BY business_type
       ORDER BY vendor_count DESC
     `;
 
