@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        button { padding: 10px 20px; margin: 5px; }
+        input { padding: 8px; margin: 5px; width: 200px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        .form-group { margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Authentication System Test</h1>
+    
+    <div class="form-group">
+        <h3>Register New User</h3>
+        <input type="text" id="regName" placeholder="Full Name" value="Test User">
+        <input type="email" id="regEmail" placeholder="Email" value="test@example.com">
+        <input type="password" id="regPassword" placeholder="Password" value="password123">
+        <select id="regUserType">
+            <option value="individual">Individual</option>
+            <option value="vendor">Vendor</option>
+        </select>
+        <button onclick="testRegister()">Register</button>
+    </div>
+    
+    <div class="form-group">
+        <h3>Login User</h3>
+        <input type="email" id="loginEmail" placeholder="Email" value="test@example.com">
+        <input type="password" id="loginPassword" placeholder="Password" value="password123">
+        <button onclick="testLogin()">Login</button>
+    </div>
+    
+    <div class="form-group">
+        <h3>Verify Token</h3>
+        <button onclick="testVerify()">Verify Current Token</button>
+        <button onclick="clearToken()">Clear Token</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com/api';
+        let currentToken = localStorage.getItem('authToken');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            document.getElementById('results').appendChild(div);
+        }
+        
+        async function testRegister() {
+            log('🔄 Testing user registration...', 'info');
+            
+            const data = {
+                name: document.getElementById('regName').value,
+                email: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value,
+                userType: document.getElementById('regUserType').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    currentToken = result.token;
+                    localStorage.setItem('authToken', result.token);
+                    log(`✅ REGISTRATION SUCCESS!<br>
+                        <strong>User ID:</strong> ${result.user.id}<br>
+                        <strong>Name:</strong> ${result.user.name}<br>
+                        <strong>Email:</strong> ${result.user.email}<br>
+                        <strong>Type:</strong> ${result.user.user_type}<br>
+                        <strong>Token:</strong> ${result.token.substring(0, 20)}...<br>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>`, 'success');
+                } else {
+                    log(`❌ REGISTRATION FAILED: ${result.error || result.message}<br>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>`, 'error');
+                }
+            } catch (error) {
+                log(`❌ REGISTRATION ERROR: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testLogin() {
+            log('🔄 Testing user login...', 'info');
+            
+            const data = {
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    currentToken = result.token;
+                    localStorage.setItem('authToken', result.token);
+                    log(`✅ LOGIN SUCCESS!<br>
+                        <strong>User ID:</strong> ${result.user.id}<br>
+                        <strong>Name:</strong> ${result.user.name}<br>
+                        <strong>Email:</strong> ${result.user.email}<br>
+                        <strong>Type:</strong> ${result.user.user_type}<br>
+                        <strong>Token:</strong> ${result.token.substring(0, 20)}...<br>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>`, 'success');
+                } else {
+                    log(`❌ LOGIN FAILED: ${result.error || result.message}<br>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>`, 'error');
+                }
+            } catch (error) {
+                log(`❌ LOGIN ERROR: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testVerify() {
+            if (!currentToken) {
+                log('❌ No token available. Please login first.', 'error');
+                return;
+            }
+            
+            log('🔄 Testing token verification...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    if (result.authenticated) {
+                        log(`✅ TOKEN VALID!<br>
+                            <strong>Authenticated:</strong> ${result.authenticated}<br>
+                            <strong>User ID:</strong> ${result.user?.id}<br>
+                            <strong>Email:</strong> ${result.user?.email}<br>
+                            <strong>Type:</strong> ${result.user?.userType}<br>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>`, 'success');
+                    } else {
+                        log(`❌ TOKEN INVALID: ${result.message}<br>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>`, 'error');
+                    }
+                } else {
+                    log(`❌ VERIFY FAILED: ${result.error || result.message}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ VERIFY ERROR: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearToken() {
+            currentToken = null;
+            localStorage.removeItem('authToken');
+            log('🗑️ Token cleared from storage', 'info');
+        }
+        
+        // Auto-run setup check when page loads
+        window.onload = function() {
+            log('🏁 Authentication System Test Ready', 'info');
+            if (currentToken) {
+                log(`📋 Found existing token: ${currentToken.substring(0, 20)}...`, 'info');
+            }
+        };
+    </script>
+</body>
+</html>

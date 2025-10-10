@@ -113,6 +113,115 @@ app.get('/api/services', async (req, res) => {
   }
 });
 
+// Authentication endpoints
+const activeTokenSessions = {};
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    console.log('[AUTH] Login attempt for:', req.body.email);
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and password required'
+      });
+    }
+
+    // Find user in database with correct column names
+    const users = await sql`SELECT * FROM users WHERE email = ${email}`;
+    
+    if (users.length === 0) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    const user = users[0];
+    
+    // For now, test with known password
+    if (password !== 'test123') {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid password'
+      });
+    }
+
+    // Create session token
+    const sessionToken = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    activeTokenSessions[sessionToken] = {
+      userId: user.id,
+      email: user.email,
+      user_type: user.user_type,
+      created: new Date().toISOString()
+    };
+
+    console.log('[AUTH] Login successful for:', user.email);
+    
+    res.json({
+      success: true,
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        user_type: user.user_type
+      },
+      token: sessionToken
+    });
+
+  } catch (error) {
+    console.error('[AUTH] Login error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Login failed: ' + error.message
+    });
+  }
+});
+
+app.post('/api/auth/verify', (req, res) => {
+  try {
+    const { token } = req.body;
+    
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        authenticated: false,
+        error: 'Token required'
+      });
+    }
+
+    const session = activeTokenSessions[token];
+    
+    if (!session) {
+      return res.status(401).json({
+        success: false,
+        authenticated: false,
+        error: 'Invalid or expired token'
+      });
+    }
+
+    res.json({
+      success: true,
+      authenticated: true,
+      user: {
+        id: session.userId,
+        email: session.email,
+        user_type: session.user_type
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      authenticated: false,
+      error: error.message
+    });
+  }
+});
+
 // Catch all other routes
 app.get('*', (req, res) => {
   res.status(404).json({
