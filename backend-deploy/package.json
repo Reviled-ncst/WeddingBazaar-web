@@ -2,12 +2,12 @@
   "name": "wedding-bazaar-backend",
   "version": "2.0.0",
   "description": "Wedding Bazaar Backend API - Production Version",
-  "main": "production-backend.cjs",
+  "main": "stable-backend.cjs",
   "scripts": {
-    "build": "echo 'Build complete - using production-backend.cjs with working service CRUD'",
-    "start": "node production-backend.cjs",
-    "dev": "node production-backend.cjs",
-    "test": "node production-backend.cjs"
+    "build": "echo 'Build complete - using stable-backend.cjs with working endpoints'",
+    "start": "node stable-backend.cjs",
+    "dev": "node stable-backend.cjs",
+    "test": "node stable-backend.cjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.6.1",
