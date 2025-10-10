@@ -14,6 +14,8 @@ const sql = neon(process.env.DATABASE_URL);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Service creation endpoints MUST be working - Deploy check: 2025-10-10 07:15
+
 // Middleware
 app.use(helmet());
 app.use(cors({
