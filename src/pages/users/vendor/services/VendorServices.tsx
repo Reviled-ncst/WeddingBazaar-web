@@ -99,7 +99,6 @@ export const VendorServices: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -281,14 +280,6 @@ export const VendorServices: React.FC = () => {
 
   // Handle form submission
   const handleSubmit = async (serviceData: any) => {
-    if (isSubmitting) {
-      console.log('⏳ [VendorServices] Already submitting, ignoring duplicate request');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    setError(null);
-    
     try {
       console.log('💾 [VendorServices] Saving service:', serviceData);
       
@@ -298,69 +289,29 @@ export const VendorServices: React.FC = () => {
       
       const method = editingService ? 'PUT' : 'POST';
       
-      // Prepare payload with all required fields for backend
+      // Ensure vendor_id is included
       const payload = {
-        // Core identification
-        vendor_id: vendorId,
-        vendorId: vendorId, // Send both for compatibility
-        
-        // Service details  
-        title: serviceData.title,
-        name: serviceData.title, // Backend accepts both title and name
-        description: serviceData.description,
-        category: serviceData.category,
-        
-        // Optional fields
-        price: serviceData.price,
-        location: serviceData.location,
-        images: serviceData.images || [],
-        features: serviceData.features || [],
-        is_active: serviceData.is_active !== undefined ? serviceData.is_active : true,
-        featured: serviceData.featured || false,
-        
-        // Additional data
-        contact_info: serviceData.contact_info || {},
-        tags: serviceData.tags || [],
-        keywords: serviceData.keywords || '',
-        price_range: serviceData.price_range || '₱',
-        location_coordinates: serviceData.location_coordinates || null,
-        location_details: serviceData.location_details || null
+        ...serviceData,
+        vendor_id: serviceData.vendor_id || vendorId,
+        vendorId: serviceData.vendorId || vendorId
       };
       
       console.log(`🔄 [VendorServices] ${method} ${url}`, payload);
       
-      // Simple headers - backend uses vendor_id in payload, not auth headers
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      console.log('🆔 [VendorServices] Using vendor ID for identification:', vendorId);
-      
       const response = await fetch(url, {
         method,
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        console.error(`❌ [VendorServices] HTTP ${response.status}: ${response.statusText}`);
-        const errorText = await response.text();
-        console.error(`❌ [VendorServices] Response body:`, errorText);
-        
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { message: errorText || `HTTP ${response.status}: ${response.statusText}` };
-        }
-        
-        throw new Error(errorData.message || errorData.error || `Failed to ${editingService ? 'update' : 'create'} service`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to ${editingService ? 'update' : 'create'} service`);
       }
 
-      const responseText = await response.text();
-      console.log('📤 [VendorServices] Raw response:', responseText);
-      
-      const result = JSON.parse(responseText);
+      const result = await response.json();
       console.log('✅ [VendorServices] Service saved successfully:', result);
 
       // Close form and refresh services
@@ -373,8 +324,6 @@ export const VendorServices: React.FC = () => {
       console.error('❌ [VendorServices] Error saving service:', errorMessage);
       setError(errorMessage);
       throw err; // Re-throw so AddServiceForm can handle it
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -1354,7 +1303,7 @@ export const VendorServices: React.FC = () => {
           updated_at: editingService.updated_at || new Date().toISOString()
         } : null}
         vendorId={vendorId}
-        isLoading={isSubmitting}
+        isLoading={false}
       />
 
       {/* Upgrade Prompt Modal */}

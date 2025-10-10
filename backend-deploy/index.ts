@@ -129,7 +129,8 @@ app.get('/api/services', async (req, res) => {
     
     // Build query parameters
     const limit = parseInt(String(req.query.limit || 12));
-    const offset = parseInt(String((req.query.page || 1) - 1)) * limit;
+    const page = parseInt(String(req.query.page || 1));
+    const offset = (page - 1) * limit;
     
     console.log('🔍 [GET /api/services] Query params:', { limit, offset });
     
