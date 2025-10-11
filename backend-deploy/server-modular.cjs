@@ -55,7 +55,7 @@ app.get('/api/health', async (req, res) => {
         error: ''
       },
       environment: process.env.NODE_ENV || 'production',
-      version: '2.5.0-MODULAR-ARCHITECTURE-COMPLETE',
+      version: '2.6.0-PAYMENT-WORKFLOW-COMPLETE',
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       endpoints: {
@@ -85,7 +85,7 @@ app.get('/api/ping', (req, res) => {
   res.json({ 
     success: true, 
     message: 'Wedding Bazaar Backend is running - Modular Architecture',
-    version: '2.5.0-MODULAR-ARCHITECTURE-COMPLETE',
+    version: '2.6.0-PAYMENT-WORKFLOW-COMPLETE',
     timestamp: new Date().toISOString()
   });
 });
@@ -194,7 +194,7 @@ app.listen(PORT, () => {
   console.log('🎉========================================🎉');
   console.log('🚀 Wedding Bazaar Backend Server Started');
   console.log('🎉========================================🎉');
-  console.log(`📊 Version: 2.5.0-MODULAR-ARCHITECTURE-COMPLETE`);
+  console.log(`📊 Version: 2.6.0-PAYMENT-WORKFLOW-COMPLETE`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔌 Port: ${PORT}`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
