@@ -3,12 +3,55 @@ const { sql } = require('../config/database.cjs');
 
 const router = express.Router();
 
-// =============================================================================
-// CRITICAL BOOKING FIX DEPLOYMENT - 2025/10/12 18:35:00
-// Fixed vendor booking ID mismatch issue
-// Now searches for both full vendor ID (2-2025-003) and legacy ID (2)
-// This should resolve the "new request" issue for vendors with existing bookings
-// =============================================================================
+// ===============================    const rawBookings = await sql(query, params);
+    
+    // Process bookings to interpret all payment workflow statuses from notes
+    const bookings = rawBookings.map(booking => {
+      const processedBooking = { ...booking };
+      
+      // Enhanced status processing for complete payment workflow
+      if (booking.notes) {
+        if (booking.notes.startsWith('QUOTE_SENT:')) {
+          processedBooking.status = 'quote_sent';
+          processedBooking.vendor_notes = booking.notes.substring('QUOTE_SENT:'.length).trim();
+          processedBooking.quote_sent_date = booking.updated_at;
+        } else if (booking.notes.startsWith('QUOTE_ACCEPTED:')) {
+          processedBooking.status = 'quote_accepted';
+          processedBooking.vendor_notes = booking.notes.substring('QUOTE_ACCEPTED:'.length).trim();
+          processedBooking.quote_accepted_date = booking.updated_at;
+        } else if (booking.notes.startsWith('DEPOSIT_PAID:')) {
+          processedBooking.status = 'deposit_paid';
+          processedBooking.vendor_notes = booking.notes.substring('DEPOSIT_PAID:'.length).trim();
+          processedBooking.payment_date = booking.updated_at;
+          
+          // Extract amount paid from notes
+          const amountMatch = booking.notes.match(/₱([\d,]+)/);
+          if (amountMatch) {
+            processedBooking.amount_paid = parseInt(amountMatch[1].replace(',', ''));
+          }
+        } else if (booking.notes.startsWith('FULLY_PAID:') || booking.notes.startsWith('BALANCE_PAID:')) {
+          processedBooking.status = 'fully_paid';
+          processedBooking.vendor_notes = booking.notes.substring(
+            booking.notes.startsWith('FULLY_PAID:') ? 'FULLY_PAID:'.length : 'BALANCE_PAID:'.length
+          ).trim();
+          processedBooking.payment_date = booking.updated_at;
+          
+          // Extract amount paid from notes
+          const amountMatch = booking.notes.match(/₱([\d,]+)/);
+          if (amountMatch) {
+            processedBooking.amount_paid = parseInt(amountMatch[1].replace(',', ''));
+          }
+        } else {
+          processedBooking.vendor_notes = booking.notes;
+        }
+      } else {
+        processedBooking.vendor_notes = booking.notes;
+      }
+      
+      return processedBooking;
+    });
+    
+    console.log(`✅ Found ${bookings.length} bookings for vendor ${vendorId}`);
 
 // Get bookings for a vendor
 router.get('/vendor/:vendorId', async (req, res) => {
@@ -228,15 +271,45 @@ router.get('/couple/:userId', async (req, res) => {
     
     const rawBookings = await sql(query, params);
     
-    // Process bookings to interpret quote_sent status from notes (same as vendor endpoint)
+    // Process bookings to interpret all payment workflow statuses from notes (same enhanced logic as vendor endpoint)
     const bookings = rawBookings.map(booking => {
       const processedBooking = { ...booking };
       
-      // If notes start with "QUOTE_SENT:", interpret as quote_sent status
-      if (booking.notes && booking.notes.startsWith('QUOTE_SENT:')) {
-        processedBooking.status = 'quote_sent';
-        processedBooking.vendor_notes = booking.notes.substring('QUOTE_SENT:'.length).trim();
-        processedBooking.quote_sent_date = booking.updated_at;
+      // Enhanced status processing for complete payment workflow
+      if (booking.notes) {
+        if (booking.notes.startsWith('QUOTE_SENT:')) {
+          processedBooking.status = 'quote_sent';
+          processedBooking.vendor_notes = booking.notes.substring('QUOTE_SENT:'.length).trim();
+          processedBooking.quote_sent_date = booking.updated_at;
+        } else if (booking.notes.startsWith('QUOTE_ACCEPTED:')) {
+          processedBooking.status = 'quote_accepted';
+          processedBooking.vendor_notes = booking.notes.substring('QUOTE_ACCEPTED:'.length).trim();
+          processedBooking.quote_accepted_date = booking.updated_at;
+        } else if (booking.notes.startsWith('DEPOSIT_PAID:')) {
+          processedBooking.status = 'deposit_paid';
+          processedBooking.vendor_notes = booking.notes.substring('DEPOSIT_PAID:'.length).trim();
+          processedBooking.payment_date = booking.updated_at;
+          
+          // Extract amount paid from notes
+          const amountMatch = booking.notes.match(/₱([\d,]+)/);
+          if (amountMatch) {
+            processedBooking.amount_paid = parseInt(amountMatch[1].replace(',', ''));
+          }
+        } else if (booking.notes.startsWith('FULLY_PAID:') || booking.notes.startsWith('BALANCE_PAID:')) {
+          processedBooking.status = 'fully_paid';
+          processedBooking.vendor_notes = booking.notes.substring(
+            booking.notes.startsWith('FULLY_PAID:') ? 'FULLY_PAID:'.length : 'BALANCE_PAID:'.length
+          ).trim();
+          processedBooking.payment_date = booking.updated_at;
+          
+          // Extract amount paid from notes
+          const amountMatch = booking.notes.match(/₱([\d,]+)/);
+          if (amountMatch) {
+            processedBooking.amount_paid = parseInt(amountMatch[1].replace(',', ''));
+          }
+        } else {
+          processedBooking.vendor_notes = booking.notes;
+        }
       } else {
         processedBooking.vendor_notes = booking.notes;
       }
@@ -309,15 +382,45 @@ router.get('/enhanced', async (req, res) => {
     
     const rawBookings = await sql(query, params);
     
-    // Process bookings to interpret quote_sent status from notes
+    // Process bookings to interpret all payment workflow statuses from notes (same enhanced logic)
     const bookings = rawBookings.map(booking => {
       const processedBooking = { ...booking };
       
-      // If notes start with "QUOTE_SENT:", interpret as quote_sent status
-      if (booking.notes && booking.notes.startsWith('QUOTE_SENT:')) {
-        processedBooking.status = 'quote_sent';
-        processedBooking.vendor_notes = booking.notes.substring('QUOTE_SENT:'.length).trim();
-        processedBooking.quote_sent_date = booking.updated_at;
+      // Enhanced status processing for complete payment workflow
+      if (booking.notes) {
+        if (booking.notes.startsWith('QUOTE_SENT:')) {
+          processedBooking.status = 'quote_sent';
+          processedBooking.vendor_notes = booking.notes.substring('QUOTE_SENT:'.length).trim();
+          processedBooking.quote_sent_date = booking.updated_at;
+        } else if (booking.notes.startsWith('QUOTE_ACCEPTED:')) {
+          processedBooking.status = 'quote_accepted';
+          processedBooking.vendor_notes = booking.notes.substring('QUOTE_ACCEPTED:'.length).trim();
+          processedBooking.quote_accepted_date = booking.updated_at;
+        } else if (booking.notes.startsWith('DEPOSIT_PAID:')) {
+          processedBooking.status = 'deposit_paid';
+          processedBooking.vendor_notes = booking.notes.substring('DEPOSIT_PAID:'.length).trim();
+          processedBooking.payment_date = booking.updated_at;
+          
+          // Extract amount paid from notes
+          const amountMatch = booking.notes.match(/₱([\d,]+)/);
+          if (amountMatch) {
+            processedBooking.amount_paid = parseInt(amountMatch[1].replace(',', ''));
+          }
+        } else if (booking.notes.startsWith('FULLY_PAID:') || booking.notes.startsWith('BALANCE_PAID:')) {
+          processedBooking.status = 'fully_paid';
+          processedBooking.vendor_notes = booking.notes.substring(
+            booking.notes.startsWith('FULLY_PAID:') ? 'FULLY_PAID:'.length : 'BALANCE_PAID:'.length
+          ).trim();
+          processedBooking.payment_date = booking.updated_at;
+          
+          // Extract amount paid from notes
+          const amountMatch = booking.notes.match(/₱([\d,]+)/);
+          if (amountMatch) {
+            processedBooking.amount_paid = parseInt(amountMatch[1].replace(',', ''));
+          }
+        } else {
+          processedBooking.vendor_notes = booking.notes;
+        }
       } else {
         processedBooking.vendor_notes = booking.notes;
       }
@@ -560,6 +663,250 @@ router.put('/:bookingId/update-status', async (req, res) => {
     
   } catch (error) {
     console.error('❌ [PUT] Update booking status error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// =============================================================================
+// PAYMENT WORKFLOW IMPLEMENTATION - 2025/01/18
+// Added new booking statuses and payment endpoints to support complete payment flow
+// Statuses: quote_accepted -> payment_pending -> deposit_paid/fully_paid -> completed
+// =============================================================================
+
+// Accept Quote endpoint - Changes status from quote_sent to quote_accepted
+router.put('/:bookingId/accept-quote', async (req, res) => {
+  console.log('✅ [AcceptQuote] Processing quote acceptance for booking:', req.params.bookingId);
+  
+  try {
+    const { bookingId } = req.params;
+    const { acceptance_notes } = req.body;
+    
+    // Check if booking exists and is in quote_sent status
+    const existingBooking = await sql`
+      SELECT * FROM bookings WHERE id = ${bookingId}
+    `;
+    
+    if (existingBooking.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const booking = existingBooking[0];
+    
+    // Check if booking has a quote (notes contain QUOTE_SENT:)
+    if (!booking.notes || !booking.notes.startsWith('QUOTE_SENT:')) {
+      return res.status(400).json({
+        success: false,
+        error: 'No quote found for this booking',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Update booking status to quote_accepted
+    const updatedBooking = await sql`
+      UPDATE bookings 
+      SET status = 'confirmed',
+          notes = ${`QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`},
+          updated_at = NOW()
+      WHERE id = ${bookingId}
+      RETURNING *
+    `;
+    
+    console.log(`✅ [AcceptQuote] Quote accepted for booking ${bookingId}`);
+    
+    res.json({
+      success: true,
+      booking: {
+        ...updatedBooking[0],
+        status: 'quote_accepted' // Return this status to frontend
+      },
+      message: 'Quote accepted successfully. You can now proceed with payment.',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [AcceptQuote] Error accepting quote:', error);
+    res.status(500).json({
+      success: false,  
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Process Payment endpoint - Handles downpayment and full payment
+router.put('/:bookingId/process-payment', async (req, res) => {
+  console.log('💳 [ProcessPayment] Processing payment for booking:', req.params.bookingId, req.body);
+  
+  try {
+    const { bookingId } = req.params;
+    const { payment_type, amount, payment_method, transaction_id, payment_notes } = req.body;
+    
+    if (!payment_type || !amount) {
+      return res.status(400).json({
+        success: false,
+        error: 'payment_type and amount are required',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const validPaymentTypes = ['downpayment', 'full_payment', 'remaining_balance'];
+    if (!validPaymentTypes.includes(payment_type)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid payment_type. Must be one of: ${validPaymentTypes.join(', ')}`,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Check if booking exists
+    const existingBooking = await sql`
+      SELECT * FROM bookings WHERE id = ${bookingId}
+    `;
+    
+    if (existingBooking.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const booking = existingBooking[0];
+    
+    // Determine new status based on payment type
+    let newStatus = 'confirmed';
+    let statusNote = '';
+    let frontendStatus = '';
+    
+    if (payment_type === 'downpayment') {
+      newStatus = 'confirmed';
+      frontendStatus = 'deposit_paid';
+      statusNote = `DEPOSIT_PAID: ₱${amount} downpayment received via ${payment_method || 'online payment'}`;
+      if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
+      if (payment_notes) statusNote += ` - ${payment_notes}`;
+      
+    } else if (payment_type === 'full_payment') {
+      newStatus = 'confirmed';
+      frontendStatus = 'fully_paid';
+      statusNote = `FULLY_PAID: ₱${amount} full payment received via ${payment_method || 'online payment'}`;
+      if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
+      if (payment_notes) statusNote += ` - ${payment_notes}`;
+      
+    } else if (payment_type === 'remaining_balance') {
+      newStatus = 'confirmed';
+      frontendStatus = 'fully_paid';
+      statusNote = `BALANCE_PAID: ₱${amount} remaining balance received via ${payment_method || 'online payment'}`;
+      if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
+      if (payment_notes) statusNote += ` - ${payment_notes}`;
+    }
+    
+    // Update booking with payment information
+    const updatedBooking = await sql`
+      UPDATE bookings 
+      SET status = ${newStatus},
+          notes = ${statusNote},
+          updated_at = NOW()
+      WHERE id = ${bookingId}
+      RETURNING *
+    `;
+    
+    console.log(`💳 [ProcessPayment] Payment processed: ${bookingId} -> ${frontendStatus} (₱${amount})`);
+    
+    res.json({
+      success: true,
+      booking: {
+        ...updatedBooking[0],
+        status: frontendStatus, // Return payment status to frontend
+        payment_type,
+        amount_paid: amount,
+        transaction_id,
+        payment_method
+      },
+      message: `Payment of ₱${amount} processed successfully`,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [ProcessPayment] Error processing payment:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get Payment Status endpoint - Check payment status for a booking
+router.get('/:bookingId/payment-status', async (req, res) => {
+  console.log('💰 [PaymentStatus] Getting payment status for booking:', req.params.bookingId);
+  
+  try {
+    const { bookingId } = req.params;
+    
+    const booking = await sql`
+      SELECT * FROM bookings WHERE id = ${bookingId}
+    `;
+    
+    if (booking.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const bookingData = booking[0];
+    let paymentStatus = 'unpaid';
+    let amountPaid = 0;
+    let paymentMethod = null;
+    let transactionId = null;
+    
+    // Parse payment status from notes
+    if (bookingData.notes) {
+      if (bookingData.notes.includes('DEPOSIT_PAID:')) {
+        paymentStatus = 'deposit_paid';
+        const amountMatch = bookingData.notes.match(/₱([\d,]+)/);
+        if (amountMatch) amountPaid = parseInt(amountMatch[1].replace(',', ''));
+      } else if (bookingData.notes.includes('FULLY_PAID:') || bookingData.notes.includes('BALANCE_PAID:')) {
+        paymentStatus = 'fully_paid';
+        const amountMatch = bookingData.notes.match(/₱([\d,]+)/);
+        if (amountMatch) amountPaid = parseInt(amountMatch[1].replace(',', ''));
+      } else if (bookingData.notes.includes('QUOTE_ACCEPTED:')) {
+        paymentStatus = 'quote_accepted';
+      } else if (bookingData.notes.includes('QUOTE_SENT:')) {
+        paymentStatus = 'quote_sent';
+      }
+      
+      // Extract payment method and transaction ID if available
+      const methodMatch = bookingData.notes.match(/via ([^)]+)/);
+      if (methodMatch) paymentMethod = methodMatch[1];
+      
+      const transactionMatch = bookingData.notes.match(/Transaction ID: ([^)]+)/);
+      if (transactionMatch) transactionId = transactionMatch[1];
+    }
+    
+    res.json({
+      success: true,
+      booking_id: bookingId,
+      payment_status: paymentStatus,
+      amount_paid: amountPaid,
+      payment_method: paymentMethod,
+      transaction_id: transactionId,
+      total_amount: bookingData.amount || 0,
+      remaining_balance: Math.max(0, (bookingData.amount || 0) - amountPaid),
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [PaymentStatus] Error getting payment status:', error);
     res.status(500).json({
       success: false,
       error: error.message,
