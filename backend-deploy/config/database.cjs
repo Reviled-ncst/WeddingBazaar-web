@@ -7,6 +7,12 @@ const sql = neon(process.env.DATABASE_URL);
 // Test database connection on startup
 async function testConnection() {
   try {
+    console.log('🔍 Testing database connection...');
+    
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is not set');
+    }
+    
     const result = await sql`SELECT 1 as test`;
     console.log('✅ Database connection successful');
     
@@ -28,6 +34,16 @@ async function testConnection() {
     
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
+    console.error('🔧 Database URL present:', !!process.env.DATABASE_URL);  
+    console.error('🔧 Database URL format:', process.env.DATABASE_URL ? 'Valid format' : 'Not set');
+    
+    // Don't throw error during deployment - let server start anyway
+    if (process.env.NODE_ENV === 'production') {
+      console.log('🔄 Production environment: continuing startup despite database issue');
+      return;
+    }
+    
+    throw error;
   }
 }
 

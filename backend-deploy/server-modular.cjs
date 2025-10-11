@@ -32,8 +32,11 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Initialize database connection
-testConnection();
+// Initialize database connection with error handling
+testConnection().catch(error => {
+  console.error('⚠️  Database connection failed during startup:', error.message);
+  console.log('🔄 Server will continue running but database operations may fail');
+});
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
