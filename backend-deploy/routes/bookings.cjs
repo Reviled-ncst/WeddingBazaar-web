@@ -247,26 +247,27 @@ router.patch('/:bookingId/status', async (req, res) => {
       });
     }
     
-    // Build update query dynamically based on status
-    let updateQuery = `
-      UPDATE bookings 
-      SET status = $1, 
-          status_reason = $2,
-          vendor_notes = $3,
-          updated_at = NOW()
-    `;
-    
-    let queryParams = [status, reason || null, vendor_notes || null];
-    
-    // Add quote_sent_date if status is quote_sent
+    // Update booking with proper sql template syntax
+    let booking;
     if (status === 'quote_sent') {
-      updateQuery += `, quote_sent_date = NOW()`;
+      booking = await sql`
+        UPDATE bookings 
+        SET status = ${status}, 
+            notes = ${vendor_notes || null},
+            updated_at = NOW()
+        WHERE id = ${bookingId}
+        RETURNING *
+      `;
+    } else {
+      booking = await sql`
+        UPDATE bookings 
+        SET status = ${status}, 
+            notes = ${vendor_notes || null},
+            updated_at = NOW()
+        WHERE id = ${bookingId}
+        RETURNING *
+      `;
     }
-    
-    updateQuery += ` WHERE id = $4 RETURNING *`;
-    queryParams.push(bookingId);
-    
-    const booking = await sql.unsafe(updateQuery, queryParams);
     
     if (booking.length === 0) {
       return res.status(404).json({
@@ -319,25 +320,11 @@ router.put('/:bookingId/update-status', async (req, res) => {
       });
     }
     
-    // Build update query dynamically based on status
-    let updateFields = {
-      status,
-      status_reason: reason || null,
-      vendor_notes: vendor_notes || null,
-      updated_at: new Date().toISOString()
-    };
-    
-    // Add quote_sent_date if status is quote_sent
-    if (status === 'quote_sent') {
-      updateFields.quote_sent_date = new Date().toISOString();
-    }
-    
+    // Update booking with proper column names and handle quote_sent status
     const booking = await sql`
       UPDATE bookings 
-      SET status = ${updateFields.status}, 
-          status_reason = ${updateFields.status_reason},
-          vendor_notes = ${updateFields.vendor_notes},
-          quote_sent_date = ${status === 'quote_sent' ? sql`NOW()` : sql`quote_sent_date`},
+      SET status = ${status}, 
+          notes = ${vendor_notes || null},
           updated_at = NOW()
       WHERE id = ${bookingId}
       RETURNING *
@@ -353,15 +340,22 @@ router.put('/:bookingId/update-status', async (req, res) => {
     
     console.log(`✅ [PUT] Booking status updated: ${bookingId} -> ${status}`);
     
-    res.json({
+    // Return response in format that frontend expects
+    const response = {
       success: true,
       id: booking[0].id,
       status: booking[0].status,
       updated_at: booking[0].updated_at,
-      vendor_notes: booking[0].vendor_notes,
-      quote_sent_date: booking[0].quote_sent_date,
+      vendor_notes: booking[0].notes, // Map notes field to vendor_notes
       timestamp: new Date().toISOString()
-    });
+    };
+    
+    // Add quote_sent_date if it's a quote_sent status (simulate the field)
+    if (status === 'quote_sent') {
+      response.quote_sent_date = booking[0].updated_at;
+    }
+    
+    res.json(response);
     
   } catch (error) {
     console.error('❌ [PUT] Update booking status error:', error);
