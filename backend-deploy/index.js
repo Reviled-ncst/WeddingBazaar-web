@@ -114,6 +114,236 @@ app.get('/api/vendors/featured', async (req, res) => {
     }
 });
 // ============================================================================
+// VENDOR OFF-DAYS ENDPOINTS (Frontend Compatible Routes)
+// ============================================================================
+// GET /api/vendors/:vendorId/off-days - Get all off days for a vendor
+app.get('/api/vendors/:vendorId/off-days', async (req, res) => {
+    try {
+        const { vendorId } = req.params;
+        console.log(`📅 [API] GET /api/vendors/${vendorId}/off-days called`);
+        const query = `
+            SELECT * FROM vendor_off_days 
+            WHERE vendor_id = $1 AND is_active = true
+            ORDER BY date ASC
+        `;
+        const result = await db.query(query, [vendorId]);
+        res.json({
+            success: true,
+            vendorId,
+            offDays: result.rows.map(row => ({
+                id: row.id,
+                vendorId: row.vendor_id,
+                date: row.date,
+                reason: row.reason,
+                isRecurring: row.is_recurring,
+                recurringPattern: row.recurring_pattern,
+                recurringEndDate: row.recurring_end_date,
+                createdAt: row.created_at,
+                updatedAt: row.updated_at
+            })),
+            total: result.rows.length
+        });
+    } catch (error) {
+        console.error('❌ [API] Error getting vendor off days:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to get vendor off days',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+// POST /api/vendors/:vendorId/off-days - Add a single off day
+app.post('/api/vendors/:vendorId/off-days', async (req, res) => {
+    try {
+        const { vendorId } = req.params;
+        const { date, reason, isRecurring, recurringPattern, recurringEndDate } = req.body;
+        console.log(`📅 [API] POST /api/vendors/${vendorId}/off-days called`, { date, reason });
+        if (!date) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid request',
+                message: 'Date is required'
+            });
+        }
+        const query = `
+            INSERT INTO vendor_off_days (
+                vendor_id, date, reason, is_recurring, recurring_pattern, recurring_end_date, is_active
+            ) VALUES ($1, $2, $3, $4, $5, $6, true)
+            ON CONFLICT (vendor_id, date) 
+            DO UPDATE SET 
+                reason = EXCLUDED.reason,
+                is_recurring = EXCLUDED.is_recurring,
+                recurring_pattern = EXCLUDED.recurring_pattern,
+                recurring_end_date = EXCLUDED.recurring_end_date,
+                is_active = true,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING *
+        `;
+        const result = await db.query(query, [
+            vendorId,
+            date,
+            reason || 'Off day',
+            isRecurring || false,
+            recurringPattern || null,
+            recurringEndDate || null
+        ]);
+        res.json({
+            success: true,
+            message: 'Off day added successfully',
+            offDay: {
+                id: result.rows[0].id,
+                vendorId: result.rows[0].vendor_id,
+                date: result.rows[0].date,
+                reason: result.rows[0].reason,
+                isRecurring: result.rows[0].is_recurring,
+                recurringPattern: result.rows[0].recurring_pattern,
+                recurringEndDate: result.rows[0].recurring_end_date,
+                createdAt: result.rows[0].created_at
+            }
+        });
+    } catch (error) {
+        console.error('❌ [API] Error adding vendor off day:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to add off day',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+// POST /api/vendors/:vendorId/off-days/bulk - Add multiple off days
+app.post('/api/vendors/:vendorId/off-days/bulk', async (req, res) => {
+    try {
+        const { vendorId } = req.params;
+        const { offDays } = req.body;
+        console.log(`📅 [API] POST /api/vendors/${vendorId}/off-days/bulk called`, { count: offDays?.length });
+        if (!offDays || !Array.isArray(offDays) || offDays.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid request',
+                message: 'offDays array is required and must not be empty'
+            });
+        }
+        // Insert off days
+        const insertPromises = offDays.map(offDay => {
+            const { date, reason, isRecurring, recurringPattern, recurringEndDate } = offDay;
+            const query = `
+                INSERT INTO vendor_off_days (
+                    vendor_id, date, reason, is_recurring, recurring_pattern, recurring_end_date, is_active
+                ) VALUES ($1, $2, $3, $4, $5, $6, true)
+                ON CONFLICT (vendor_id, date) 
+                DO UPDATE SET 
+                    reason = EXCLUDED.reason,
+                    is_recurring = EXCLUDED.is_recurring,
+                    recurring_pattern = EXCLUDED.recurring_pattern,
+                    recurring_end_date = EXCLUDED.recurring_end_date,
+                    is_active = true,
+                    updated_at = CURRENT_TIMESTAMP
+                RETURNING *
+            `;
+            return db.query(query, [
+                vendorId,
+                date,
+                reason || 'Off day',
+                isRecurring || false,
+                recurringPattern || null,
+                recurringEndDate || null
+            ]);
+        });
+        const results = await Promise.all(insertPromises);
+        const addedOffDays = results.map(result => ({
+            id: result.rows[0].id,
+            vendorId: result.rows[0].vendor_id,
+            date: result.rows[0].date,
+            reason: result.rows[0].reason,
+            isRecurring: result.rows[0].is_recurring,
+            recurringPattern: result.rows[0].recurring_pattern,
+            recurringEndDate: result.rows[0].recurring_end_date,
+            createdAt: result.rows[0].created_at
+        }));
+        res.json({
+            success: true,
+            message: `${addedOffDays.length} off days added successfully`,
+            offDays: addedOffDays,
+            total: addedOffDays.length
+        });
+    } catch (error) {
+        console.error('❌ [API] Error adding bulk off days:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to add bulk off days',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+// DELETE /api/vendors/:vendorId/off-days/:offDayId - Remove a specific off day
+app.delete('/api/vendors/:vendorId/off-days/:offDayId', async (req, res) => {
+    try {
+        const { vendorId, offDayId } = req.params;
+        console.log(`📅 [API] DELETE /api/vendors/${vendorId}/off-days/${offDayId} called`);
+        const query = `
+            UPDATE vendor_off_days 
+            SET is_active = false, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1 AND vendor_id = $2
+            RETURNING *
+        `;
+        const result = await db.query(query, [offDayId, vendorId]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Off day not found',
+                message: `Off day with ID ${offDayId} not found for vendor ${vendorId}`
+            });
+        }
+        res.json({
+            success: true,
+            message: 'Off day removed successfully',
+            removedOffDay: {
+                id: result.rows[0].id,
+                vendorId: result.rows[0].vendor_id,
+                date: result.rows[0].date,
+                reason: result.rows[0].reason
+            }
+        });
+    } catch (error) {
+        console.error('❌ [API] Error removing off day:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to remove off day',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+// GET /api/vendors/:vendorId/off-days/count - Get count of off days for analytics
+app.get('/api/vendors/:vendorId/off-days/count', async (req, res) => {
+    try {
+        const { vendorId } = req.params;
+        console.log(`📅 [API] GET /api/vendors/${vendorId}/off-days/count called`);
+        const query = `
+            SELECT COUNT(*) as total FROM vendor_off_days 
+            WHERE vendor_id = $1 AND is_active = true
+        `;
+        const result = await db.query(query, [vendorId]);
+        const total = parseInt(result.rows[0].total);
+        res.json({
+            success: true,
+            vendorId,
+            count: total,
+            analytics: {
+                totalOffDays: total,
+                dataSource: 'database',
+                lastUpdated: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        console.error('❌ [API] Error getting off days count:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to get off days count',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+// ============================================================================
 // SERVICES ENDPOINTS
 // ============================================================================
 // GET ALL SERVICES - GET /api/services
@@ -1166,6 +1396,11 @@ app.use('*', (req, res) => {
             'GET /api/ping',
             'GET /api/vendors',
             'GET /api/vendors/featured',
+            'GET /api/vendors/:vendorId/off-days',
+            'POST /api/vendors/:vendorId/off-days',
+            'POST /api/vendors/:vendorId/off-days/bulk',
+            'DELETE /api/vendors/:vendorId/off-days/:offDayId',
+            'GET /api/vendors/:vendorId/off-days/count',
             'POST /api/auth/login',
             'POST /api/auth/verify',
             'POST /api/bookings/request',
