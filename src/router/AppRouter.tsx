@@ -47,6 +47,7 @@ import { VendorBookings } from '../pages/users/vendor/bookings';
 import { VendorProfile } from '../pages/users/vendor/profile';
 import { VendorServices } from '../pages/users/vendor/services';
 import { VendorAnalytics } from '../pages/users/vendor/analytics';
+import { VendorAvailability } from '../pages/users/vendor/availability';
 import { VendorFinances } from '../pages/users/vendor/finances';
 import { VendorMessages } from '../pages/users/vendor/messages';
 import { VendorMarketInsights } from '../pages/users/vendor/market-insights';
@@ -210,6 +211,11 @@ export const AppRouter: React.FC = () => {
             <Route path="/vendor/bookings" element={
               <ProtectedRoute requireAuth={true}>
                 <VendorBookings />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/availability" element={
+              <ProtectedRoute requireAuth={true}>
+                <VendorAvailability />
               </ProtectedRoute>
             } />
             <Route path="/vendor/analytics" element={

@@ -12,11 +12,16 @@ import {
   DollarSign,
   Calendar,
   Award,
-  X
+  X,
+  CalendarDays,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../../../utils/cn';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
+import { VendorAvailabilityCalendar } from '../../../../shared/components/calendar/VendorAvailabilityCalendar';
+import { useAuth } from '../../../../shared/contexts/AuthContext';
 import { serviceManager, SERVICE_BUSINESS_RULES } from '../../../../shared/services/CentralizedServiceManager';
 
 // Local interface definitions to avoid module resolution issues
@@ -102,12 +107,16 @@ export function VendorServices() {
   const [vendorLimits, setVendorLimits] = useState<ServiceLimits | null>(null);
   const [analytics, setAnalytics] = useState<ServiceAnalytics | null>(null);
   const [activeTab, setActiveTab] = useState<'services' | 'analytics' | 'settings'>('services');
+  const [showAvailability, setShowAvailability] = useState(false);
   
-  // Mock vendor data - in real app, get from auth context
-  const vendorId = 'vendor-123';
+  // Get vendor data from auth context
+  const { user } = useAuth();
+  const vendorId = user?.id || 'vendor-123'; // Use actual vendor ID from auth
   const vendorTier: VendorTier = 'PROFESSIONAL'; // This would come from vendor's subscription
 
   useEffect(() => {
+    console.log('🚀 [VendorServices] Component mounted! Vendor ID:', vendorId);
+    console.log('📊 [VendorServices] Show availability state:', showAvailability);
     loadVendorData();
   }, []);
 
@@ -389,20 +398,77 @@ export function VendorServices() {
               </span>
             </div>
             
-            <button
-              onClick={() => setShowCreateModal(true)}
-              disabled={!vendorLimits?.can_add_service}
-              className={cn(
-                'flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors',
-                vendorLimits?.can_add_service
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              )}
-            >
-              <Plus className="h-5 w-5" />
-              Add Service
-            </button>
+            <div className="flex items-center gap-4">
+              {/* Availability Toggle Button */}
+              <button
+                onClick={() => {
+                  console.log('🎯 [VendorServices] Availability toggle clicked! Current state:', showAvailability);
+                  console.log('🔧 [VendorServices] Vendor ID:', vendorId);
+                  setShowAvailability(!showAvailability);
+                }}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors border shadow-sm',
+                  showAvailability
+                    ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-green-600 border-green-600 text-white hover:bg-green-700'
+                )}
+                title="Toggle vendor availability calendar"
+              >
+                <Calendar className="h-5 w-5" />
+                {showAvailability ? (
+                  <>
+                    <span>Hide Calendar</span>
+                    <ChevronUp className="h-4 w-4" />
+                  </>
+                ) : (
+                  <>
+                    <span>Show Calendar</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => setShowCreateModal(true)}
+                disabled={!vendorLimits?.can_add_service}
+                className={cn(
+                  'flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors',
+                  vendorLimits?.can_add_service
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                )}
+              >
+                <Plus className="h-5 w-5" />
+                Add Service
+              </button>
+            </div>
           </div>
+
+          {/* Vendor Availability Calendar (Collapsible) */}
+          <AnimatePresence>
+            {showAvailability && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="mb-8 overflow-hidden"
+              >
+                <div className="bg-white rounded-2xl shadow-lg p-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Calendar className="h-6 w-6 text-blue-600" />
+                    <h2 className="text-xl font-semibold text-gray-900">Vendor Availability Calendar</h2>
+                    <span className="text-sm text-gray-500">- Manage your off days and availability</span>
+                  </div>
+                  
+                  <VendorAvailabilityCalendar 
+                    vendorId={vendorId}
+                    className="w-full"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Services Grid */}
           {services.length === 0 ? (

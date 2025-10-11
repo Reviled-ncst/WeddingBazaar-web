@@ -38,6 +38,8 @@ export const VendorHeader: React.FC = () => {
   const [notifications, setNotifications] = useState<VendorNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [showBusinessDropdown, setShowBusinessDropdown] = useState(false);
+  const [showServicesDropdown, setShowServicesDropdown] = useState(false);
 
   // Initialize notifications on component mount and set up real-time updates
   useEffect(() => {
@@ -136,12 +138,19 @@ export const VendorHeader: React.FC = () => {
 
   const navigationItems = [
     { name: 'Dashboard', href: '/vendor/dashboard', icon: BarChart3 },
-    { name: 'Bookings', href: '/vendor/bookings', icon: Calendar },
     { name: 'Profile', href: '/vendor/profile', icon: Store },
-    { name: 'Services', href: '/vendor/services', icon: Briefcase },
-    { name: 'Analytics', href: '/vendor/analytics', icon: BarChart3 },
-    { name: 'Finances', href: '/vendor/finances', icon: Wallet },
     { name: 'Messages', href: '/vendor/messages', icon: MessageSquare },
+  ];
+
+  const servicesDropdownItems = [
+    { name: 'Services', href: '/vendor/services', icon: Briefcase, description: 'Manage your service offerings' },
+    { name: 'Bookings', href: '/vendor/bookings', icon: Calendar, description: 'View and manage reservations' },
+    { name: 'Availability', href: '/vendor/availability', icon: Calendar, description: 'Set off days and availability' },
+  ];
+
+  const businessDropdownItems = [
+    { name: 'Analytics', href: '/vendor/analytics', icon: BarChart3, description: 'View performance metrics' },
+    { name: 'Finances', href: '/vendor/finances', icon: Wallet, description: 'Manage payments & revenue' },
   ];
 
   const handleLogout = () => {
@@ -153,7 +162,7 @@ export const VendorHeader: React.FC = () => {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-rose-200/50 shadow-lg">
       <div className="absolute inset-0 bg-gradient-to-r from-rose-50/80 via-pink-50/60 to-white/80"></div>
       <div className="relative container mx-auto px-4">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-14">
           {/* Logo */}
           <Link to="/vendor/dashboard" className="flex items-center space-x-3 group">
             <div className="relative">
@@ -199,6 +208,154 @@ export const VendorHeader: React.FC = () => {
                 </Link>
               );
             })}
+            
+            {/* Services Dropdown */}
+            <div 
+              className="relative"
+              onMouseEnter={() => setShowServicesDropdown(true)}
+              onMouseLeave={() => setShowServicesDropdown(false)}
+            >
+              <button
+                className={cn(
+                  "group flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden",
+                  (location.pathname === '/vendor/services' || location.pathname === '/vendor/bookings' || location.pathname === '/vendor/availability')
+                    ? "bg-white/80 text-rose-700 shadow-md border border-rose-200/50" 
+                    : "text-gray-600 hover:text-rose-700 hover:bg-white/60 hover:shadow-sm"
+                )}
+              >
+                <div className={cn(
+                  "absolute inset-0 transition-all duration-300",
+                  (location.pathname === '/vendor/services' || location.pathname === '/vendor/bookings' || location.pathname === '/vendor/availability')
+                    ? "bg-gradient-to-r from-rose-50/50 to-pink-50/50" 
+                    : "bg-transparent group-hover:bg-gradient-to-r group-hover:from-rose-50/30 group-hover:to-pink-50/30"
+                )}></div>
+                <Briefcase className={cn(
+                  "h-4 w-4 relative z-10 transition-all duration-300",
+                  (location.pathname === '/vendor/services' || location.pathname === '/vendor/bookings' || location.pathname === '/vendor/availability')
+                    ? "text-rose-600" : "text-gray-500 group-hover:text-rose-600"
+                )} />
+                <span className="relative z-10">Services</span>
+                <svg className="w-3 h-3 relative z-10" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+
+              {/* Services Dropdown Menu */}
+              <AnimatePresence>
+                {showServicesDropdown && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute top-full left-0 mt-2 w-72 bg-white/95 backdrop-blur-xl border border-rose-200/50 rounded-2xl shadow-xl z-50"
+                  >
+                    <div className="p-2">
+                      {servicesDropdownItems.map((item) => {
+                        const IconComponent = item.icon;
+                        const isActive = location.pathname === item.href;
+                        
+                        return (
+                          <Link
+                            key={item.name}
+                            to={item.href}
+                            className={cn(
+                              "group flex items-center space-x-3 px-4 py-3 rounded-xl text-sm transition-all duration-300",
+                              isActive 
+                                ? "bg-rose-50 text-rose-700" 
+                                : "text-gray-600 hover:text-rose-700 hover:bg-rose-50/50"
+                            )}
+                          >
+                            <IconComponent className={cn(
+                              "h-4 w-4 transition-all duration-300",
+                              isActive ? "text-rose-600" : "text-gray-500 group-hover:text-rose-600"
+                            )} />
+                            <div className="flex-1">
+                              <div className="font-medium">{item.name}</div>
+                              <div className="text-xs text-gray-500">{item.description}</div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            
+            {/* Business Dropdown */}
+            <div 
+              className="relative"
+              onMouseEnter={() => setShowBusinessDropdown(true)}
+              onMouseLeave={() => setShowBusinessDropdown(false)}
+            >
+              <button
+                className={cn(
+                  "group flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden",
+                  (location.pathname === '/vendor/analytics' || location.pathname === '/vendor/finances')
+                    ? "bg-white/80 text-rose-700 shadow-md border border-rose-200/50" 
+                    : "text-gray-600 hover:text-rose-700 hover:bg-white/60 hover:shadow-sm"
+                )}
+              >
+                <div className={cn(
+                  "absolute inset-0 transition-all duration-300",
+                  (location.pathname === '/vendor/analytics' || location.pathname === '/vendor/finances')
+                    ? "bg-gradient-to-r from-rose-50/50 to-pink-50/50" 
+                    : "bg-transparent group-hover:bg-gradient-to-r group-hover:from-rose-50/30 group-hover:to-pink-50/30"
+                )}></div>
+                <DollarSign className={cn(
+                  "h-4 w-4 relative z-10 transition-all duration-300",
+                  (location.pathname === '/vendor/analytics' || location.pathname === '/vendor/finances')
+                    ? "text-rose-600" : "text-gray-500 group-hover:text-rose-600"
+                )} />
+                <span className="relative z-10">Business</span>
+                <svg className="w-3 h-3 relative z-10" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+
+              {/* Dropdown Menu */}
+              <AnimatePresence>
+                {showBusinessDropdown && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute top-full left-0 mt-2 w-64 bg-white/95 backdrop-blur-xl border border-rose-200/50 rounded-2xl shadow-xl z-50"
+                  >
+                    <div className="p-2">
+                      {businessDropdownItems.map((item) => {
+                        const IconComponent = item.icon;
+                        const isActive = location.pathname === item.href;
+                        
+                        return (
+                          <Link
+                            key={item.name}
+                            to={item.href}
+                            className={cn(
+                              "group flex items-center space-x-3 px-4 py-3 rounded-xl text-sm transition-all duration-300",
+                              isActive 
+                                ? "bg-rose-50 text-rose-700" 
+                                : "text-gray-600 hover:text-rose-700 hover:bg-rose-50/50"
+                            )}
+                          >
+                            <IconComponent className={cn(
+                              "h-4 w-4 transition-all duration-300",
+                              isActive ? "text-rose-600" : "text-gray-500 group-hover:text-rose-600"
+                            )} />
+                            <div className="flex-1">
+                              <div className="font-medium">{item.name}</div>
+                              <div className="text-xs text-gray-500">{item.description}</div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </nav>
 
           {/* Desktop Actions */}

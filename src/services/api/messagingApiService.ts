@@ -74,6 +74,8 @@ export class MessagingApiService {
     }
   }
 
+
+
   // VENDOR WORKAROUND: Get conversations by searching all conversations for vendor participation
   static async getVendorConversations(vendorId: string): Promise<Conversation[]> {
     try {
@@ -233,6 +235,8 @@ export class MessagingApiService {
       return this.handleApiError(error, 'Get Messages');
     }
   }
+
+
 
   // Send a new message
   static async sendMessage(

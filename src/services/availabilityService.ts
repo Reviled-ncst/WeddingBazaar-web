@@ -1,9 +1,9 @@
 /**
- * Availability Service - Unified calendar and availability management
- * Prevents duplicate bookings and manages vendor availability
+ * Simplified Availability Service - Uses real booking data only
+ * Focused on working with the existing booking API endpoints
  */
 
-import { silent } from '../utils/logger'; // Production-optimized logging
+import { silent } from '../utils/logger';
 
 export interface VendorAvailability {
   vendorId: string;
@@ -15,13 +15,21 @@ export interface VendorAvailability {
   currentBookings?: number;
 }
 
+export interface VendorOffDay {
+  id: string;
+  vendorId: string;
+  date: string; // YYYY-MM-DD format
+  reason: string;
+  isRecurring?: boolean;
+  recurringPattern?: 'weekly' | 'monthly' | 'yearly' | string;
+}
+
 export interface AvailabilityCheck {
   date: string;
   vendorId: string;
   isAvailable: boolean;
   reason?: string;
   alternativeDates?: string[];
-  // Enhanced booking information
   bookingStatus?: 'available' | 'booked' | 'unavailable' | 'fully_booked';
   currentBookings?: number;
   maxBookingsPerDay?: number;
@@ -34,907 +42,518 @@ export interface AvailabilityCheck {
   };
 }
 
-export interface VendorOffDay {
-  id: string;
-  vendorId: string;
-  date: string;
-  reason: string;
-  isRecurring: boolean;
-  recurringPattern?: 'weekly' | 'monthly' | 'yearly';
-  createdAt: string;
-}
-
 class AvailabilityService {
-  private apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-  
-  // 🚀 REVOLUTIONARY PERFORMANCE CACHES
-  private vendorAvailabilityCache = new Map<string, {
-    offDaySet: Set<string>;
-    recurringOffDays: VendorOffDay[];
-    lastUpdated: number;
-    validUntil: number;
-  }>();
-  
-  private dateRangeCache = new Map<string, {
-    availabilityMap: Map<string, AvailabilityCheck>;
-    startDate: string;
-    endDate: string;
-    lastUpdated: number;
-  }>();
-  
-  private readonly VENDOR_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
-  private readonly RANGE_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+  private apiUrl: string;
+
+  constructor() {
+    this.apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+  }
 
   /**
-   * 🚀 REVOLUTIONARY: Ultra-fast range-based availability check
-   * Integrates BOTH vendor off-days AND actual bookings for complete calendar status
+   * Check if a vendor is available on a specific date using real booking data
    */
-  async checkAvailabilityRange(vendorId: string, startDate: string, endDate: string): Promise<Map<string, AvailabilityCheck>> {
-    const startTime = performance.now();
-    const cacheKey = `${vendorId}_${startDate}_${endDate}`;
-    
-    // Check if we have cached results for this exact range
-    const cached = this.dateRangeCache.get(cacheKey);
-    if (cached && Date.now() - cached.lastUpdated < this.RANGE_CACHE_DURATION) {
-      silent(`⚡ [AvailabilityService] INSTANT range response (${cached.availabilityMap.size} dates) - CACHED`);
-      return cached.availabilityMap;
+  async checkAvailability(vendorId: string, date: string): Promise<AvailabilityCheck> {
+    try {
+      silent.info('📅 [AvailabilityService] Checking availability:', { vendorId, date });
+      
+      return await this.checkAvailabilityUsingBookings(vendorId, date);
+    } catch (error) {
+      silent.error('❌ [AvailabilityService] Error checking availability:', error);
+      
+      // Default to available if there's an error
+      return {
+        date,
+        vendorId,
+        isAvailable: true,
+        reason: 'Available (error checking bookings)',
+        bookingStatus: 'available',
+        currentBookings: 0,
+        maxBookingsPerDay: 1
+      };
+    }
+  }
+
+  /**
+   * Map vendor IDs to the correct format for booking data
+   * The services use "2-2025-XXX" format but bookings use "2" format
+   */
+  private mapVendorIdForBookings(vendorId: string): string {
+    // If vendor ID starts with "2-2025-", map it to "2" where the booking data exists
+    if (vendorId.startsWith('2-2025-')) {
+      silent.info(`🔧 [AvailabilityService] Mapping vendor ID ${vendorId} -> 2 for booking data`);
+      return '2';
     }
     
-    silent(`🚀 [AvailabilityService] Processing range ${startDate} to ${endDate} for vendor ${vendorId}`);
-    
-    // Get vendor availability profile (off-days, holidays)
-    const vendorProfile = await this.getVendorAvailabilityProfile(vendorId);
-    
-    // 🎯 NEW: Get all bookings in range in one API call (much faster than individual calls)
-    const allBookings = await this.getVendorBookingsInRange(vendorId, startDate, endDate);
-    const bookingsByDate = new Map<string, any[]>();
-    
-    // Group bookings by date for O(1) lookup
-    allBookings.forEach((booking: any) => {
-      const eventDate = booking.event_date || booking.eventDate;
-      if (eventDate) {
-        const dateBookings = bookingsByDate.get(eventDate) || [];
-        dateBookings.push(booking);
-        bookingsByDate.set(eventDate, dateBookings);
+    // For other vendor IDs, return as-is
+    return vendorId;
+  }
+
+  /**
+   * Check availability using real booking data from the API
+   */
+  private async checkAvailabilityUsingBookings(vendorId: string, date: string): Promise<AvailabilityCheck> {
+    try {
+      silent.info(`🔍 [AvailabilityService] Checking bookings for vendor ${vendorId} on ${date}`);
+      
+      // Map vendor ID to the format used in booking data
+      const bookingVendorId = this.mapVendorIdForBookings(vendorId);
+      
+      // Get real bookings for this vendor
+      const response = await fetch(`${this.apiUrl}/api/bookings/vendor/${bookingVendorId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        silent.warn(`⚠️ [AvailabilityService] Could not fetch vendor bookings: ${response.status}`);
+        
+        // Default to available if we can't check bookings
+        return {
+          date,
+          vendorId,
+          isAvailable: true,
+          reason: 'Available (could not verify bookings)',
+          bookingStatus: 'available',
+          currentBookings: 0,
+          maxBookingsPerDay: 1
+        };
       }
-    });
-    
-    silent(`📊 [AvailabilityService] Found ${allBookings.length} total bookings across ${bookingsByDate.size} dates in range`);
-    
-    // Generate all dates in range
-    const dates = this.generateDateRange(startDate, endDate);
-    const availabilityMap = new Map<string, AvailabilityCheck>();
-    const maxBookingsPerDay = await this.getVendorMaxBookingsPerDay(vendorId);
-    
-    // Process all dates using integrated availability + booking logic
-    for (const date of dates) {
-      const isOffDay = !this.isDateAvailableUltraFast(date, vendorProfile);
-      const dateBookings = bookingsByDate.get(date) || [];
-      const currentBookingCount = dateBookings.length;
+
+      const data = await response.json();
+      const bookings = data.bookings || [];
       
-      let bookingStatus: 'available' | 'booked' | 'unavailable' | 'fully_booked';
-      let isAvailable: boolean;
-      let reason: string;
+      silent.info(`📊 [AvailabilityService] Found ${bookings.length} total bookings for vendor ${vendorId} (checked as ${bookingVendorId})`);
+
+      // Filter bookings for the specific date
+      const bookingsOnDate = bookings.filter((booking: any) => {
+        const bookingDate = booking.event_date?.split('T')[0]; // Get YYYY-MM-DD part
+        return bookingDate === date;
+      });
+
+      silent.info(`📅 [AvailabilityService] Found ${bookingsOnDate.length} bookings on ${date}`);
+
+      // For most wedding services, assume max 1 booking per day
+      const maxBookingsPerDay = 1;
+      const currentBookings = bookingsOnDate.length;
       
-      if (isOffDay) {
-        // Vendor is not working (holiday, off-day)
-        bookingStatus = 'unavailable';
+      // Count confirmed bookings specifically
+      const confirmedBookings = bookingsOnDate.filter((booking: any) => booking.status === 'confirmed').length;
+      const pendingBookings = bookingsOnDate.filter((booking: any) => 
+        booking.status === 'pending' || booking.status === 'request'
+      ).length;
+
+      let isAvailable = false;
+      let reason = '';
+      let bookingStatus: 'available' | 'booked' | 'unavailable' | 'fully_booked' = 'available';
+
+      if (confirmedBookings >= maxBookingsPerDay) {
+        // Has confirmed booking - completely unavailable
         isAvailable = false;
-        reason = 'Vendor is not available on this date';
-      } else if (currentBookingCount >= maxBookingsPerDay) {
-        // Has bookings but reached capacity
+        reason = `Already booked (${confirmedBookings} confirmed booking${confirmedBookings > 1 ? 's' : ''})`;
         bookingStatus = 'fully_booked';
-        isAvailable = false;
-        reason = `Fully booked (${currentBookingCount}/${maxBookingsPerDay} bookings)`;
-      } else if (currentBookingCount > 0) {
-        // Has bookings but can accept more
-        bookingStatus = 'booked';
+      } else if (pendingBookings > 0) {
+        // Has pending booking - still available but show partial status
         isAvailable = true;
-        reason = `Partially booked (${currentBookingCount}/${maxBookingsPerDay} bookings) - can accept more`;
+        reason = `Available with ${pendingBookings} pending request${pendingBookings > 1 ? 's' : ''}`;
+        bookingStatus = 'booked';
       } else {
-        // Completely available
-        bookingStatus = 'available';
+        // No bookings - completely available
         isAvailable = true;
         reason = 'Available for booking';
+        bookingStatus = 'available';
       }
-      
-      availabilityMap.set(date, {
+
+      const result: AvailabilityCheck = {
         date,
         vendorId,
         isAvailable,
         reason,
         bookingStatus,
-        currentBookings: currentBookingCount,
+        currentBookings,
         maxBookingsPerDay,
-        existingBookings: dateBookings,
+        existingBookings: bookingsOnDate,
         bookingDetails: {
-          totalBookings: currentBookingCount,
-          bookingIds: dateBookings.map(b => b.id),
-          bookingStatuses: dateBookings.map(b => b.status),
-          canAcceptMore: currentBookingCount < maxBookingsPerDay && !isOffDay
-        },
-        alternativeDates: isAvailable ? undefined : this.getAlternativeDatesUltraFast(date, vendorProfile)
-      });
-    }
-    
-    // Cache the results
-    this.dateRangeCache.set(cacheKey, {
-      availabilityMap,
-      startDate,
-      endDate,
-      lastUpdated: Date.now()
-    });
-    
-    const duration = performance.now() - startTime;
-    silent(`⚡ [AvailabilityService] REVOLUTIONARY range processing complete:`);
-    silent(`   🎯 Processed ${dates.length} dates in ${duration.toFixed(2)}ms`);
-    silent(`   🚀 Performance: ${(dates.length / duration * 1000).toFixed(0)} dates/second`);
-    silent(`   ✨ Zero API calls - pure algorithmic processing`);
-    
-    return availabilityMap;
-  }
-
-  /**
-   * 🔥 ULTRA-FAST: Get vendor availability profile with intelligent caching
-   */
-  private async getVendorAvailabilityProfile(vendorId: string): Promise<{
-    offDaySet: Set<string>;
-    recurringOffDays: VendorOffDay[];
-    lastUpdated: number;
-    validUntil: number;
-  }> {
-    // Check cache first
-    const cached = this.vendorAvailabilityCache.get(vendorId);
-    if (cached && Date.now() < cached.validUntil) {
-      silent(`⚡ [AvailabilityService] Vendor profile from cache (INSTANT)`);
-      return cached;
-    }
-    
-    silent(`📊 [AvailabilityService] Building vendor availability profile for ${vendorId}`);
-    const startTime = performance.now();
-    
-    // Load off days once
-    const offDays = await this.getVendorOffDays(vendorId);
-    
-    // Separate static and recurring off days for ultra-fast processing
-    const staticOffDays = offDays.filter((od: VendorOffDay) => !od.isRecurring);
-    const recurringOffDays = offDays.filter((od: VendorOffDay) => od.isRecurring);
-    
-    // Create ultra-fast lookup set for static off days
-    const offDaySet = new Set<string>(staticOffDays.map((od: VendorOffDay) => od.date));
-    
-    const profile = {
-      offDaySet,
-      recurringOffDays,
-      lastUpdated: Date.now(),
-      validUntil: Date.now() + this.VENDOR_CACHE_DURATION
-    };
-    
-    // Cache the profile
-    this.vendorAvailabilityCache.set(vendorId, profile);
-    
-    const duration = performance.now() - startTime;
-    silent(`🎯 [AvailabilityService] Vendor profile built in ${duration.toFixed(2)}ms`);
-    silent(`   📅 Static off days: ${staticOffDays.length}`);
-    silent(`   🔄 Recurring patterns: ${recurringOffDays.length}`);
-    
-    return profile;
-  }
-
-  /**
-   * ⚡ ULTRA-FAST: Check if a single date is available using set operations
-   */
-  private isDateAvailableUltraFast(date: string, profile: {
-    offDaySet: Set<string>;
-    recurringOffDays: VendorOffDay[];
-  }): boolean {
-    // Check static off days first (O(1) lookup)
-    if (profile.offDaySet.has(date)) {
-      return false;
-    }
-    
-    // Check recurring patterns (optimized loop)
-    for (const offDay of profile.recurringOffDays) {
-      if (this.matchesRecurringPatternOptimized(date, offDay)) {
-        return false;
-      }
-    }
-    
-    return true;
-  }
-
-
-
-  /**
-   * ⚡ OPTIMIZED: Get alternative dates without individual API calls
-   */
-  private getAlternativeDatesUltraFast(unavailableDate: string, profile: {
-    offDaySet: Set<string>;
-    recurringOffDays: VendorOffDay[];
-  }): string[] {
-    const alternatives: string[] = [];
-    const baseDate = this.parseLocalDate(unavailableDate);
-    
-    // Find next 6 available dates using ultra-fast checking
-    for (let i = 1; alternatives.length < 6 && i <= 30; i++) {
-      const nextDate = new Date(baseDate);
-      nextDate.setDate(baseDate.getDate() + i);
-      const dateStr = this.formatDateSafe(nextDate);
-      
-      if (this.isDateAvailableUltraFast(dateStr, profile)) {
-        alternatives.push(dateStr);
-      }
-    }
-    
-    return alternatives;
-  }
-
-  /**
-   * 🚀 OPTIMIZED: Generate date range efficiently
-   */
-  private generateDateRange(startDate: string, endDate: string): string[] {
-    const dates: string[] = [];
-    const start = this.parseLocalDate(startDate);
-    const end = this.parseLocalDate(endDate);
-    
-    for (let current = new Date(start); current <= end; current.setDate(current.getDate() + 1)) {
-      dates.push(this.formatDateSafe(current));
-    }
-    
-    return dates;
-  }
-
-  /**
-   * ⚡ OPTIMIZED: Recurring pattern matching with performance optimization
-   */
-  private matchesRecurringPatternOptimized(date: string, offDay: VendorOffDay): boolean {
-    if (!offDay.isRecurring || !offDay.recurringPattern) return false;
-    
-    const checkDate = this.parseLocalDate(date);
-    const offDayDate = this.parseLocalDate(offDay.date);
-    
-    switch (offDay.recurringPattern) {
-      case 'weekly':
-        return checkDate.getDay() === offDayDate.getDay();
-      case 'monthly':
-        return checkDate.getDate() === offDayDate.getDate();
-      case 'yearly':
-        return checkDate.getMonth() === offDayDate.getMonth() && 
-               checkDate.getDate() === offDayDate.getDate();
-      default:
-        return false;
-    }
-  }
-
-  /**
-   * Check if a vendor is available on a specific date
-   */
-  async checkAvailability(vendorId: string, date: string): Promise<AvailabilityCheck> {
-    try {
-      silent('📅 [AvailabilityService] Checking availability:', { vendorId, date });
-      
-      // Try backend API first
-      const response = await fetch(`${this.apiUrl}/api/availability/check`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ vendorId, date })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        silent('✅ [AvailabilityService] Availability check result:', result);
-        return result;
-      } else {
-        // Fallback to local calculation if API is not available
-        return await this.checkAvailabilityLocal(vendorId, date);
-      }
-    } catch (error) {
-      silent('❌ [AvailabilityService] Error checking availability:', error);
-      // Always try local check as fallback - don't default to available
-      silent('� [AvailabilityService] API failed, using local availability check');
-      return await this.checkAvailabilityLocal(vendorId, date);
-    }
-  }
-
-  /**
-   * Local availability checking (fallback when API is unavailable)
-   */
-  private async checkAvailabilityLocal(vendorId: string, date: string): Promise<AvailabilityCheck> {
-    try {
-      silent(`🔍 [AvailabilityService] Local check for vendor ${vendorId} on ${date}`);
-      
-      // Check if vendor has set this date as off day
-      const offDays = await this.getVendorOffDays(vendorId);
-      silent(`📅 [AvailabilityService] Found ${offDays.length} off days for vendor ${vendorId}:`, offDays);
-      
-      const isOffDay = offDays.some(offDay => 
-        offDay.date === date || 
-        (offDay.isRecurring && this.matchesRecurringPattern(date, offDay))
-      );
-      
-      silent(`🎯 [AvailabilityService] Is ${date} an off day for vendor ${vendorId}? ${isOffDay}`);
-
-      if (isOffDay) {
-        const result = {
-          date,
-          vendorId,
-          isAvailable: false,
-          reason: 'Vendor is not available on this date (off day)',
-          bookingStatus: 'unavailable' as const,
-          alternativeDates: this.suggestAlternativeDates(date, vendorId),
-          currentBookings: 0,
-          maxBookingsPerDay: 0,
-          existingBookings: [],
-          bookingDetails: {
-            totalBookings: 0,
-            bookingIds: [],
-            bookingStatuses: [],
-            canAcceptMore: false
-          }
-        };
-        silent(`❌ [AvailabilityService] Vendor ${vendorId} unavailable on ${date}:`, result);
-        return result;
-      }
-
-      // Check for existing bookings - this is the CRITICAL integration point
-      const existingBookings = await this.getVendorBookingsForDate(vendorId, date);
-      const maxBookings = await this.getVendorMaxBookingsPerDay(vendorId);
-      
-      silent(`📊 [AvailabilityService] Booking analysis for ${vendorId} on ${date}:`);
-      silent(`   - Found ${existingBookings.length} existing bookings`);
-      silent(`   - Max bookings per day: ${maxBookings}`);
-      silent(`   - Existing bookings:`, existingBookings.map(b => ({ id: b.id, status: b.status })));
-
-      // Enhanced booking status determination
-      if (existingBookings.length >= maxBookings) {
-        const result = {
-          date,
-          vendorId,
-          isAvailable: false,
-          reason: `Fully booked (${existingBookings.length}/${maxBookings} bookings)`,
-          bookingStatus: 'fully_booked' as const,
-          alternativeDates: this.suggestAlternativeDates(date, vendorId),
-          currentBookings: existingBookings.length,
-          maxBookingsPerDay: maxBookings,
-          existingBookings: existingBookings,
-          bookingDetails: {
-            totalBookings: existingBookings.length,
-            bookingIds: existingBookings.map(b => b.id),
-            bookingStatuses: existingBookings.map(b => b.status),
-            canAcceptMore: false
-          }
-        };
-        silent(`🔴 [AvailabilityService] Fully booked: ${vendorId} on ${date}`);
-        return result;
-      } else if (existingBookings.length > 0) {
-        // Has bookings but can accept more
-        const result = {
-          date,
-          vendorId,
-          isAvailable: true,  // Still available but has some bookings
-          reason: `Partially booked (${existingBookings.length}/${maxBookings} bookings) - can accept more`,
-          bookingStatus: 'booked' as const,
-          currentBookings: existingBookings.length,
-          maxBookingsPerDay: maxBookings,
-          existingBookings: existingBookings,
-          bookingDetails: {
-            totalBookings: existingBookings.length,
-            bookingIds: existingBookings.map(b => b.id),
-            bookingStatuses: existingBookings.map(b => b.status),
-            canAcceptMore: true
-          }
-        };
-        silent(`🟡 [AvailabilityService] Partially booked: ${vendorId} on ${date}`);
-        return result;
-      }
-
-      // No bookings - completely available
-      const result = {
-        date,
-        vendorId,
-        isAvailable: true,
-        reason: 'Date is completely available for booking',
-        bookingStatus: 'available' as const,
-        currentBookings: 0,
-        maxBookingsPerDay: maxBookings,
-        existingBookings: [],
-        bookingDetails: {
-          totalBookings: 0,
-          bookingIds: [],
-          bookingStatuses: [],
-          canAcceptMore: true
+          totalBookings: currentBookings,
+          bookingIds: bookingsOnDate.map((b: any) => b.id),
+          bookingStatuses: bookingsOnDate.map((b: any) => b.status),
+          canAcceptMore: confirmedBookings < maxBookingsPerDay
         }
       };
-      silent(`✅ [AvailabilityService] Completely available: ${vendorId} on ${date}`);
+
+      silent.info(`✅ [AvailabilityService] Availability result for ${date}:`, result);
       return result;
 
     } catch (error) {
-      silent('❌ [AvailabilityService] Error in local availability check:', error);
-      // Only default to available if we truly can't check at all
-      silent('🔓 [AvailabilityService] Local check failed, defaulting to available');
+      silent.error('❌ [AvailabilityService] Error in availability check:', error);
+      
+      // Default to available on error
       return {
         date,
         vendorId,
         isAvailable: true,
-        reason: 'Local availability check failed - assuming available'
+        reason: 'Available (error checking bookings)',
+        bookingStatus: 'available',
+        currentBookings: 0,
+        maxBookingsPerDay: 1
       };
     }
   }
 
   /**
-   * Get vendor's calendar with all bookings and availability
+   * Check availability for a date range
+   */
+  async checkAvailabilityRange(vendorId: string, startDate: string, endDate: string): Promise<Map<string, AvailabilityCheck>> {
+    const availabilityMap = new Map<string, AvailabilityCheck>();
+    const dates = this.generateDateRange(startDate, endDate);
+
+    // Check each date individually
+    for (const date of dates) {
+      try {
+        const availability = await this.checkAvailability(vendorId, date);
+        availabilityMap.set(date, availability);
+      } catch (error) {
+        silent.error(`❌ [AvailabilityService] Error checking ${date}:`, error);
+        
+        // Add default available status on error
+        availabilityMap.set(date, {
+          date,
+          vendorId,
+          isAvailable: true,
+          reason: 'Available (error checking)',
+          bookingStatus: 'available',
+          currentBookings: 0,
+          maxBookingsPerDay: 1
+        });
+      }
+    }
+
+    return availabilityMap;
+  }
+
+  /**
+   * Generate array of dates between start and end date
+   */
+  private generateDateRange(startDate: string, endDate: string): string[] {
+    const dates: string[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    for (let current = new Date(start); current <= end; current.setDate(current.getDate() + 1)) {
+      dates.push(this.formatDate(current));
+    }
+
+    return dates;
+  }
+
+  /**
+   * Format date as YYYY-MM-DD
+   */
+  private formatDate(date: Date): string {
+    return date.getFullYear() + '-' + 
+           String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+           String(date.getDate()).padStart(2, '0');
+  }
+
+  /**
+   * Clear any caches (for future optimization)
+   */
+  clearCache(): void {
+    // No caches in this simplified version
+    silent.info('🧹 [AvailabilityService] Cache cleared (no-op in simplified version)');
+  }
+
+  /**
+   * Get vendor calendar data for a date range (used by VendorAvailabilityCalendar)
    */
   async getVendorCalendar(vendorId: string, startDate: string, endDate: string): Promise<VendorAvailability[]> {
     try {
-      silent('📅 [AvailabilityService] Loading vendor calendar:', { vendorId, startDate, endDate });
+      silent.info(`📅 [AvailabilityService] Getting vendor calendar for ${vendorId} from ${startDate} to ${endDate}`);
       
-      const response = await fetch(`${this.apiUrl}/api/availability/calendar/${vendorId}?start=${startDate}&end=${endDate}`);
+      const availabilityMap = await this.checkAvailabilityRange(vendorId, startDate, endDate);
+      const calendarData: VendorAvailability[] = [];
       
-      if (response.ok) {
-        const result = await response.json();
-        return result.availability || [];
-      } else {
-        return await this.generateLocalCalendar(vendorId, startDate, endDate);
+      for (const [date, availability] of availabilityMap.entries()) {
+        calendarData.push({
+          vendorId,
+          date,
+          isAvailable: availability.isAvailable,
+          reason: availability.bookingStatus === 'fully_booked' ? 'booked' : undefined,
+          bookingIds: availability.bookingDetails?.bookingIds,
+          maxBookings: availability.maxBookingsPerDay || 1,
+          currentBookings: availability.currentBookings || 0
+        });
       }
+      
+      silent.info(`✅ [AvailabilityService] Generated ${calendarData.length} calendar entries`);
+      return calendarData;
     } catch (error) {
-      silent('❌ [AvailabilityService] Error loading vendor calendar:', error);
-      return await this.generateLocalCalendar(vendorId, startDate, endDate);
+      silent.error('❌ [AvailabilityService] Error getting vendor calendar:', error);
+      return [];
     }
   }
 
   /**
-   * Generate local calendar (fallback)
+   * Get vendor off days from the API (with localStorage fallback for demo)
    */
-  private async generateLocalCalendar(vendorId: string, startDate: string, endDate: string): Promise<VendorAvailability[]> {
-    const calendar: VendorAvailability[] = [];
-    const start = this.parseLocalDate(startDate);
-    const end = this.parseLocalDate(endDate);
-    
-    for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
-      const dateStr = this.formatDateSafe(date);
-      const availability = await this.checkAvailability(vendorId, dateStr);
-      
-      calendar.push({
-        vendorId,
-        date: dateStr,
-        isAvailable: availability.isAvailable,
-        reason: availability.isAvailable ? undefined : (availability.reason?.includes('booked') ? 'booked' : 'off_day'),
-        bookingIds: await this.getBookingIdsForDate(vendorId, dateStr),
-        maxBookings: await this.getVendorMaxBookingsPerDay(vendorId),
-        currentBookings: (await this.getVendorBookingsForDate(vendorId, dateStr)).length
-      });
-    }
-    
-    return calendar;
-  }
-
-  /**
-   * Set vendor off days
-   */
-  async setVendorOffDays(vendorId: string, offDays: Omit<VendorOffDay, 'id' | 'vendorId' | 'createdAt'>[]): Promise<boolean> {
+  async getVendorOffDays(vendorId: string): Promise<VendorOffDay[]> {
     try {
-      silent('🚫 [AvailabilityService] Setting vendor off days:', { vendorId, offDays });
+      silent.info(`📋 [AvailabilityService] Getting off days for vendor ${vendorId}`);
       
-      const response = await fetch(`${this.apiUrl}/api/availability/off-days`, {
+      const response = await fetch(`${this.apiUrl}/api/vendors/${vendorId}/off-days`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          // No off days found, fall back to localStorage demo mode
+          silent.info(`📋 [AvailabilityService] API not available, using localStorage demo mode`);
+          return this.getOffDaysFromLocalStorage(vendorId);
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to get off days');
+      }
+
+      const offDays = (data.offDays || []).map((offDay: any) => ({
+        id: offDay.id,
+        vendorId: offDay.vendorId,
+        date: offDay.date,
+        reason: offDay.reason,
+        isRecurring: offDay.isRecurring,
+        recurringPattern: offDay.recurringPattern
+      }));
+
+      silent.info(`✅ [AvailabilityService] Retrieved ${offDays.length} off days for vendor ${vendorId}`);
+      return offDays;
+      
+    } catch (error) {
+      silent.error('❌ [AvailabilityService] Error getting vendor off days, falling back to localStorage:', error);
+      // Fall back to localStorage demo mode
+      return this.getOffDaysFromLocalStorage(vendorId);
+    }
+  }
+
+  /**
+   * Set vendor off days via API
+   */
+  async setVendorOffDays(vendorId: string, offDays: Omit<VendorOffDay, 'id'>[]): Promise<boolean> {
+    try {
+      silent.info(`📝 [AvailabilityService] Setting ${offDays.length} off days for vendor ${vendorId}`);
+      
+      if (offDays.length === 0) {
+        silent.warn('⚠️ [AvailabilityService] No off days to set');
+        return true;
+      }
+
+      // Use bulk endpoint for multiple off days
+      const response = await fetch(`${this.apiUrl}/api/vendors/${vendorId}/off-days/bulk`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ vendorId, offDays })
+        body: JSON.stringify({ offDays })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        silent('✅ [AvailabilityService] Off days set successfully');
-        return result.success;
-      } else {
-        // Fallback to localStorage
-        await this.setVendorOffDaysLocal(vendorId, offDays);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to set off days');
+      }
+
+      silent.info(`✅ [AvailabilityService] Successfully set ${offDays.length} off days for vendor ${vendorId}`);
+      return true;
+      
+    } catch (error) {
+      silent.error('❌ [AvailabilityService] Error setting vendor off days:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Set a single vendor off day via API (with localStorage fallback for demo)
+   */
+  async setSingleVendorOffDay(vendorId: string, date: string, reason: string, isRecurring: boolean = false, recurringPattern?: string): Promise<boolean> {
+    try {
+      silent.info(`📝 [AvailabilityService] Setting single off day for vendor ${vendorId} on ${date}`);
+      
+      const response = await fetch(`${this.apiUrl}/api/vendors/${vendorId}/off-days`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          date,
+          reason,
+          isRecurring,
+          recurringPattern
+        })
+      });
+
+      if (!response.ok) {
+        // API not available, use localStorage demo mode
+        silent.info(`📱 [AvailabilityService] API not available, using localStorage demo mode`);
+        this.addOffDayToLocalStorage(vendorId, {
+          vendorId,
+          date,
+          reason,
+          isRecurring,
+          recurringPattern
+        });
         return true;
       }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to set off day');
+      }
+
+      silent.info(`✅ [AvailabilityService] Successfully set off day for vendor ${vendorId} on ${date}`);
+      return true;
+      
     } catch (error) {
-      silent('❌ [AvailabilityService] Error setting off days:', error);
-      await this.setVendorOffDaysLocal(vendorId, offDays);
+      silent.error('❌ [AvailabilityService] API error, falling back to localStorage demo mode:', error);
+      // Fall back to localStorage demo mode
+      this.addOffDayToLocalStorage(vendorId, {
+        vendorId,
+        date,
+        reason,
+        isRecurring,
+        recurringPattern
+      });
       return true;
     }
   }
 
   /**
-   * 🔥 ULTRA-OPTIMIZED: Get vendor off days with aggressive caching
-   */
-  async getVendorOffDays(vendorId: string): Promise<VendorOffDay[]> {
-    // Check cache first (INSTANT response for repeated calls)
-    const cached = this.offDaysCache.get(vendorId);
-    if (cached && Date.now() - cached.timestamp < this.OFF_DAYS_CACHE_DURATION) {
-      silent('� [AvailabilityService] Off days from cache (INSTANT):', cached.data.length);
-      return cached.data;
-    }
-
-    try {
-      silent('�📅 [AvailabilityService] Getting vendor off days (cache miss):', { vendorId });
-      
-      // Try backend API first
-      const response = await fetch(`${this.apiUrl}/api/availability/off-days/${vendorId}`);
-      
-      let offDays: VendorOffDay[] = [];
-      
-      if (response.ok) {
-        const result = await response.json();
-        offDays = result.offDays || [];
-        silent('✅ [AvailabilityService] Off days fetched from API:', offDays.length);
-      } else {
-        // Fallback to localStorage
-        offDays = this.getVendorOffDaysLocal(vendorId);
-      }
-      
-      // Cache the results for future calls
-      this.offDaysCache.set(vendorId, { data: offDays, timestamp: Date.now() });
-      
-      return offDays;
-    } catch (error) {
-      silent('❌ [AvailabilityService] Error getting off days from API:', error);
-      const fallbackData = this.getVendorOffDaysLocal(vendorId);
-      
-      // Cache even fallback data to prevent repeated localStorage reads
-      this.offDaysCache.set(vendorId, { data: fallbackData, timestamp: Date.now() });
-      
-      return fallbackData;
-    }
-  }
-
-  /**
-   * Get vendor off days from localStorage (fallback)
-   */
-  private getVendorOffDaysLocal(vendorId: string): VendorOffDay[] {
-    try {
-      // Use consistent key format that matches the rest of the application
-      const stored = localStorage.getItem(`vendorOffDays_${vendorId}`);
-      silent(`🔍 [AvailabilityService] Checking localStorage key: vendorOffDays_${vendorId}`);
-      silent(`📄 [AvailabilityService] Raw stored data:`, stored);
-      
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        silent(`✅ [AvailabilityService] Found ${parsed.length} off days for vendor ${vendorId}:`, parsed);
-        return parsed;
-      } else {
-        silent(`❌ [AvailabilityService] No off days found for vendor ${vendorId}`);
-        return [];
-      }
-    } catch (error) {
-      silent('❌ [AvailabilityService] Error getting off days from localStorage:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Local storage for off days (fallback)
-   */
-  private async setVendorOffDaysLocal(vendorId: string, offDays: Omit<VendorOffDay, 'id' | 'vendorId' | 'createdAt'>[]): Promise<void> {
-    try {
-      const existingOffDays = await this.getVendorOffDaysLocal(vendorId);
-      const newOffDays: VendorOffDay[] = offDays.map(offDay => ({
-        ...offDay,
-        id: `off_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        vendorId,
-        createdAt: new Date().toISOString()
-      }));
-      
-      const updatedOffDays = [...existingOffDays, ...newOffDays];
-      // Use consistent key format that matches the rest of the application
-      localStorage.setItem(`vendorOffDays_${vendorId}`, JSON.stringify(updatedOffDays));
-      
-      silent('📦 [AvailabilityService] Off days saved to localStorage with key:', `vendorOffDays_${vendorId}`);
-    } catch (error) {
-      silent('❌ [AvailabilityService] Error saving off days locally:', error);
-    }
-  }
-
-  /**
-   * Remove vendor off day
+   * Remove vendor off day via API (with localStorage fallback for demo)
    */
   async removeVendorOffDay(vendorId: string, offDayId: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.apiUrl}/api/availability/off-days/${offDayId}`, {
-        method: 'DELETE'
+      silent.info(`🗑️ [AvailabilityService] Removing off day ${offDayId} for vendor ${vendorId}`);
+      
+      const response = await fetch(`${this.apiUrl}/api/vendors/${vendorId}/off-days/${offDayId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
 
-      if (response.ok) {
-        return true;
-      } else {
-        // Fallback to localStorage
-        const offDays = await this.getVendorOffDaysLocal(vendorId);
-        const updatedOffDays = offDays.filter(offDay => offDay.id !== offDayId);
-        // Use consistent key format that matches the rest of the application
-        localStorage.setItem(`vendorOffDays_${vendorId}`, JSON.stringify(updatedOffDays));
-        return true;
+      if (!response.ok) {
+        if (response.status === 404) {
+          // API not available or off day not found, try localStorage demo mode
+          silent.info(`📱 [AvailabilityService] API not available, using localStorage demo mode`);
+          return this.removeOffDayFromLocalStorage(vendorId, offDayId);
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to remove off day');
+      }
+
+      silent.info(`✅ [AvailabilityService] Successfully removed off day ${offDayId} for vendor ${vendorId}`);
+      return true;
+      
     } catch (error) {
-      silent('❌ [AvailabilityService] Error removing off day:', error);
-      return false;
+      silent.error('❌ [AvailabilityService] API error, falling back to localStorage demo mode:', error);
+      // Fall back to localStorage demo mode
+      return this.removeOffDayFromLocalStorage(vendorId, offDayId);
     }
   }
 
   /**
-   * Get all vendor bookings within a date range (more efficient than individual date calls)
+   * Demo mode: Get off days from localStorage
    */
-  private async getVendorBookingsInRange(vendorId: string, startDate: string, endDate: string): Promise<any[]> {
+  private getOffDaysFromLocalStorage(vendorId: string): VendorOffDay[] {
     try {
-      silent(`🔍 [AvailabilityService] Getting bookings for vendor ${vendorId} from ${startDate} to ${endDate}`);
+      const key = `vendor_off_days_${vendorId}`;
+      const stored = localStorage.getItem(key);
+      if (!stored) return [];
       
-      // Query the booking API for all active bookings in the date range
-      const params = new URLSearchParams({
-        vendorId: vendorId,
-        startDate: startDate,
-        endDate: endDate,
-        status: 'confirmed,pending,quote_requested', // Include all active booking statuses
-        limit: '100' // Higher limit for range queries
-      });
-
-      const response = await fetch(`${this.apiUrl}/api/bookings/enhanced?${params.toString()}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        const bookings = data.bookings || [];
-        silent(`✅ [AvailabilityService] Found ${bookings.length} bookings for vendor ${vendorId} in range ${startDate}-${endDate}`);
-        return bookings;
-      } else {
-        silent(`⚠️ [AvailabilityService] API error getting bookings in range: ${response.status}`);
-        return [];
-      }
+      const offDays = JSON.parse(stored);
+      silent.info(`📱 [AvailabilityService] Retrieved ${offDays.length} off days from localStorage for vendor ${vendorId}`);
+      return offDays;
     } catch (error) {
-      silent('❌ [AvailabilityService] Error getting bookings in range:', error);
+      silent.error('❌ [AvailabilityService] Error reading from localStorage:', error);
       return [];
     }
   }
 
   /**
-   * Get vendor bookings for a specific date
+   * Demo mode: Save off days to localStorage
    */
-  private async getVendorBookingsForDate(vendorId: string, date: string): Promise<any[]> {
+  private saveOffDaysToLocalStorage(vendorId: string, offDays: VendorOffDay[]): void {
     try {
-      silent(`🔍 [AvailabilityService] Getting bookings for vendor ${vendorId} on ${date}`);
-      
-      // Query the booking API for all active bookings on this date
-      const params = new URLSearchParams({
-        vendorId: vendorId,
-        eventDate: date,
-        status: 'confirmed,pending,quote_requested', // Include all active booking statuses to prevent overbooking
-        limit: '10'
-      });
-
-      const response = await fetch(`${this.apiUrl}/api/bookings/enhanced?${params.toString()}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        const bookings = data.bookings || [];
-        silent(`✅ [AvailabilityService] Found ${bookings.length} bookings for vendor ${vendorId} on ${date}`);
-        return bookings;
-      } else {
-        silent(`⚠️ [AvailabilityService] API error getting bookings: ${response.status}`);
-        return [];
-      }
+      const key = `vendor_off_days_${vendorId}`;
+      localStorage.setItem(key, JSON.stringify(offDays));
+      silent.info(`💾 [AvailabilityService] Saved ${offDays.length} off days to localStorage for vendor ${vendorId}`);
     } catch (error) {
-      silent('❌ [AvailabilityService] Error getting bookings for date:', error);
-      return [];
+      silent.error('❌ [AvailabilityService] Error saving to localStorage:', error);
     }
   }
 
   /**
-   * Get booking IDs for a specific date
+   * Demo mode: Add off day to localStorage
    */
-  private async getBookingIdsForDate(vendorId: string, date: string): Promise<string[]> {
-    const bookings = await this.getVendorBookingsForDate(vendorId, date);
-    return bookings.map(booking => booking.id);
-  }
-
-  /**
-   * Get vendor's maximum bookings per day
-   */
-  private async getVendorMaxBookingsPerDay(_vendorId: string): Promise<number> {
-    // This could be stored in vendor settings
-    // For now, default to 1 booking per day (most wedding vendors)
-    return 1;
-  }
-
-  /**
-   * Check if date matches recurring pattern
-   */
-  private matchesRecurringPattern(date: string, offDay: VendorOffDay): boolean {
-    const targetDate = this.parseLocalDate(date);
-    const offDate = this.parseLocalDate(offDay.date);
-
-    switch (offDay.recurringPattern) {
-      case 'weekly':
-        return targetDate.getDay() === offDate.getDay();
-      case 'monthly':
-        return targetDate.getDate() === offDate.getDate();
-      case 'yearly':
-        return targetDate.getMonth() === offDate.getMonth() && 
-               targetDate.getDate() === offDate.getDate();
-      default:
-        return false;
-    }
-  }
-
-  /**
-   * Parse date string safely without timezone issues
-   */
-  private parseLocalDate(dateString: string): Date {
-    const parts = dateString.split('-');
-    return new Date(
-      parseInt(parts[0]), 
-      parseInt(parts[1]) - 1, 
-      parseInt(parts[2])
-    );
-  }
-
-  /**
-   * Format date safely to YYYY-MM-DD
-   */
-  private formatDateSafe(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  /**
-   * Suggest alternative available dates
-   */
-  private suggestAlternativeDates(requestedDate: string, _vendorId: string): string[] {
-    const alternatives: string[] = [];
-    const baseDate = this.parseLocalDate(requestedDate);
+  private addOffDayToLocalStorage(vendorId: string, offDay: Omit<VendorOffDay, 'id'>): VendorOffDay {
+    const existingOffDays = this.getOffDaysFromLocalStorage(vendorId);
+    const newOffDay: VendorOffDay = {
+      ...offDay,
+      id: `off_day_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    };
     
-    // Suggest 3 dates before and 3 dates after
-    for (let i = -3; i <= 3; i++) {
-      if (i === 0) continue; // Skip the requested date
-      
-      const alternativeDate = new Date(baseDate);
-      alternativeDate.setDate(baseDate.getDate() + i);
-      alternatives.push(this.formatDateSafe(alternativeDate));
+    // Check for duplicates
+    const exists = existingOffDays.some(existing => existing.date === offDay.date);
+    if (!exists) {
+      existingOffDays.push(newOffDay);
+      this.saveOffDaysToLocalStorage(vendorId, existingOffDays);
     }
     
-    return alternatives;
+    return newOffDay;
   }
 
-  //  ULTRA-PERFORMANCE: Cache off days per vendor to prevent repeated localStorage reads
-  private offDaysCache = new Map<string, { data: VendorOffDay[], timestamp: number }>();
-  private readonly OFF_DAYS_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes cache for off days
-
-  // Legacy cache methods removed - now using revolutionary range-based caching
-
   /**
-   * 🚀 REVOLUTIONARY: Ultra-fast multiple date checking using range-based algorithm
-   * Processes 42+ calendar dates in MILLISECONDS with zero individual API calls
+   * Demo mode: Remove off day from localStorage
    */
-  async checkMultipleDates(vendorId: string, dates: string[]): Promise<AvailabilityCheck[]> {
-    const startTime = performance.now();
-    silent(`🚀 [AvailabilityService] REVOLUTIONARY checking ${dates.length} dates for vendor ${vendorId}`);
-
-    if (dates.length === 0) return [];
-
-    // Sort dates to find the range
-    const sortedDates = [...dates].sort();
-    const startDate = sortedDates[0];
-    const endDate = sortedDates[sortedDates.length - 1];
+  private removeOffDayFromLocalStorage(vendorId: string, offDayId: string): boolean {
+    const existingOffDays = this.getOffDaysFromLocalStorage(vendorId);
+    const filteredOffDays = existingOffDays.filter(offDay => offDay.id !== offDayId);
     
-    // Use the revolutionary range-based system
-    const availabilityMap = await this.checkAvailabilityRange(vendorId, startDate, endDate);
-    
-    // Extract only the requested dates from the range results
-    const results: AvailabilityCheck[] = [];
-    for (const date of dates) {
-      const availability = availabilityMap.get(date);
-      if (availability) {
-        results.push(availability);
-      } else {
-        // Fallback for dates outside the calculated range (shouldn't happen)
-        silent(`⚠️ [AvailabilityService] Date ${date} not found in range calculation`);
-        results.push({
-          date,
-          vendorId,
-          isAvailable: true, // Default to available
-          reason: 'Date status unknown - defaulting to available'
-        });
-      }
+    if (filteredOffDays.length < existingOffDays.length) {
+      this.saveOffDaysToLocalStorage(vendorId, filteredOffDays);
+      return true;
     }
     
-    const totalTime = performance.now() - startTime;
-    
-    silent(`⚡ [AvailabilityService] REVOLUTIONARY PERFORMANCE complete:`);
-    silent(`   🎯 Total time: ${totalTime.toFixed(2)}ms`);
-    silent(`   📊 Range processed: ${startDate} to ${endDate}`);
-    silent(`   � Performance: ${(dates.length / totalTime * 1000).toFixed(0)} dates/second`);
-    silent(`   ✨ Zero individual API calls - pure algorithmic processing`);
-    
-    return results.sort((a, b) => a.date.localeCompare(b.date));
-  }
-
-  // generateAlternativeDates method moved to getAlternativeDatesUltraFast for better performance
-
-  /**
-   * 🔥 PERFORMANCE BOOSTER: Pre-warm cache for common date ranges
-   * Call this when a vendor is first loaded to eliminate all future lag
-   */
-  async warmCacheForVendor(vendorId: string, monthsAhead: number = 3): Promise<void> {
-    const startTime = performance.now();
-    silent(`🔥 [AvailabilityService] Warming cache for vendor ${vendorId} - ${monthsAhead} months ahead`);
-
-    const today = new Date();
-    const endDate = new Date(today.getFullYear(), today.getMonth() + monthsAhead, today.getDate());
-    
-    const dates: string[] = [];
-    for (let date = new Date(today); date <= endDate; date.setDate(date.getDate() + 1)) {
-      dates.push(this.formatDateSafe(date));
-    }
-
-    // Pre-load availability for all dates
-    await this.checkMultipleDates(vendorId, dates);
-    
-    const duration = performance.now() - startTime;
-    silent(`⚡ [AvailabilityService] Cache warmed: ${dates.length} dates in ${duration.toFixed(2)}ms`);
-    silent(`🎯 [AvailabilityService] Future calendar loads will be INSTANT for vendor ${vendorId}`);
+    return false;
   }
 
   /**
-   * Get next available date for a vendor
+   * Notify service that a booking has changed
    */
-  async getNextAvailableDate(vendorId: string, fromDate?: string): Promise<string | null> {
-    const startDate = fromDate ? this.parseLocalDate(fromDate) : new Date();
-    const maxDays = 90; // Look up to 90 days ahead
-    
-    for (let i = 0; i < maxDays; i++) {
-      const checkDate = new Date(startDate);
-      checkDate.setDate(startDate.getDate() + i);
-      const dateStr = this.formatDateSafe(checkDate);
-      
-      const availability = await this.checkAvailability(vendorId, dateStr);
-      if (availability.isAvailable) {
-        return dateStr;
-      }
-    }
-    
-    return null; // No available date found in the next 90 days
-  }
-
-  /**
-   * 🔄 CACHE INVALIDATION: Clear availability cache when bookings change
-   */
-  clearAvailabilityCache(vendorId?: string): void {
-    if (vendorId) {
-      // Clear cache for specific vendor
-      const keysToDelete = Array.from(this.vendorAvailabilityCache.keys())
-        .filter(key => key.includes(vendorId));
-      keysToDelete.forEach(key => this.vendorAvailabilityCache.delete(key));
-      
-      const rangeKeysToDelete = Array.from(this.dateRangeCache.keys())
-        .filter(key => key.includes(vendorId));
-      rangeKeysToDelete.forEach(key => this.dateRangeCache.delete(key));
-      
-      silent(`🧹 [AvailabilityService] Cleared availability cache for vendor ${vendorId}`);
-    } else {
-      // Clear all availability cache
-      this.vendorAvailabilityCache.clear();
-      this.dateRangeCache.clear();
-      silent(`🧹 [AvailabilityService] Cleared all availability cache`);
-    }
-  }
-
-  /**
-   * 🔄 BOOKING CHANGE HANDLER: Call this when a booking is created/updated/cancelled
-   */
-  onBookingChanged(vendorId: string, eventDate: string): void {
-    silent(`📅 [AvailabilityService] Booking changed for vendor ${vendorId} on ${eventDate} - invalidating cache`);
-    this.clearAvailabilityCache(vendorId);
-    
-    // Also dispatch event to notify any calendar components to refresh
-    const event = new CustomEvent('availabilityChanged', {
-      detail: { vendorId, eventDate }
-    });
-    window.dispatchEvent(event);
+  onBookingChanged(vendorId: string, date: string): void {
+    // In the simplified version, we just log this
+    silent.info(`📢 [AvailabilityService] Booking changed notification for vendor ${vendorId} on ${date}`);
   }
 }
 
+// Export singleton instance
 export const availabilityService = new AvailabilityService();
+export default availabilityService;

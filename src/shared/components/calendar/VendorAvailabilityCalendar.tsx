@@ -444,11 +444,12 @@ export const VendorAvailabilityCalendar: React.FC<VendorAvailabilityCalendarProp
                         }
                         
                         // Quick off day with default reason
-                        const success = await availabilityService.setVendorOffDays(actualVendorId!, [{
-                          date: day.date,
-                          reason: 'Personal time off',
-                          isRecurring: false
-                        }]);
+                        const success = await availabilityService.setSingleVendorOffDay(
+                          actualVendorId!, 
+                          day.date, 
+                          'Personal time off', 
+                          false
+                        );
                         
                         if (success) {
                           loadOffDays();
@@ -456,10 +457,10 @@ export const VendorAvailabilityCalendar: React.FC<VendorAvailabilityCalendarProp
                           
                           // Show success notification
                           const notification = document.createElement('div');
-                          notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2';
+                          notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2';
                           notification.innerHTML = `
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                              <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"></path>
                             </svg>
                             Off day set for ${clickDate.toLocaleDateString()}
                           `;
@@ -470,6 +471,23 @@ export const VendorAvailabilityCalendar: React.FC<VendorAvailabilityCalendarProp
                               document.body.removeChild(notification);
                             }
                           }, 3000);
+                        } else {
+                          // Show error notification
+                          const notification = document.createElement('div');
+                          notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2';
+                          notification.innerHTML = `
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"></path>
+                            </svg>
+                            Failed to set off day. Backend API not yet deployed.
+                          `;
+                          document.body.appendChild(notification);
+
+                          setTimeout(() => {
+                            if (document.body.contains(notification)) {
+                              document.body.removeChild(notification);
+                            }
+                          }, 5000);
                         }
                         return;
                       }

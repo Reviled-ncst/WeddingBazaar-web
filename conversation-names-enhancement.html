@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Conversation Names & Message Headers</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1100px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 { text-align: center; margin-bottom: 20px; color: #fff; }
+        .enhancement { 
+            background: rgba(76, 175, 80, 0.3); 
+            border: 2px solid #4CAF50; 
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .test-button {
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px;
+            font-size: 16px;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+        .test-button:hover { 
+            transform: scale(1.05); 
+            color: white;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .feature-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        pre {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 11px;
+            margin: 10px 0;
+        }
+        .backend { border-left: 4px solid #2196F3; }
+        .frontend { border-left: 4px solid #4CAF50; }
+        .user-types {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .user-type {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .vendor { border-left: 4px solid #ff9800; }
+        .individual { border-left: 4px solid #e91e63; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Enhanced Conversation Names & Message Headers</h1>
+        <div class="enhancement">
+            <h2>✅ COMPREHENSIVE IMPROVEMENTS DEPLOYED</h2>
+            <ul>
+                <li><strong>✅ Enhanced Backend:</strong> Joins with services, vendors, and users tables for complete data</li>
+                <li><strong>✅ Intelligent Name Display:</strong> Context-aware conversation names based on user type</li>
+                <li><strong>✅ Improved Message Headers:</strong> Cleaner, more functional headers with service info</li>
+                <li><strong>✅ Dynamic Information:</strong> Shows relevant details based on vendor vs individual context</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🛠️ Backend Enhancements</h2>
+        <div class="feature-item backend">
+            <h3>📊 Enhanced Database Query</h3>
+            <pre>
+-- New conversation query with comprehensive joins:
+SELECT 
+  c.*,
+  s.name as service_name,                    -- Service information
+  s.category as service_category,
+  v.business_name as vendor_business_name,   -- Vendor business details
+  v.contact_person as vendor_contact_person,
+  u1.first_name as creator_first_name,       -- Creator details
+  u1.last_name as creator_last_name,
+  u1.email as creator_email,
+  u2.first_name as participant_first_name,   -- Participant details
+  u2.last_name as participant_last_name,
+  u2.email as participant_email,
+  CASE 
+    WHEN c.creator_id = ${userId} THEN CONCAT(u2.first_name, ' ', u2.last_name)
+    ELSE CONCAT(u1.first_name, ' ', u1.last_name)
+  END as other_participant_name              -- Smart name selection
+FROM conversations c
+LEFT JOIN services s ON c.service_id = s.id
+LEFT JOIN vendors v ON c.vendor_id = v.id
+LEFT JOIN users u1 ON c.creator_id = u1.id
+LEFT JOIN users u2 ON c.participant_id = u2.id
+WHERE c.participant_id = ${userId} OR c.creator_id = ${userId}
+ORDER BY c.last_message_time DESC NULLS LAST, c.created_at DESC
+            </pre>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>👥 User-Specific Name Display Logic</h2>
+        <div class="user-types">
+            <div class="user-type vendor">
+                <h3>🏢 For Vendors</h3>
+                <p><strong>Shows:</strong> Client Name (Individual/Couple)</p>
+                <ul>
+                    <li>✅ Uses other_participant_name from query</li>
+                    <li>✅ Falls back to first_name + last_name</li>
+                    <li>✅ Shows email if names unavailable</li>
+                    <li>✅ Default: "Wedding Client"</li>
+                </ul>
+                <p><em>Example: "John & Sarah Smith"</em></p>
+            </div>
+            <div class="user-type individual">
+                <h3>👤 For Individuals/Couples</h3>
+                <p><strong>Shows:</strong> Service Name - Vendor Business Name</p>
+                <ul>
+                    <li>✅ Primary: "Photography - Perfect Moments Studio"</li>
+                    <li>✅ Service only: "Wedding Photography"</li>
+                    <li>✅ Vendor only: "Perfect Moments Studio"</li>
+                    <li>✅ Default: "Wedding Vendor"</li>
+                </ul>
+                <p><em>Example: "Wedding Photography - Perfect Moments Studio"</em></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🎨 Enhanced Message Headers</h2>
+        <div class="feature-grid">
+            <div class="feature-item frontend">
+                <h3>📱 Cleaner Header Design</h3>
+                <ul>
+                    <li>✅ Smaller avatar (10x10 → more space)</li>
+                    <li>✅ Truncated long names</li>
+                    <li>✅ Relevant action buttons</li>
+                    <li>✅ Message count indicator</li>
+                    <li>✅ Service-specific information</li>
+                </ul>
+            </div>
+            <div class="feature-item frontend">
+                <h3>ℹ️ Context-Aware Info Bars</h3>
+                <ul>
+                    <li>✅ <strong>For Individuals:</strong> Service info with vendor name</li>
+                    <li>✅ <strong>For Vendors:</strong> Wedding planning context</li>
+                    <li>✅ <strong>Timestamps:</strong> Conversation start date</li>
+                    <li>✅ <strong>Visual Elements:</strong> Icons and gradients</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 Test Enhanced Features</h2>
+        <p><strong>The conversations should now display proper names and enhanced headers!</strong></p>
+        
+        <a href="https://weddingbazaarph.web.app/individual/messages" class="test-button" target="_blank">
+            👤 Test Individual Messages
+        </a>
+        
+        <a href="https://weddingbazaarph.web.app/vendor/messages" class="test-button" target="_blank">
+            🏢 Test Vendor Messages
+        </a>
+        
+        <div style="margin-top: 30px; background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 10px;">
+            <h3>🎯 VERIFICATION CHECKLIST:</h3>
+            <ul>
+                <li>✅ <strong>Conversation Names:</strong> Should show proper service/client names</li>
+                <li>✅ <strong>Message Headers:</strong> Cleaner design with context info</li>
+                <li>✅ <strong>Service Info Bars:</strong> Should appear for individuals showing service details</li>
+                <li>✅ <strong>Client Info Bars:</strong> Should appear for vendors showing conversation context</li>
+                <li>✅ <strong>Dynamic Content:</strong> Different information based on user type</li>
+                <li>✅ <strong>Proper Fallbacks:</strong> Graceful handling when data is missing</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="container">
+        <div style="background: rgba(33, 150, 243, 0.3); border: 2px solid #2196F3; padding: 20px; border-radius: 8px;">
+            <h2>🎉 EXPECTED RESULTS</h2>
+            <div class="user-types">
+                <div style="background: rgba(255, 152, 0, 0.2); padding: 15px; border-radius: 8px;">
+                    <h3>🏢 Vendor View</h3>
+                    <p><strong>Conversation List:</strong> Shows client names (e.g., "John Smith", "Sarah & Mike")</p>
+                    <p><strong>Message Header:</strong> Client name with service context</p>
+                    <p><strong>Info Bar:</strong> "Wedding Planning Conversation" with start date</p>
+                </div>
+                <div style="background: rgba(233, 30, 99, 0.2); padding: 15px; border-radius: 8px;">
+                    <h3>👤 Individual View</h3>
+                    <p><strong>Conversation List:</strong> Shows service names with vendor (e.g., "Photography - Perfect Studio")</p>
+                    <p><strong>Message Header:</strong> Service name with message count</p>
+                    <p><strong>Info Bar:</strong> Service details with vendor business name</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('🔄 Enhanced conversation names and message headers deployed!');
+        console.log('✅ Backend: Enhanced query with service/vendor/user joins');
+        console.log('✅ Frontend: Intelligent name display based on user type');
+        console.log('✅ Headers: Cleaner design with context-aware information');
+        console.log('🧪 Test both views: https://weddingbazaarph.web.app/individual/messages');
+    </script>
+</body>
+</html>

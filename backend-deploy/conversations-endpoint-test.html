@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversations Endpoint Fix Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 { text-align: center; margin-bottom: 20px; color: #fff; }
+        .test-button {
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px;
+            font-size: 16px;
+            display: block;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        .test-button:hover { transform: scale(1.05); }
+        .result {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { border-left: 4px solid #4CAF50; }
+        .error { border-left: 4px solid #f44336; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Conversations Endpoint Fix Test</h1>
+        <p>Testing the fixed conversations endpoint for vendor user: <strong>2-2025-003</strong></p>
+        
+        <button class="test-button" onclick="testConversations()">
+            🧪 Test Conversations Endpoint
+        </button>
+        
+        <div id="result"></div>
+    </div>
+
+    <div class="container">
+        <h2>🔄 What Was Fixed:</h2>
+        <ul>
+            <li>✅ Reverted complex JOIN query that was causing 500 errors</li>
+            <li>✅ Added fallback mechanism: basic query first, then enhancement</li>
+            <li>✅ Added proper error handling and logging</li>
+            <li>✅ Removed problematic CONCAT function</li>
+            <li>✅ Maintained data enhancement where possible</li>
+        </ul>
+    </div>
+
+    <script>
+        async function testConversations() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="result">🔄 Testing conversations endpoint...</div>';
+            
+            try {
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/conversations/2-2025-003');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ SUCCESS - Conversations Endpoint Working</h3>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Conversations Found:</strong> ${data.conversations ? data.conversations.length : 0}</p>
+                            <p><strong>Response:</strong></p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ ERROR - Still Not Working</h3>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Error:</strong></p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ NETWORK ERROR</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-test after page loads
+        setTimeout(testConversations, 2000);
+    </script>
+</body>
+</html>

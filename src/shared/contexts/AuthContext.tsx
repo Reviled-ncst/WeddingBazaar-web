@@ -106,53 +106,47 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
         
-        // Create timeout promise to prevent hanging (very short for better UX)
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Authentication timeout after 8 seconds - backend may be sleeping')), 8000);
-        });
-        
-        const fetchPromise = fetch(`${apiBaseUrl}/api/auth/verify`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        const response = await Promise.race([fetchPromise, timeoutPromise]);
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('✅ Token verification successful:', data);
-          // Only set user if we get valid data back
-          if (data.success && data.authenticated && data.user) {
-            setUser(data.user);
-            // Ensure token is in both storages for persistence
-            localStorage.setItem('auth_token', token);
-            sessionStorage.setItem('auth_token', token);
-            // Cache user data for offline mode
-            localStorage.setItem('cached_user_data', JSON.stringify(data.user));
+        // Since /auth/verify endpoint doesn't exist, we'll validate the token by attempting
+        // to decode it and check if it's expired, then trust the cached user data
+        try {
+          // Basic JWT validation - decode the payload to check expiration
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const currentTime = Math.floor(Date.now() / 1000);
+          
+          if (payload.exp && payload.exp > currentTime) {
+            // Token is not expired, check for cached user data
+            const cachedUserData = localStorage.getItem('cached_user_data');
+            if (cachedUserData) {
+              try {
+                const userData = JSON.parse(cachedUserData);
+                console.log('✅ Using valid cached user data:', userData);
+                setUser(userData);
+                // Ensure token persists in both storages
+                localStorage.setItem('auth_token', token);
+                sessionStorage.setItem('auth_token', token);
+              } catch (e) {
+                console.log('❌ Failed to parse cached user data');
+                localStorage.removeItem('auth_token');
+                sessionStorage.removeItem('auth_token');
+                localStorage.removeItem('cached_user_data');
+              }
+            } else {
+              console.log('⚠️ Token valid but no cached user data - user needs to login again');
+              localStorage.removeItem('auth_token');
+              sessionStorage.removeItem('auth_token');
+            }
           } else {
-            console.log('❌ Invalid verify response:', data);
+            console.log('🔄 Token expired, removing...');
             localStorage.removeItem('auth_token');
             sessionStorage.removeItem('auth_token');
+            localStorage.removeItem('cached_user_data');
           }
-        } else if (response.status === 401) {
-          // Token is invalid/expired - remove it silently (this is normal)
-          console.log('🔄 Token expired or invalid, removing...');
+        } catch (error) {
+          console.log('❌ Invalid token format, removing...', error);
           localStorage.removeItem('auth_token');
           sessionStorage.removeItem('auth_token');
-        } else {
-          // Other errors (500, etc.)
-          console.error('❌ Token verification failed:', response.status, response.statusText);
-          localStorage.removeItem('auth_token');
-          sessionStorage.removeItem('auth_token');
+          localStorage.removeItem('cached_user_data');
         }
-      } catch (error) {
-        // Network errors, API unavailable, etc. - don't remove token immediately
-        console.log('🌐 Auth verification failed (network/server issue):', error);
-        // We keep the token in case it's just a temporary network issue
-        // The token will be verified again when the user tries to access protected content
       } finally {
         setIsLoading(false);
       }
@@ -268,12 +262,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Only store token and user if login was successful
       if (data.success && data.user && data.token) {
+        // Fix backend user data mapping - userType -> role
+        const mappedUser = {
+          ...data.user,
+          role: data.user.userType || data.user.role || 'couple', // Map userType to role
+          firstName: data.user.firstName || data.user.first_name || '',
+          lastName: data.user.lastName || data.user.last_name || ''
+        };
+        
         // Store in both localStorage and sessionStorage for better persistence
         localStorage.setItem('auth_token', data.token);
         sessionStorage.setItem('auth_token', data.token);
-        setUser(data.user);
-        console.log('✅ Login successful for:', data.user.email, 'with role:', data.user.role);
-        return data.user;
+        
+        // Cache user data for persistent login
+        localStorage.setItem('cached_user_data', JSON.stringify(mappedUser));
+        sessionStorage.setItem('cached_user_data', JSON.stringify(mappedUser));
+        
+        setUser(mappedUser);
+        console.log('✅ Login successful for:', mappedUser.email, 'with role:', mappedUser.role);
+        return mappedUser;
       } else {
         console.error('❌ Login response validation failed');
         console.error('  Expected: success=true, user=object, token=string');
@@ -355,11 +362,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Store token and user data
       if (data.success && data.user && data.token) {
+        // Fix backend user data mapping - userType -> role
+        const mappedUser = {
+          ...data.user,
+          role: data.user.userType || data.user.role || 'couple',
+          firstName: data.user.firstName || data.user.first_name || '',
+          lastName: data.user.lastName || data.user.last_name || ''
+        };
+        
         // Store in both localStorage and sessionStorage for better persistence
         localStorage.setItem('auth_token', data.token);
         sessionStorage.setItem('auth_token', data.token);
-        setUser(data.user);
-        console.log('✅ Registration successful for:', data.user.email);
+        
+        // Cache user data for persistent login
+        localStorage.setItem('cached_user_data', JSON.stringify(mappedUser));
+        sessionStorage.setItem('cached_user_data', JSON.stringify(mappedUser));
+        
+        setUser(mappedUser);
+        console.log('✅ Registration successful for:', mappedUser.email);
       } else {
         throw new Error('Invalid registration response from server');
       }
@@ -407,9 +427,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear all auth-related data from both storages
     localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_data'); // In case there's any cached user data
+    localStorage.removeItem('cached_user_data');
     sessionStorage.removeItem('auth_token');
-    sessionStorage.removeItem('user_data');
+    sessionStorage.removeItem('cached_user_data');
     setUser(null);
     
     // Force a page reload to clear any stale state
