@@ -96,12 +96,57 @@ app.get('/api/vendors', async (req, res) => {
 app.get('/api/vendors/featured', async (req, res) => {
     try {
         console.log('⭐ [API] GET /api/vendors/featured called');
-        const result = await db.query('SELECT * FROM vendors WHERE rating >= 4.0 LIMIT 5');
-        const vendors = result.rows;
+        
+        // Fixed query with proper field mapping
+        const result = await db.query(`
+            SELECT 
+                id,
+                business_name,
+                business_type,
+                rating,
+                review_count,
+                location,
+                description,
+                profile_image,
+                website_url,
+                years_experience,
+                portfolio_images,
+                verified,
+                starting_price,
+                price_range
+            FROM vendors 
+            WHERE rating >= 4.0 
+            ORDER BY CAST(rating AS DECIMAL) DESC, review_count DESC 
+            LIMIT 5
+        `);
+        
+        const vendors = result.rows.map(vendor => ({
+            id: vendor.id,
+            name: vendor.business_name,  // Map business_name to name
+            category: vendor.business_type,  // Map business_type to category
+            rating: parseFloat(vendor.rating) || 0,
+            reviewCount: parseInt(vendor.review_count) || 0,
+            location: vendor.location || 'Location not specified',
+            description: vendor.description || 'Professional wedding services',
+            image: vendor.profile_image,
+            imageUrl: vendor.profile_image,
+            website: vendor.website_url,
+            websiteUrl: vendor.website_url,
+            yearsExperience: vendor.years_experience || 0,
+            portfolioImages: vendor.portfolio_images || [],
+            verified: vendor.verified || false,
+            startingPrice: vendor.starting_price || '$1,000',
+            priceRange: vendor.price_range || '$1,000 - $2,000'
+        }));
+        
+        console.log('✅ [API] Featured vendors found:', vendors.length, 'vendors with names:', vendors.map(v => v.name));
+        
         res.json({
             success: true,
             vendors: vendors,
-            total: vendors.length
+            count: vendors.length,
+            total: vendors.length,
+            timestamp: new Date().toISOString()
         });
     }
     catch (error) {
@@ -109,7 +154,8 @@ app.get('/api/vendors/featured', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to fetch featured vendors',
-            message: error instanceof Error ? error.message : 'Unknown error'
+            message: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
         });
     }
 });
@@ -1420,5 +1466,8 @@ app.listen(PORT, () => {
     console.log(`🔗 Health Check: http://localhost:${PORT}/api/health`);
 });
 exports.default = app;
-/ /   F o r c e   d e p l o y m e n t   -   1 0 / 1 1 / 2 0 2 5   1 5 : 5 5 : 0 4  
- 
+// =============================================================================
+// CRITICAL FIX DEPLOYMENT - 2025/10/12 18:26:00
+// Fixed Featured Vendors API to properly map business_name -> name and business_type -> category
+// This deployment fixes the homepage vendor display issue
+// =============================================================================
