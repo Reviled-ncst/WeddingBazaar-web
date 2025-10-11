@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth.cjs');
 const conversationRoutes = require('./routes/conversations.cjs');
 const serviceRoutes = require('./routes/services.cjs');
 const vendorRoutes = require('./routes/vendors.cjs');
+const vendorOffDaysRoutes = require('./routes/vendorOffDays.cjs');
 const bookingRoutes = require('./routes/bookings.cjs');
 const notificationRoutes = require('./routes/notifications.cjs');
 const debugRoutes = require('./routes/debug.cjs');
@@ -149,6 +150,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/vendors', vendorRoutes);
+app.use('/api/vendors', vendorOffDaysRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/debug', debugRoutes);
@@ -166,6 +168,7 @@ app.use('/api/*', (req, res) => {
       conversations: 'GET /api/conversations/:userId, GET /api/conversations/:id/messages, POST /api/conversations/:id/messages',
       services: 'GET /api/services, GET /api/services/vendor/:vendorId, POST /api/services, PUT /api/services/:id, DELETE /api/services/:id',
       vendors: 'GET /api/vendors, GET /api/vendors/featured, GET /api/vendors/:id, GET /api/vendors/:id/services',
+      vendorOffDays: 'GET /api/vendors/:vendorId/off-days, POST /api/vendors/:vendorId/off-days, POST /api/vendors/:vendorId/off-days/bulk, DELETE /api/vendors/:vendorId/off-days/:offDayId, GET /api/vendors/:vendorId/off-days/count',
       bookings: 'GET /api/bookings/vendor/:vendorId, GET /api/bookings/user/:userId, GET /api/bookings/stats, POST /api/bookings, PATCH /api/bookings/:id/status',
       notifications: 'GET /api/notifications/vendor/:vendorId, GET /api/notifications/user/:userId, POST /api/notifications, PATCH /api/notifications/:id/read',
       debug: 'GET /api/debug/users, GET /api/debug/tables, GET /api/debug/schema/:tableName, GET /api/debug/sample/:tableName'
@@ -199,6 +202,7 @@ app.listen(PORT, () => {
   console.log('   💬 Conversations: GET /api/conversations/:userId');
   console.log('   🛠️  Services: GET /api/services/vendor/:vendorId');
   console.log('   🏪 Vendors: GET /api/vendors/featured');
+  console.log('   📅 Vendor Off-Days: GET /api/vendors/:vendorId/off-days, POST /api/vendors/:vendorId/off-days');
   console.log('   📅 Bookings: GET /api/bookings/vendor/:vendorId');
   console.log('   🔔 Notifications: GET /api/notifications/vendor/:vendorId');
   console.log('   🐛 Debug: GET /api/debug/users');
