@@ -144,9 +144,10 @@ router.get('/user/:userId', async (req, res) => {
     const { page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
     const offset = (page - 1) * limit;
     
+    // Use couple_id since that's the actual column name
     let query = `
       SELECT * FROM bookings 
-      WHERE user_id = $1
+      WHERE couple_id = $1
     `;
     let params = [userId];
     
@@ -158,7 +159,23 @@ router.get('/user/:userId', async (req, res) => {
     query += ` ORDER BY ${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(parseInt(limit), parseInt(offset));
     
-    const bookings = await sql(query, params);
+    const rawBookings = await sql(query, params);
+    
+    // Process bookings to interpret quote_sent status from notes
+    const bookings = rawBookings.map(booking => {
+      const processedBooking = { ...booking };
+      
+      // If notes start with "QUOTE_SENT:", interpret as quote_sent status
+      if (booking.notes && booking.notes.startsWith('QUOTE_SENT:')) {
+        processedBooking.status = 'quote_sent';
+        processedBooking.vendor_notes = booking.notes.substring('QUOTE_SENT:'.length).trim();
+        processedBooking.quote_sent_date = booking.updated_at;
+      } else {
+        processedBooking.vendor_notes = booking.notes;
+      }
+      
+      return processedBooking;
+    });
     
     console.log(`✅ Found ${bookings.length} bookings for user ${userId}`);
     
@@ -197,7 +214,7 @@ router.get('/couple/:userId', async (req, res) => {
     
     let query = `
       SELECT * FROM bookings 
-      WHERE couple_id = $1 OR user_id = $1
+      WHERE couple_id = $1
     `;
     let params = [searchUserId];
     
@@ -271,7 +288,7 @@ router.get('/enhanced', async (req, res) => {
     let params = [];
     
     if (coupleId) {
-      query += ` AND (couple_id = $${params.length + 1} OR user_id = $${params.length + 1})`;
+      query += ` AND couple_id = $${params.length + 1}`;
       params.push(coupleId);
     }
     
