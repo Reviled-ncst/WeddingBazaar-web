@@ -6,36 +6,56 @@ const router = express.Router();
 // Get featured vendors
 router.get('/featured', async (req, res) => {
   try {
+    console.log('⭐ [VENDORS] GET /api/vendors/featured called');
+    
     const vendors = await sql`
-      SELECT * FROM vendors 
+      SELECT 
+        id,
+        business_name,
+        business_type,
+        rating,
+        review_count,
+        location,
+        description,
+        profile_image,
+        website_url,
+        years_experience,
+        portfolio_images,
+        verified,
+        starting_price
+      FROM vendors 
       WHERE verified = true 
-      ORDER BY rating DESC 
+      ORDER BY CAST(rating AS DECIMAL) DESC, review_count DESC
       LIMIT 5
     `;
+
+    console.log(`✅ [VENDORS] Found ${vendors.length} featured vendors`);
 
     res.json({
       success: true,
       vendors: vendors.map(vendor => ({
         id: vendor.id,
-        name: vendor.name,
-        category: vendor.category,
-        rating: vendor.rating,
-        review_count: vendor.review_count,
-        location: vendor.location,
-        description: vendor.description,
-        image_url: vendor.image_url,
-        website_url: vendor.website_url,
-        years_experience: vendor.years_experience,
-        portfolio_images: vendor.portfolio_images,
-        verified: vendor.verified,
-        starting_price: vendor.starting_price,
-        price_range: `$${vendor.starting_price} - $${parseFloat(vendor.starting_price) * 2}`
+        name: vendor.business_name,  // Fixed: use business_name
+        category: vendor.business_type,  // Fixed: use business_type
+        rating: parseFloat(vendor.rating) || 0,
+        reviewCount: parseInt(vendor.review_count) || 0,
+        location: vendor.location || 'Location not specified',
+        description: vendor.description || 'Professional wedding services',
+        image: vendor.profile_image,
+        imageUrl: vendor.profile_image,
+        website: vendor.website_url,
+        websiteUrl: vendor.website_url,
+        yearsExperience: vendor.years_experience || 0,
+        portfolioImages: vendor.portfolio_images || [],
+        verified: vendor.verified || false,
+        startingPrice: vendor.starting_price || '$1,000',
+        priceRange: vendor.starting_price ? `$${vendor.starting_price} - $${parseFloat(vendor.starting_price) * 2}` : '$1,000 - $2,000'
       })),
       count: vendors.length,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Vendors error:', error);
+    console.error('❌ [VENDORS] Featured vendors error:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -47,13 +67,19 @@ router.get('/featured', async (req, res) => {
 // Get all vendors with filtering
 router.get('/', async (req, res) => {
   try {
+    console.log('🏪 [VENDORS] GET /api/vendors called');
     const { category, location, verified, limit = 20, offset = 0 } = req.query;
     
-    let query = `SELECT * FROM vendors WHERE 1=1`;
+    let query = `
+      SELECT 
+        id, business_name, business_type, rating, review_count, 
+        location, description, profile_image, website_url, 
+        years_experience, portfolio_images, verified, starting_price
+      FROM vendors WHERE 1=1`;
     let params = [];
     
     if (category) {
-      query += ` AND category = $${params.length + 1}`;
+      query += ` AND business_type = $${params.length + 1}`;
       params.push(category);
     }
     
@@ -67,14 +93,30 @@ router.get('/', async (req, res) => {
       params.push(verified === 'true');
     }
     
-    query += ` ORDER BY rating DESC, review_count DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    query += ` ORDER BY CAST(rating AS DECIMAL) DESC, review_count DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(parseInt(limit), parseInt(offset));
     
     const vendors = await sql(query, params);
     
+    console.log(`✅ [VENDORS] Found ${vendors.length} vendors`);
+    
     res.json({
       success: true,
-      vendors: vendors,
+      vendors: vendors.map(vendor => ({
+        id: vendor.id,
+        name: vendor.business_name,
+        category: vendor.business_type,
+        rating: parseFloat(vendor.rating) || 0,
+        reviewCount: parseInt(vendor.review_count) || 0,
+        location: vendor.location || 'Location not specified',
+        description: vendor.description || 'Professional wedding services',
+        image: vendor.profile_image,
+        website: vendor.website_url,
+        yearsExperience: vendor.years_experience || 0,
+        portfolioImages: vendor.portfolio_images || [],
+        verified: vendor.verified || false,
+        startingPrice: vendor.starting_price || '$1,000'
+      })),
       count: vendors.length,
       timestamp: new Date().toISOString()
     });
