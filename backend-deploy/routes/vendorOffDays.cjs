@@ -1,4 +1,6 @@
 const express = require('express');
+const { sql } = require('../config/database.cjs');
+
 const router = express.Router();
 
 /**
@@ -11,8 +13,6 @@ router.get('/:vendorId/off-days', async (req, res) => {
   try {
     const { vendorId } = req.params;
     console.log(`📅 [VendorOffDays] Fetching off days for vendor: ${vendorId}`);
-    
-    const { sql } = require('../config/database.cjs');
     
     // Query the vendor_off_days table
     const result = await sql`
@@ -89,8 +89,6 @@ router.post('/:vendorId/off-days', async (req, res) => {
         message: 'Date must be in YYYY-MM-DD format'
       });
     }
-    
-    const { sql } = require('../config/database.cjs');
     
     // Check if off day already exists for this date
     const existing = await sql`
@@ -176,7 +174,6 @@ router.post('/:vendorId/off-days/bulk', async (req, res) => {
       });
     }
     
-    const { sql } = require('../config/database.cjs');
     const createdOffDays = [];
     const errors = [];
     
@@ -280,8 +277,6 @@ router.delete('/:vendorId/off-days/:offDayId', async (req, res) => {
     const { vendorId, offDayId } = req.params;
     console.log(`🗑️ [VendorOffDays] Deleting off day ${offDayId} for vendor ${vendorId}`);
     
-    const { sql } = require('../config/database.cjs');
-    
     // Soft delete (set is_active = false)
     const result = await sql`
       UPDATE vendor_off_days 
@@ -327,8 +322,6 @@ router.get('/:vendorId/off-days/count', async (req, res) => {
   try {
     const { vendorId } = req.params;
     console.log(`📊 [VendorOffDays] Getting off days count for vendor ${vendorId}`);
-    
-    const { sql } = require('../config/database.cjs');
     
     const result = await sql`
       SELECT COUNT(*) as total FROM vendor_off_days 
