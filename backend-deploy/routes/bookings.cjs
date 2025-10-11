@@ -228,7 +228,7 @@ router.patch('/:bookingId/status', async (req, res) => {
   
   try {
     const { bookingId } = req.params;
-    const { status, reason } = req.body;
+    const { status, reason, vendor_notes } = req.body;
     
     if (!status) {
       return res.status(400).json({
@@ -238,7 +238,7 @@ router.patch('/:bookingId/status', async (req, res) => {
       });
     }
     
-    const validStatuses = ['pending', 'confirmed', 'cancelled', 'completed'];
+    const validStatuses = ['pending', 'confirmed', 'cancelled', 'completed', 'quote_sent'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -247,14 +247,26 @@ router.patch('/:bookingId/status', async (req, res) => {
       });
     }
     
-    const booking = await sql`
+    // Build update query dynamically based on status
+    let updateQuery = `
       UPDATE bookings 
-      SET status = ${status}, 
-          status_reason = ${reason || null},
+      SET status = $1, 
+          status_reason = $2,
+          vendor_notes = $3,
           updated_at = NOW()
-      WHERE id = ${bookingId}
-      RETURNING *
     `;
+    
+    let queryParams = [status, reason || null, vendor_notes || null];
+    
+    // Add quote_sent_date if status is quote_sent
+    if (status === 'quote_sent') {
+      updateQuery += `, quote_sent_date = NOW()`;
+    }
+    
+    updateQuery += ` WHERE id = $4 RETURNING *`;
+    queryParams.push(bookingId);
+    
+    const booking = await sql.unsafe(updateQuery, queryParams);
     
     if (booking.length === 0) {
       return res.status(404).json({
@@ -274,6 +286,85 @@ router.patch('/:bookingId/status', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Update booking status error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Alternative endpoint for booking status updates (matches frontend expectations)
+router.put('/:bookingId/update-status', async (req, res) => {
+  console.log('🔄 [PUT] Updating booking status:', req.params.bookingId, req.body);
+  
+  try {
+    const { bookingId } = req.params;
+    const { status, reason, vendor_notes } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        error: 'Status is required',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const validStatuses = ['pending', 'confirmed', 'cancelled', 'completed', 'quote_sent'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Build update query dynamically based on status
+    let updateFields = {
+      status,
+      status_reason: reason || null,
+      vendor_notes: vendor_notes || null,
+      updated_at: new Date().toISOString()
+    };
+    
+    // Add quote_sent_date if status is quote_sent
+    if (status === 'quote_sent') {
+      updateFields.quote_sent_date = new Date().toISOString();
+    }
+    
+    const booking = await sql`
+      UPDATE bookings 
+      SET status = ${updateFields.status}, 
+          status_reason = ${updateFields.status_reason},
+          vendor_notes = ${updateFields.vendor_notes},
+          quote_sent_date = ${status === 'quote_sent' ? sql`NOW()` : sql`quote_sent_date`},
+          updated_at = NOW()
+      WHERE id = ${bookingId}
+      RETURNING *
+    `;
+    
+    if (booking.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    console.log(`✅ [PUT] Booking status updated: ${bookingId} -> ${status}`);
+    
+    res.json({
+      success: true,
+      id: booking[0].id,
+      status: booking[0].status,
+      updated_at: booking[0].updated_at,
+      vendor_notes: booking[0].vendor_notes,
+      quote_sent_date: booking[0].quote_sent_date,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [PUT] Update booking status error:', error);
     res.status(500).json({
       success: false,
       error: error.message,
