@@ -3,6 +3,13 @@ const { sql } = require('../config/database.cjs');
 
 const router = express.Router();
 
+// =============================================================================
+// CRITICAL BOOKING FIX DEPLOYMENT - 2025/10/12 18:35:00
+// Fixed vendor booking ID mismatch issue
+// Now searches for both full vendor ID (2-2025-003) and legacy ID (2)
+// This should resolve the "new request" issue for vendors with existing bookings
+// =============================================================================
+
 // Get bookings for a vendor
 router.get('/vendor/:vendorId', async (req, res) => {
   console.log('📅 Getting bookings for vendor:', req.params.vendorId);
@@ -12,11 +19,17 @@ router.get('/vendor/:vendorId', async (req, res) => {
     const { page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
     const offset = (page - 1) * limit;
     
+    // Handle both full vendor ID format (2-2025-003) and legacy format (2)
+    // Extract the base number from full ID format for backward compatibility
+    const legacyVendorId = vendorId.includes('-') ? vendorId.split('-')[0] : vendorId;
+    
+    console.log(`🔍 Searching for bookings with vendor_id: "${vendorId}" or "${legacyVendorId}"`);
+    
     let query = `
       SELECT * FROM bookings 
-      WHERE vendor_id = $1
+      WHERE vendor_id = $1 OR vendor_id = $2
     `;
-    let params = [vendorId];
+    let params = [vendorId, legacyVendorId];
     
     if (status && status !== 'all') {
       query += ` AND status = $${params.length + 1}`;
@@ -28,7 +41,7 @@ router.get('/vendor/:vendorId', async (req, res) => {
     
     const bookings = await sql(query, params);
     
-    console.log(`✅ Found ${bookings.length} bookings for vendor ${vendorId}`);
+    console.log(`✅ Found ${bookings.length} bookings for vendor ${vendorId} (searched both "${vendorId}" and "${legacyVendorId}")`);
     
     res.json({
       success: true,
