@@ -1117,7 +1117,12 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
       }
       
       setTerms('');
-      setValidUntil('');
+      
+      // Set default validity to 1 week from now
+      const oneWeekFromNow = new Date();
+      oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+      const formattedDate = oneWeekFromNow.toISOString().split('T')[0]; // YYYY-MM-DD format
+      setValidUntil(formattedDate);
     }
   }, [isOpen, booking, serviceData]);
 
