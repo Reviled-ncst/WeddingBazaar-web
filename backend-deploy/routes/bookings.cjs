@@ -181,6 +181,154 @@ router.get('/user/:userId', async (req, res) => {
   }
 });
 
+// Get bookings for a couple (alias for user endpoint)
+router.get('/couple/:userId', async (req, res) => {
+  console.log('📅 Getting bookings for couple:', req.params.userId);
+  
+  try {
+    const { userId } = req.params;
+    const { page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    const offset = (page - 1) * limit;
+    
+    // Handle both full user ID format (1-2025-001) and legacy format
+    const searchUserId = userId;
+    
+    console.log(`🔍 Searching for bookings with couple_id: "${searchUserId}"`);
+    
+    let query = `
+      SELECT * FROM bookings 
+      WHERE couple_id = $1 OR user_id = $1
+    `;
+    let params = [searchUserId];
+    
+    if (status && status !== 'all') {
+      query += ` AND status = $${params.length + 1}`;
+      params.push(status);
+    }
+    
+    query += ` ORDER BY ${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(parseInt(limit), parseInt(offset));
+    
+    const rawBookings = await sql(query, params);
+    
+    // Process bookings to interpret quote_sent status from notes (same as vendor endpoint)
+    const bookings = rawBookings.map(booking => {
+      const processedBooking = { ...booking };
+      
+      // If notes start with "QUOTE_SENT:", interpret as quote_sent status
+      if (booking.notes && booking.notes.startsWith('QUOTE_SENT:')) {
+        processedBooking.status = 'quote_sent';
+        processedBooking.vendor_notes = booking.notes.substring('QUOTE_SENT:'.length).trim();
+        processedBooking.quote_sent_date = booking.updated_at;
+      } else {
+        processedBooking.vendor_notes = booking.notes;
+      }
+      
+      return processedBooking;
+    });
+    
+    console.log(`✅ Found ${bookings.length} bookings for couple ${userId}`);
+    
+    res.json({
+      success: true,
+      bookings: bookings,
+      count: bookings.length,
+      totalPages: Math.ceil(bookings.length / limit),
+      currentPage: parseInt(page),
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Couple bookings error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Enhanced bookings endpoint with additional data
+router.get('/enhanced', async (req, res) => {
+  console.log('📅 Getting enhanced bookings:', req.query);
+  
+  try {
+    const { coupleId, vendorId, page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    const offset = (page - 1) * limit;
+    
+    if (!coupleId && !vendorId) {
+      return res.status(400).json({
+        success: false,
+        error: 'coupleId or vendorId parameter is required',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    let query = `
+      SELECT * FROM bookings 
+      WHERE 1=1
+    `;
+    let params = [];
+    
+    if (coupleId) {
+      query += ` AND (couple_id = $${params.length + 1} OR user_id = $${params.length + 1})`;
+      params.push(coupleId);
+    }
+    
+    if (vendorId) {
+      // Handle both full vendor ID format and legacy format
+      const legacyVendorId = vendorId.includes('-') ? vendorId.split('-')[0] : vendorId;
+      query += ` AND (vendor_id = $${params.length + 1} OR vendor_id = $${params.length + 2})`;
+      params.push(vendorId, legacyVendorId);
+    }
+    
+    if (status && status !== 'all') {
+      query += ` AND status = $${params.length + 1}`;
+      params.push(status);
+    }
+    
+    query += ` ORDER BY ${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(parseInt(limit), parseInt(offset));
+    
+    const rawBookings = await sql(query, params);
+    
+    // Process bookings to interpret quote_sent status from notes
+    const bookings = rawBookings.map(booking => {
+      const processedBooking = { ...booking };
+      
+      // If notes start with "QUOTE_SENT:", interpret as quote_sent status
+      if (booking.notes && booking.notes.startsWith('QUOTE_SENT:')) {
+        processedBooking.status = 'quote_sent';
+        processedBooking.vendor_notes = booking.notes.substring('QUOTE_SENT:'.length).trim();
+        processedBooking.quote_sent_date = booking.updated_at;
+      } else {
+        processedBooking.vendor_notes = booking.notes;
+      }
+      
+      return processedBooking;
+    });
+    
+    console.log(`✅ Found ${bookings.length} enhanced bookings`);
+    
+    res.json({
+      success: true,
+      bookings: bookings,
+      count: bookings.length,
+      totalPages: Math.ceil(bookings.length / limit),
+      currentPage: parseInt(page),
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Enhanced bookings error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Create a new booking
 router.post('/', async (req, res) => {
   console.log('➕ Creating new booking:', req.body);
