@@ -68,7 +68,7 @@ export interface BookingRequest {
   userId: string;
   vendorId: string;
   serviceId: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'in_progress';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'in_progress' | 'quote_sent' | 'quote_requested' | 'quote_accepted' | 'quote_rejected' | 'downpayment_paid' | 'paid_in_full' | 'refunded' | 'disputed' | 'draft';
   eventDetails: {
     type: 'wedding' | 'engagement' | 'reception' | 'other';
     date: string;
@@ -98,6 +98,7 @@ export interface BookingRequest {
     responseDate?: string;
     confirmedDate?: string;
     completedDate?: string;
+    quoteSentDate?: string;
   };
   communication: {
     lastMessage?: string;
@@ -1073,13 +1074,24 @@ export class BookingApiService {
   }
 
   // Update booking status
-  async updateBookingStatus(bookingId: string, status: BookingRequest['status']): Promise<BookingRequest | null> {
+  async updateBookingStatus(bookingId: string, status: BookingRequest['status'], responseMessage?: string): Promise<BookingRequest | null> {
     await this.delay();
     
+    console.log('🔄 [BookingAPI] Updating booking status:', { bookingId, status, responseMessage });
+    
     const bookingIndex = MOCK_BOOKINGS.findIndex(booking => booking.id === bookingId);
-    if (bookingIndex === -1) return null;
+    if (bookingIndex === -1) {
+      console.error('❌ [BookingAPI] Booking not found:', bookingId);
+      return null;
+    }
     
     MOCK_BOOKINGS[bookingIndex].status = status;
+    
+    // Store response message in vendor notes if provided
+    if (responseMessage) {
+      MOCK_BOOKINGS[bookingIndex].vendorNotes = responseMessage;
+      console.log('📝 [BookingAPI] Added response message to booking vendor notes');
+    }
     
     // Update timeline based on status
     const now = new Date().toISOString();
@@ -1090,8 +1102,13 @@ export class BookingApiService {
       case 'completed':
         MOCK_BOOKINGS[bookingIndex].timeline.completedDate = now;
         break;
+      case 'quote_sent':
+        MOCK_BOOKINGS[bookingIndex].timeline.quoteSentDate = now;
+        console.log('📅 [BookingAPI] Updated quote sent date');
+        break;
     }
     
+    console.log('✅ [BookingAPI] Booking status updated successfully:', MOCK_BOOKINGS[bookingIndex]);
     return MOCK_BOOKINGS[bookingIndex];
   }
 
@@ -1610,7 +1627,16 @@ export const getStatusColor = (status: BookingRequest['status']): string => {
     confirmed: 'green',
     in_progress: 'blue',
     completed: 'gray',
-    cancelled: 'red'
+    cancelled: 'red',
+    quote_sent: 'purple',
+    quote_requested: 'orange',
+    quote_accepted: 'green',
+    quote_rejected: 'red',
+    downpayment_paid: 'blue',
+    paid_in_full: 'green',
+    refunded: 'orange',
+    disputed: 'red',
+    draft: 'gray'
   };
   return colors[status] || 'gray';
 };
@@ -1621,7 +1647,16 @@ export const getStatusLabel = (status: BookingRequest['status']): string => {
     confirmed: 'Confirmed',
     in_progress: 'In Progress',
     completed: 'Completed',
-    cancelled: 'Cancelled'
+    cancelled: 'Cancelled',
+    quote_sent: 'Quote Sent',
+    quote_requested: 'Quote Requested',
+    quote_accepted: 'Quote Accepted',
+    quote_rejected: 'Quote Rejected',
+    downpayment_paid: 'Downpayment Paid',
+    paid_in_full: 'Paid in Full',
+    refunded: 'Refunded',
+    disputed: 'Disputed',
+    draft: 'Draft'
   };
   return labels[status] || status;
 };
