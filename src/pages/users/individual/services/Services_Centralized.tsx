@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Search, 
   MapPin, 
@@ -11,7 +11,6 @@ import {
   Phone,
   Mail,
   Globe,
-  Filter,
   SlidersHorizontal,
   Brain,
   Sparkles
@@ -20,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../../../utils/cn';
 import { CoupleHeader } from '../landing/CoupleHeader';
 import { useUnifiedMessaging } from '../../../../shared/contexts/UnifiedMessagingContext';
-import { serviceManager, SERVICE_CATEGORIES } from '../../../../shared/services/CentralizedServiceManager';
+import { SERVICE_CATEGORIES } from '../../../../shared/services/CentralizedServiceManager';
 import { BookingRequestModal } from '../../../../modules/services/components/BookingRequestModal';
 import { DecisionSupportSystem } from './dss/DecisionSupportSystem';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
@@ -102,14 +101,7 @@ interface Service {
   };
 }
 
-interface ServiceFilters {
-  category: string;
-  location: string;
-  priceRange: string;
-  rating: number;
-  availability: boolean;
-  featured: boolean;
-}
+// ServiceFilters interface removed - not currently used
 
 export function Services() {
   console.log('🎯 [Services] *** SERVICES COMPONENT RENDERED ***');
@@ -329,6 +321,22 @@ export function Services() {
 
             const serviceImages = getServiceImages(service, service.category);
             
+            // Skip services that don't have real images (only fallback images)
+            if (!serviceImages || serviceImages.length === 0) {
+              console.log('❌ [Services] Skipping service without real images:', service.name || service.id);
+              return null; // This will be filtered out
+            }
+            
+            // Check if images are real (Unsplash URLs are legitimate production images)
+            const hasRealImages = serviceImages.some((img: string) => 
+              img && (img.includes('unsplash.com') || img.includes('https://')) && !img.includes('example.com') && !img.includes('placeholder')
+            );
+            
+            if (!hasRealImages) {
+              console.log('❌ [Services] Skipping service with only test/placeholder images:', service.name || service.id);
+              return null; // This will be filtered out
+            }
+            
             // Create features based on category
             const getCategoryFeatures = (category: string) => {
               const featureMap: Record<string, string[]> = {
@@ -383,9 +391,9 @@ export function Services() {
                 website: `https://${(vendor?.name || 'vendor').toLowerCase().replace(/\s+/g, '')}.com`
               }
             };
-          });
+          }).filter(Boolean); // Remove null values from services without real images
 
-          console.log('✅ [Services] Enhanced services created:', enhancedServices.length);
+          console.log('✅ [Services] Enhanced services created (real images only):', enhancedServices.length);
           setServices(enhancedServices);
         } else {
           console.log('⚠️ [Services] No services found');
@@ -543,32 +551,7 @@ Best regards`;
     }
   };
 
-  const handleQuickContact = (service: Service, method: 'call' | 'email' | 'message') => {
-    console.log(`📞 [Services] Quick contact via ${method}:`, service.name);
-    switch (method) {
-      case 'call':
-        handleContactVendor(service);
-        break;
-      case 'email':
-        handleEmailVendor(service);
-        break;
-      case 'message':
-        handleMessageVendor(service);
-        break;
-    }
-  };
-
-  const handleCompareService = (service: Service) => {
-    console.log('🔍 [Services] Adding service to comparison:', service.name);
-    // TODO: Implement service comparison functionality
-    alert(`Added "${service.name}" to comparison! Use this feature to compare multiple vendors side-by-side.`);
-  };
-
-  const handleViewGallery = (service: Service) => {
-    console.log('🖼️ [Services] Opening gallery for:', service.name);
-    // Open service details modal which shows the gallery
-    handleServiceSelect(service);
-  };
+  // Removed unused helper functions: handleQuickContact, handleCompareService, handleViewGallery
 
   const handleMessageVendor = async (service: Service) => {
     console.log('🗨️ [Services] Starting conversation with vendor:', service.vendorName);

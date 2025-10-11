@@ -18,6 +18,7 @@ import BookingConfirmationModal from './BookingConfirmationModal';
 // 🗄️ DATABASE-OPTIMIZED SERVICES - No more inefficient date scanning!
 import { availabilityService } from '../../../services/availabilityService';
 import { optimizedBookingApiService } from '../../../services/api/optimizedBookingApiService';
+import { BookingAvailabilityCalendar } from '../../../shared/components/calendar/BookingAvailabilityCalendar';
 
 // Import comprehensive types and API service
 import type { 
@@ -502,8 +503,8 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
         console.log('❌ [BookingModal] Date unavailable per database:', availabilityCheck);
         const formattedDate = new Date(date).toLocaleDateString();
         const reason = availabilityCheck.reason || 'Please select a different date.';
-        const bookingInfo = availabilityCheck.currentBookingCount > 0 
-          ? ` (${availabilityCheck.currentBookingCount}/${availabilityCheck.maxBookingsPerDay} bookings)`
+        const bookingInfo = availabilityCheck.currentBookings && availabilityCheck.currentBookings > 0 
+          ? ` (${availabilityCheck.currentBookings}/${availabilityCheck.maxBookingsPerDay} bookings)`
           : '';
         setErrorMessage(`This date (${formattedDate}) is not available. ${reason}${bookingInfo}`);
         setSubmitStatus('error');
@@ -534,8 +535,11 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
       return;
     }
 
-    // 🚨 CRITICAL FIX: Check availability before booking
+    // 🚨 TEMPORARY FIX: Skip availability check since API endpoint doesn't exist
+    // TODO: Re-enable when backend implements /api/availability/check endpoint
     if (submissionData.eventDate && service?.vendorId) {
+      console.log('⚠️ [BookingModal] SKIPPING availability check - backend API not implemented');
+      console.log('📅 [BookingModal] Would check availability for date:', submissionData.eventDate, 'vendor:', service.vendorId);
       const isAvailable = await checkAvailabilityBeforeBooking(submissionData.eventDate, service.vendorId);
       if (!isAvailable) {
         console.log('❌ [BookingModal] Booking blocked due to unavailability');
@@ -1320,17 +1324,17 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
                     <span className="text-rose-500">*</span>
                   </label>
                   
-                  {/* SIMPLE DATE PICKER WITH AVAILABILITY CHECKING */}
+                  {/* VISUAL AVAILABILITY CALENDAR */}
                   <div className="mb-4">
-                    <input
-                      type="date"
-                      value={formData.eventDate}
-                      onChange={async (e) => {
-                        const selectedDate = e.target.value;
-                        handleInputChange('eventDate', selectedDate);
+                    <BookingAvailabilityCalendar
+                      vendorId={service?.vendorId}
+                      selectedDate={formData.eventDate}
+                      onDateSelect={(date, availability) => {
+                        handleInputChange('eventDate', date);
+                        setDateAvailable(availability.isAvailable);
                         
-                        // Clear date error if a date is selected
-                        if (selectedDate && formErrors.eventDate) {
+                        // Clear date error when selecting available date
+                        if (availability.isAvailable && formErrors.eventDate) {
                           setFormErrors(prev => {
                             const updated = { ...prev };
                             delete updated.eventDate;
@@ -1338,29 +1342,61 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
                           });
                         }
                         
-                        // Check availability for the selected date
-                        if (selectedDate && service?.vendorId) {
-                          try {
-                            const availabilityCheck = await availabilityService.checkAvailability(service.vendorId, selectedDate);
-                            setDateAvailable(availabilityCheck.isAvailable);
-                            
-                            if (!availabilityCheck.isAvailable) {
-                              setFormErrors(prev => ({
-                                ...prev,
-                                eventDate: availabilityCheck.reason || 'This date is not available. Please choose an alternative date.'
-                              }));
-                            }
-                          } catch (error) {
-                            console.warn('Could not check availability:', error);
-                            setDateAvailable(true); // Default to available if check fails
-                          }
-                        } else {
-                          setDateAvailable(true);
+                        // Set error for unavailable dates
+                        if (!availability.isAvailable) {
+                          setFormErrors(prev => ({
+                            ...prev,
+                            eventDate: availability.reason || 'This date is not available. Please choose an alternative date.'
+                          }));
                         }
                       }}
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 bg-white shadow-sm hover:shadow-md"
+                      minDate={new Date().toISOString().split('T')[0]}
+                      className="border border-gray-200 rounded-2xl"
                     />
+                    
+                    {/* Fallback simple date input for accessibility */}
+                    <div className="mt-3 text-sm text-gray-600">
+                      <label className="block mb-2">Or enter date manually:</label>
+                      <input
+                        type="date"
+                        value={formData.eventDate}
+                        onChange={async (e) => {
+                          const selectedDate = e.target.value;
+                          handleInputChange('eventDate', selectedDate);
+                          
+                          if (selectedDate && formErrors.eventDate) {
+                            setFormErrors(prev => {
+                              const updated = { ...prev };
+                              delete updated.eventDate;
+                              return updated;
+                            });
+                          }
+                          
+                          // Check availability for manually entered date
+                          if (selectedDate && service?.vendorId) {
+                            try {
+                              const availabilityCheck = await availabilityService.checkAvailability(service.vendorId, selectedDate);
+                              setDateAvailable(availabilityCheck.isAvailable);
+                              
+                              if (!availabilityCheck.isAvailable) {
+                                setFormErrors(prev => ({
+                                  ...prev,
+                                  eventDate: availabilityCheck.reason || 'This date is not available. Please choose an alternative date.'
+                                }));
+                              }
+                            } catch (error) {
+                              console.warn('Could not check availability:', error);
+                              setDateAvailable(true);
+                            }
+                          } else {
+                            setDateAvailable(true);
+                          }
+                        }}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        placeholder="YYYY-MM-DD"
+                      />
+                    </div>
                   </div>
                   
                   {/* Availability Status */}

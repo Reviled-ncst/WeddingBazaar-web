@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Height Adjustment - Increased Size</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 { text-align: center; margin-bottom: 20px; color: #fff; }
+        .update { 
+            background: rgba(255, 193, 7, 0.3); 
+            border: 1px solid #FFC107; 
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .new-heights {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .test-button {
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px;
+            font-size: 16px;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+        .test-button:hover { 
+            transform: scale(1.05); 
+            color: white;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .height-demo {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📏 Message Height Adjustment</h1>
+        <div class="update">
+            <h2>🔧 Height Issue Fixed!</h2>
+            <p><strong>Problem:</strong> Message area was too small and left too much empty space</p>
+            <p><strong>Solution:</strong> Significantly increased message container heights for better space utilization</p>
+            <p><strong>Status:</strong> Updated heights deployed to production</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Height Comparison</h2>
+        <div class="comparison">
+            <div class="height-demo">
+                <h3>❌ Previous (Too Small)</h3>
+                <ul>
+                    <li>Mobile: 160px (h-40)</li>
+                    <li>Small: 176px (h-44)</li>
+                    <li>Medium: 192px (h-48)</li>
+                </ul>
+                <p><em>Result: Too much empty space, poor UX</em></p>
+            </div>
+            <div class="height-demo">
+                <h3>✅ New (Better Utilization)</h3>
+                <ul>
+                    <li>Mobile: 320px (h-80)</li>
+                    <li>Small: 384px (h-96)</li>
+                    <li>Medium: 512px (h-[32rem])</li>
+                    <li>Large: 576px (h-[36rem])</li>
+                </ul>
+                <p><em>Result: Better space usage, improved UX</em></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="new-heights">
+            <h2>🎯 New Height Configuration</h2>
+            <pre>
+className="overflow-y-auto p-2 bg-gradient-to-b from-white/20 to-pink-50/20 
+h-80 max-h-80          // Mobile: 320px (doubled from 160px)
+sm:h-96 sm:max-h-96    // Small: 384px (more than doubled from 176px)  
+md:h-[32rem] md:max-h-[32rem]  // Medium: 512px (significantly increased from 192px)
+lg:h-[36rem] lg:max-h-[36rem]  // Large: 576px (new breakpoint for desktop)
+scroll-smooth overscroll-contain scrollbar-thin scrollbar-thumb-pink-300 scrollbar-track-pink-100 hover:scrollbar-thumb-pink-400"
+            </pre>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 Test Updated Heights</h2>
+        <p>Test the improved message area sizes on the live site:</p>
+        
+        <a href="https://weddingbazaarph.web.app/individual/messages" class="test-button" target="_blank">
+            💬 Test Individual Messages
+        </a>
+        
+        <a href="https://weddingbazaarph.web.app/vendor/messages" class="test-button" target="_blank">
+            🏢 Test Vendor Messages
+        </a>
+        
+        <div style="margin-top: 20px;">
+            <h3>✅ Verification Checklist:</h3>
+            <ul>
+                <li>🔍 Message area should now be much larger</li>
+                <li>📏 Better utilization of available viewport space</li>
+                <li>📜 Still scrollable with custom scrollbar</li>
+                <li>🎯 Proper responsive behavior across devices</li>
+                <li>⚡ No content overflow beyond page boundaries</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        console.log('📏 Message height adjustment deployed!');
+        console.log('✅ Heights significantly increased for better space utilization');
+        console.log('🧪 Test at: https://weddingbazaarph.web.app/individual/messages');
+    </script>
+</body>
+</html>

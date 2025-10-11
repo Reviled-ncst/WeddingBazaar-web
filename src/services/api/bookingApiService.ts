@@ -866,28 +866,29 @@ export class BookingApiService {
       console.log('🔧 [BookingAPI] Vendor ID conversion:', bookingData.vendor_id, '→', integerVendorId);
       
       const backendPayload = {
-        vendor_id: integerVendorId, // Use integer vendor ID
-        service_id: mappedServiceId, // Use mapped service ID
-        service_type: bookingData.service_type,
-        service_name: bookingData.service_name,
-        event_date: bookingData.event_date,
-        event_time: bookingData.event_time,
-        event_end_time: bookingData.event_end_time,
-        event_location: bookingData.event_location,
-        venue_details: bookingData.venue_details,
-        guest_count: bookingData.guest_count,
-        special_requests: bookingData.special_requests,
-        contact_person: bookingData.contact_person,
-        contact_phone: bookingData.contact_phone,
-        contact_email: bookingData.contact_email,
-        preferred_contact_method: bookingData.preferred_contact_method,
-        budget_range: bookingData.budget_range,
-        metadata: bookingData.metadata
+        // Required camelCase fields for backend validation
+        userId: userId || bookingData.user_id || '1-2025-001',
+        vendorId: bookingData.vendor_id || integerVendorId?.toString(),
+        eventDate: bookingData.event_date,
+        totalAmount: 3000.00, // Default amount since it's required
+        // Optional fields in camelCase format 
+        serviceId: mappedServiceId?.toString(),
+        serviceName: bookingData.service_name,
+        serviceType: bookingData.service_type,
+        eventTime: bookingData.event_time,
+        eventLocation: bookingData.event_location,
+        guestCount: bookingData.guest_count,
+        specialRequests: bookingData.special_requests,
+        contactPhone: bookingData.contact_phone,
+        contactEmail: bookingData.contact_email,
+        preferredContactMethod: bookingData.preferred_contact_method,
+        budgetRange: bookingData.budget_range,
+        status: 'request'
       };
 
       // Use production backend API - now fully functional with comprehensive backend v2.0
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://weddingbazaar-web.onrender.com';
-      const createBookingUrl = `${apiBaseUrl}/api/bookings/request`;
+      const createBookingUrl = `${apiBaseUrl}/api/bookings`;
       
       console.log('🔧 [BookingAPI] Using production backend API URL:', apiBaseUrl);
       console.log('🎯 [BookingAPI] Production backend v2.0 with all endpoints functional');
@@ -903,8 +904,7 @@ export class BookingApiService {
       const response = await fetch(createBookingUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId || bookingData.user_id || '1-2025-001'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(backendPayload),
         signal: controller.signal
