@@ -39,7 +39,23 @@ router.get('/vendor/:vendorId', async (req, res) => {
     query += ` ORDER BY ${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(parseInt(limit), parseInt(offset));
     
-    const bookings = await sql(query, params);
+    const rawBookings = await sql(query, params);
+    
+    // Process bookings to interpret quote_sent status from notes
+    const bookings = rawBookings.map(booking => {
+      const processedBooking = { ...booking };
+      
+      // If notes start with "QUOTE_SENT:", interpret as quote_sent status
+      if (booking.notes && booking.notes.startsWith('QUOTE_SENT:')) {
+        processedBooking.status = 'quote_sent';
+        processedBooking.vendor_notes = booking.notes.substring('QUOTE_SENT:'.length).trim();
+        processedBooking.quote_sent_date = booking.updated_at;
+      } else {
+        processedBooking.vendor_notes = booking.notes;
+      }
+      
+      return processedBooking;
+    });
     
     console.log(`✅ Found ${bookings.length} bookings for vendor ${vendorId} (searched both "${vendorId}" and "${legacyVendorId}")`);
     
@@ -238,7 +254,7 @@ router.patch('/:bookingId/status', async (req, res) => {
       });
     }
     
-    const validStatuses = ['pending', 'confirmed', 'cancelled', 'completed', 'quote_sent'];
+    const validStatuses = ['request', 'pending', 'confirmed', 'cancelled', 'completed', 'quote_sent'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -247,26 +263,38 @@ router.patch('/:bookingId/status', async (req, res) => {
       });
     }
     
-    // Update booking with proper sql template syntax
-    let booking;
+    // For quote_sent status, we'll use 'request' status but store quote info in notes
+    // This works around database constraints while providing the functionality
+    let actualStatus = status;
+    let statusNote = vendor_notes || null;
+    
     if (status === 'quote_sent') {
-      booking = await sql`
-        UPDATE bookings 
-        SET status = ${status}, 
-            notes = ${vendor_notes || null},
-            updated_at = NOW()
-        WHERE id = ${bookingId}
-        RETURNING *
-      `;
-    } else {
-      booking = await sql`
-        UPDATE bookings 
-        SET status = ${status}, 
-            notes = ${vendor_notes || null},
-            updated_at = NOW()
-        WHERE id = ${bookingId}
-        RETURNING *
-      `;
+      actualStatus = 'request'; // Use a status that works with DB constraints
+      statusNote = `QUOTE_SENT: ${vendor_notes || 'Quote has been sent to client'}`;
+    }
+    
+    const booking = await sql`
+      UPDATE bookings 
+      SET status = ${actualStatus}, 
+          notes = ${statusNote},
+          updated_at = NOW()
+      WHERE id = ${bookingId}
+      RETURNING *
+    `;
+    
+    // If successful and was a quote_sent request, return the expected response format
+    if (booking.length > 0 && status === 'quote_sent') {
+      console.log(`✅ Booking status updated: ${bookingId} -> ${status} (stored as ${actualStatus})`);
+      
+      res.json({
+        success: true,
+        booking: {
+          ...booking[0],
+          status: 'quote_sent' // Return what frontend expects
+        },
+        timestamp: new Date().toISOString()
+      });
+      return;
     }
     
     if (booking.length === 0) {
@@ -311,7 +339,7 @@ router.put('/:bookingId/update-status', async (req, res) => {
       });
     }
     
-    const validStatuses = ['pending', 'confirmed', 'cancelled', 'completed', 'quote_sent'];
+    const validStatuses = ['request', 'pending', 'confirmed', 'cancelled', 'completed', 'quote_sent'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -320,11 +348,19 @@ router.put('/:bookingId/update-status', async (req, res) => {
       });
     }
     
-    // Update booking with proper column names and handle quote_sent status
+    // For quote_sent status, we'll use 'request' status but store quote info in notes
+    let actualStatus = status;
+    let statusNote = vendor_notes || null;
+    
+    if (status === 'quote_sent') {
+      actualStatus = 'request'; // Use a status that works with DB constraints
+      statusNote = `QUOTE_SENT: ${vendor_notes || 'Quote has been sent to client'}`;
+    }
+    
     const booking = await sql`
       UPDATE bookings 
-      SET status = ${status}, 
-          notes = ${vendor_notes || null},
+      SET status = ${actualStatus}, 
+          notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
       RETURNING *
@@ -338,13 +374,13 @@ router.put('/:bookingId/update-status', async (req, res) => {
       });
     }
     
-    console.log(`✅ [PUT] Booking status updated: ${bookingId} -> ${status}`);
+    console.log(`✅ [PUT] Booking status updated: ${bookingId} -> ${status} (stored as ${actualStatus})`);
     
     // Return response in format that frontend expects
     const response = {
       success: true,
       id: booking[0].id,
-      status: booking[0].status,
+      status: status, // Return the requested status to frontend
       updated_at: booking[0].updated_at,
       vendor_notes: booking[0].notes, // Map notes field to vendor_notes
       timestamp: new Date().toISOString()
