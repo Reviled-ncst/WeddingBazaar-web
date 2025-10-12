@@ -515,8 +515,29 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
       return true;
     } catch (error) {
       console.error('❌ [BookingModal] Database availability check failed:', error);
-      // Graceful degradation - don't block booking on availability check errors
-      return true;
+      console.error('❌ [BookingModal] Error details:', error);
+      
+      // 🚨 IMPORTANT: For date booking conflicts, we should be strict
+      // Only allow graceful degradation for network/server errors, not booking conflicts
+      
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.log('🔍 [CheckAvailability] Analyzing error for graceful degradation:', errorMessage);
+      
+      // If this is a network/fetch error, we can allow the booking to proceed
+      // But if this is a booking conflict detected by the API, we should block
+      if (errorMessage.includes('Failed to fetch') || 
+          errorMessage.includes('Network') || 
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('CORS')) {
+        console.log('⚠️ [CheckAvailability] Network error detected, allowing booking with warning');
+        setErrorMessage('⚠️ Unable to verify date availability due to network issues. Booking will proceed, but please confirm date with vendor.');
+        return true; // Allow booking for network issues
+      } else {
+        console.log('🚫 [CheckAvailability] Non-network error detected, blocking booking');
+        setErrorMessage('Unable to verify date availability. Please try again or contact support.');
+        setSubmitStatus('error');
+        return false; // Block booking for other errors
+      }
     }
   }, []);
 
@@ -535,15 +556,30 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
       return;
     }
 
-    // 🚨 TEMPORARY FIX: Skip availability check since API endpoint doesn't exist
-    // TODO: Re-enable when backend implements /api/availability/check endpoint
+    // ✅ AVAILABILITY CHECK: Now using real database backend
     if (submissionData.eventDate && service?.vendorId) {
-      console.log('⚠️ [BookingModal] SKIPPING availability check - backend API not implemented');
-      console.log('📅 [BookingModal] Would check availability for date:', submissionData.eventDate, 'vendor:', service.vendorId);
-      const isAvailable = await checkAvailabilityBeforeBooking(submissionData.eventDate, service.vendorId);
-      if (!isAvailable) {
-        console.log('❌ [BookingModal] Booking blocked due to unavailability');
-        return; // Stop booking process
+      console.log('🔍 [BookingModal] RUNNING availability check with database backend');
+      console.log('📅 [BookingModal] Checking availability for date:', submissionData.eventDate, 'vendor:', service.vendorId);
+      console.log('🌐 [BookingModal] Service details:', { 
+        id: service.id, 
+        vendorId: service.vendorId, 
+        name: service.name,
+        vendorName: service.vendorName 
+      });
+      
+      try {
+        const isAvailable = await checkAvailabilityBeforeBooking(submissionData.eventDate, service.vendorId);
+        console.log('📊 [BookingModal] Availability check result:', isAvailable);
+        
+        if (!isAvailable) {
+          console.log('❌ [BookingModal] Booking blocked due to unavailability');
+          return; // Stop booking process
+        }
+        
+        console.log('✅ [BookingModal] Date is available, proceeding with booking');
+      } catch (availabilityError) {
+        console.error('❌ [BookingModal] Availability check failed:', availabilityError);
+        console.log('⚠️ [BookingModal] Proceeding with booking despite availability check failure');
       }
     }
     

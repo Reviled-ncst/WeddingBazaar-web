@@ -41,24 +41,58 @@ export const BookingAvailabilityCalendar: React.FC<BookingAvailabilityCalendarPr
   const [currentDate, setCurrentDate] = useState(new Date());
   const [availabilityData, setAvailabilityData] = useState<Map<string, AvailabilityCheck>>(new Map());
   const [loading, setLoading] = useState(false);
+  const [loadingDebounceTimer, setLoadingDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
-  // Load availability data for the current month
+  // Load availability data for the current month with debouncing
   useEffect(() => {
     if (vendorId) {
-      loadAvailabilityData();
+      // Clear any existing timer
+      if (loadingDebounceTimer) {
+        clearTimeout(loadingDebounceTimer);
+      }
+      
+      // Set a new debounced timer
+      const timer = setTimeout(() => {
+        loadAvailabilityData();
+      }, 150); // 150ms debounce
+      
+      setLoadingDebounceTimer(timer);
+      
+      // Cleanup function
+      return () => {
+        if (timer) {
+          clearTimeout(timer);
+        }
+      };
     }
   }, [vendorId, currentDate]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (loadingDebounceTimer) {
+        clearTimeout(loadingDebounceTimer);
+      }
+    };
+  }, []);
 
   const loadAvailabilityData = async () => {
     if (!vendorId) return;
     
     setLoading(true);
     try {
-      const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-      const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      // Calculate the full 6-week calendar range (42 days) to match what's displayed
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const calendarStartDate = new Date(firstDay);
+      calendarStartDate.setDate(calendarStartDate.getDate() - firstDay.getDay()); // Start from Sunday
       
-      const startStr = startDate.toISOString().split('T')[0];
-      const endStr = endDate.toISOString().split('T')[0];
+      const calendarEndDate = new Date(calendarStartDate);
+      calendarEndDate.setDate(calendarEndDate.getDate() + 41); // 42 days total (6 weeks)
+      
+      const startStr = calendarStartDate.toISOString().split('T')[0];
+      const endStr = calendarEndDate.toISOString().split('T')[0];
       
       console.log('📅 [BookingCalendar] Loading availability for:', { vendorId, startStr, endStr });
       
@@ -82,9 +116,8 @@ export const BookingAvailabilityCalendar: React.FC<BookingAvailabilityCalendarPr
     const today = new Date();
     const minDateObj = minDate ? new Date(minDate) : today;
     
-    // Get first day of month and how many days to show from previous month
+    // Get first day of month and calculate calendar start
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay()); // Start from Sunday
     
@@ -270,11 +303,11 @@ export const BookingAvailabilityCalendar: React.FC<BookingAvailabilityCalendarPr
                     ? "cursor-pointer hover:shadow-md"
                     : "cursor-not-allowed"
                 )}
-                title={day.isCurrentMonth ? status.label : undefined}
+                title={day.availability ? status.label : undefined}
               >
                 <div className="flex flex-col items-center justify-center h-full">
                   <div className="text-sm font-medium mb-1">{day.day}</div>
-                  {day.isCurrentMonth && (
+                  {day.availability && (
                     <IconComponent className="w-3 h-3" />
                   )}
                 </div>

@@ -59,30 +59,34 @@ class PayMongoService {
     }
   }
 
-  // Create GrabPay Payment
+  // Create GrabPay Payment (Simulated for Demo)
   async createGrabPayPayment(bookingId: string, amount: number, paymentType: string): Promise<PaymentResult> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/payment/grabpay/create`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          bookingId,
-          amount,
-          paymentType
-        })
-      });
-
-      const result = await response.json();
+      console.log('🚗 [GRABPAY PAYMENT] Starting GrabPay payment simulation...');
+      console.log('🚗 [GRABPAY PAYMENT] Booking:', bookingId);
+      console.log('🚗 [GRABPAY PAYMENT] Amount:', amount);
+      console.log('🚗 [GRABPAY PAYMENT] Payment Type:', paymentType);
       
-      if (!response.ok) {
-        throw new Error(result.error || 'GrabPay payment creation failed');
-      }
+      // Simulate processing delay
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      
+      // Simulate payment success
+      const paymentId = `grabpay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      console.log('✅ [GRABPAY PAYMENT] Payment simulation completed successfully');
+      console.log('🚗 [GRABPAY PAYMENT] Transaction ID:', paymentId);
 
       return {
         success: true,
-        paymentId: result.paymentId,
-        checkoutUrl: result.checkoutUrl,
-        sourceId: result.sourceId
+        paymentId: paymentId,
+        checkoutUrl: `https://grab.com/checkout/${paymentId}`, // Simulated URL
+        sourceId: paymentId,
+        paymentIntent: {
+          id: paymentId,
+          status: 'succeeded',
+          amount: amount * 100,
+          currency: 'PHP'
+        }
       };
     } catch (error) {
       console.error('GrabPay payment creation error:', error);
@@ -126,38 +130,34 @@ class PayMongoService {
     }
   }
 
-  // Create GCash Payment
+  // Create GCash Payment (Simulated for Demo)
   async createGCashPayment(bookingId: string, amount: number, paymentType: string): Promise<PaymentResult> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/payments/create-source`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          type: 'gcash',
-          amount: amount * 100, // Convert to centavos
-          currency: 'PHP',
-          redirect: {
-            success: `${window.location.origin}/payment/success?booking_id=${bookingId}&payment_type=${paymentType}`,
-            failed: `${window.location.origin}/payment/failed?booking_id=${bookingId}`
-          },
-          metadata: {
-            booking_id: bookingId,
-            payment_type: paymentType
-          }
-        })
-      });
-
-      const result = await response.json();
+      console.log('📱 [GCASH PAYMENT] Starting GCash payment simulation...');
+      console.log('📱 [GCASH PAYMENT] Booking:', bookingId);
+      console.log('📱 [GCASH PAYMENT] Amount:', amount);
+      console.log('📱 [GCASH PAYMENT] Payment Type:', paymentType);
       
-      if (!response.ok) {
-        throw new Error(result.error || 'GCash payment creation failed');
-      }
+      // Simulate processing delay
+      await new Promise(resolve => setTimeout(resolve, 2200));
+      
+      // Simulate payment success
+      const paymentId = `gcash_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      console.log('✅ [GCASH PAYMENT] Payment simulation completed successfully');
+      console.log('📱 [GCASH PAYMENT] Transaction ID:', paymentId);
 
       return {
         success: true,
-        paymentId: result.data?.id,
-        checkoutUrl: result.data?.attributes?.redirect?.checkout_url,
-        sourceId: result.data?.id
+        paymentId: paymentId,
+        checkoutUrl: `https://gcash.com/checkout/${paymentId}`, // Simulated URL
+        sourceId: paymentId,
+        paymentIntent: {
+          id: paymentId,
+          status: 'succeeded',
+          amount: amount * 100,
+          currency: 'PHP'
+        }
       };
     } catch (error) {
       console.error('GCash payment creation error:', error);
@@ -168,38 +168,34 @@ class PayMongoService {
     }
   }
 
-  // Create PayMaya Payment
+  // Create PayMaya Payment (Simulated for Demo)
   async createPayMayaPayment(bookingId: string, amount: number, paymentType: string): Promise<PaymentResult> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/payments/create-source`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          type: 'paymaya',
-          amount: amount * 100, // Convert to centavos
-          currency: 'PHP',
-          redirect: {
-            success: `${window.location.origin}/payment/success?booking_id=${bookingId}&payment_type=${paymentType}`,
-            failed: `${window.location.origin}/payment/failed?booking_id=${bookingId}`
-          },
-          metadata: {
-            booking_id: bookingId,
-            payment_type: paymentType
-          }
-        })
-      });
-
-      const result = await response.json();
+      console.log('💳 [MAYA PAYMENT] Starting Maya payment simulation...');
+      console.log('💳 [MAYA PAYMENT] Booking:', bookingId);
+      console.log('💳 [MAYA PAYMENT] Amount:', amount);
+      console.log('💳 [MAYA PAYMENT] Payment Type:', paymentType);
       
-      if (!response.ok) {
-        throw new Error(result.error || 'PayMaya payment creation failed');
-      }
+      // Simulate processing delay
+      await new Promise(resolve => setTimeout(resolve, 2300));
+      
+      // Simulate payment success
+      const paymentId = `maya_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      console.log('✅ [MAYA PAYMENT] Payment simulation completed successfully');
+      console.log('💳 [MAYA PAYMENT] Transaction ID:', paymentId);
 
       return {
         success: true,
-        paymentId: result.data?.id,
-        checkoutUrl: result.data?.attributes?.redirect?.checkout_url,
-        sourceId: result.data?.id
+        paymentId: paymentId,
+        checkoutUrl: `https://maya.ph/checkout/${paymentId}`, // Simulated URL
+        sourceId: paymentId,
+        paymentIntent: {
+          id: paymentId,
+          status: 'succeeded',
+          amount: amount * 100,
+          currency: 'PHP'
+        }
       };
     } catch (error) {
       console.error('PayMaya payment creation error:', error);

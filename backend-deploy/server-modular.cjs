@@ -11,6 +11,8 @@ const serviceRoutes = require('./routes/services.cjs');
 const vendorRoutes = require('./routes/vendors.cjs');
 const vendorOffDaysRoutes = require('./routes/vendorOffDays.cjs');
 const bookingRoutes = require('./routes/bookings.cjs');
+const paymentsRoutes = require('./routes/payments.cjs');
+const receiptsRoutes = require('./routes/receipts.cjs');
 const notificationRoutes = require('./routes/notifications.cjs');
 const debugRoutes = require('./routes/debug.cjs');
 
@@ -155,6 +157,8 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/vendors', vendorOffDaysRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/payments', paymentsRoutes);
+app.use('/api/receipts', receiptsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/debug', debugRoutes);
 
@@ -173,6 +177,8 @@ app.use('/api/*', (req, res) => {
       vendors: 'GET /api/vendors, GET /api/vendors/featured, GET /api/vendors/:id, GET /api/vendors/:id/services',
       vendorOffDays: 'GET /api/vendors/:vendorId/off-days, POST /api/vendors/:vendorId/off-days, POST /api/vendors/:vendorId/off-days/bulk, DELETE /api/vendors/:vendorId/off-days/:offDayId, GET /api/vendors/:vendorId/off-days/count',
       bookings: 'GET /api/bookings/vendor/:vendorId, GET /api/bookings/user/:userId, GET /api/bookings/couple/:userId, GET /api/bookings/enhanced, GET /api/bookings/stats, POST /api/bookings, PATCH /api/bookings/:id/status, PUT /api/bookings/:id/update-status, PUT /api/bookings/:id/accept-quote, PUT /api/bookings/:id/process-payment, GET /api/bookings/:id/payment-status',
+      payments: 'POST /api/payments/create-source, GET /api/payments/source/:sourceId, POST /api/payments/create-payment-intent, GET /api/payments/payment-intent/:intentId, POST /api/payments/webhook, GET /api/payments/health',
+      receipts: 'GET /api/receipts/couple/:coupleId, GET /api/receipts/vendor/:vendorId, GET /api/receipts/:receiptId, POST /api/receipts/create, GET /api/receipts/stats/couple/:coupleId',
       notifications: 'GET /api/notifications/vendor/:vendorId, GET /api/notifications/user/:userId, POST /api/notifications, PATCH /api/notifications/:id/read',
       debug: 'GET /api/debug/users, GET /api/debug/tables, GET /api/debug/schema/:tableName, GET /api/debug/sample/:tableName'
     }

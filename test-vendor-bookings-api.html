@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Vendor Bookings API</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .loading { background-color: #fff3cd; border-color: #ffeaa7; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Vendor Bookings API Test</h1>
+    <p>Testing the centralized booking API endpoints for vendor bookings</p>
+
+    <div class="test-section">
+        <h3>Test Configuration</h3>
+        <p><strong>Backend URL:</strong> <span id="backend-url">https://weddingbazaar-web.onrender.com</span></p>
+        <p><strong>Test Vendor ID:</strong> <span id="vendor-id">2-2025-001</span></p>
+        <p><strong>Current Time:</strong> <span id="current-time"></span></p>
+    </div>
+
+    <div class="test-section">
+        <h3>🎯 API Tests</h3>
+        <button onclick="testHealthCheck()">Test Health Check</button>
+        <button onclick="testVendorBookings()">Test Vendor Bookings</button>
+        <button onclick="testBookingStats()">Test Booking Stats</button>
+        <button onclick="testAllVendors()">Test All Vendors</button>
+        <button onclick="runAllTests()">Run All Tests</button>
+    </div>
+
+    <div id="test-results"></div>
+
+    <script>
+        const BACKEND_URL = 'https://weddingbazaar-web.onrender.com';
+        const TEST_VENDOR_ID = '2-2025-001';
+
+        // Update current time
+        document.getElementById('current-time').textContent = new Date().toLocaleString();
+
+        function addResult(title, status, data, error = null) {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-section ${status}`;
+            
+            let content = `<h4>${title}</h4>`;
+            
+            if (status === 'loading') {
+                content += `<p>⏳ Testing...</p>`;
+            } else if (status === 'success') {
+                content += `<p>✅ Success</p>`;
+                if (data) {
+                    content += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } else if (status === 'error') {
+                content += `<p>❌ Error: ${error}</p>`;
+                if (data) {
+                    content += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            }
+            
+            resultDiv.innerHTML = content;
+            resultsDiv.appendChild(resultDiv);
+            
+            // Scroll to bottom
+            resultDiv.scrollIntoView({ behavior: 'smooth' });
+            
+            return resultDiv;
+        }
+
+        async function makeRequest(endpoint, options = {}) {
+            const url = `${BACKEND_URL}${endpoint}`;
+            console.log(`🔗 Making request to: ${url}`);
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            });
+            
+            const data = await response.json();
+            
+            return {
+                status: response.status,
+                ok: response.ok,
+                data: data
+            };
+        }
+
+        async function testHealthCheck() {
+            const resultDiv = addResult('Health Check', 'loading');
+            try {
+                const result = await makeRequest('/api/health');
+                if (result.ok) {
+                    resultDiv.className = 'test-section success';
+                    resultDiv.innerHTML = `
+                        <h4>Health Check</h4>
+                        <p>✅ Success - Backend is responsive</p>
+                        <pre>${JSON.stringify(result.data, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${result.status}`);
+                }
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h4>Health Check</h4>
+                    <p>❌ Error: ${error.message}</p>
+                `;
+            }
+        }
+
+        async function testVendorBookings() {
+            const resultDiv = addResult('Vendor Bookings API', 'loading');
+            try {
+                // Test the centralized booking API endpoint
+                const result = await makeRequest(`/api/bookings/vendor/${TEST_VENDOR_ID}`);
+                
+                console.log('🔍 Vendor Bookings Response:', result);
+                
+                if (result.ok) {
+                    const bookings = result.data.bookings || [];
+                    resultDiv.className = 'test-section success';
+                    resultDiv.innerHTML = `
+                        <h4>Vendor Bookings API</h4>
+                        <p>✅ Success - Found ${bookings.length} bookings</p>
+                        <p><strong>Response Structure:</strong></p>
+                        <ul>
+                            <li>Success: ${result.data.success}</li>
+                            <li>Bookings Count: ${bookings.length}</li>
+                            <li>Total: ${result.data.total || 'N/A'}</li>
+                            <li>Timestamp: ${result.data.timestamp}</li>
+                        </ul>
+                        <pre>${JSON.stringify(result.data, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${result.status}: ${result.data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h4>Vendor Bookings API</h4>
+                    <p>❌ Error: ${error.message}</p>
+                `;
+            }
+        }
+
+        async function testBookingStats() {
+            const resultDiv = addResult('Booking Stats API', 'loading');
+            try {
+                // Test booking stats endpoint
+                const result = await makeRequest(`/api/bookings/stats?vendorId=${TEST_VENDOR_ID}`);
+                
+                console.log('📊 Booking Stats Response:', result);
+                
+                if (result.ok) {
+                    resultDiv.className = 'test-section success';
+                    resultDiv.innerHTML = `
+                        <h4>Booking Stats API</h4>
+                        <p>✅ Success - Stats retrieved</p>
+                        <pre>${JSON.stringify(result.data, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${result.status}: ${result.data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h4>Booking Stats API</h4>
+                    <p>❌ Error: ${error.message}</p>
+                `;
+            }
+        }
+
+        async function testAllVendors() {
+            const resultDiv = addResult('All Vendors API', 'loading');
+            try {
+                // Test vendors endpoint to see which vendors exist
+                const result = await makeRequest('/api/vendors');
+                
+                console.log('👥 All Vendors Response:', result);
+                
+                if (result.ok) {
+                    const vendors = result.data.vendors || [];
+                    resultDiv.className = 'test-section success';
+                    resultDiv.innerHTML = `
+                        <h4>All Vendors API</h4>
+                        <p>✅ Success - Found ${vendors.length} vendors</p>
+                        <p><strong>Vendor IDs:</strong></p>
+                        <ul>
+                            ${vendors.map(vendor => `<li>${vendor.id}: ${vendor.business_name || vendor.name}</li>`).join('')}
+                        </ul>
+                        <pre>${JSON.stringify(result.data, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${result.status}: ${result.data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h4>All Vendors API</h4>
+                    <p>❌ Error: ${error.message}</p>
+                `;
+            }
+        }
+
+        async function runAllTests() {
+            document.getElementById('test-results').innerHTML = '';
+            
+            await testHealthCheck();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testAllVendors();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testVendorBookings();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testBookingStats();
+        }
+
+        // Run tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                runAllTests();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

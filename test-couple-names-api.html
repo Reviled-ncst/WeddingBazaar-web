@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Couple Names API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Test Couple Names in Booking API</h1>
+    <button onclick="testVendorBookings()">Test Vendor Bookings API</button>
+    <div id="results"></div>
+
+    <script>
+        const API_URL = 'https://weddingbazaar-web.onrender.com';
+
+        async function testVendorBookings() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Testing vendor bookings API...</p>';
+
+            try {
+                // Test vendor ID 2 (has bookings)
+                const response = await fetch(`${API_URL}/api/bookings/vendor/2`);
+                const data = await response.json();
+
+                if (data.success && data.bookings && data.bookings.length > 0) {
+                    resultsDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ Found ${data.bookings.length} bookings for vendor 2</h3>
+                            <h4>Couple Name Data Analysis:</h4>
+                            <pre>${JSON.stringify(data.bookings.map(booking => ({
+                                id: booking.id,
+                                couple_id: booking.couple_id,
+                                couple_name: booking.couple_name,
+                                contact_email: booking.contact_email,
+                                status: booking.status,
+                                event_date: booking.event_date
+                            })), null, 2)}</pre>
+                        </div>
+                    `;
+                    
+                    // Test couple name fallback logic
+                    const coupleNamesDiv = document.createElement('div');
+                    coupleNamesDiv.className = 'result';
+                    coupleNamesDiv.innerHTML = '<h4>Couple Name Fallback Test:</h4>';
+                    
+                    data.bookings.forEach((booking, index) => {
+                        let coupleName = booking.couple_name;
+                        if (!coupleName) {
+                            if (booking.couple_id) {
+                                // Extract friendly name from couple_id (e.g., "1-2025-001" → "Couple #001")
+                                const match = booking.couple_id.match(/(\d+)-(\d+)-(\d+)/);
+                                if (match) {
+                                    coupleName = `Couple #${match[3]}`;
+                                } else {
+                                    coupleName = `Couple ${booking.couple_id}`;
+                                }
+                            } else {
+                                coupleName = 'Unknown Couple';
+                            }
+                        }
+                        
+                        const nameDiv = document.createElement('div');
+                        nameDiv.innerHTML = `
+                            <p><strong>Booking ${index + 1}:</strong> 
+                            Original: ${booking.couple_name || 'null'} → 
+                            Final: ${coupleName}
+                            (couple_id: ${booking.couple_id})</p>
+                        `;
+                        coupleNamesDiv.appendChild(nameDiv);
+                    });
+                    
+                    resultsDiv.appendChild(coupleNamesDiv);
+                    
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ No bookings found</h3>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Error testing API</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

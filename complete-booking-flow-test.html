@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Bazaar - Full Booking Flow Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #fce7f3 0%, #f3e8ff 100%);
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+        .test-result {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #ccc;
+        }
+        .success { background: #d4edda; border-color: #28a745; color: #155724; }
+        .error { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+        .warning { background: #fff3cd; border-color: #ffc107; color: #856404; }
+        .info { background: #d1ecf1; border-color: #17a2b8; color: #0c5460; }
+        button {
+            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 10px 5px;
+        }
+        button:hover { transform: scale(1.05); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .booking-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .date-status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .date-blocked { background: #f8d7da; color: #721c24; }
+        .date-available { background: #d4edda; color: #155724; }
+        .booking-summary {
+            background: #e7f3ff;
+            border: 2px solid #0066cc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎉 Wedding Bazaar - Complete Booking Flow Test</h1>
+        <p>Testing the complete booking flow including availability checking and booking creation for vendor <strong>2-2025-001</strong></p>
+        
+        <div id="results"></div>
+        
+        <div class="booking-form">
+            <h3>📅 Test Booking Request</h3>
+            <div class="form-group">
+                <label for="testDate">Event Date:</label>
+                <input type="date" id="testDate" min="2025-10-01" max="2025-12-31" value="2025-10-31">
+                <div id="dateStatus"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="guestCount">Guest Count:</label>
+                <input type="number" id="guestCount" value="50" min="1" max="500">
+            </div>
+            
+            <div class="form-group">
+                <label for="location">Event Location:</label>
+                <input type="text" id="location" value="Test Wedding Venue, Manila">
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">Contact Phone:</label>
+                <input type="tel" id="phone" value="09123456789">
+            </div>
+            
+            <div class="form-group">
+                <label for="budget">Budget Range:</label>
+                <select id="budget">
+                    <option value="₱50,000-₱100,000">₱50,000-₱100,000</option>
+                    <option value="₱100,000-₱250,000" selected>₱100,000-₱250,000</option>
+                    <option value="₱250,000-₱500,000">₱250,000-₱500,000</option>
+                </select>
+            </div>
+            
+            <button onclick="checkDateAvailability()">Check Date Availability</button>
+            <button onclick="attemptBooking()" id="bookingBtn" disabled>Attempt Booking</button>
+        </div>
+        
+        <div id="bookingResults"></div>
+    </div>
+
+    <script>
+        const API_URL = 'https://weddingbazaar-web.onrender.com';
+        const VENDOR_ID = '2-2025-001';
+        const MAPPED_VENDOR_ID = '2';
+        const COUPLE_ID = 'test-2025-001'; // Test couple ID
+        
+        let currentAvailability = null;
+
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+            console.log(message);
+        }
+
+        // Simulate the frontend availability service
+        async function checkAvailability(vendorId, date) {
+            try {
+                log(`🔍 Checking availability for vendor ${vendorId} on ${date}...`);
+                
+                const response = await fetch(`${API_URL}/api/bookings/vendor/${MAPPED_VENDOR_ID}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const bookings = data.bookings || [];
+                
+                // Filter bookings for the specific date
+                const bookingsOnDate = bookings.filter(booking => {
+                    const bookingDate = booking.event_date?.split('T')[0];
+                    return bookingDate === date;
+                });
+                
+                const isAvailable = bookingsOnDate.length === 0;
+                
+                return {
+                    date,
+                    isAvailable,
+                    reason: isAvailable ? 'available' : 'booked',
+                    bookings: bookingsOnDate,
+                    conflictingBookings: bookingsOnDate.map(b => ({
+                        id: b.id,
+                        status: b.status,
+                        couple: b.couple_id,
+                        service: b.service_name
+                    }))
+                };
+                
+            } catch (error) {
+                log(`⚠️ Error checking availability: ${error.message}`, 'warning');
+                return {
+                    date,
+                    isAvailable: true, // Default to available on error
+                    reason: 'error_default_available',
+                    error: error.message
+                };
+            }
+        }
+
+        async function checkDateAvailability() {
+            const dateInput = document.getElementById('testDate');
+            const dateStatus = document.getElementById('dateStatus');
+            const bookingBtn = document.getElementById('bookingBtn');
+            
+            const selectedDate = dateInput.value;
+            if (!selectedDate) {
+                alert('Please select a date');
+                return;
+            }
+            
+            log(`📅 Checking availability for ${selectedDate}...`, 'info');
+            
+            currentAvailability = await checkAvailability(VENDOR_ID, selectedDate);
+            
+            if (currentAvailability.isAvailable) {
+                dateStatus.innerHTML = `
+                    <div class="date-status date-available">
+                        ✅ ${selectedDate} is AVAILABLE for booking
+                    </div>
+                `;
+                bookingBtn.disabled = false;
+                log(`✅ Date ${selectedDate} is available - booking can proceed`, 'success');
+            } else {
+                dateStatus.innerHTML = `
+                    <div class="date-status date-blocked">
+                        ❌ ${selectedDate} is NOT AVAILABLE - Already booked
+                        <br><small>Conflicting bookings: ${currentAvailability.conflictingBookings.map(b => `#${b.id} (${b.status})`).join(', ')}</small>
+                    </div>
+                `;
+                bookingBtn.disabled = true;
+                log(`❌ Date ${selectedDate} is NOT available - booking blocked due to existing bookings`, 'error');
+            }
+        }
+
+        async function attemptBooking() {
+            if (!currentAvailability) {
+                alert('Please check date availability first');
+                return;
+            }
+            
+            if (!currentAvailability.isAvailable) {
+                log(`🚫 Booking attempt blocked - date ${currentAvailability.date} is not available`, 'error');
+                alert('This date is not available for booking!');
+                return;
+            }
+            
+            const bookingData = {
+                service_name: "Professional Cake Designer Service",
+                vendor_id: MAPPED_VENDOR_ID,
+                couple_id: COUPLE_ID,
+                event_date: document.getElementById('testDate').value,
+                guest_count: parseInt(document.getElementById('guestCount').value),
+                event_location: document.getElementById('location').value,
+                contact_phone: document.getElementById('phone').value,
+                budget_range: document.getElementById('budget').value
+            };
+            
+            log(`📝 Attempting to create booking...`, 'info');
+            log(`Booking data: ${JSON.stringify(bookingData, null, 2)}`, 'info');
+            
+            try {
+                const response = await fetch(`${API_URL}/api/bookings`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    log(`✅ Booking created successfully!`, 'success');
+                    document.getElementById('bookingResults').innerHTML = `
+                        <div class="booking-summary">
+                            <h3>🎉 Booking Created Successfully!</h3>
+                            <p><strong>Booking ID:</strong> ${result.booking?.id}</p>
+                            <p><strong>Date:</strong> ${result.booking?.event_date?.split('T')[0]}</p>
+                            <p><strong>Status:</strong> ${result.booking?.status}</p>
+                            <p><strong>Service:</strong> ${result.booking?.service_name}</p>
+                            <pre>${JSON.stringify(result.booking, null, 2)}</pre>
+                        </div>
+                    `;
+                    
+                    // Recheck availability to see if date is now blocked
+                    setTimeout(() => {
+                        log(`🔄 Rechecking availability after booking creation...`, 'info');
+                        checkDateAvailability();
+                    }, 1000);
+                    
+                } else {
+                    log(`❌ Booking creation failed: ${result.message}`, 'error');
+                    document.getElementById('bookingResults').innerHTML = `
+                        <div class="test-result error">
+                            <h3>❌ Booking Creation Failed</h3>
+                            <p>${result.message}</p>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                log(`❌ Error creating booking: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-check availability when date changes
+        document.getElementById('testDate').addEventListener('change', function() {
+            const bookingBtn = document.getElementById('bookingBtn');
+            bookingBtn.disabled = true;
+            document.getElementById('dateStatus').innerHTML = '';
+            currentAvailability = null;
+        });
+
+        // Pre-populate with known booked date for testing
+        window.onload = () => {
+            log('🎉 Wedding Bazaar Complete Booking Flow Test Ready!', 'info');
+            log(`📡 API URL: ${API_URL}`, 'info');
+            log(`🏪 Testing Vendor: ${VENDOR_ID} (backend ID: ${MAPPED_VENDOR_ID})`, 'info');
+            log('🎯 Pre-selected date: 2025-10-31 (known to have existing booking)', 'warning');
+            log('Try changing the date to test different scenarios...', 'info');
+            
+            // Auto-check the pre-selected date
+            checkDateAvailability();
+        };
+    </script>
+</body>
+</html>

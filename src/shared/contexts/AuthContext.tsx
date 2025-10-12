@@ -438,19 +438,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Helper function to check backend status with optimized timeout for sleeping services
-  const checkBackendStatus = async (apiBaseUrl: string, retries = 1): Promise<boolean> => {
+  // Helper function to check backend status with extended timeout for sleeping services
+  const checkBackendStatus = async (apiBaseUrl: string, retries = 2): Promise<boolean> => {
     for (let i = 0; i < retries; i++) {
       try {
-        // Quick ping with short timeout - if it fails, backend is likely sleeping
+        // Extended timeout to allow sleeping services to wake up (Render free tier can take 30-60s)
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Backend check timeout')), 5000); // Very short timeout for quick detection
+          setTimeout(() => reject(new Error('Backend check timeout')), i === 0 ? 10000 : 45000); // 10s first attempt, 45s second attempt
         });
         
         const fetchPromise = fetch(`${apiBaseUrl}/api/health`, {
           method: 'GET',
           headers: { 'Accept': 'application/json' }
         });
+        
+        if (i === 0) {
+          console.log('⏱️ Quick backend check (10s timeout)...');
+        } else {
+          console.log('🔄 Extended backend wake-up check (45s timeout) - service may be sleeping...');
+        }
         
         const response = await Promise.race([fetchPromise, timeoutPromise]);
         
