@@ -135,7 +135,12 @@ export const STATUS_MAPPING = {
   'downpayment': 'downpayment_paid',
   'paid': 'paid_in_full',
   'completed': 'completed',
-  'cancelled': 'cancelled'
+  'cancelled': 'cancelled',
+  // Enhanced Payment Workflow Statuses
+  'quote_sent': 'quote_sent',
+  'quote_accepted': 'quote_accepted',
+  'deposit_paid': 'deposit_paid',
+  'fully_paid': 'fully_paid'
 } as const;
 
 // Reverse mapping Frontend → Database
@@ -399,6 +404,29 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
   }
   vendorName = vendorName || 'Wedding Vendor';
 
+  // Enhanced status processing - check notes field for backend's enhanced status system
+  let processedStatus = booking.status;
+  
+  // Backend stores enhanced statuses in notes field with prefixes
+  if (booking.notes) {
+    if (booking.notes.startsWith('QUOTE_SENT:')) {
+      processedStatus = 'quote_sent';
+    } else if (booking.notes.startsWith('QUOTE_ACCEPTED:')) {
+      processedStatus = 'quote_accepted';
+    } else if (booking.notes.startsWith('DEPOSIT_PAID:')) {
+      processedStatus = 'deposit_paid';
+    } else if (booking.notes.startsWith('FULLY_PAID:') || booking.notes.startsWith('BALANCE_PAID:')) {
+      processedStatus = 'fully_paid';
+    }
+  }
+  
+  console.log('🔍 [STATUS PROCESSING] Booking', booking.id, {
+    originalStatus: booking.status,
+    processedStatus,
+    hasNotes: !!booking.notes,
+    notesPrefix: booking.notes?.substring(0, 20) + '...'
+  });
+
   const mapped = {
     id: booking.id?.toString() || '',
     vendorId: booking.vendor_id || booking.vendorId || '',
@@ -413,7 +441,7 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
     eventLocation: booking.event_location || booking.eventLocation || booking.location,
     guestCount: booking.guest_count || booking.guestCount,
     specialRequests: booking.special_requests || booking.specialRequests || booking.notes,
-    status: STATUS_MAPPING[booking.status as keyof typeof STATUS_MAPPING] || booking.status as any,
+    status: (STATUS_MAPPING[processedStatus as keyof typeof STATUS_MAPPING] || processedStatus) as BookingStatus,
     totalAmount,
     downpaymentAmount: Number(booking.downpayment_amount) || Number(booking.downPayment) || Math.round(totalAmount * 0.3),
     depositAmount: Number(booking.downpayment_amount) || Number(booking.downPayment) || Math.round(totalAmount * 0.3),

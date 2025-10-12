@@ -42,6 +42,7 @@ export type BookingStatus =
   | 'quote_rejected'
   | 'confirmed' 
   | 'downpayment_paid'
+  | 'deposit_paid'
   | 'downpayment'
   | 'paid_in_full' 
   | 'fully_paid'
