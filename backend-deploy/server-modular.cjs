@@ -38,7 +38,7 @@ testConnection().catch(error => {
   console.log('🔄 Server will continue running but database operations may fail');
 });
 
-// Health check endpoint
+// Health check endpoint (updated for quote system)
 app.get('/api/health', async (req, res) => {
   try {
     const { sql } = require('./config/database.cjs');
