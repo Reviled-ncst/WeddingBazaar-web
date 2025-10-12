@@ -522,7 +522,7 @@ router.patch('/:bookingId/status', async (req, res) => {
       });
     }
     
-    const validStatuses = ['request', 'pending', 'confirmed', 'cancelled', 'completed', 'quote_sent'];
+    const validStatuses = ['request', 'pending', 'confirmed', 'cancelled', 'completed', 'quote_sent', 'quote_accepted', 'deposit_paid', 'fully_paid'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -531,14 +531,23 @@ router.patch('/:bookingId/status', async (req, res) => {
       });
     }
     
-    // For quote_sent status, we'll use 'request' status but store quote info in notes
-    // This works around database constraints while providing the functionality
+    // Handle status mapping for enhanced payment workflow
+    // This works around database constraints while providing full functionality
     let actualStatus = status;
     let statusNote = vendor_notes || null;
     
     if (status === 'quote_sent') {
-      actualStatus = 'request'; // Use a status that works with DB constraints
+      actualStatus = 'request';
       statusNote = `QUOTE_SENT: ${vendor_notes || 'Quote has been sent to client'}`;
+    } else if (status === 'quote_accepted') {
+      actualStatus = 'request';
+      statusNote = `QUOTE_ACCEPTED: ${vendor_notes || 'Quote accepted by couple - ready for payment'}`;
+    } else if (status === 'deposit_paid') {
+      actualStatus = 'request';
+      statusNote = `DEPOSIT_PAID: ${vendor_notes || 'Deposit payment received'}`;
+    } else if (status === 'fully_paid') {
+      actualStatus = 'request';
+      statusNote = `FULLY_PAID: ${vendor_notes || 'Full payment received'}`;
     }
     
     const booking = await sql`
@@ -550,15 +559,15 @@ router.patch('/:bookingId/status', async (req, res) => {
       RETURNING *
     `;
     
-    // If successful and was a quote_sent request, return the expected response format
-    if (booking.length > 0 && status === 'quote_sent') {
+    // Return the expected response format for enhanced statuses
+    if (booking.length > 0 && ['quote_sent', 'quote_accepted', 'deposit_paid', 'fully_paid'].includes(status)) {
       console.log(`✅ Booking status updated: ${bookingId} -> ${status} (stored as ${actualStatus})`);
       
       res.json({
         success: true,
         booking: {
           ...booking[0],
-          status: 'quote_sent' // Return what frontend expects
+          status: status // Return the actual status the frontend expects
         },
         timestamp: new Date().toISOString()
       });
@@ -607,7 +616,7 @@ router.put('/:bookingId/update-status', async (req, res) => {
       });
     }
     
-    const validStatuses = ['request', 'pending', 'confirmed', 'cancelled', 'completed', 'quote_sent'];
+    const validStatuses = ['request', 'pending', 'confirmed', 'cancelled', 'completed', 'quote_sent', 'quote_accepted', 'deposit_paid', 'fully_paid'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -616,13 +625,22 @@ router.put('/:bookingId/update-status', async (req, res) => {
       });
     }
     
-    // For quote_sent status, we'll use 'request' status but store quote info in notes
+    // Handle status mapping for enhanced payment workflow (PUT endpoint)
     let actualStatus = status;
     let statusNote = vendor_notes || null;
     
     if (status === 'quote_sent') {
-      actualStatus = 'request'; // Use a status that works with DB constraints
+      actualStatus = 'request';
       statusNote = `QUOTE_SENT: ${vendor_notes || 'Quote has been sent to client'}`;
+    } else if (status === 'quote_accepted') {
+      actualStatus = 'request';
+      statusNote = `QUOTE_ACCEPTED: ${vendor_notes || 'Quote accepted by couple - ready for payment'}`;
+    } else if (status === 'deposit_paid') {
+      actualStatus = 'request';
+      statusNote = `DEPOSIT_PAID: ${vendor_notes || 'Deposit payment received'}`;
+    } else if (status === 'fully_paid') {
+      actualStatus = 'request';
+      statusNote = `FULLY_PAID: ${vendor_notes || 'Full payment received'}`;
     }
     
     const booking = await sql`
