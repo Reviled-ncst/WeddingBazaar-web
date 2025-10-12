@@ -15,6 +15,7 @@ const paymentsRoutes = require('./routes/payments.cjs');
 const receiptsRoutes = require('./routes/receipts.cjs');
 const notificationRoutes = require('./routes/notifications.cjs');
 const debugRoutes = require('./routes/debug.cjs');
+const bookingsTestRoutes = require('./routes/bookings-test.cjs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -157,6 +158,7 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/vendors', vendorOffDaysRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/bookings-test', bookingsTestRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/receipts', receiptsRoutes);
 app.use('/api/notifications', notificationRoutes);
