@@ -3,56 +3,6 @@ const { sql } = require('../config/database.cjs');
 
 const router = express.Router();
 
-// ===============================    const rawBookings = await sql(query, params);
-    
-    // Process bookings to interpret all payment workflow statuses from notes
-    const bookings = rawBookings.map(booking => {
-      const processedBooking = { ...booking };
-      
-      // Enhanced status processing for complete payment workflow
-      if (booking.notes) {
-        if (booking.notes.startsWith('QUOTE_SENT:')) {
-          processedBooking.status = 'quote_sent';
-          processedBooking.vendor_notes = booking.notes.substring('QUOTE_SENT:'.length).trim();
-          processedBooking.quote_sent_date = booking.updated_at;
-        } else if (booking.notes.startsWith('QUOTE_ACCEPTED:')) {
-          processedBooking.status = 'quote_accepted';
-          processedBooking.vendor_notes = booking.notes.substring('QUOTE_ACCEPTED:'.length).trim();
-          processedBooking.quote_accepted_date = booking.updated_at;
-        } else if (booking.notes.startsWith('DEPOSIT_PAID:')) {
-          processedBooking.status = 'deposit_paid';
-          processedBooking.vendor_notes = booking.notes.substring('DEPOSIT_PAID:'.length).trim();
-          processedBooking.payment_date = booking.updated_at;
-          
-          // Extract amount paid from notes
-          const amountMatch = booking.notes.match(/₱([\d,]+)/);
-          if (amountMatch) {
-            processedBooking.amount_paid = parseInt(amountMatch[1].replace(',', ''));
-          }
-        } else if (booking.notes.startsWith('FULLY_PAID:') || booking.notes.startsWith('BALANCE_PAID:')) {
-          processedBooking.status = 'fully_paid';
-          processedBooking.vendor_notes = booking.notes.substring(
-            booking.notes.startsWith('FULLY_PAID:') ? 'FULLY_PAID:'.length : 'BALANCE_PAID:'.length
-          ).trim();
-          processedBooking.payment_date = booking.updated_at;
-          
-          // Extract amount paid from notes
-          const amountMatch = booking.notes.match(/₱([\d,]+)/);
-          if (amountMatch) {
-            processedBooking.amount_paid = parseInt(amountMatch[1].replace(',', ''));
-          }
-        } else {
-          processedBooking.vendor_notes = booking.notes;
-        }
-      } else {
-        processedBooking.vendor_notes = booking.notes;
-      }
-      
-      return processedBooking;
-    });
-    
-    console.log(`✅ Found ${bookings.length} bookings for vendor ${vendorId}`);
-
 // Get bookings for a vendor
 router.get('/vendor/:vendorId', async (req, res) => {
   console.log('📅 Getting bookings for vendor:', req.params.vendorId);
