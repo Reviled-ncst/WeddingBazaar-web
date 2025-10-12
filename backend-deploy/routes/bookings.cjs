@@ -198,32 +198,77 @@ router.get('/couple/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const { page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
-    const offset = (page - 1) * limit;
     
     // Handle both full user ID format (1-2025-001) and legacy format
     const searchUserId = userId;
     
     console.log(`🔍 Searching for bookings with couple_id: "${searchUserId}"`);
     
-    const rawBookings = await sql`
-      SELECT 
-        b.*,
-        v.business_name as vendor_name,
-        v.business_type as vendor_category,
-        v.rating as vendor_rating,
-        v.location as vendor_location
-      FROM bookings b
-      LEFT JOIN vendors v ON b.vendor_id = v.id
-      WHERE b.couple_id = ${searchUserId}
-      ORDER BY b.created_at DESC
-      LIMIT ${parseInt(limit)} OFFSET ${(page - 1) * limit}
-    `;
+    let rawBookings;
+    
+    try {
+      rawBookings = await sql`
+        SELECT 
+          b.id,
+          b.service_id,
+          b.service_name,
+          b.vendor_id,
+          b.vendor_name,
+          b.couple_id,
+          b.couple_name,
+          b.event_date,
+          b.event_time,
+          b.event_location,
+          b.guest_count,
+          b.service_type,
+          b.budget_range,
+          b.special_requests,
+          b.contact_phone,
+          b.preferred_contact_method,
+          b.status,
+          b.total_amount,
+          b.deposit_amount,
+          b.notes,
+          b.contract_details,
+          b.response_message,
+          b.estimated_cost_min,
+          b.estimated_cost_max,
+          b.estimated_cost_currency,
+          b.created_at,
+          b.updated_at,
+          b.process_stage,
+          b.progress_percentage,
+          b.next_action,
+          b.next_action_by,
+          b.last_activity_at,
+          v.business_name as vendor_business_name,
+          v.business_type as vendor_category,
+          v.rating as vendor_rating,
+          v.location as vendor_location
+        FROM bookings b
+        LEFT JOIN vendors v ON b.vendor_id = v.id
+        WHERE b.couple_id = ${searchUserId}
+        ORDER BY b.created_at DESC
+        LIMIT ${parseInt(limit)} OFFSET ${(parseInt(page) - 1) * parseInt(limit)}
+      `;
+    } catch (queryError) {
+      console.error('❌ Couple bookings query error:', queryError);
+      return res.status(500).json({
+        success: false,
+        error: 'Database query failed',
+        details: queryError.message,
+        timestamp: new Date().toISOString()
+      });
+    }
     
     // Status filtering is handled in the SQL query above
     
     // Process bookings to interpret all payment workflow statuses from notes (same enhanced logic as vendor endpoint)
     const bookings = rawBookings.map(booking => {
       const processedBooking = { ...booking };
+      
+      // Ensure vendor name is properly mapped
+      processedBooking.vendor_name = booking.vendor_business_name || booking.vendor_name || `vendor ${booking.vendor_id}`;
       
       // Enhanced status processing for complete payment workflow
       if (booking.notes) {
@@ -294,7 +339,6 @@ router.get('/enhanced', async (req, res) => {
   
   try {
     const { coupleId, vendorId, page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
-    const offset = (page - 1) * limit;
     
     if (!coupleId && !vendorId) {
       return res.status(400).json({
@@ -306,11 +350,43 @@ router.get('/enhanced', async (req, res) => {
     
     let rawBookings;
     
-    if (coupleId) {
-      rawBookings = await sql`
+    try {
+      if (coupleId) {
+        console.log(`🔍 Searching enhanced bookings for couple: ${coupleId}`);      rawBookings = await sql`
         SELECT 
-          b.*,
-          v.business_name as vendor_name,
+          b.id,
+          b.service_id,
+          b.service_name,
+          b.vendor_id,
+          b.vendor_name,
+          b.couple_id,
+          b.couple_name,
+          b.event_date,
+          b.event_time,
+          b.event_location,
+          b.guest_count,
+          b.service_type,
+          b.budget_range,
+          b.special_requests,
+          b.contact_phone,
+          b.preferred_contact_method,
+          b.status,
+          b.total_amount,
+          b.deposit_amount,
+          b.notes,
+          b.contract_details,
+          b.response_message,
+          b.estimated_cost_min,
+          b.estimated_cost_max,
+          b.estimated_cost_currency,
+          b.created_at,
+          b.updated_at,
+          b.process_stage,
+          b.progress_percentage,
+          b.next_action,
+          b.next_action_by,
+          b.last_activity_at,
+          v.business_name as vendor_business_name,
           v.business_type as vendor_category,
           v.rating as vendor_rating,
           v.location as vendor_location
@@ -318,27 +394,74 @@ router.get('/enhanced', async (req, res) => {
         LEFT JOIN vendors v ON b.vendor_id = v.id
         WHERE b.couple_id = ${coupleId}
         ORDER BY b.created_at DESC
-        LIMIT ${parseInt(limit)} OFFSET ${(page - 1) * limit}
+        LIMIT ${parseInt(limit)} OFFSET ${(parseInt(page) - 1) * parseInt(limit)}
       `;
-    } else if (vendorId) {
-      rawBookings = await sql`
-        SELECT 
-          b.*,
-          v.business_name as vendor_name,
-          v.business_type as vendor_category,
-          v.rating as vendor_rating,
-          v.location as vendor_location
-        FROM bookings b
-        LEFT JOIN vendors v ON b.vendor_id = v.id
-        WHERE b.vendor_id = ${vendorId}
-        ORDER BY b.created_at DESC
-        LIMIT ${parseInt(limit)} OFFSET ${(page - 1) * limit}
-      `;
+      } else if (vendorId) {
+        console.log(`🔍 Searching enhanced bookings for vendor: ${vendorId}`);
+        // Handle both full vendor ID format (2-2025-003) and legacy format (2)
+        const legacyVendorId = vendorId.includes('-') ? vendorId.split('-')[0] : vendorId;
+        
+        rawBookings = await sql`
+          SELECT 
+            b.id,
+            b.service_id,
+            b.service_name,
+            b.vendor_id,
+            b.vendor_name,
+            b.couple_id,
+            b.couple_name,
+            b.event_date,
+            b.event_time,
+            b.event_location,
+            b.guest_count,
+            b.service_type,
+            b.budget_range,
+            b.special_requests,
+            b.contact_phone,
+            b.preferred_contact_method,
+            b.status,
+            b.total_amount,
+            b.deposit_amount,
+            b.notes,
+            b.contract_details,
+            b.response_message,
+            b.estimated_cost_min,
+            b.estimated_cost_max,
+            b.estimated_cost_currency,
+            b.created_at,
+            b.updated_at,
+            b.process_stage,
+            b.progress_percentage,
+            b.next_action,
+            b.next_action_by,
+            b.last_activity_at,
+            v.business_name as vendor_business_name,
+            v.business_type as vendor_category,
+            v.rating as vendor_rating,
+            v.location as vendor_location
+          FROM bookings b
+          LEFT JOIN vendors v ON (b.vendor_id = v.id OR b.vendor_id = ${legacyVendorId})
+          WHERE (b.vendor_id = ${vendorId} OR b.vendor_id = ${legacyVendorId})
+          ORDER BY b.created_at DESC
+          LIMIT ${parseInt(limit)} OFFSET ${(parseInt(page) - 1) * parseInt(limit)}
+        `;
+      }
+    } catch (queryError) {
+      console.error('❌ Enhanced bookings query error:', queryError);
+      return res.status(500).json({
+        success: false,
+        error: 'Database query failed',
+        details: queryError.message,
+        timestamp: new Date().toISOString()
+      });
     }
     
     // Process bookings to interpret all payment workflow statuses from notes (same enhanced logic)
     const bookings = rawBookings.map(booking => {
       const processedBooking = { ...booking };
+      
+      // Ensure vendor name is properly mapped
+      processedBooking.vendor_name = booking.vendor_business_name || booking.vendor_name || `vendor ${booking.vendor_id}`;
       
       // Enhanced status processing for complete payment workflow
       if (booking.notes) {
@@ -403,13 +526,14 @@ router.get('/enhanced', async (req, res) => {
   }
 });
 
-// Create a new booking
+// Create a new booking (POST /api/bookings)
 router.post('/', async (req, res) => {
   console.log('➕ Creating new booking:', req.body);
   
   try {
     const {
       userId,
+      coupleId,
       vendorId,
       serviceId,
       eventDate,
@@ -417,28 +541,34 @@ router.post('/', async (req, res) => {
       venue,
       totalAmount,
       specialRequests,
-      contactInfo
+      contactInfo,
+      serviceName,
+      serviceType
     } = req.body;
     
-    if (!userId || !vendorId || !eventDate || !totalAmount) {
+    // Use coupleId if provided, otherwise fall back to userId
+    const finalCoupleId = coupleId || userId;
+    
+    if (!finalCoupleId || !vendorId || !eventDate || !totalAmount) {
       return res.status(400).json({
         success: false,
-        error: 'userId, vendorId, eventDate, and totalAmount are required',
+        error: 'coupleId/userId, vendorId, eventDate, and totalAmount are required',
         timestamp: new Date().toISOString()
       });
     }
     
-    const bookingId = `BKG-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    // Generate unique booking ID
+    const bookingId = Date.now();
     
     const booking = await sql`
       INSERT INTO bookings (
-        id, user_id, vendor_id, service_id, event_date, event_time,
-        venue, total_amount, special_requests, contact_info, status,
-        created_at, updated_at
+        id, couple_id, vendor_id, service_id, event_date, event_time,
+        event_location, total_amount, special_requests, status,
+        service_name, service_type, created_at, updated_at
       ) VALUES (
-        ${bookingId}, ${userId}, ${vendorId}, ${serviceId}, ${eventDate}, ${eventTime},
-        ${venue}, ${totalAmount}, ${specialRequests}, ${JSON.stringify(contactInfo)}, 'pending',
-        NOW(), NOW()
+        ${bookingId}, ${finalCoupleId}, ${vendorId}, ${serviceId || null}, ${eventDate}, ${eventTime || null},
+        ${venue || null}, ${totalAmount}, ${specialRequests || null}, 'request',
+        ${serviceName || 'Wedding Service'}, ${serviceType || 'general'}, NOW(), NOW()
       ) RETURNING *
     `;
     
@@ -452,6 +582,67 @@ router.post('/', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Create booking error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Create a booking request (POST /api/bookings/request)
+router.post('/request', async (req, res) => {
+  console.log('📝 Creating booking request:', req.body);
+  
+  try {
+    const {
+      coupleId,
+      vendorId,
+      serviceId,
+      serviceName,
+      serviceType,
+      eventDate,
+      eventTime,
+      venue,
+      totalAmount,
+      specialRequests,
+      contactInfo
+    } = req.body;
+    
+    if (!coupleId || !vendorId || !eventDate) {
+      return res.status(400).json({
+        success: false,
+        error: 'coupleId, vendorId, and eventDate are required',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Generate unique booking ID
+    const bookingId = Date.now();
+    
+    const booking = await sql`
+      INSERT INTO bookings (
+        id, couple_id, vendor_id, service_id, event_date, event_time,
+        event_location, total_amount, special_requests, status,
+        service_name, service_type, created_at, updated_at
+      ) VALUES (
+        ${bookingId}, ${coupleId}, ${vendorId}, ${serviceId || null}, ${eventDate}, ${eventTime || '10:00'},
+        ${venue || 'TBD'}, ${totalAmount || 0}, ${specialRequests || null}, 'request',
+        ${serviceName || 'Wedding Service'}, ${serviceType || 'general'}, NOW(), NOW()
+      ) RETURNING *
+    `;
+    
+    console.log(`✅ Booking request created: ${bookingId}`);
+    
+    res.json({
+      success: true,
+      booking: booking[0],
+      message: 'Booking request created successfully',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Create booking request error:', error);
     res.status(500).json({
       success: false,
       error: error.message,
