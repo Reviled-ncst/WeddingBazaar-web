@@ -312,41 +312,37 @@ router.get('/enhanced', async (req, res) => {
       });
     }
     
-    let query = `
-      SELECT 
-        b.*,
-        v.business_name as vendor_business_name,
-        v.name as vendor_name,
-        v.category as vendor_category,
-        v.rating as vendor_rating,
-        v.location as vendor_location
-      FROM bookings b
-      LEFT JOIN vendors v ON (b.vendor_id = v.id OR b.vendor_id = SPLIT_PART(v.id, '-', 1))
-      WHERE 1=1
-    `;
-    let params = [];
+    let rawBookings;
     
     if (coupleId) {
-      query += ` AND b.couple_id = $${params.length + 1}`;
-      params.push(coupleId);
+      rawBookings = await sql`
+        SELECT 
+          b.*,
+          v.business_name as vendor_name,
+          v.business_type as vendor_category,
+          v.rating as vendor_rating,
+          v.location as vendor_location
+        FROM bookings b
+        LEFT JOIN vendors v ON b.vendor_id = v.id
+        WHERE b.couple_id = ${coupleId}
+        ORDER BY b.created_at DESC
+        LIMIT ${parseInt(limit)} OFFSET ${(page - 1) * limit}
+      `;
+    } else if (vendorId) {
+      rawBookings = await sql`
+        SELECT 
+          b.*,
+          v.business_name as vendor_name,
+          v.business_type as vendor_category,
+          v.rating as vendor_rating,
+          v.location as vendor_location
+        FROM bookings b
+        LEFT JOIN vendors v ON b.vendor_id = v.id
+        WHERE b.vendor_id = ${vendorId}
+        ORDER BY b.created_at DESC
+        LIMIT ${parseInt(limit)} OFFSET ${(page - 1) * limit}
+      `;
     }
-    
-    if (vendorId) {
-      // Handle both full vendor ID format and legacy format
-      const legacyVendorId = vendorId.includes('-') ? vendorId.split('-')[0] : vendorId;
-      query += ` AND (b.vendor_id = $${params.length + 1} OR b.vendor_id = $${params.length + 2})`;
-      params.push(vendorId, legacyVendorId);
-    }
-    
-    if (status && status !== 'all') {
-      query += ` AND b.status = $${params.length + 1}`;
-      params.push(status);
-    }
-    
-    query += ` ORDER BY b.${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-    params.push(parseInt(limit), parseInt(offset));
-    
-    const rawBookings = await sql(query, params);
     
     // Process bookings to interpret all payment workflow statuses from notes (same enhanced logic)
     const bookings = rawBookings.map(booking => {
