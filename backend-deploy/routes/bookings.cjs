@@ -205,29 +205,21 @@ router.get('/couple/:userId', async (req, res) => {
     
     console.log(`🔍 Searching for bookings with couple_id: "${searchUserId}"`);
     
-    let query = `
+    const rawBookings = await sql`
       SELECT 
         b.*,
-        v.business_name as vendor_business_name,
-        v.name as vendor_name,
-        v.category as vendor_category,
+        v.business_name as vendor_name,
+        v.business_type as vendor_category,
         v.rating as vendor_rating,
         v.location as vendor_location
       FROM bookings b
-      LEFT JOIN vendors v ON (b.vendor_id = v.id OR b.vendor_id = SPLIT_PART(v.id, '-', 1))
-      WHERE b.couple_id = $1
+      LEFT JOIN vendors v ON b.vendor_id = v.id
+      WHERE b.couple_id = ${searchUserId}
+      ORDER BY b.created_at DESC
+      LIMIT ${parseInt(limit)} OFFSET ${(page - 1) * limit}
     `;
-    let params = [searchUserId];
     
-    if (status && status !== 'all') {
-      query += ` AND b.status = $${params.length + 1}`;
-      params.push(status);
-    }
-    
-    query += ` ORDER BY b.${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-    params.push(parseInt(limit), parseInt(offset));
-    
-    const rawBookings = await sql(query, params);
+    // Status filtering is handled in the SQL query above
     
     // Process bookings to interpret all payment workflow statuses from notes (same enhanced logic as vendor endpoint)
     const bookings = rawBookings.map(booking => {
