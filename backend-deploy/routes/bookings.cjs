@@ -206,17 +206,25 @@ router.get('/couple/:userId', async (req, res) => {
     console.log(`🔍 Searching for bookings with couple_id: "${searchUserId}"`);
     
     let query = `
-      SELECT * FROM bookings 
-      WHERE couple_id = $1
+      SELECT 
+        b.*,
+        v.business_name as vendor_business_name,
+        v.name as vendor_name,
+        v.category as vendor_category,
+        v.rating as vendor_rating,
+        v.location as vendor_location
+      FROM bookings b
+      LEFT JOIN vendors v ON (b.vendor_id = v.id OR b.vendor_id = SPLIT_PART(v.id, '-', 1))
+      WHERE b.couple_id = $1
     `;
     let params = [searchUserId];
     
     if (status && status !== 'all') {
-      query += ` AND status = $${params.length + 1}`;
+      query += ` AND b.status = $${params.length + 1}`;
       params.push(status);
     }
     
-    query += ` ORDER BY ${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    query += ` ORDER BY b.${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(parseInt(limit), parseInt(offset));
     
     const rawBookings = await sql(query, params);
@@ -305,29 +313,37 @@ router.get('/enhanced', async (req, res) => {
     }
     
     let query = `
-      SELECT * FROM bookings 
+      SELECT 
+        b.*,
+        v.business_name as vendor_business_name,
+        v.name as vendor_name,
+        v.category as vendor_category,
+        v.rating as vendor_rating,
+        v.location as vendor_location
+      FROM bookings b
+      LEFT JOIN vendors v ON (b.vendor_id = v.id OR b.vendor_id = SPLIT_PART(v.id, '-', 1))
       WHERE 1=1
     `;
     let params = [];
     
     if (coupleId) {
-      query += ` AND couple_id = $${params.length + 1}`;
+      query += ` AND b.couple_id = $${params.length + 1}`;
       params.push(coupleId);
     }
     
     if (vendorId) {
       // Handle both full vendor ID format and legacy format
       const legacyVendorId = vendorId.includes('-') ? vendorId.split('-')[0] : vendorId;
-      query += ` AND (vendor_id = $${params.length + 1} OR vendor_id = $${params.length + 2})`;
+      query += ` AND (b.vendor_id = $${params.length + 1} OR b.vendor_id = $${params.length + 2})`;
       params.push(vendorId, legacyVendorId);
     }
     
     if (status && status !== 'all') {
-      query += ` AND status = $${params.length + 1}`;
+      query += ` AND b.status = $${params.length + 1}`;
       params.push(status);
     }
     
-    query += ` ORDER BY ${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    query += ` ORDER BY b.${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(parseInt(limit), parseInt(offset));
     
     const rawBookings = await sql(query, params);
@@ -677,10 +693,10 @@ router.put('/:bookingId/accept-quote', async (req, res) => {
       });
     }
     
-    // Update booking status to quote_accepted
+    // Update booking status to quote_accepted (use request status with special notes)
     const updatedBooking = await sql`
       UPDATE bookings 
-      SET status = 'confirmed',
+      SET status = 'request',
           notes = ${`QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`},
           updated_at = NOW()
       WHERE id = ${bookingId}
@@ -749,27 +765,27 @@ router.put('/:bookingId/process-payment', async (req, res) => {
     
     const booking = existingBooking[0];
     
-    // Determine new status based on payment type
-    let newStatus = 'confirmed';
+    // Determine new status based on payment type (use request status with special notes for consistency)
+    let newStatus = 'request';
     let statusNote = '';
     let frontendStatus = '';
     
     if (payment_type === 'downpayment') {
-      newStatus = 'confirmed';
+      newStatus = 'request';
       frontendStatus = 'deposit_paid';
       statusNote = `DEPOSIT_PAID: ₱${amount} downpayment received via ${payment_method || 'online payment'}`;
       if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
       if (payment_notes) statusNote += ` - ${payment_notes}`;
       
     } else if (payment_type === 'full_payment') {
-      newStatus = 'confirmed';
+      newStatus = 'request';
       frontendStatus = 'fully_paid';
       statusNote = `FULLY_PAID: ₱${amount} full payment received via ${payment_method || 'online payment'}`;
       if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
       if (payment_notes) statusNote += ` - ${payment_notes}`;
       
     } else if (payment_type === 'remaining_balance') {
-      newStatus = 'confirmed';
+      newStatus = 'request';
       frontendStatus = 'fully_paid';
       statusNote = `BALANCE_PAID: ₱${amount} remaining balance received via ${payment_method || 'online payment'}`;
       if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;

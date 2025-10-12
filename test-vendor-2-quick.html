@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Vendor ID 2 Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Quick Vendor ID "2" Test</h1>
+        <p>Testing if vendor ID "2" has bookings in the backend.</p>
+        
+        <button onclick="testVendor2()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Test Vendor ID "2"
+        </button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com';
+        
+        function log(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const logDiv = document.createElement('div');
+            logDiv.className = `result ${type}`;
+            logDiv.innerHTML = message;
+            resultsDiv.appendChild(logDiv);
+        }
+
+        async function testVendor2() {
+            try {
+                log('🔍 Testing vendor ID "2"...', 'info');
+                
+                const response = await fetch(`${API_BASE}/api/bookings/vendor/2`);
+                const data = await response.json();
+                
+                log(`<strong>API Response Status:</strong> ${response.status}`, 'info');
+                log(`<strong>Response Data:</strong><pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                
+                if (data.success && data.bookings && data.bookings.length > 0) {
+                    log(`✅ SUCCESS: Found ${data.bookings.length} bookings for vendor "2"`, 'success');
+                    
+                    data.bookings.forEach((booking, index) => {
+                        log(`<strong>Booking ${index + 1}:</strong><br>
+                             ID: ${booking.id}<br>
+                             Couple: ${booking.couple_name || 'Unknown'}<br>
+                             Service: ${booking.service_name || booking.service_type || 'Unknown'}<br>
+                             Status: ${booking.status}<br>
+                             Amount: ₱${booking.total_amount || 0}<br>
+                             Created: ${new Date(booking.created_at).toLocaleDateString()}`, 'success');
+                    });
+                } else {
+                    log(`❌ No bookings found for vendor "2". Response structure: ${JSON.stringify(data)}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`💥 Error testing vendor "2": ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run on page load
+        window.onload = () => {
+            testVendor2();
+        };
+    </script>
+</body>
+</html>

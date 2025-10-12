@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar Availability Debug Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin: 20px 0;
+        }
+        .calendar-day {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            text-align: center;
+            min-height: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .day-available { background: #d4edda; border-color: #c3e6cb; }
+        .day-partially-booked { background: #fff3cd; border-color: #ffeaa7; }
+        .day-fully-booked { background: #f8d7da; border-color: #f5c6cb; }
+        .day-off { background: #e2e3e5; border-color: #c6c8ca; }
+        .day-past { opacity: 0.5; }
+        .day-other-month { opacity: 0.3; }
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-top: 2px;
+        }
+        .status-available { background: #28a745; }
+        .status-partially-booked { background: #ffc107; }
+        .status-fully-booked { background: #dc3545; }
+        .status-off { background: #6c757d; }
+        .log-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover { background: #0056b3; }
+        .button:disabled { background: #6c757d; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <h1>📅 Calendar Availability Debug Test</h1>
+    <p>This test simulates the exact calendar availability logic from the frontend to see why changes aren't showing.</p>
+
+    <div class="test-section">
+        <h2>🔧 Configuration</h2>
+        <p><strong>Backend URL:</strong> <span id="backendUrl">https://weddingbazaar-web.onrender.com</span></p>
+        <p><strong>Test Vendor ID:</strong> <span id="vendorId">2-2025-001</span> (maps to booking vendor "2")</p>
+        <p><strong>Calendar Month:</strong> October 2025</p>
+        
+        <button class="button" onclick="runFullTest()">🚀 Run Full Calendar Test</button>
+        <button class="button" onclick="clearLog()">🧹 Clear Log</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Test Results</h2>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📅 Simulated Calendar View</h2>
+        <div>
+            <strong>Legend:</strong>
+            <span style="background: #d4edda; padding: 2px 8px; margin: 0 5px; border-radius: 3px;">Available</span>
+            <span style="background: #fff3cd; padding: 2px 8px; margin: 0 5px; border-radius: 3px;">Partially Booked</span>
+            <span style="background: #f8d7da; padding: 2px 8px; margin: 0 5px; border-radius: 3px;">Fully Booked</span>
+            <span style="background: #e2e3e5; padding: 2px 8px; margin: 0 5px; border-radius: 3px;">Off Day</span>
+        </div>
+        
+        <div class="calendar-grid" id="calendarGrid">
+            <!-- Calendar will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Debug Log</h2>
+        <div class="log-output" id="debugLog"></div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://weddingbazaar-web.onrender.com';
+        const TEST_VENDOR = '2-2025-001';
+        const BOOKING_VENDOR = '2'; // What the vendor maps to in booking data
+        
+        let debugLog = [];
+        
+        function log(message) {
+            const timestamp = new Date().toISOString().split('T')[1].substring(0, 8);
+            const logEntry = `[${timestamp}] ${message}`;
+            debugLog.push(logEntry);
+            document.getElementById('debugLog').textContent = debugLog.join('\n');
+            console.log(logEntry);
+            
+            // Auto-scroll to bottom
+            const debugElement = document.getElementById('debugLog');
+            debugElement.scrollTop = debugElement.scrollHeight;
+        }
+        
+        function clearLog() {
+            debugLog = [];
+            document.getElementById('debugLog').textContent = '';
+            document.getElementById('testResults').innerHTML = '';
+            document.getElementById('calendarGrid').innerHTML = '';
+        }
+        
+        // Generate calendar days for October 2025
+        function generateCalendarDays() {
+            const currentDate = new Date('2025-10-11'); // Today
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth(); // October = 9
+            
+            const firstDay = new Date(year, month, 1);
+            const calendarStartDate = new Date(firstDay);
+            calendarStartDate.setDate(calendarStartDate.getDate() - firstDay.getDay());
+            
+            const days = [];
+            for (let i = 0; i < 42; i++) {
+                const date = new Date(calendarStartDate);
+                date.setDate(date.getDate() + i);
+                
+                const isCurrentMonth = date.getMonth() === month;
+                const isToday = date.toDateString() === currentDate.toDateString();
+                const isPast = date < currentDate && !isToday;
+                
+                days.push({
+                    date: date.toISOString().split('T')[0],
+                    day: date.getDate(),
+                    isCurrentMonth,
+                    isToday,
+                    isPast,
+                    displayDate: date
+                });
+            }
+            
+            return days;
+        }
+        
+        // Simulate the availability service mapping logic
+        function mapVendorIdForBookings(vendorId) {
+            if (vendorId.startsWith('2-2025-')) {
+                log(`🔧 Mapping vendor ID ${vendorId} -> 2 for booking data`);
+                return '2';
+            }
+            return vendorId;
+        }
+        
+        // Get bookings for a vendor
+        async function getVendorBookings(vendorId) {
+            const mappedVendorId = mapVendorIdForBookings(vendorId);
+            const url = `${BACKEND_URL}/api/bookings/vendor/${mappedVendorId}`;
+            
+            log(`🌐 Fetching bookings from: ${url}`);
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const bookings = data.bookings || [];
+                
+                log(`📊 Found ${bookings.length} total bookings for vendor ${vendorId} (as ${mappedVendorId})`);
+                
+                return bookings;
+            } catch (error) {
+                log(`❌ Error fetching bookings: ${error.message}`);
+                return [];
+            }
+        }
+        
+        // Get off days for a vendor
+        async function getVendorOffDays(vendorId) {
+            const url = `${BACKEND_URL}/api/vendors/${vendorId}/off-days`;
+            
+            log(`🌐 Fetching off days from: ${url}`);
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const offDays = data.offDays || [];
+                
+                log(`🚫 Found ${offDays.length} off days for vendor ${vendorId}`);
+                
+                return offDays;
+            } catch (error) {
+                log(`❌ Error fetching off days: ${error.message}`);
+                return [];
+            }
+        }
+        
+        // Check availability for a specific date
+        function checkDateAvailability(date, bookings, offDays) {
+            // Check off days first
+            const offDay = offDays.find(od => od.date?.split('T')[0] === date);
+            if (offDay) {
+                return {
+                    status: 'off',
+                    reason: offDay.reason || 'Off day',
+                    cssClass: 'day-off',
+                    indicator: 'status-off'
+                };
+            }
+            
+            // Check bookings
+            const bookingsOnDate = bookings.filter(booking => {
+                const bookingDate = booking.event_date?.split('T')[0];
+                return bookingDate === date;
+            });
+            
+            if (bookingsOnDate.length === 0) {
+                return {
+                    status: 'available',
+                    reason: 'Available for booking',
+                    cssClass: 'day-available',
+                    indicator: 'status-available'
+                };
+            }
+            
+            // Analyze booking statuses
+            const confirmedBookings = bookingsOnDate.filter(b => b.status === 'confirmed').length;
+            const pendingBookings = bookingsOnDate.filter(b => 
+                b.status === 'pending' || b.status === 'request'
+            ).length;
+            const maxBookingsPerDay = 1;
+            
+            if (confirmedBookings >= maxBookingsPerDay) {
+                return {
+                    status: 'fully_booked',
+                    reason: `Fully booked (${confirmedBookings} confirmed)`,
+                    cssClass: 'day-fully-booked',
+                    indicator: 'status-fully-booked',
+                    bookings: bookingsOnDate
+                };
+            } else if (pendingBookings > 0) {
+                return {
+                    status: 'partially_booked',
+                    reason: `Partially booked (${pendingBookings} pending)`,
+                    cssClass: 'day-partially-booked',
+                    indicator: 'status-partially-booked',
+                    bookings: bookingsOnDate
+                };
+            }
+            
+            return {
+                status: 'available',
+                reason: 'Available for booking',
+                cssClass: 'day-available',
+                indicator: 'status-available'
+            };
+        }
+        
+        // Render the calendar
+        function renderCalendar(days, bookings, offDays) {
+            const calendarGrid = document.getElementById('calendarGrid');
+            calendarGrid.innerHTML = '';
+            
+            // Add day headers
+            const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            dayHeaders.forEach(header => {
+                const headerElement = document.createElement('div');
+                headerElement.style.fontWeight = 'bold';
+                headerElement.style.textAlign = 'center';
+                headerElement.style.padding = '10px';
+                headerElement.textContent = header;
+                calendarGrid.appendChild(headerElement);
+            });
+            
+            // Add calendar days
+            days.forEach(day => {
+                const availability = checkDateAvailability(day.date, bookings, offDays);
+                
+                const dayElement = document.createElement('div');
+                dayElement.className = `calendar-day ${availability.cssClass}`;
+                
+                if (day.isPast) dayElement.classList.add('day-past');
+                if (!day.isCurrentMonth) dayElement.classList.add('day-other-month');
+                
+                dayElement.innerHTML = `
+                    <div>${day.day}</div>
+                    <div class="status-indicator ${availability.indicator}"></div>
+                `;
+                
+                dayElement.title = `${day.date}: ${availability.reason}`;
+                
+                if (day.isToday) {
+                    dayElement.style.border = '2px solid #007bff';
+                }
+                
+                calendarGrid.appendChild(dayElement);
+                
+                // Log important dates
+                if (day.date === '2025-10-08' || day.date === '2025-10-31' || day.date === '2025-10-16') {
+                    log(`📅 ${day.date}: ${availability.status} - ${availability.reason}`);
+                }
+            });
+        }
+        
+        // Run the full test
+        async function runFullTest() {
+            clearLog();
+            log('🚀 Starting full calendar availability test...');
+            log(`📊 Testing vendor: ${TEST_VENDOR}`);
+            log(`📅 Calendar month: October 2025`);
+            
+            // Generate calendar days
+            const days = generateCalendarDays();
+            const startDate = days[0].date;
+            const endDate = days[days.length - 1].date;
+            log(`📅 Calendar range: ${startDate} to ${endDate} (${days.length} days)`);
+            
+            // Get data from APIs
+            log('\n📡 Fetching data from backend...');
+            const bookings = await getVendorBookings(TEST_VENDOR);
+            const offDays = await getVendorOffDays(TEST_VENDOR);
+            
+            // Show results summary
+            const testResults = document.getElementById('testResults');
+            testResults.innerHTML = `
+                <p><strong>📊 Data Retrieved:</strong></p>
+                <ul>
+                    <li>Bookings: ${bookings.length}</li>
+                    <li>Off Days: ${offDays.length}</li>
+                    <li>Calendar Days: ${days.length}</li>
+                </ul>
+                
+                <p><strong>📅 Key Test Dates:</strong></p>
+                <ul>
+                    <li>2025-10-08: Expected partially booked (has request booking)</li>
+                    <li>2025-10-31: Expected partially booked (has request booking)</li>
+                    <li>2025-10-16: Expected off day (vendor 2-2025-003 only)</li>
+                </ul>
+            `;
+            
+            if (bookings.length > 0) {
+                log('\n📋 Booking details:');
+                bookings.forEach((booking, i) => {
+                    const date = booking.event_date?.split('T')[0];
+                    log(`  ${i + 1}. ${date}: ${booking.status} - ${booking.service_name}`);
+                });
+            }
+            
+            if (offDays.length > 0) {
+                log('\n🚫 Off day details:');
+                offDays.forEach((offDay, i) => {
+                    const date = offDay.date?.split('T')[0];
+                    log(`  ${i + 1}. ${date}: ${offDay.reason}`);
+                });
+            }
+            
+            // Render the calendar
+            log('\n📅 Rendering calendar with availability data...');
+            renderCalendar(days, bookings, offDays);
+            
+            log('\n✅ Test completed! Check the calendar above to see the results.');
+            
+            // Summary of what should be visible
+            log('\n🎯 Expected Results:');
+            log('- 2025-10-08 should show YELLOW (partially booked with 1 request)');
+            log('- 2025-10-31 should show YELLOW (partially booked with 1 request)');
+            log('- Other October dates should show GREEN (available)');
+            log('- If testing 2-2025-003, 2025-10-16 should show GRAY (off day)');
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            log('📅 Calendar availability debug test loaded');
+            log('👆 Click "Run Full Calendar Test" to start the simulation');
+        });
+    </script>
+</body>
+</html>

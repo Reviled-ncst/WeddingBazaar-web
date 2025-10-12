@@ -603,21 +603,42 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
           );
         }
         
-        if (result && result.success && result.checkoutUrl) {
-          setSource({
-            id: result.sourceId || 'temp-source',
-            checkout_url: result.checkoutUrl,
-            status: 'pending'
-          });
-          
-          setRedirectUrl(result.checkoutUrl);
-          setPaymentStep('redirect');
-          
-          // Redirect to payment page
-          console.log(`🔗 Redirecting to ${selectedMethod} payment page: ${result.checkoutUrl}`);
-          window.location.href = result.checkoutUrl;
-          
-          return;
+        if (result && result.success) {
+          // Handle simulated e-wallet payments
+          if (result.checkoutUrl && result.checkoutUrl.includes('demo') === false && result.checkoutUrl.startsWith('http')) {
+            // Real PayMongo checkout URL - redirect user
+            setSource({
+              id: result.sourceId || 'temp-source',
+              checkout_url: result.checkoutUrl,
+              status: 'pending'
+            });
+            
+            setRedirectUrl(result.checkoutUrl);
+            setPaymentStep('redirect');
+            
+            console.log(`🔗 Redirecting to ${selectedMethod} payment page: ${result.checkoutUrl}`);
+            window.location.href = result.checkoutUrl;
+            
+            return;
+          } else {
+            // Simulated payment - mark as success
+            console.log(`✅ ${selectedMethod} payment simulation completed successfully`);
+            setPaymentStep('success');
+            
+            onPaymentSuccess({
+              payment: result,
+              paymentIntent: result.paymentIntent,
+              amount: amount,
+              currency: currency,
+              method: selectedMethod,
+              status: 'succeeded',
+              transactionId: result.paymentId,
+              formattedAmount: formatAmount(amount),
+              sourceId: result.sourceId
+            });
+            
+            return;
+          }
         } else {
           throw new Error((result && result.error) || `Failed to create ${selectedMethod} payment`);
         }

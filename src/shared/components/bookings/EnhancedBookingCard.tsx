@@ -23,10 +23,10 @@ export interface EnhancedBooking {
   vendorName?: string;
   vendorBusinessName?: string;
   vendorRating?: number;
-  vendorPhone?: string;
-  vendorEmail?: string;
-  coupleName?: string;
-  clientName?: string;
+  vendorPhone?: string | null;
+  vendorEmail?: string | null;
+  coupleName?: string | null;
+  clientName?: string | null;
   eventDate: string;
   formattedEventDate?: string;
   eventLocation: string;
@@ -118,12 +118,26 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
         icon: <CheckCircle className="h-4 w-4" />,
         progress: 60
       },
+      'deposit_paid': {
+        label: 'Deposit Paid',
+        color: 'text-indigo-600',
+        bgColor: 'bg-indigo-50 border-indigo-200',
+        icon: <CreditCard className="h-4 w-4" />,
+        progress: 75
+      },
       'downpayment_paid': {
         label: 'Deposit Paid',
         color: 'text-indigo-600',
         bgColor: 'bg-indigo-50 border-indigo-200',
         icon: <CreditCard className="h-4 w-4" />,
         progress: 75
+      },
+      'fully_paid': {
+        label: 'Fully Paid',
+        color: 'text-emerald-600',
+        bgColor: 'bg-emerald-50 border-emerald-200',
+        icon: <CheckCircle className="h-4 w-4" />,
+        progress: 90
       },
       'paid_in_full': {
         label: 'Fully Paid',
@@ -153,6 +167,17 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
   const statusConfig = getStatusConfig(booking.status);
   const urgencyLevel = booking.daysUntilEvent && booking.daysUntilEvent <= 30 ? 'urgent' : 
                       booking.daysUntilEvent && booking.daysUntilEvent <= 90 ? 'soon' : 'normal';
+
+  // Debug logging for payment button visibility
+  if (statusConfig.label === 'Quote Accepted') {
+    console.log('🔍 Quote Accepted booking debug:', {
+      bookingId: booking.id,
+      status: booking.status,
+      statusLabel: statusConfig.label,
+      userType,
+      shouldShowPayment: userType === 'individual' && (booking.status === 'quote_accepted' || statusConfig.label === 'Quote Accepted')
+    });
+  }
 
   return (
     <motion.div
@@ -327,6 +352,7 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
             </button>
           )}
           
+          {/* Quote Acceptance Button */}
           {userType === 'individual' && booking.status === 'quote_sent' && (
             <button
               onClick={() => onAcceptQuote?.(booking)}
@@ -337,13 +363,45 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
             </button>
           )}
           
-          {userType === 'individual' && (booking.status === 'confirmed' || booking.status === 'downpayment_paid') && (
+          {/* Payment Buttons - Enhanced workflow */}
+          {userType === 'individual' && (booking.status === 'quote_accepted' || statusConfig.label === 'Quote Accepted') && (
+            <div className="flex gap-1">
+              <button
+                onClick={() => onPayment?.(booking, 'downpayment')}
+                className="px-2 py-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 hover:from-blue-600 hover:via-indigo-600 hover:to-blue-700 text-white rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden group text-xs"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <span className="relative z-10">Pay Deposit</span>
+              </button>
+              <button
+                onClick={() => onPayment?.(booking, 'full_payment')}
+                className="px-2 py-2 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 hover:from-emerald-600 hover:via-green-600 hover:to-emerald-700 text-white rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden group text-xs"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <span className="relative z-10">Pay Full</span>
+              </button>
+            </div>
+          )}
+          
+          {/* Remaining Balance Payment Button */}
+          {userType === 'individual' && (booking.status === 'deposit_paid' || booking.status === 'downpayment_paid') && (
             <button
-              onClick={() => onPayment?.(booking, booking.status === 'confirmed' ? 'downpayment' : 'remaining_balance')}
+              onClick={() => onPayment?.(booking, 'remaining_balance')}
               className="px-3 py-2 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 hover:from-emerald-600 hover:via-green-600 hover:to-emerald-700 text-white rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden group text-sm"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <span className="relative z-10">{booking.status === 'confirmed' ? 'Pay Deposit' : 'Pay Balance'}</span>
+              <span className="relative z-10">Pay Balance</span>
+            </button>
+          )}
+          
+          {/* Legacy payment button for confirmed status */}
+          {userType === 'individual' && booking.status === 'confirmed' && !booking.status.includes('accepted') && (
+            <button
+              onClick={() => onPayment?.(booking, 'downpayment')}
+              className="px-3 py-2 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 hover:from-emerald-600 hover:via-green-600 hover:to-emerald-700 text-white rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 relative overflow-hidden group text-sm"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <span className="relative z-10">Pay Deposit</span>
             </button>
           )}
           

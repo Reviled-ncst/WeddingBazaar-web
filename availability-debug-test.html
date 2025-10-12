@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Availability Service Debug Test</title>
+</head>
+<body>
+    <h1>Availability Service Debug Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const API_URL = 'https://weddingbazaar-web.onrender.com';
+        const results = document.getElementById('results');
+        
+        function log(message, data = null) {
+            console.log(message, data);
+            const div = document.createElement('div');
+            div.innerHTML = `<strong>${message}</strong>${data ? '<pre>' + JSON.stringify(data, null, 2) + '</pre>' : ''}`;
+            results.appendChild(div);
+        }
+        
+        async function testAvailabilityCheck() {
+            try {
+                log('🔍 Testing direct API call to booking endpoint...');
+                
+                const vendorId = '2';
+                const testDate = '2025-10-31'; // Date we know has a booking
+                
+                log(`📅 Testing availability for vendor ${vendorId} on ${testDate}`);
+                
+                // Test the booking endpoint directly
+                const response = await fetch(`${API_URL}/api/bookings/vendor/${vendorId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                log(`✅ Response status: ${response.status} ${response.statusText}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log('📊 Response data:', data);
+                
+                const bookings = data.bookings || [];
+                log(`📋 Found ${bookings.length} total bookings for vendor ${vendorId}`);
+                
+                // Filter bookings for the specific date
+                const bookingsOnDate = bookings.filter(booking => {
+                    const bookingDate = booking.event_date?.split('T')[0]; // Get YYYY-MM-DD part
+                    return bookingDate === testDate;
+                });
+                
+                log(`📅 Found ${bookingsOnDate.length} bookings on ${testDate}:`, bookingsOnDate);
+                
+                // Check availability logic
+                const confirmedBookings = bookingsOnDate.filter(booking => booking.status === 'confirmed').length;
+                const pendingBookings = bookingsOnDate.filter(booking => 
+                    booking.status === 'pending' || booking.status === 'request'
+                ).length;
+                
+                log(`📊 Booking counts: ${confirmedBookings} confirmed, ${pendingBookings} pending/request`);
+                
+                let isAvailable = true;
+                let reason = '';
+                
+                if (confirmedBookings >= 1) {
+                    isAvailable = false;
+                    reason = `Already booked (${confirmedBookings} confirmed booking${confirmedBookings > 1 ? 's' : ''})`;
+                } else if (pendingBookings > 0) {
+                    isAvailable = true;
+                    reason = `Available with ${pendingBookings} pending request${pendingBookings > 1 ? 's' : ''}`;
+                } else {
+                    isAvailable = true;
+                    reason = 'Available for booking';
+                }
+                
+                const availabilityResult = {
+                    date: testDate,
+                    vendorId: vendorId,
+                    isAvailable: isAvailable,
+                    reason: reason,
+                    currentBookings: bookingsOnDate.length,
+                    maxBookingsPerDay: 1,
+                    existingBookings: bookingsOnDate
+                };
+                
+                log('🎯 Final availability result:', availabilityResult);
+                
+                // Test off-days endpoint
+                log('🗓️ Testing off-days endpoint...');
+                try {
+                    const offDaysResponse = await fetch(`${API_URL}/api/vendors/${vendorId}/off-days`);
+                    log(`✅ Off-days response: ${offDaysResponse.status} ${offDaysResponse.statusText}`);
+                    
+                    if (offDaysResponse.ok) {
+                        const offDaysData = await offDaysResponse.json();
+                        log('📋 Off-days data:', offDaysData);
+                    }
+                } catch (offDaysError) {
+                    log('❌ Off-days endpoint error:', offDaysError.message);
+                }
+                
+            } catch (error) {
+                log('❌ Error during availability check:', error.message);
+                console.error('Full error:', error);
+            }
+        }
+        
+        // Run the test
+        testAvailabilityCheck();
+    </script>
+</body>
+</html>

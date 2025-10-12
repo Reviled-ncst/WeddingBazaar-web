@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    
+    <title>Calendar Availability Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #fce7f3 0%, #f3e8ff 100%);
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+        .test-result {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #ccc;
+        }
+        .success { background: #d4edda; border-color: #28a745; color: #155724; }
+        .error { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+        .warning { background: #fff3cd; border-color: #ffc107; color: #856404; }
+        .info { background: #d1ecf1; border-color: #17a2b8; color: #0c5460; }
+        button {
+            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 10px 5px;
+        }
+        button:hover { transform: scale(1.05); }
+        .calendar-debug {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin: 20px 0;
+        }
+        .day-debug {
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 12px;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .day-available { background: #d4edda; color: #155724; }
+        .day-booked { background: #f8d7da; color: #721c24; }
+        .day-loading { background: #fff3cd; color: #856404; }
+        .day-past { background: #f8f9fa; color: #6c757d; }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 11px;
+            white-space: pre-wrap;
+        }
+        .day-header {
+            font-weight: bold;
+            background: #e9ecef;
+            padding: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>📅 Calendar Availability Debug Test</h1>
+        <p>Testing the calendar availability display logic for vendor <strong>2-2025-001</strong></p>
+        
+        <div id="results"></div>
+        
+        <button onclick="testCalendarData()">Test Calendar Availability Data</button>
+        <button onclick="testSpecificMonth()">Test October 2025 Data</button>
+        <button onclick="simulateCalendarLogic()">Simulate Calendar Display Logic</button>
+        
+        <div id="calendarDebug"></div>
+        <div id="rawData"></div>
+    </div>
+
+    <script>
+        const API_URL = 'https://weddingbazaar-web.onrender.com';
+        const VENDOR_ID = '2-2025-001';
+        const MAPPED_VENDOR_ID = '2';
+
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+            console.log(message);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('calendarDebug').innerHTML = '';
+            document.getElementById('rawData').innerHTML = '';
+        }
+
+        // Simulate the exact logic from BookingAvailabilityCalendar
+        async function checkAvailabilityRange(vendorId, startDate, endDate) {
+            const availabilityMap = new Map();
+            const dates = generateDateRange(startDate, endDate);
+            
+            log(`🔍 Checking availability range: ${startDate} to ${endDate} (${dates.length} dates)`);
+            
+            for (const date of dates) {
+                try {
+                    const availability = await checkAvailability(vendorId, date);
+                    availabilityMap.set(date, availability);
+                    
+                    if (!availability.isAvailable) {
+                        log(`❌ ${date}: UNAVAILABLE (${availability.reason})`, 'error');
+                    } else {
+                        log(`✅ ${date}: AVAILABLE`, 'success');
+                    }
+                } catch (error) {
+                    log(`⚠️ Error checking ${date}: ${error.message}`, 'warning');
+                    availabilityMap.set(date, {
+                        date,
+                        vendorId,
+                        isAvailable: true,
+                        reason: 'Available (error checking)',
+                        bookingStatus: 'available'
+                    });
+                }
+            }
+            
+            return availabilityMap;
+        }
+
+        function generateDateRange(startDate, endDate) {
+            const dates = [];
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            
+            for (let current = new Date(start); current <= end; current.setDate(current.getDate() + 1)) {
+                dates.push(current.toISOString().split('T')[0]);
+            }
+            
+            return dates;
+        }
+
+        async function checkAvailability(vendorId, date) {
+            try {
+                const response = await fetch(`${API_URL}/api/bookings/vendor/${MAPPED_VENDOR_ID}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const bookings = data.bookings || [];
+                
+                // Filter bookings for the specific date
+                const bookingsOnDate = bookings.filter(booking => {
+                    const bookingDate = booking.event_date?.split('T')[0];
+                    return bookingDate === date;
+                });
+                
+                const isAvailable = bookingsOnDate.length === 0;
+                
+                return {
+                    date,
+                    vendorId,
+                    isAvailable,
+                    reason: isAvailable ? 'available' : 'booked',
+                    bookingStatus: isAvailable ? 'available' : 'booked',
+                    currentBookings: bookingsOnDate.length,
+                    maxBookingsPerDay: 1,
+                    existingBookings: bookingsOnDate
+                };
+                
+            } catch (error) {
+                return {
+                    date,
+                    vendorId,
+                    isAvailable: true,
+                    reason: 'error_default_available',
+                    bookingStatus: 'available',
+                    error: error.message
+                };
+            }
+        }
+
+        async function testCalendarData() {
+            clearResults();
+            log('📅 Testing Calendar Availability Data Logic...', 'info');
+            
+            // Test the exact date range that the calendar would use for October 2025
+            const currentDate = new Date(2025, 9, 1); // October 2025
+            const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+            
+            const startStr = startDate.toISOString().split('T')[0];
+            const endStr = endDate.toISOString().split('T')[0];
+            
+            log(`📊 Calendar date range: ${startStr} to ${endStr}`, 'info');
+            
+            const availabilityMap = await checkAvailabilityRange(VENDOR_ID, startStr, endStr);
+            
+            log(`📋 Availability map created with ${availabilityMap.size} entries`, 'info');
+            
+            // Display raw data
+            const rawDataDiv = document.getElementById('rawData');
+            rawDataDiv.innerHTML = `
+                <h3>Raw Availability Data:</h3>
+                <pre>${JSON.stringify(Array.from(availabilityMap.entries()), null, 2)}</pre>
+            `;
+        }
+
+        async function testSpecificMonth() {
+            clearResults();
+            log('🗓️ Testing October 2025 Calendar Display...', 'info');
+            
+            // Generate the exact calendar that would be shown
+            const currentDate = new Date(2025, 9, 1); // October 2025
+            const availabilityMap = await checkAvailabilityRange(
+                VENDOR_ID, 
+                '2025-10-01', 
+                '2025-10-31'
+            );
+            
+            // Generate 42 days (6 weeks) like the real calendar
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay()); // Start from Sunday
+            
+            const calendarDebug = document.getElementById('calendarDebug');
+            calendarDebug.innerHTML = '<h3>October 2025 Calendar Simulation:</h3>';
+            
+            // Add day headers
+            const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            daysOfWeek.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'day-header';
+                dayHeader.textContent = day;
+                calendarDebug.appendChild(dayHeader);
+            });
+            
+            const currentDateIter = new Date(startDate);
+            
+            for (let i = 0; i < 42; i++) {
+                const dateStr = currentDateIter.toISOString().split('T')[0];
+                const isCurrentMonth = currentDateIter.getMonth() === month;
+                const availability = availabilityMap.get(dateStr);
+                
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'day-debug';
+                
+                if (!isCurrentMonth) {
+                    dayDiv.className += ' day-past';
+                    dayDiv.innerHTML = `<div>${currentDateIter.getDate()}</div><div>Other Month</div>`;
+                } else if (!availability) {
+                    dayDiv.className += ' day-loading';
+                    dayDiv.innerHTML = `<div>${currentDateIter.getDate()}</div><div>Loading...</div>`;
+                } else if (!availability.isAvailable) {
+                    dayDiv.className += ' day-booked';
+                    dayDiv.innerHTML = `<div><strong>${currentDateIter.getDate()}</strong></div><div>❌ BOOKED</div><div>${availability.reason}</div>`;
+                } else {
+                    dayDiv.className += ' day-available';
+                    dayDiv.innerHTML = `<div><strong>${currentDateIter.getDate()}</strong></div><div>✅ Available</div>`;
+                }
+                
+                calendarDebug.appendChild(dayDiv);
+                currentDateIter.setDate(currentDateIter.getDate() + 1);
+            }
+        }
+
+        async function simulateCalendarLogic() {
+            clearResults();
+            log('🧠 Simulating Calendar Component Logic...', 'info');
+            
+            // Test the exact scenario: vendor 2-2025-001 in October 2025
+            const vendorId = '2-2025-001';
+            const currentDate = new Date(2025, 9, 1); // October 2025
+            
+            log(`📅 Simulating calendar for vendor ${vendorId} in ${currentDate.toLocaleDateString()}`, 'info');
+            
+            // Step 1: Load availability data (like useEffect)
+            const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+            
+            const startStr = startDate.toISOString().split('T')[0];
+            const endStr = endDate.toISOString().split('T')[0];
+            
+            log(`🔄 Step 1: Loading availability data for ${startStr} to ${endStr}`, 'info');
+            
+            const availabilityMap = await checkAvailabilityRange(vendorId, startStr, endStr);
+            
+            log(`✅ Step 2: Availability map loaded with ${availabilityMap.size} entries`, 'success');
+            
+            // Step 3: Check specific known dates
+            const knownBookedDates = ['2025-10-31', '2025-10-08'];
+            
+            log(`🎯 Step 3: Checking known booked dates...`, 'info');
+            
+            for (const date of knownBookedDates) {
+                const availability = availabilityMap.get(date);
+                if (availability) {
+                    log(`📊 ${date}: ${availability.isAvailable ? 'AVAILABLE' : 'BOOKED'} (${availability.reason})`, 
+                        availability.isAvailable ? 'warning' : 'success');
+                } else {
+                    log(`❌ ${date}: NO DATA FOUND IN MAP!`, 'error');
+                }
+            }
+            
+            // Step 4: Show how getDateStatus would work
+            log(`🎨 Step 4: Testing date status calculation...`, 'info');
+            
+            for (const date of knownBookedDates) {
+                const availability = availabilityMap.get(date);
+                if (availability) {
+                    const status = getDateStatus(availability);
+                    log(`🎨 ${date} status: ${status.status} (${status.label})`, 
+                        status.status === 'unavailable' ? 'error' : 'success');
+                }
+            }
+        }
+
+        function getDateStatus(availability) {
+            if (!availability) {
+                return {
+                    status: 'loading',
+                    color: 'bg-gray-50 text-gray-500',
+                    label: 'Loading...'
+                };
+            }
+            
+            if (!availability.isAvailable) {
+                return {
+                    status: 'unavailable',
+                    color: 'bg-red-100 text-red-700 border-red-200',
+                    label: availability.reason || 'Unavailable'
+                };
+            }
+            
+            if (availability.currentBookings && availability.currentBookings > 0) {
+                return {
+                    status: 'partial',
+                    color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+                    label: `${availability.currentBookings}/${availability.maxBookingsPerDay || 1} booked`
+                };
+            }
+            
+            return {
+                status: 'available',
+                color: 'bg-green-100 text-green-700 border-green-200',
+                label: 'Available'
+            };
+        }
+
+        window.onload = () => {
+            log('📅 Calendar Availability Debug Test Ready!', 'info');
+            log(`🏪 Testing Vendor: ${VENDOR_ID}`, 'info');
+            log('Click a test button to start debugging...', 'info');
+        };
+    </script>
+</body>
+</html>

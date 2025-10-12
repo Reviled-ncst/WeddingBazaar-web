@@ -1,0 +1,45 @@
+{
+  "timestamp": "2025-10-11T17:56:56.699Z",
+  "report": {
+    "summary": {
+      "total": 4,
+      "passed": 0,
+      "failed": 3,
+      "skipped": 0,
+      "warnings": 1,
+      "successRate": 0
+    },
+    "results": [
+      {
+        "test": "ENHANCED_STATUS_UPDATE",
+        "status": "FAIL",
+        "message": "Enhanced status updates failed: 0/6 (0.0%)",
+        "data": null,
+        "timestamp": "2025-10-11T17:56:56.307Z"
+      },
+      {
+        "test": "INDIVIDUAL_BOOKING_RETRIEVAL",
+        "status": "FAIL",
+        "message": "Individual booking retrieval failed: 404 - {\"success\":false,\"error\":\"API endpoint not found: GET /api/bookings/662340\",\"timestamp\":\"2025-10-11T17:56:56.756Z\",\"availableEndpoints\":{\"health\":\"GET /api/health\",\"ping\":\"GET /api/ping\",\"auth\":\"POST /api/auth/login, POST /api/auth/verify\",\"conversations\":\"GET /api/conversations/:userId, GET /api/conversations/:id/messages, POST /api/conversations/:id/messages\",\"services\":\"GET /api/services, GET /api/services/vendor/:vendorId, POST /api/services, PUT /api/services/:id, DELETE /api/services/:id\",\"vendors\":\"GET /api/vendors, GET /api/vendors/featured, GET /api/vendors/:id, GET /api/vendors/:id/services\",\"vendorOffDays\":\"GET /api/vendors/:vendorId/off-days, POST /api/vendors/:vendorId/off-days, POST /api/vendors/:vendorId/off-days/bulk, DELETE /api/vendors/:vendorId/off-days/:offDayId, GET /api/vendors/:vendorId/off-days/count\",\"bookings\":\"GET /api/bookings/vendor/:vendorId, GET /api/bookings/user/:userId, GET /api/bookings/stats, POST /api/bookings, PATCH /api/bookings/:id/status\",\"notifications\":\"GET /api/notifications/vendor/:vendorId, GET /api/notifications/user/:userId, POST /api/notifications, PATCH /api/notifications/:id/read\",\"debug\":\"GET /api/debug/users, GET /api/debug/tables, GET /api/debug/schema/:tableName, GET /api/debug/sample/:tableName\"}}",
+        "data": null,
+        "timestamp": "2025-10-11T17:56:56.433Z"
+      },
+      {
+        "test": "QUOTE_WORKFLOW_METHODS",
+        "status": "FAIL",
+        "message": "Quote workflow failed: 400 - {\"success\":false,\"error\":\"Invalid status. Must be one of: pending, confirmed, cancelled, completed\",\"timestamp\":\"2025-10-11T17:56:56.882Z\"}",
+        "data": null,
+        "timestamp": "2025-10-11T17:56:56.555Z"
+      },
+      {
+        "test": "SCHEMA_FALLBACK_HANDLING",
+        "status": "WARN",
+        "message": "Schema fallback needed but error still visible - check implementation",
+        "data": {
+          "error": "{\"success\":false,\"error\":\"column \\\"status_reason\\\" of relation \\\"bookings\\\" does not exist\",\"timestamp\":\"2025-10-11T17:56:57.019Z\"}"
+        },
+        "timestamp": "2025-10-11T17:56:56.697Z"
+      }
+    ]
+  }
+}
