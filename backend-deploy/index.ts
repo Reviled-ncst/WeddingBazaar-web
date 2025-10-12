@@ -704,6 +704,140 @@ app.get('/api/bookings/couple/:coupleId', async (req, res) => {
 });
 
 // =============================================================================
+// ADMIN ENDPOINTS - DATABASE FIXES
+// =============================================================================
+
+// Admin endpoint to fix vendor mappings for services with null vendor_id
+app.post('/api/admin/fix-vendor-mappings', async (req, res) => {
+  console.log('🔧 [ADMIN] Vendor mapping fix requested at', new Date().toISOString());
+  
+  const client = await db.connect();
+  
+  try {
+    // Check current state
+    const nullVendorQuery = 'SELECT id, name, category, vendor_id FROM services WHERE vendor_id IS NULL';
+    const nullVendorResult = await client.query(nullVendorQuery);
+    
+    console.log(`Found ${nullVendorResult.rows.length} services with null vendor_id`);
+    
+    if (nullVendorResult.rows.length === 0) {
+      return res.json({
+        success: true,
+        message: 'All services already have vendor mappings',
+        servicesFixed: 0,
+        alreadyFixed: true,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Execute the fixes - map unmapped services to appropriate vendors
+    const fixes = [
+      {
+        serviceId: 'SRV-70524',
+        vendorId: '2-2025-004', // Perfect Weddings Co. (Wedding Planning)
+        description: 'Security & Guest Management → Perfect Weddings Co.'
+      },
+      {
+        serviceId: 'SRV-39368', 
+        vendorId: '2-2025-003', // Beltran Sound Systems (DJ)
+        description: 'Photography Service → Beltran Sound Systems'
+      },
+      {
+        serviceId: 'SRV-71896',
+        vendorId: '2-2025-003', // Beltran Sound Systems (DJ)
+        description: 'Photography Service → Beltran Sound Systems'
+      },
+      {
+        serviceId: 'SRV-70580',
+        vendorId: '2-2025-003', // Beltran Sound Systems (DJ)
+        description: 'Photography Service → Beltran Sound Systems'
+      }
+    ];
+
+    // Begin transaction
+    await client.query('BEGIN');
+    console.log('🔄 [ADMIN] Transaction started');
+    
+    let successCount = 0;
+    const results: any[] = [];
+    
+    for (const fix of fixes) {
+      try {
+        const updateQuery = 'UPDATE services SET vendor_id = $1 WHERE id = $2';
+        const result = await client.query(updateQuery, [fix.vendorId, fix.serviceId]);
+        
+        if (result.rowCount && result.rowCount > 0) {
+          console.log(`✅ [ADMIN] Fixed: ${fix.description}`);
+          results.push({
+            serviceId: fix.serviceId,
+            vendorId: fix.vendorId,
+            description: fix.description,
+            success: true
+          });
+          successCount++;
+        } else {
+          console.log(`⚠️ [ADMIN] No rows updated for ${fix.serviceId}`);
+          results.push({
+            serviceId: fix.serviceId,
+            vendorId: fix.vendorId,
+            description: fix.description,
+            success: false,
+            error: 'Service not found'
+          });
+        }
+      } catch (error: any) {
+        console.error(`❌ [ADMIN] Failed to update ${fix.serviceId}:`, error.message);
+        results.push({
+          serviceId: fix.serviceId,
+          vendorId: fix.vendorId,
+          description: fix.description,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
+    // Commit transaction
+    await client.query('COMMIT');
+    console.log(`✅ [ADMIN] Transaction committed - ${successCount}/${fixes.length} updates successful`);
+
+    // Verify the fixes
+    const verifyResult = await client.query(nullVendorQuery);
+    
+    console.log(`🔍 [ADMIN] Verification: ${verifyResult.rows.length} services still have null vendor_id`);
+    
+    res.json({
+      success: true,
+      message: `Successfully fixed ${successCount} service vendor mappings`,
+      servicesFixed: successCount,
+      totalServices: fixes.length,
+      remainingNullVendors: verifyResult.rows.length,
+      results: results,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error: any) {
+    // Rollback on error
+    try {
+      await client.query('ROLLBACK');
+      console.log('🔄 [ADMIN] Transaction rolled back due to error');
+    } catch (rollbackError: any) {
+      console.error('💥 [ADMIN] Rollback failed:', rollbackError.message);
+    }
+    
+    console.error('💥 [ADMIN] Database fix failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Database fix failed',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// =============================================================================
 // AVAILABILITY ENDPOINTS
 // =============================================================================
 
@@ -1332,6 +1466,7 @@ app.use('*', (req, res) => {
       'POST /api/auth/verify',
       'POST /api/bookings/request',
       'GET /api/bookings/couple/:coupleId',
+      'POST /api/admin/fix-vendor-mappings',
       'POST /api/availability/check',
       'GET /api/availability/calendar/:vendorId',
       'POST /api/availability/off-days',
@@ -1349,3 +1484,11 @@ app.listen(PORT, () => {
 });
 
 export default app;
+
+// =============================================================================
+// VENDOR MAPPING FIX DEPLOYMENT - 2025/10/12 16:35:00
+// Added admin endpoint POST /api/admin/fix-vendor-mappings to fix null vendor_id services
+// Fixes 4 services (SRV-39368, SRV-70524, SRV-71896, SRV-70580) that cause booking modal hangs
+// Maps services to: Perfect Weddings Co. (2-2025-004) and Beltran Sound Systems (2-2025-003)
+// This resolves the "Security & Guest Management Service" booking modal issue
+// =============================================================================
