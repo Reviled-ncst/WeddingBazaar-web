@@ -557,8 +557,8 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Generate unique booking ID
-    const bookingId = Date.now();
+    // Generate unique booking ID (use smaller integer)
+    const bookingId = Math.floor(Date.now() / 1000); // Use seconds instead of milliseconds
     
     const booking = await sql`
       INSERT INTO bookings (
@@ -617,8 +617,8 @@ router.post('/request', async (req, res) => {
       });
     }
     
-    // Generate unique booking ID
-    const bookingId = Date.now();
+    // Generate unique booking ID (use smaller integer)
+    const bookingId = Math.floor(Date.now() / 1000); // Use seconds instead of milliseconds
     
     const booking = await sql`
       INSERT INTO bookings (
