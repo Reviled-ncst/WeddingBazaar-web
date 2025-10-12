@@ -16,6 +16,7 @@ const receiptsRoutes = require('./routes/receipts.cjs');
 const notificationRoutes = require('./routes/notifications.cjs');
 const debugRoutes = require('./routes/debug.cjs');
 const bookingsTestRoutes = require('./routes/bookings-test.cjs');
+const adminRoutes = require('./routes/admin.cjs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -163,6 +164,7 @@ app.use('/api/payments', paymentsRoutes);
 app.use('/api/receipts', receiptsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/debug', debugRoutes);
+app.use('/api/admin', adminRoutes); // Add admin routes
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {
