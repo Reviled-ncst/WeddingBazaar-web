@@ -120,7 +120,7 @@ router.post('/', async (req, res) => {
     
     const serviceId = `SRV-${Date.now()}`;
     
-    // Handle images array properly - PostgreSQL expects JSON, not stringified JSON
+    // Handle images array properly - PostgreSQL text[] expects array, not JSON string
     let processedImages;
     if (typeof images === 'string') {
       try {
@@ -152,7 +152,7 @@ router.post('/', async (req, res) => {
         images, is_active, featured, location, price_range, created_at, updated_at
       ) VALUES (
         ${serviceId}, ${finalVendorId}, ${finalTitle}, ${description}, ${category}, ${price || 0},
-        ${JSON.stringify(processedImages)}, ${is_active}, ${featured}, 
+        ${processedImages}, ${is_active}, ${featured}, 
         ${location || 'Philippines'}, ${price_range || '₱'}, NOW(), NOW()
       ) RETURNING *
     `;

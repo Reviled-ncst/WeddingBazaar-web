@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final JSON Array Fix Test - Service Creation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            color: #4a5568;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f7fafc;
+            border-left: 4px solid #4299e1;
+        }
+        button {
+            background: linear-gradient(135deg, #4299e1, #667eea);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(66, 153, 225, 0.3);
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { background: #c6f6d5; border: 2px solid #38a169; }
+        .error { background: #fed7d7; border: 2px solid #e53e3e; }
+        .info { background: #bee3f8; border: 2px solid #3182ce; }
+        .loading {
+            background: #faf089;
+            border: 2px solid #d69e2e;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Final JSON Array Fix Test</h1>
+        <p><strong>CRITICAL FIX:</strong> Testing PostgreSQL JSON array handling for service images</p>
+        
+        <div class="test-section">
+            <h3>🎯 Test 1: Service Creation with Multiple Images</h3>
+            <button onclick="testServiceCreationWithImages()">Create Service with Images Array</button>
+            <div id="test1Result" class="result info">Ready to test...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Test 2: Service Creation with String Images</h3>
+            <button onclick="testServiceCreationWithStringImages()">Create Service with JSON String</button>
+            <div id="test2Result" class="result info">Ready to test...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Test 3: Service Creation with Empty Images</h3>
+            <button onclick="testServiceCreationWithEmptyImages()">Create Service with Empty Array</button>
+            <div id="test3Result" class="result info">Ready to test...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Backend Status Check</h3>
+            <button onclick="checkBackendStatus()">Check Backend Health</button>
+            <div id="statusResult" class="result info">Ready to check...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com/api';
+        const LOCAL_BASE = 'http://localhost:3001/api';
+        
+        // Try production first, fallback to local
+        let currentBase = API_BASE;
+
+        async function makeRequest(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${currentBase}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                return { response, data, success: response.ok };
+            } catch (error) {
+                if (currentBase === API_BASE) {
+                    console.log('Production failed, trying local...');
+                    currentBase = LOCAL_BASE;
+                    return makeRequest(endpoint, options);
+                }
+                throw error;
+            }
+        }
+
+        async function testServiceCreationWithImages() {
+            const resultDiv = document.getElementById('test1Result');
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '🔄 Testing service creation with images array...';
+
+            const testService = {
+                vendor_id: 'test-vendor-123',
+                title: 'Test Photography Service',
+                description: 'Professional wedding photography with multiple sample images',
+                category: 'Photography',
+                price: 25000,
+                images: [
+                    'https://images.unsplash.com/photo-1519741497674-611481863552?w=400',
+                    'https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=400',
+                    'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400'
+                ],
+                location: 'Metro Manila, Philippines',
+                price_range: '₱20,000 - ₱30,000',
+                is_active: true,
+                featured: false
+            };
+
+            try {
+                const { data, success } = await makeRequest('/services', {
+                    method: 'POST',
+                    body: JSON.stringify(testService)
+                });
+
+                if (success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ SUCCESS: Service created successfully!
+                    
+Service ID: ${data.service?.id}
+Title: ${data.service?.title}
+Images: ${JSON.stringify(data.service?.images, null, 2)}
+Location: ${data.service?.location}
+Price Range: ${data.service?.price_range}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ FAILED: ${data.error}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+
+        async function testServiceCreationWithStringImages() {
+            const resultDiv = document.getElementById('test2Result');
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '🔄 Testing service creation with JSON string images...';
+
+            const testService = {
+                vendor_id: 'test-vendor-456',
+                title: 'Test Catering Service',
+                description: 'Professional catering with stringified images array',
+                category: 'Catering',
+                price: 35000,
+                images: JSON.stringify([
+                    'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400',
+                    'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400'
+                ]),
+                location: 'Quezon City, Philippines',
+                price_range: '₱30,000 - ₱40,000',
+                is_active: true,
+                featured: true
+            };
+
+            try {
+                const { data, success } = await makeRequest('/services', {
+                    method: 'POST',
+                    body: JSON.stringify(testService)
+                });
+
+                if (success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ SUCCESS: Service created with string images!
+                    
+Service ID: ${data.service?.id}
+Title: ${data.service?.title}
+Images: ${JSON.stringify(data.service?.images, null, 2)}
+Location: ${data.service?.location}
+Price Range: ${data.service?.price_range}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ FAILED: ${data.error}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+
+        async function testServiceCreationWithEmptyImages() {
+            const resultDiv = document.getElementById('test3Result');
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '🔄 Testing service creation with empty images array...';
+
+            const testService = {
+                vendor_id: 'test-vendor-789',
+                title: 'Test Venue Service',
+                description: 'Beautiful wedding venue with no images yet',
+                category: 'Venue',
+                price: 50000,
+                images: [],
+                location: 'Tagaytay, Philippines',
+                price_range: '₱45,000 - ₱55,000',
+                is_active: true,
+                featured: false
+            };
+
+            try {
+                const { data, success } = await makeRequest('/services', {
+                    method: 'POST',
+                    body: JSON.stringify(testService)
+                });
+
+                if (success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ SUCCESS: Service created with empty images!
+                    
+Service ID: ${data.service?.id}
+Title: ${data.service?.title}
+Images: ${JSON.stringify(data.service?.images, null, 2)}
+Location: ${data.service?.location}
+Price Range: ${data.service?.price_range}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ FAILED: ${data.error}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+
+        async function checkBackendStatus() {
+            const resultDiv = document.getElementById('statusResult');
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '🔄 Checking backend health...';
+
+            try {
+                const { data: healthData } = await makeRequest('/health');
+                const { data: pingData } = await makeRequest('/ping');
+
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `✅ Backend Status: HEALTHY
+                
+Using: ${currentBase}
+Health Check: ${JSON.stringify(healthData, null, 2)}
+Ping Response: ${JSON.stringify(pingData, null, 2)}`;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Backend Status: ERROR
+                
+Error: ${error.message}
+Attempted: ${currentBase}`;
+            }
+        }
+
+        // Auto-check backend status on load
+        window.onload = () => {
+            setTimeout(checkBackendStatus, 1000);
+        };
+    </script>
+</body>
+</html>
