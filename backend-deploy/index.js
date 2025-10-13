@@ -1744,4 +1744,5 @@ app.post('/api/admin/fix-vendor-mappings', async (req, res) => {
 });
 
 // =============================================================================
-// AVAILABILITY ENDPOINTS
+// AVAILABILITY ENDPOINTS/ /   F o r c e   d e p l o y m e n t  
+ 
