@@ -3,26 +3,38 @@ const { sql } = require('../config/database.cjs');
 
 const router = express.Router();
 
-// Get bookings for a vendor
+// Get bookings for a vendor - SECURITY ENHANCED VERSION
 router.get('/vendor/:vendorId', async (req, res) => {
-  console.log('📅 Getting bookings for vendor:', req.params.vendorId);
+  console.log('� SECURITY-ENHANCED: Getting bookings for vendor:', req.params.vendorId);
   
   try {
-    const { vendorId } = req.params;
+    const requestedVendorId = req.params.vendorId;
+    
+    // CRITICAL SECURITY FIX: For now, we implement basic validation
+    // In production, this should use authentication middleware
+    
+    // SECURITY CHECK 2: Detect malformed user IDs that could cause confusion
+    if (isMalformedUserId(requestedVendorId)) {
+      console.log(`🚨 SECURITY ALERT: Request blocked for malformed vendor ID: ${requestedVendorId}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Invalid vendor ID format detected. Access denied for security.',
+        code: 'MALFORMED_VENDOR_ID',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
     const { page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
     const offset = (page - 1) * limit;
     
-    // Handle both full vendor ID format (2-2025-003) and legacy format (2)
-    // Extract the base number from full ID format for backward compatibility
-    const legacyVendorId = vendorId.includes('-') ? vendorId.split('-')[0] : vendorId;
+    console.log(`🔍 SECURE: Searching for bookings with exact vendor_id: "${requestedVendorId}"`);
     
-    console.log(`🔍 Searching for bookings with vendor_id: "${vendorId}" or "${legacyVendorId}"`);
-    
+    // SECURITY FIX: Only search for exact vendor ID match, no legacy fallback
     let query = `
       SELECT * FROM bookings 
-      WHERE vendor_id = $1 OR vendor_id = $2
+      WHERE vendor_id = $1
     `;
-    let params = [vendorId, legacyVendorId];
+    let params = [requestedVendorId];
     
     if (status && status !== 'all') {
       query += ` AND status = $${params.length + 1}`;
@@ -33,6 +45,18 @@ router.get('/vendor/:vendorId', async (req, res) => {
     params.push(parseInt(limit), parseInt(offset));
     
     const rawBookings = await sql(query, params);
+    
+    // SECURITY VALIDATION: Double-check that all returned bookings belong to requested vendor
+    const securityCheck = rawBookings.every(booking => booking.vendor_id === requestedVendorId);
+    if (!securityCheck) {
+      console.log(`🚨 SECURITY ERROR: Query returned bookings not belonging to vendor ${requestedVendorId}`);
+      return res.status(500).json({
+        success: false,
+        error: 'Data integrity error',
+        code: 'DATA_INTEGRITY_VIOLATION',
+        timestamp: new Date().toISOString()
+      });
+    }
     
     // Process bookings to interpret quote_sent status from notes
     const bookings = rawBookings.map(booking => {
@@ -50,7 +74,7 @@ router.get('/vendor/:vendorId', async (req, res) => {
       return processedBooking;
     });
     
-    console.log(`✅ Found ${bookings.length} bookings for vendor ${vendorId} (searched both "${vendorId}" and "${legacyVendorId}")`);
+    console.log(`✅ SECURE: Found ${bookings.length} bookings for vendor ${requestedVendorId}`);
     
     res.json({
       success: true,
@@ -58,18 +82,41 @@ router.get('/vendor/:vendorId', async (req, res) => {
       count: bookings.length,
       totalPages: Math.ceil(bookings.length / limit),
       currentPage: parseInt(page),
+      vendorId: requestedVendorId,
+      securityEnhanced: true,
       timestamp: new Date().toISOString()
     });
     
   } catch (error) {
-    console.error('❌ Vendor bookings error:', error);
+    console.error('❌ Vendor bookings security error:', error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: 'Internal server error',
       timestamp: new Date().toISOString()
     });
   }
 });
+
+/**
+ * SECURITY UTILITY: Check for malformed vendor IDs that could cause data leakage
+ */
+function isMalformedUserId(userId) {
+  if (!userId || typeof userId !== 'string') return true;
+  
+  // Check for the problematic pattern: "2-2025-001"
+  const problematicPatterns = [
+    /^\d+-\d{4}-\d{3}$/,  // Pattern: number-year-sequence (couple ID format)
+    /^[12]-2025-\d+$/     // Specific pattern causing the issue  
+  ];
+  
+  const isProblematic = problematicPatterns.some(pattern => pattern.test(userId));
+  
+  if (isProblematic) {
+    console.log(`🚨 DETECTED MALFORMED ID: ${userId} matches problematic pattern`);
+  }
+  
+  return isProblematic;
+}
 
 // Get booking statistics
 router.get('/stats', async (req, res) => {
