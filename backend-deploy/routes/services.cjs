@@ -118,7 +118,9 @@ router.post('/', async (req, res) => {
       });
     }
     
-    const serviceId = `SRV-${Date.now()}`;
+    // Generate proper sequential service ID
+    const { getNextServiceId } = require('../utils/id-generation.cjs');
+    const serviceId = await getNextServiceId(sql);
     
     // Handle images array properly - PostgreSQL text[] expects array, not JSON string
     let processedImages;
