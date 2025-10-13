@@ -94,7 +94,9 @@ router.post('/', async (req, res) => {
       price, 
       images = [],
       is_active = true,
-      featured = false
+      featured = false,
+      location,
+      price_range
     } = req.body;
     
     // Use either vendor_id or vendorId
@@ -115,10 +117,11 @@ router.post('/', async (req, res) => {
     const service = await sql`
       INSERT INTO services (
         id, vendor_id, title, description, category, price, 
-        images, is_active, featured, created_at, updated_at
+        images, is_active, featured, location, price_range, created_at, updated_at
       ) VALUES (
         ${serviceId}, ${finalVendorId}, ${finalTitle}, ${description}, ${category}, ${price || 0},
-        ${JSON.stringify(images)}, ${is_active}, ${featured}, NOW(), NOW()
+        ${JSON.stringify(images)}, ${is_active}, ${featured}, 
+        ${location || 'Philippines'}, ${price_range || '₱'}, NOW(), NOW()
       ) RETURNING *
     `;
     
