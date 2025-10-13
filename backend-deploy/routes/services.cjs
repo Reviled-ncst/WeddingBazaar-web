@@ -203,15 +203,25 @@ router.put('/:serviceId', async (req, res) => {
     }
     
     // Build the update using SQL template literals for proper JSON handling
+    // Define valid database columns to prevent "column does not exist" errors
+    const validColumns = ['title', 'description', 'category', 'price', 'images', 'is_active', 'featured', 'location', 'price_range'];
     const setFields = [];
     const values = {};
     
+    console.log('📥 [UPDATE] Request body:', updates);
+    console.log('📋 [UPDATE] Valid columns:', validColumns);
+    
     for (const [key, value] of Object.entries(updates)) {
-      if (key !== 'id' && value !== undefined) {
+      if (key !== 'id' && value !== undefined && validColumns.includes(key)) {
         setFields.push(key);
         values[key] = value;
+        console.log(`✅ [UPDATE] Adding field: ${key} = ${JSON.stringify(value)}`);
+      } else if (key !== 'id' && !validColumns.includes(key)) {
+        console.log(`⚠️ [UPDATE] Skipping invalid field: ${key} (not in database schema)`);
       }
     }
+    
+    console.log('🔧 [UPDATE] Final updates - Fields:', setFields, 'Values:', values);
     
     if (setFields.length === 0) {
       return res.status(400).json({
