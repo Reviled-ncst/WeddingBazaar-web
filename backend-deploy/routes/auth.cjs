@@ -133,8 +133,9 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     console.log('🔐 Password hashed successfully');
     
-    // Generate unique user ID
-    const userId = 'USR-' + Date.now().toString().slice(-8);
+    // Generate unique user ID using proper sequential format
+    const { getNextUserId } = require('../utils/id-generation.cjs');
+    const userId = await getNextUserId(sql, user_type === 'vendor' ? 'vendor' : 'individual');
     
     // Insert user into database
     console.log('💾 Inserting user into database:', { userId, email, user_type });
