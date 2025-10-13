@@ -301,7 +301,7 @@ export const FeaturedVendors: React.FC = () => {
           
           if (response.ok) {
             const result = await response.json();
-            const rawVendors = result.success ? result.data : result.vendors || result;
+            const rawVendors = result.success ? result.vendors : result.vendors || result;
             
             if (Array.isArray(rawVendors) && rawVendors.length > 0) {
               vendorData = rawVendors.map((vendor: any, index: number) => ({

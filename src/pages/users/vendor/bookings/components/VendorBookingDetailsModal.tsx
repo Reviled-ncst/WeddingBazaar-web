@@ -21,7 +21,9 @@ import {
   Target,
   Heart,
   Gift,
-  Bookmark
+  Bookmark,
+  Zap,
+  Settings
 } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
 
@@ -88,7 +90,7 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
   onSendQuote,
   onContactClient
 }) => {
-  const [activeTab, setActiveTab] = useState<'client' | 'event' | 'business'>('client');
+  const [activeTab, setActiveTab] = useState<'client' | 'event' | 'business' | 'actions'>('client');
 
   if (!isOpen || !booking) return null;
 
@@ -308,6 +310,17 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
               )}
             >
               Business & Payment
+            </button>
+            <button
+              onClick={() => setActiveTab('actions')}
+              className={cn(
+                "py-4 px-1 border-b-2 font-medium text-sm",
+                activeTab === 'actions'
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              )}
+            >
+              Actions
             </button>
           </nav>
         </div>
@@ -830,153 +843,237 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
 
           {/* Business & Payment Tab */}
           {activeTab === 'business' && (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <DollarSign className="h-8 w-8 text-green-500" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Payment Processing Only</h3>
+                <p className="text-gray-600 max-w-md">
+                  This section is reserved for payment processing functionality. 
+                  Payment collection and processing will be handled by the client's payment system.
+                </p>
+                <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <p className="text-sm text-green-700 font-medium">
+                    💡 Vendors can send quotes and track booking status, but actual payments are processed separately.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Actions Tab */}
+          {activeTab === 'actions' && (
             <div className="space-y-6">
-              {/* Quote Information */}
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+              {/* Primary Actions */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-green-500" />
-                  Quote & Payment Information
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {booking.totalAmount && (
-                    <div className="bg-white p-4 rounded-lg border border-green-200">
-                      <p className="text-sm text-gray-600">Total Quote</p>
-                      <p className="text-2xl font-bold text-green-600">
-                        {booking.formatted?.totalAmount || `₱${booking.totalAmount.toLocaleString()}`}
-                      </p>
-                    </div>
-                  )}
-                  
-                  <div className="bg-white p-4 rounded-lg border border-blue-200">
-                    <p className="text-sm text-gray-600">Amount Paid</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      ₱{booking.totalPaid.toLocaleString()}
-                    </p>
-                  </div>
-                  
-                  {booking.totalAmount && booking.totalPaid < booking.totalAmount && (
-                    <div className="bg-white p-4 rounded-lg border border-orange-200">
-                      <p className="text-sm text-gray-600">Outstanding</p>
-                      <p className="text-2xl font-bold text-orange-600">
-                        ₱{(booking.totalAmount - booking.totalPaid).toLocaleString()}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Payment Status */}
-              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Info className="w-5 h-5 text-blue-500" />
-                  Payment Status
-                </h3>
-                
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span>Payment Progress</span>
-                    <span className="font-medium">
-                      {booking.totalAmount ? Math.round((booking.totalPaid / booking.totalAmount) * 100) : 0}%
-                    </span>
-                  </div>
-                  
-                  {booking.totalAmount && (
-                    <PaymentProgress totalPaid={booking.totalPaid} totalAmount={booking.totalAmount} />
-                  )}
-                </div>
-              </div>
-
-              {/* Business Analytics */}
-              <div className="bg-gradient-to-r from-slate-50 to-gray-50 rounded-xl p-6 border border-slate-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Info className="w-5 h-5 text-slate-500" />
-                  Business Analytics
+                  <Zap className="w-5 h-5 text-blue-500" />
+                  Primary Actions
                 </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white p-4 rounded-lg border">
-                    <p className="text-sm text-gray-600">Profit Margin</p>
-                    <p className="text-xl font-bold text-green-600">
-                      {booking.totalAmount ? 
-                        `${Math.round(((booking.totalAmount - (booking.totalAmount * 0.3)) / booking.totalAmount) * 100)}%` : 
-                        'N/A'
-                      }
-                    </p>
-                    <p className="text-xs text-gray-500">Estimated after costs</p>
-                  </div>
-                  
-                  <div className="bg-white p-4 rounded-lg border">
-                    <p className="text-sm text-gray-600">Time to Event</p>
-                    <p className="text-xl font-bold text-blue-600">
-                      {(() => {
-                        const eventDate = new Date(booking.eventDate);
-                        const today = new Date();
-                        const diffTime = eventDate.getTime() - today.getTime();
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        return diffDays > 0 ? `${diffDays} days` : 'Past event';
-                      })()}
-                    </p>
-                    <p className="text-xs text-gray-500">Until service delivery</p>
-                  </div>
+                  {vendorActions.map((action) => (
+                    <button
+                      key={action.type}
+                      onClick={action.action}
+                      className={cn(
+                        "p-4 rounded-lg border transition-all duration-200 flex items-center gap-3 group text-left",
+                        action.variant === 'primary' 
+                          ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white border-blue-600 hover:from-blue-600 hover:to-blue-700 hover:shadow-lg transform hover:scale-105" 
+                          : "bg-white border-gray-200 hover:border-blue-300 hover:shadow-md"
+                      )}
+                    >
+                      <div className={cn(
+                        "p-2 rounded-lg",
+                        action.variant === 'primary' 
+                          ? "bg-white/20" 
+                          : "bg-blue-100"
+                      )}>
+                        <action.icon className={cn(
+                          "w-5 h-5",
+                          action.variant === 'primary' 
+                            ? "text-white" 
+                            : "text-blue-600"
+                        )} />
+                      </div>
+                      <div>
+                        <p className={cn(
+                          "font-medium",
+                          action.variant === 'primary' 
+                            ? "text-white" 
+                            : "text-gray-900"
+                        )}>
+                          {action.label}
+                        </p>
+                        <p className={cn(
+                          "text-sm",
+                          action.variant === 'primary' 
+                            ? "text-blue-100" 
+                            : "text-gray-600"
+                        )}>
+                          {action.type === 'send_quote' && 'Create and send a detailed quote to the client'}
+                          {action.type === 'edit_quote' && 'Modify the existing quote details'}
+                          {action.type === 'confirm_booking' && 'Confirm the booking after quote acceptance'}
+                          {action.type === 'start_service' && 'Mark service as started/in progress'}
+                          {action.type === 'complete_service' && 'Mark service as completed'}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Enhanced Business Tools */}
-              <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-6 border border-violet-200">
+              {/* Communication Actions */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-violet-500" />
-                  Business Tools & Documents
+                  <MessageSquare className="w-5 h-5 text-green-500" />
+                  Communication
                 </h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <button className="p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all flex items-center gap-3 group">
-                    <Download className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button
+                    onClick={() => onContactClient?.(booking)}
+                    className="p-4 bg-white rounded-lg border border-gray-200 hover:border-green-300 hover:shadow-md transition-all flex items-center gap-3 group"
+                  >
+                    <div className="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
+                      <MessageSquare className="w-5 h-5 text-green-600" />
+                    </div>
                     <div className="text-left">
-                      <p className="font-medium text-gray-900">Download Invoice</p>
-                      <p className="text-sm text-gray-600">Generate PDF invoice</p>
+                      <p className="font-medium text-gray-900">Message Client</p>
+                      <p className="text-sm text-gray-600">Send direct message</p>
                     </div>
                   </button>
                   
-                  <button className="p-4 bg-white rounded-lg border border-gray-200 hover:border-green-300 hover:shadow-md transition-all flex items-center gap-3 group">
-                    <FileText className="w-5 h-5 text-green-500 group-hover:scale-110 transition-transform" />
+                  <button className="p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all flex items-center gap-3 group">
+                    <div className="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+                      <Phone className="w-5 h-5 text-blue-600" />
+                    </div>
                     <div className="text-left">
-                      <p className="font-medium text-gray-900">Service Contract</p>
-                      <p className="text-sm text-gray-600">View/edit contract</p>
+                      <p className="font-medium text-gray-900">Schedule Call</p>
+                      <p className="text-sm text-gray-600">Book consultation call</p>
                     </div>
                   </button>
                   
                   <button className="p-4 bg-white rounded-lg border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all flex items-center gap-3 group">
-                    <Camera className="w-5 h-5 text-purple-500 group-hover:scale-110 transition-transform" />
+                    <div className="p-2 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
+                      <Mail className="w-5 h-5 text-purple-600" />
+                    </div>
                     <div className="text-left">
-                      <p className="font-medium text-gray-900">Upload Portfolio</p>
-                      <p className="text-sm text-gray-600">Add event photos</p>
+                      <p className="font-medium text-gray-900">Send Email</p>
+                      <p className="text-sm text-gray-600">Professional email</p>
                     </div>
                   </button>
                   
                   <button className="p-4 bg-white rounded-lg border border-gray-200 hover:border-orange-300 hover:shadow-md transition-all flex items-center gap-3 group">
-                    <Mail className="w-5 h-5 text-orange-500 group-hover:scale-110 transition-transform" />
-                    <div className="text-left">
-                      <p className="font-medium text-gray-900">Email Template</p>
-                      <p className="text-sm text-gray-600">Send follow-up</p>
+                    <div className="p-2 bg-orange-100 rounded-lg group-hover:bg-orange-200 transition-colors">
+                      <Calendar className="w-5 h-5 text-orange-600" />
                     </div>
-                  </button>
-                  
-                  <button className="p-4 bg-white rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all flex items-center gap-3 group">
-                    <Clock className="w-5 h-5 text-indigo-500 group-hover:scale-110 transition-transform" />
                     <div className="text-left">
                       <p className="font-medium text-gray-900">Schedule Meeting</p>
-                      <p className="text-sm text-gray-600">Plan consultation</p>
+                      <p className="text-sm text-gray-600">In-person consultation</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Administrative Actions */}
+              <div className="bg-gradient-to-r from-slate-50 to-gray-50 rounded-xl p-6 border border-slate-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-slate-500" />
+                  Administrative Actions
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <button className="p-4 bg-white rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all flex items-center gap-3 group">
+                    <div className="p-2 bg-indigo-100 rounded-lg group-hover:bg-indigo-200 transition-colors">
+                      <FileText className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium text-gray-900">Generate Contract</p>
+                      <p className="text-sm text-gray-600">Create service agreement</p>
                     </div>
                   </button>
                   
-                  <button className="p-4 bg-white rounded-lg border border-gray-200 hover:border-red-300 hover:shadow-md transition-all flex items-center gap-3 group">
-                    <AlertTriangle className="w-5 h-5 text-red-500 group-hover:scale-110 transition-transform" />
+                  <button className="p-4 bg-white rounded-lg border border-gray-200 hover:border-green-300 hover:shadow-md transition-all flex items-center gap-3 group">
+                    <div className="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
+                      <Download className="w-5 h-5 text-green-600" />
+                    </div>
                     <div className="text-left">
-                      <p className="font-medium text-gray-900">Report Issue</p>
-                      <p className="text-sm text-gray-600">Flag problems</p>
+                      <p className="font-medium text-gray-900">Export Data</p>
+                      <p className="text-sm text-gray-600">Download booking info</p>
                     </div>
                   </button>
+                  
+                  <button className="p-4 bg-white rounded-lg border border-gray-200 hover:border-yellow-300 hover:shadow-md transition-all flex items-center gap-3 group">
+                    <div className="p-2 bg-yellow-100 rounded-lg group-hover:bg-yellow-200 transition-colors">
+                      <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium text-gray-900">Flag Issue</p>
+                      <p className="text-sm text-gray-600">Report problems</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status History */}
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-indigo-500" />
+                  Booking Timeline
+                </h3>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">Booking Request Received</p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(booking.createdAt).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
+                    <div className={cn(
+                      "w-3 h-3 rounded-full",
+                      booking.status === 'quote_requested' ? "bg-blue-500" : "bg-gray-300"
+                    )}></div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">Quote Requested</p>
+                      <p className="text-sm text-gray-600">Waiting for vendor quote</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
+                    <div className={cn(
+                      "w-3 h-3 rounded-full",
+                      booking.status === 'quote_sent' ? "bg-blue-500" : "bg-gray-300"
+                    )}></div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">Quote Sent</p>
+                      <p className="text-sm text-gray-600">Waiting for client response</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
+                    <div className={cn(
+                      "w-3 h-3 rounded-full",
+                      booking.status === 'confirmed' ? "bg-green-500" : "bg-gray-300"
+                    )}></div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">Booking Confirmed</p>
+                      <p className="text-sm text-gray-600">Service scheduled</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -331,9 +331,9 @@ class CentralizedBookingAPI {
     console.log('🔄 [API] Updating booking status:', { bookingId, status, message });
 
     try {
-      const result = await this.request<Booking>(`/api/bookings/${bookingId}/status`, {
+      const result = await this.request<Booking>(`/api/bookings/${bookingId}/update-status`, {
         method: 'PUT',
-        body: JSON.stringify({ status, message }),
+        body: JSON.stringify({ status, vendorNotes: message }),
       });
       console.log('✅ [API] Status update successful:', result);
       console.log('🔍 [API] Backend returned booking with status:', result?.status || 'UNDEFINED');
