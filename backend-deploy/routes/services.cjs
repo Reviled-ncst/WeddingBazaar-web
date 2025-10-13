@@ -221,65 +221,43 @@ router.put('/:serviceId', async (req, res) => {
       });
     }
 
-    // Build update query manually for each field
-    let service;
-    if (setFields.includes('images')) {
-      // Handle images field specially
-      service = await sql`
-        UPDATE services SET 
-          images = ${values.images},
-          updated_at = NOW()
-        WHERE id = ${serviceId}
-        RETURNING *
-      `;
-    } else if (setFields.includes('title')) {
-      // Handle title field
-      service = await sql`
-        UPDATE services SET 
-          title = ${values.title},
-          updated_at = NOW()
-        WHERE id = ${serviceId}
-        RETURNING *
-      `;
-    } else if (setFields.includes('description')) {
-      // Handle description field
-      service = await sql`
-        UPDATE services SET 
-          description = ${values.description},
-          updated_at = NOW()
-        WHERE id = ${serviceId}
-        RETURNING *
-      `;
-    } else if (setFields.includes('price')) {
-      // Handle price field
-      service = await sql`
-        UPDATE services SET 
-          price = ${values.price},
-          updated_at = NOW()
-        WHERE id = ${serviceId}
-        RETURNING *
-      `;
-    } else if (setFields.includes('category')) {
-      // Handle category field
-      service = await sql`
-        UPDATE services SET 
-          category = ${values.category},
-          updated_at = NOW()
-        WHERE id = ${serviceId}
-        RETURNING *
-      `;
-    } else {
-      // Handle multiple fields - build query dynamically
-      const updateQuery = `
-        UPDATE services SET 
-          ${setFields.map((field, index) => `${field} = $${index + 1}`).join(', ')},
-          updated_at = NOW()
-        WHERE id = $${setFields.length + 1}
-        RETURNING *
-      `;
-      const queryParams = [...setFields.map(field => values[field]), serviceId];
-      service = await sql(updateQuery, queryParams);
-    }
+    // Build dynamic update query to handle multiple fields at once
+    const updateParts = [];
+    const updateValues = [];
+    let paramIndex = 1;
+    
+    // Handle each field dynamically
+    setFields.forEach(field => {
+      if (field === 'images') {
+        // Handle images array specially
+        updateParts.push(`${field} = $${paramIndex}`);
+        updateValues.push(values[field]);
+      } else {
+        // Handle regular fields
+        updateParts.push(`${field} = $${paramIndex}`);
+        updateValues.push(values[field]);
+      }
+      paramIndex++;
+    });
+    
+    // Add updated_at
+    updateParts.push(`updated_at = NOW()`);
+    
+    // Build the final query
+    const updateQuery = `
+      UPDATE services SET 
+        ${updateParts.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `;
+    
+    // Add serviceId as the last parameter
+    updateValues.push(serviceId);
+    
+    console.log('🔍 [Service Update] Query:', updateQuery);
+    console.log('🔍 [Service Update] Values:', updateValues);
+    
+    const service = await sql(updateQuery, updateValues);
     
     if (service.length === 0) {
       return res.status(404).json({
