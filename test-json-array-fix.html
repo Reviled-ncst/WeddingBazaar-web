@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test JSON Array Fix - Images Field</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; border: none; border-radius: 3px; }
+        .btn-success { background: #28a745; color: white; border: none; border-radius: 3px; }
+        .btn-warning { background: #ffc107; color: #212529; border: none; border-radius: 3px; }
+        .test-images { display: flex; gap: 10px; margin: 10px 0; }
+        .test-images img { width: 100px; height: 80px; object-fit: cover; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 JSON Array Fix Test - Images Field</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Issue Being Fixed</h3>
+            <p><strong>Error:</strong> malformed array literal: "["url1","url2","url3"]"</p>
+            <p><strong>Cause:</strong> Double JSON encoding of images array</p>
+            <p><strong>Fix:</strong> Proper handling of images field in backend</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Test Cases</h3>
+            
+            <h4>1. Test with Multiple Cloudinary Images</h4>
+            <div class="test-images">
+                <img src="https://res.cloudinary.com/dht64xt1g/image/upload/v1760371637/jdkfmrkwk6a56wspzssd.jpg" alt="Test Image 1">
+                <img src="https://res.cloudinary.com/dht64xt1g/image/upload/v1760371637/rbxjfub52rl9yfyciwqf.png" alt="Test Image 2">
+                <img src="https://res.cloudinary.com/dht64xt1g/image/upload/v1760371637/msrlwytq9fxmrbwsdnyl.png" alt="Test Image 3">
+            </div>
+            <button class="btn-primary" onclick="testMultipleImages()">Test Multiple Images</button>
+            <div id="multipleImagesResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h4>2. Test with Single Image</h4>
+            <button class="btn-success" onclick="testSingleImage()">Test Single Image</button>
+            <div id="singleImageResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h4>3. Test with Empty Images Array</h4>
+            <button class="btn-warning" onclick="testEmptyImages()">Test Empty Images</button>
+            <div id="emptyImagesResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🏥 Backend Health Check</h3>
+            <button class="btn-primary" onclick="checkHealth()">Check Backend Health</button>
+            <div id="healthResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com/api';
+
+        async function testMultipleImages() {
+            const resultDiv = document.getElementById('multipleImagesResult');
+            resultDiv.innerHTML = '<p>🔄 Testing multiple images array...</p>';
+
+            try {
+                const testService = {
+                    vendor_id: '2-2025-003',
+                    title: 'Test Service - Multiple Images ' + Date.now(),
+                    description: 'Testing service creation with multiple Cloudinary images',
+                    category: 'photography',
+                    price: 1500.00,
+                    location: 'Manila, Philippines',
+                    price_range: '₱₱',
+                    images: [
+                        "https://res.cloudinary.com/dht64xt1g/image/upload/v1760371637/jdkfmrkwk6a56wspzssd.jpg",
+                        "https://res.cloudinary.com/dht64xt1g/image/upload/v1760371637/rbxjfub52rl9yfyciwqf.png",
+                        "https://res.cloudinary.com/dht64xt1g/image/upload/v1760371637/msrlwytq9fxmrbwsdnyl.png",
+                        "https://res.cloudinary.com/dht64xt1g/image/upload/v1760371637/vgk9rlg91ovhshj2jkqu.png"
+                    ],
+                    is_active: true,
+                    featured: false
+                };
+
+                console.log('🚀 Sending multiple images test:', testService);
+
+                const response = await fetch(`${API_BASE}/services`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testService)
+                });
+
+                const result = await response.json();
+                console.log('📥 Multiple images response:', result);
+
+                if (response.ok && result.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Multiple Images Test Passed!</h4>
+                            <p><strong>Service ID:</strong> ${result.service.id}</p>
+                            <p><strong>Images Count:</strong> ${JSON.parse(result.service.images).length}</p>
+                            <pre>${JSON.stringify(result.service, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error || 'Multiple images test failed');
+                }
+            } catch (error) {
+                console.error('❌ Multiple images test error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Multiple Images Test Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Check the console for full details</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testSingleImage() {
+            const resultDiv = document.getElementById('singleImageResult');
+            resultDiv.innerHTML = '<p>🔄 Testing single image...</p>';
+
+            try {
+                const testService = {
+                    vendor_id: '2-2025-003',
+                    title: 'Test Service - Single Image ' + Date.now(),
+                    description: 'Testing service creation with single image',
+                    category: 'photography',
+                    price: 999.00,
+                    location: 'Cebu, Philippines',
+                    price_range: '₱',
+                    images: ["https://res.cloudinary.com/dht64xt1g/image/upload/v1760371637/jdkfmrkwk6a56wspzssd.jpg"],
+                    is_active: true,
+                    featured: true
+                };
+
+                const response = await fetch(`${API_BASE}/services`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testService)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Single Image Test Passed!</h4>
+                            <p><strong>Service ID:</strong> ${result.service.id}</p>
+                            <p><strong>Image URL:</strong> ${JSON.parse(result.service.images)[0]}</p>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error || 'Single image test failed');
+                }
+            } catch (error) {
+                console.error('❌ Single image test error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Single Image Test Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testEmptyImages() {
+            const resultDiv = document.getElementById('emptyImagesResult');
+            resultDiv.innerHTML = '<p>🔄 Testing empty images array...</p>';
+
+            try {
+                const testService = {
+                    vendor_id: '2-2025-003',
+                    title: 'Test Service - No Images ' + Date.now(),
+                    description: 'Testing service creation with empty images array',
+                    category: 'photography',
+                    price: 500.00,
+                    location: 'Davao, Philippines',
+                    price_range: '₱',
+                    images: [],
+                    is_active: true,
+                    featured: false
+                };
+
+                const response = await fetch(`${API_BASE}/services`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testService)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Empty Images Test Passed!</h4>
+                            <p><strong>Service ID:</strong> ${result.service.id}</p>
+                            <p><strong>Images:</strong> ${result.service.images}</p>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error || 'Empty images test failed');
+                }
+            } catch (error) {
+                console.error('❌ Empty images test error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Empty Images Test Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function checkHealth() {
+            const resultDiv = document.getElementById('healthResult');
+            resultDiv.innerHTML = '<p>🔄 Checking backend health...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const result = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Backend is Healthy</h4>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    throw new Error('Health check failed');
+                }
+            } catch (error) {
+                console.error('❌ Health check error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Backend Health Check Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-check health on load
+        window.onload = () => {
+            setTimeout(checkHealth, 1000); // Wait 1 second for page to load
+        };
+    </script>
+</body>
+</html>

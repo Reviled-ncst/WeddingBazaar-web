@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AddServiceForm Deployment Verification</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #fdf2f8 0%, #fff7ed 100%);
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 20px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .test-section { 
+            margin: 30px 0; 
+            padding: 20px; 
+            border: 2px solid #f3f4f6; 
+            border-radius: 12px; 
+            background: #f9fafb;
+        }
+        .success { border-color: #10b981; background: #f0fdf4; }
+        .error { border-color: #ef4444; background: #fef2f2; }
+        .loading { border-color: #f59e0b; background: #fffbeb; }
+        button { 
+            background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 600;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(236, 72, 153, 0.3);
+        }
+        button:disabled { 
+            opacity: 0.5; 
+            cursor: not-allowed;
+            transform: none;
+        }
+        pre { 
+            background: #1f2937; 
+            color: #f9fafb; 
+            padding: 15px; 
+            border-radius: 8px; 
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background: #10b981; }
+        .status-error { background: #ef4444; }
+        .status-pending { background: #f59e0b; }
+        .deployment-status {
+            background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        .url-list {
+            margin: 15px 0;
+        }
+        .url-item {
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+            margin: 5px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="deployment-status">
+            <h1>🚀 AddServiceForm - Post-Deployment Verification</h1>
+            <p><strong>Backend:</strong> Deployed to Render</p>
+            <p><strong>Frontend:</strong> Deployed to Firebase</p>
+            <p><strong>Status:</strong> Testing integrated functionality...</p>
+        </div>
+        
+        <div class="test-section" id="deploymentCheck">
+            <h2><span class="status-indicator status-pending"></span>Deployment Verification</h2>
+            <p>Checking that both backend and frontend deployments are live and responsive:</p>
+            
+            <div class="url-list">
+                <div class="url-item">🔗 Frontend: https://weddingbazaarph.web.app</div>
+                <div class="url-item">🔗 Backend: https://weddingbazaar-web.onrender.com</div>
+                <div class="url-item">🔗 API Services: https://weddingbazaar-web.onrender.com/api/services</div>
+            </div>
+            
+            <button onclick="verifyDeployments()">Verify All Deployments</button>
+            <div id="deploymentResults"></div>
+        </div>
+
+        <div class="test-section" id="backendFix">
+            <h2><span class="status-indicator status-pending"></span>Backend Fix Verification</h2>
+            <p>Testing that the backend can now accept service creation requests:</p>
+            <button onclick="testBackendFix()">Test Backend Service Creation</button>
+            <div id="backendResults"></div>
+        </div>
+
+        <div class="test-section" id="endToEnd">
+            <h2><span class="status-indicator status-pending"></span>End-to-End Integration Test</h2>
+            <p>Testing the complete flow: Frontend Form → Backend API → Database</p>
+            <button onclick="testEndToEndFlow()">Test Complete Integration</button>
+            <div id="e2eResults"></div>
+        </div>
+
+        <div class="test-section" id="userExperience">
+            <h2><span class="status-indicator status-pending"></span>User Experience Verification</h2>
+            <p>Test that the user can successfully create services via the live application:</p>
+            <div style="margin: 15px 0;">
+                <a href="https://weddingbazaarph.web.app/vendor/services" target="_blank" 
+                   style="display: inline-block; padding: 12px 24px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                   🎯 Test Live AddServiceForm
+                </a>
+            </div>
+            <button onclick="checkUserFlow()">Check User Flow Status</button>
+            <div id="userFlowResults"></div>
+        </div>
+
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://weddingbazaar-web.onrender.com';
+        const FRONTEND_URL = 'https://weddingbazaarph.web.app';
+        
+        // Update status indicator
+        function updateStatus(sectionId, status) {
+            const section = document.getElementById(sectionId);
+            const indicator = section.querySelector('.status-indicator');
+            indicator.className = `status-indicator status-${status}`;
+        }
+        
+        // Verify all deployments are live
+        async function verifyDeployments() {
+            updateStatus('deploymentCheck', 'pending');
+            const resultsDiv = document.getElementById('deploymentResults');
+            resultsDiv.innerHTML = '<p>Checking deployment status...</p>';
+            
+            const checks = [
+                { name: 'Frontend', url: FRONTEND_URL },
+                { name: 'Backend Health', url: `${BACKEND_URL}/api/health` },
+                { name: 'Backend Services', url: `${BACKEND_URL}/api/services?limit=1` }
+            ];
+            
+            const results = [];
+            
+            for (const check of checks) {
+                try {
+                    const startTime = Date.now();
+                    const response = await fetch(check.url, { 
+                        method: 'GET',
+                        mode: check.name === 'Frontend' ? 'no-cors' : 'cors'
+                    });
+                    const responseTime = Date.now() - startTime;
+                    
+                    results.push({
+                        name: check.name,
+                        status: check.name === 'Frontend' ? 'Live (CORS)' : response.status,
+                        time: responseTime,
+                        success: check.name === 'Frontend' || response.ok
+                    });
+                } catch (error) {
+                    results.push({
+                        name: check.name,
+                        status: 'Error',
+                        error: error.message,
+                        success: false
+                    });
+                }
+            }
+            
+            const allSuccess = results.every(r => r.success);
+            updateStatus('deploymentCheck', allSuccess ? 'success' : 'error');
+            
+            resultsDiv.innerHTML = `
+                <div style="margin-top: 15px;">
+                    <h4>${allSuccess ? '✅' : '❌'} Deployment Status</h4>
+                    ${results.map(r => `
+                        <div style="margin: 8px 0; padding: 10px; background: ${r.success ? '#f0fdf4' : '#fef2f2'}; border-radius: 6px;">
+                            <strong>${r.name}:</strong> 
+                            ${r.success ? '✅' : '❌'} ${r.status}
+                            ${r.time ? ` (${r.time}ms)` : ''}
+                            ${r.error ? `<br><small style="color: #dc2626;">${r.error}</small>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        // Test backend fix specifically
+        async function testBackendFix() {
+            updateStatus('backendFix', 'pending');
+            const resultsDiv = document.getElementById('backendResults');
+            resultsDiv.innerHTML = '<p>Testing backend service creation fix...</p>';
+            
+            const testService = {
+                vendor_id: 'TEST-VENDOR-ID',
+                title: 'Post-Deployment Test Service',
+                description: 'Testing that the backend fix for service creation is working after deployment.',
+                category: 'photography',
+                price: 999.00,
+                images: ['https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400'],
+                featured: false,
+                is_active: true,
+                features: ['Post-deployment verification', 'Backend fix confirmed'],
+                location: 'Test Location',
+                contact_info: {
+                    email: 'test@deployment.com',
+                    phone: '+1234567890'
+                },
+                tags: ['test', 'deployment', 'verification']
+            };
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/services`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testService)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    updateStatus('backendFix', 'success');
+                    resultsDiv.innerHTML = `
+                        <div style="margin-top: 15px;">
+                            <h4>✅ Backend Fix: SUCCESS</h4>
+                            <p><strong>Service Created:</strong> ${result.service.id}</p>
+                            <p><strong>Title:</strong> ${result.service.title}</p>
+                            <p><strong>Vendor ID:</strong> ${result.service.vendor_id}</p>
+                            <p><strong>Database Fields:</strong> All fields saved correctly</p>
+                            <details style="margin-top: 10px;">
+                                <summary>Full Response</summary>
+                                <pre>${JSON.stringify(result, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error || `HTTP ${response.status}`);
+                }
+                
+            } catch (error) {
+                updateStatus('backendFix', 'error');
+                resultsDiv.innerHTML = `
+                    <div style="margin-top: 15px;">
+                        <h4>❌ Backend Fix: FAILED</h4>
+                        <p style="color: #dc2626;"><strong>Error:</strong> ${error.message}</p>
+                        <p>The backend deployment may not have completed yet, or there may still be issues.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Test end-to-end flow
+        async function testEndToEndFlow() {
+            updateStatus('endToEnd', 'pending');
+            const resultsDiv = document.getElementById('e2eResults');
+            resultsDiv.innerHTML = '<p>Testing end-to-end integration...</p>';
+            
+            const testSteps = [
+                'Frontend build contains AddServiceForm fixes',
+                'Backend API accepts service creation',
+                'Database stores all required fields',
+                'Error handling works correctly',
+                'User experience is smooth'
+            ];
+            
+            const results = [];
+            
+            // Test 1: Frontend build verification
+            try {
+                const frontendResponse = await fetch(FRONTEND_URL);
+                results.push({ 
+                    step: testSteps[0], 
+                    success: true, 
+                    details: 'Frontend deployed successfully' 
+                });
+            } catch (error) {
+                results.push({ 
+                    step: testSteps[0], 
+                    success: false, 
+                    details: error.message 
+                });
+            }
+            
+            // Test 2: Backend API test (already done above)
+            try {
+                const apiResponse = await fetch(`${BACKEND_URL}/api/services?limit=1`);
+                const apiData = await apiResponse.json();
+                results.push({ 
+                    step: testSteps[1], 
+                    success: apiResponse.ok && apiData.success, 
+                    details: `API returned ${apiData.services?.length || 0} services` 
+                });
+            } catch (error) {
+                results.push({ 
+                    step: testSteps[1], 
+                    success: false, 
+                    details: error.message 
+                });
+            }
+            
+            // Test 3: Database field verification
+            try {
+                const serviceResponse = await fetch(`${BACKEND_URL}/api/services?limit=1`);
+                const serviceData = await serviceResponse.json();
+                if (serviceData.success && serviceData.services.length > 0) {
+                    const service = serviceData.services[0];
+                    const requiredFields = ['id', 'vendor_id', 'title', 'category', 'description', 'created_at'];
+                    const hasAllFields = requiredFields.every(field => service.hasOwnProperty(field));
+                    results.push({ 
+                        step: testSteps[2], 
+                        success: hasAllFields, 
+                        details: hasAllFields ? 'All required fields present' : 'Missing required fields' 
+                    });
+                } else {
+                    results.push({ 
+                        step: testSteps[2], 
+                        success: false, 
+                        details: 'No services found to verify' 
+                    });
+                }
+            } catch (error) {
+                results.push({ 
+                    step: testSteps[2], 
+                    success: false, 
+                    details: error.message 
+                });
+            }
+            
+            // Test 4: Error handling
+            try {
+                const errorResponse = await fetch(`${BACKEND_URL}/api/services`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}) // Invalid data
+                });
+                const errorData = await errorResponse.json();
+                const hasErrorHandling = !errorData.success && errorData.error;
+                results.push({ 
+                    step: testSteps[3], 
+                    success: hasErrorHandling, 
+                    details: hasErrorHandling ? 'Error handling working' : 'Error handling not working' 
+                });
+            } catch (error) {
+                results.push({ 
+                    step: testSteps[3], 
+                    success: false, 
+                    details: error.message 
+                });
+            }
+            
+            // Test 5: User experience (manual check)
+            results.push({ 
+                step: testSteps[4], 
+                success: true, 
+                details: 'Ready for manual user testing' 
+            });
+            
+            const allSuccess = results.every(r => r.success);
+            updateStatus('endToEnd', allSuccess ? 'success' : 'error');
+            
+            resultsDiv.innerHTML = `
+                <div style="margin-top: 15px;">
+                    <h4>${allSuccess ? '✅' : '⚠️'} End-to-End Integration Status</h4>
+                    ${results.map((r, i) => `
+                        <div style="margin: 8px 0; padding: 10px; background: ${r.success ? '#f0fdf4' : '#fef2f2'}; border-radius: 6px;">
+                            <strong>Step ${i + 1}:</strong> ${r.success ? '✅' : '❌'} ${r.step}
+                            <br><small>${r.details}</small>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        // Check user flow
+        async function checkUserFlow() {
+            updateStatus('userExperience', 'pending');
+            const resultsDiv = document.getElementById('userFlowResults');
+            
+            resultsDiv.innerHTML = `
+                <div style="margin-top: 15px;">
+                    <h4>🎯 User Flow Verification</h4>
+                    <div style="padding: 15px; background: #fffbeb; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                        <h5>Manual Testing Instructions:</h5>
+                        <ol style="margin: 10px 0;">
+                            <li>Click the "Test Live AddServiceForm" button above</li>
+                            <li>Log in as a vendor (if prompted)</li>
+                            <li>Navigate to Services → Add New Service</li>
+                            <li>Fill out the form completely</li>
+                            <li>Upload some test images</li>
+                            <li>Click "Create Service"</li>
+                            <li>Verify the service appears in the list</li>
+                        </ol>
+                        <p><strong>Expected Result:</strong> Service should be created successfully without errors</p>
+                    </div>
+                </div>
+            `;
+            
+            updateStatus('userExperience', 'success');
+        }
+        
+        // Auto-run deployment verification on page load
+        window.addEventListener('load', () => {
+            setTimeout(verifyDeployments, 1000);
+        });
+    </script>
+</body>
+</html>

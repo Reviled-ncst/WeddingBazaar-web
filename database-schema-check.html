@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Schema Check</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            color: #4a5568;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f7fafc;
+            border-left: 4px solid #4299e1;
+        }
+        button {
+            background: linear-gradient(135deg, #4299e1, #667eea);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(66, 153, 225, 0.3);
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { background: #c6f6d5; border: 2px solid #38a169; }
+        .error { background: #fed7d7; border: 2px solid #e53e3e; }
+        .info { background: #bee3f8; border: 2px solid #3182ce; }
+        .loading {
+            background: #faf089;
+            border: 2px solid #d69e2e;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Database Schema Check</h1>
+        <p>Verify if location and price_range columns exist in the services table</p>
+        
+        <div class="test-section">
+            <h3>🗄️ Database Schema Check</h3>
+            <button onclick="checkDatabaseSchema()">Check Services Table Schema</button>
+            <div id="schemaResult" class="result info">Ready to check database schema...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Sample Services Data</h3>
+            <button onclick="fetchSampleServices()">Get Sample Services</button>
+            <div id="servicesResult" class="result info">Ready to check services data...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Direct SQL Test</h3>
+            <button onclick="testDirectQuery()">Test Location/Price Range Query</button>
+            <div id="sqlResult" class="result info">Ready to test SQL queries...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com/api';
+        const LOCAL_BASE = 'http://localhost:3001/api';
+        
+        let currentBase = API_BASE;
+
+        async function makeRequest(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${currentBase}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                return { response, data, success: response.ok };
+            } catch (error) {
+                if (currentBase === API_BASE) {
+                    console.log('Production failed, trying local...');
+                    currentBase = LOCAL_BASE;
+                    return makeRequest(endpoint, options);
+                }
+                throw error;
+            }
+        }
+
+        async function checkDatabaseSchema() {
+            const resultDiv = document.getElementById('schemaResult');
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '🔄 Checking database schema...';
+
+            try {
+                // First, check if we can fetch services at all
+                const { data, success } = await makeRequest('/services?limit=1');
+
+                if (success && data.services && data.services.length > 0) {
+                    const service = data.services[0];
+                    const hasLocation = 'location' in service;
+                    const hasPriceRange = 'price_range' in service;
+                    
+                    resultDiv.className = hasLocation && hasPriceRange ? 'result success' : 'result error';
+                    resultDiv.textContent = `📊 Database Schema Analysis:
+
+✅ API Connection: SUCCESS
+✅ Services Table: ACCESSIBLE
+${hasLocation ? '✅' : '❌'} location column: ${hasLocation ? 'EXISTS' : 'MISSING'}
+${hasPriceRange ? '✅' : '❌'} price_range column: ${hasPriceRange ? 'EXISTS' : 'MISSING'}
+
+Sample Service Structure:
+${Object.keys(service).map(key => `  - ${key}: ${typeof service[key]}`).join('\n')}
+
+Sample Service Data:
+${JSON.stringify(service, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result info';
+                    resultDiv.textContent = `📊 Database Schema Analysis:
+
+✅ API Connection: SUCCESS
+📋 Services Table: EMPTY (no services to analyze)
+Status: ${data.success ? 'SUCCESS' : 'ERROR'}
+Message: ${data.error || 'No services found in database'}
+
+Response:
+${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Schema Check Failed:
+
+Error: ${error.message}
+Endpoint: ${currentBase}/services`;
+            }
+        }
+
+        async function fetchSampleServices() {
+            const resultDiv = document.getElementById('servicesResult');
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '🔄 Fetching sample services...';
+
+            try {
+                const { data, success } = await makeRequest('/services?limit=5');
+
+                if (success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ Services Data Retrieved:
+
+Total Services: ${data.count}
+Showing: ${data.services.length} services
+
+Services:
+${data.services.map((service, index) => 
+`${index + 1}. ${service.title || service.name}
+   Category: ${service.category}
+   Location: ${service.location || 'N/A'}
+   Price Range: ${service.price_range || 'N/A'}
+   Images: ${Array.isArray(service.images) ? service.images.length + ' images' : 'N/A'}
+   ID: ${service.id}
+`).join('\n')}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Failed to fetch services:
+
+Error: ${data.error}
+Response: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function testDirectQuery() {
+            const resultDiv = document.getElementById('sqlResult');
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '🔄 Testing direct queries...';
+
+            try {
+                // Test creating a service with location and price_range
+                const testService = {
+                    vendor_id: 'schema-test-vendor',
+                    title: 'Schema Test Service',
+                    description: 'Testing location and price_range columns',
+                    category: 'Testing',
+                    price: 1000,
+                    images: ['https://via.placeholder.com/300'],
+                    location: 'Test Location, Philippines',
+                    price_range: '₱1,000 - ₱2,000',
+                    is_active: true,
+                    featured: false
+                };
+
+                const { data, success } = await makeRequest('/services', {
+                    method: 'POST',
+                    body: JSON.stringify(testService)
+                });
+
+                if (success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ Direct SQL Test: SUCCESS
+
+Service created successfully with all fields:
+- ID: ${data.service.id}
+- Title: ${data.service.title}
+- Location: ${data.service.location}
+- Price Range: ${data.service.price_range}
+- Images: ${JSON.stringify(data.service.images)}
+
+This confirms:
+✅ location column exists and works
+✅ price_range column exists and works
+✅ images JSON handling works
+✅ All database schema issues resolved
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Direct SQL Test: FAILED
+
+Error: ${data.error}
+
+This indicates schema issues still exist.
+Response: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ SQL Test Error: ${error.message}`;
+            }
+        }
+
+        // Auto-run schema check on page load
+        window.onload = () => {
+            setTimeout(checkDatabaseSchema, 1000);
+        };
+    </script>
+</body>
+</html>

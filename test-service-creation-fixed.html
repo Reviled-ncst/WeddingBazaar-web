@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Service Creation - Features Column Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; border: none; border-radius: 3px; }
+        .btn-success { background: #28a745; color: white; border: none; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Service Creation - Features Column Fix Test</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Test Overview</h3>
+            <p>Testing the fixed backend service creation endpoint that no longer tries to insert into the non-existent 'features' column.</p>
+            <p><strong>Fix Applied:</strong> Removed features, location, price_range, contact_info, tags, keywords from INSERT statement</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🚀 1. Test Service Creation (Fixed Version)</h3>
+            <button class="btn-primary" onclick="testServiceCreation()">Create Test Service</button>
+            <div id="serviceCreationResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 2. Verify Service in Database</h3>
+            <button class="btn-success" onclick="verifyService()">Check Created Service</button>
+            <div id="serviceVerificationResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🏥 3. Backend Health Check</h3>
+            <button class="btn-primary" onclick="checkHealth()">Check Backend Health</button>
+            <div id="healthResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com/api';
+        let createdServiceId = null;
+
+        async function testServiceCreation() {
+            const resultDiv = document.getElementById('serviceCreationResult');
+            resultDiv.innerHTML = '<p>🔄 Creating service...</p>';
+
+            try {
+                const testService = {
+                    vendor_id: '2-2025-003',
+                    title: 'Test Service - Fixed Backend ' + Date.now(),
+                    description: 'Test service created after fixing the features column issue',
+                    category: 'photography',
+                    price: 999.00,
+                    images: ['https://example.com/test1.jpg'],
+                    is_active: true,
+                    featured: false
+                };
+
+                console.log('🚀 Sending service creation request:', testService);
+
+                const response = await fetch(`${API_BASE}/services`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testService)
+                });
+
+                const result = await response.json();
+                console.log('📥 Service creation response:', result);
+
+                if (response.ok && result.success) {
+                    createdServiceId = result.service.id;
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Service Created Successfully!</h4>
+                            <p><strong>Service ID:</strong> ${result.service.id}</p>
+                            <p><strong>Title:</strong> ${result.service.title}</p>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error || 'Service creation failed');
+                }
+            } catch (error) {
+                console.error('❌ Service creation error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Service Creation Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Check the console for full details</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function verifyService() {
+            const resultDiv = document.getElementById('serviceVerificationResult');
+            
+            if (!createdServiceId) {
+                resultDiv.innerHTML = '<div class="error">❌ No service ID available. Please create a service first.</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<p>🔄 Verifying service in database...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/services/vendor/2-2025-003`);
+                const result = await response.json();
+
+                console.log('📥 Service verification response:', result);
+
+                if (response.ok && result.success) {
+                    const createdService = result.services.find(s => s.id === createdServiceId);
+                    
+                    if (createdService) {
+                        resultDiv.innerHTML = `
+                            <div class="success">
+                                <h4>✅ Service Found in Database!</h4>
+                                <p>The service was successfully created and is in the database.</p>
+                                <pre>${JSON.stringify(createdService, null, 2)}</pre>
+                            </div>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `
+                            <div class="error">
+                                <h4>❌ Service Not Found</h4>
+                                <p>Service was not found in the database</p>
+                                <p>Total services for vendor: ${result.services.length}</p>
+                            </div>
+                        `;
+                    }
+                } else {
+                    throw new Error(result.error || 'Verification failed');
+                }
+            } catch (error) {
+                console.error('❌ Service verification error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Verification Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function checkHealth() {
+            const resultDiv = document.getElementById('healthResult');
+            resultDiv.innerHTML = '<p>🔄 Checking backend health...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const result = await response.json();
+
+                console.log('📥 Health check response:', result);
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Backend is Healthy</h4>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    throw new Error('Health check failed');
+                }
+            } catch (error) {
+                console.error('❌ Health check error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Backend Health Check Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-check health on load
+        window.onload = () => {
+            checkHealth();
+        };
+    </script>
+</body>
+</html>
