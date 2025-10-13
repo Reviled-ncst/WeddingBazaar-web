@@ -120,23 +120,30 @@ router.post('/', async (req, res) => {
     
     const serviceId = `SRV-${Date.now()}`;
     
-    // Handle images array properly - check if it's already a string or needs stringification
+    // Handle images array properly - PostgreSQL expects JSON, not stringified JSON
     let processedImages;
     if (typeof images === 'string') {
-      // If images is already a JSON string, use it directly
-      processedImages = images;
+      try {
+        // If images is a JSON string, parse it back to array
+        processedImages = JSON.parse(images);
+      } catch (e) {
+        // If parsing fails, treat as empty array
+        processedImages = [];
+      }
     } else if (Array.isArray(images)) {
-      // If images is an array, stringify it
-      processedImages = JSON.stringify(images);
+      // If images is already an array, use it directly
+      processedImages = images;
     } else {
       // Default to empty array
-      processedImages = JSON.stringify([]);
+      processedImages = [];
     }
     
     console.log('🖼️ Processing images:', { 
       original: images, 
       type: typeof images, 
-      processed: processedImages 
+      processed: processedImages,
+      processedType: typeof processedImages,
+      isArray: Array.isArray(processedImages)
     });
 
     const service = await sql`
@@ -145,7 +152,7 @@ router.post('/', async (req, res) => {
         images, is_active, featured, location, price_range, created_at, updated_at
       ) VALUES (
         ${serviceId}, ${finalVendorId}, ${finalTitle}, ${description}, ${category}, ${price || 0},
-        ${processedImages}, ${is_active}, ${featured}, 
+        ${sql.json(processedImages)}, ${is_active}, ${featured}, 
         ${location || 'Philippines'}, ${price_range || '₱'}, NOW(), NOW()
       ) RETURNING *
     `;
@@ -176,32 +183,50 @@ router.put('/:serviceId', async (req, res) => {
     const { serviceId } = req.params;
     const updates = req.body;
     
-    // Build dynamic update query
-    const updateFields = [];
-    const params = [];
-    let paramIndex = 1;
+    // Handle images field specially for JSON
+    if (updates.images) {
+      let processedImages;
+      if (typeof updates.images === 'string') {
+        try {
+          processedImages = JSON.parse(updates.images);
+        } catch (e) {
+          processedImages = [];
+        }
+      } else if (Array.isArray(updates.images)) {
+        processedImages = updates.images;
+      } else {
+        processedImages = [];
+      }
+      updates.images = processedImages;
+    }
+    
+    // Build the update using SQL template literals for proper JSON handling
+    const setFields = [];
+    const values = {};
     
     for (const [key, value] of Object.entries(updates)) {
       if (key !== 'id' && value !== undefined) {
-        updateFields.push(`${key} = $${paramIndex}`);
-        params.push(value);
-        paramIndex++;
+        setFields.push(key);
+        values[key] = value;
       }
     }
     
-    if (updateFields.length === 0) {
+    if (setFields.length === 0) {
       return res.status(400).json({
         success: false,
         error: 'No valid fields to update',
         timestamp: new Date().toISOString()
       });
     }
-    
-    updateFields.push(`updated_at = NOW()`);
-    params.push(serviceId);
-    
-    const query = `UPDATE services SET ${updateFields.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
-    const service = await sql(query, params);
+
+    // Use SQL template literals for proper type handling
+    const service = await sql`
+      UPDATE services SET 
+        ${sql(values, ...setFields)},
+        updated_at = NOW()
+      WHERE id = ${serviceId}
+      RETURNING *
+    `;
     
     if (service.length === 0) {
       return res.status(404).json({
