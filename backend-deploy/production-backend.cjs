@@ -102,6 +102,7 @@ app.post('/api/services', authenticateToken, async (req, res) => {
     const result = await sql`
       INSERT INTO services (
         id,
+        vendor_id,
         title,
         category,
         description,
@@ -111,6 +112,7 @@ app.post('/api/services', authenticateToken, async (req, res) => {
         featured
       ) VALUES (
         ${serviceId},
+        ${serviceVendorId},
         ${serviceName},
         ${category},
         ${description || ''},

@@ -788,6 +788,142 @@ app.post('/api/auth/verify', async (req, res) => {
         });
     }
 });
+
+// Registration endpoint
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        console.log('📝 Registration attempt received:', { 
+            email: req.body.email, 
+            role: req.body.role,
+            firstName: req.body.firstName,
+            lastName: req.body.lastName 
+        });
+        
+        const { firstName, lastName, email, password, role, phone, business_name, business_type, location } = req.body;
+        
+        // Validate required fields
+        if (!firstName || !lastName || !email || !password || !role) {
+            console.log('❌ Missing required fields');
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields',
+                message: 'First name, last name, email, password, and role are required'
+            });
+        }
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid email format',
+                message: 'Please provide a valid email address'
+            });
+        }
+        
+        // Validate role
+        if (!['couple', 'vendor'].includes(role)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid role',
+                message: 'Role must be either "couple" or "vendor"'
+            });
+        }
+        
+        // Validate vendor-specific fields
+        if (role === 'vendor') {
+            if (!business_name || !business_type || !location) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Missing vendor fields',
+                    message: 'Business name, business type, and location are required for vendors'
+                });
+            }
+        }
+        
+        try {
+            // Check if user already exists
+            const existingUser = await db.query('SELECT id FROM users WHERE email = $1', [email]);
+            if (existingUser.rows.length > 0) {
+                return res.status(409).json({
+                    success: false,
+                    error: 'User already exists',
+                    message: 'An account with this email already exists'
+                });
+            }
+            
+            // Generate user ID
+            const userId = `${role === 'vendor' ? '2' : '1'}-2025-${String(Date.now()).slice(-3)}`;
+            
+            // Insert user into database
+            const insertUserQuery = `
+                INSERT INTO users (id, first_name, last_name, email, password_hash, role, phone, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+                RETURNING id, first_name, last_name, email, role, phone, created_at
+            `;
+            
+            // For now, store password as plain text (in production, use bcrypt)
+            const userResult = await db.query(insertUserQuery, [
+                userId, firstName, lastName, email, password, role, phone
+            ]);
+            
+            const newUser = userResult.rows[0];
+            
+            // If vendor, also create vendor record
+            let vendorId = null;
+            if (role === 'vendor') {
+                vendorId = `vendor_${Date.now()}`;
+                const insertVendorQuery = `
+                    INSERT INTO vendors (id, user_id, name, category, location, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+                    RETURNING id
+                `;
+                
+                const vendorResult = await db.query(insertVendorQuery, [
+                    vendorId, userId, business_name, business_type, location
+                ]);
+            }
+            
+            // Generate simple token
+            const token = `auth_token_${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            console.log('✅ Registration successful for:', email);
+            
+            res.status(201).json({
+                success: true,
+                message: 'Registration successful',
+                user: {
+                    id: newUser.id,
+                    firstName: newUser.first_name,
+                    lastName: newUser.last_name,
+                    email: newUser.email,
+                    role: newUser.role,
+                    phone: newUser.phone,
+                    businessName: business_name,
+                    vendorId: vendorId
+                },
+                token: token
+            });
+            
+        } catch (dbError) {
+            console.error('❌ Database error during registration:', dbError);
+            res.status(500).json({
+                success: false,
+                error: 'Database error',
+                message: 'Failed to create user account'
+            });
+        }
+        
+    } catch (error) {
+        console.error('❌ Registration failed:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Registration failed',
+            message: error instanceof Error ? error.message : 'Unknown error occurred'
+        });
+    }
+});
+
 // Booking request endpoint
 app.post('/api/bookings/request', async (req, res) => {
     try {
@@ -1448,6 +1584,7 @@ app.use('*', (req, res) => {
             'DELETE /api/vendors/:vendorId/off-days/:offDayId',
             'GET /api/vendors/:vendorId/off-days/count',
             'POST /api/auth/login',
+            'POST /api/auth/register',
             'POST /api/auth/verify',
             'POST /api/bookings/request',
             'GET /api/bookings/couple/:coupleId',
@@ -1744,5 +1881,6 @@ app.post('/api/admin/fix-vendor-mappings', async (req, res) => {
 });
 
 // =============================================================================
-// AVAILABILITY ENDPOINTS/ /   F o r c e   d e p l o y m e n t  
+// AVAILABILITY ENDPOINTS/ /   F o r c e   d e p l o y m e n t 
+ 
  

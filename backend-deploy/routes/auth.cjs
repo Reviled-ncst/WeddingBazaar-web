@@ -89,13 +89,96 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Register endpoint (placeholder for future implementation)
+// Register endpoint
 router.post('/register', async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Registration endpoint not yet implemented',
-    timestamp: new Date().toISOString()
-  });
+  try {
+    console.log('🎯 [AUTH] POST /api/auth/register called');
+    console.log('🎯 [AUTH] Request body:', req.body);
+    
+    const { email, password, first_name, last_name, user_type = 'couple' } = req.body;
+    
+    if (!email || !password || !first_name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email, password, and first_name are required',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Validate user_type
+    const validUserTypes = ['couple', 'vendor', 'admin'];
+    if (!validUserTypes.includes(user_type)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid user_type. Must be one of: couple, vendor, admin',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Check if user already exists
+    console.log('🔍 Checking if user exists:', email);
+    const existingUsers = await sql`SELECT id FROM users WHERE email = ${email}`;
+    
+    if (existingUsers.length > 0) {
+      console.log('❌ User already exists with email:', email);
+      return res.status(409).json({
+        success: false,
+        error: 'User with this email already exists',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Hash password using bcrypt
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    console.log('🔐 Password hashed successfully');
+    
+    // Generate unique user ID
+    const userId = 'USR-' + Date.now().toString().slice(-8);
+    
+    // Insert user into database
+    console.log('💾 Inserting user into database:', { userId, email, user_type });
+    const result = await sql`
+      INSERT INTO users (id, email, password, first_name, last_name, user_type, created_at)
+      VALUES (${userId}, ${email}, ${hashedPassword}, ${first_name}, ${last_name || ''}, ${user_type}, NOW())
+      RETURNING id, email, first_name, last_name, user_type, created_at
+    `;
+    
+    const newUser = result[0];
+    console.log('✅ User inserted into database:', newUser);
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: newUser.id, email: newUser.email, userType: newUser.user_type },
+      process.env.JWT_SECRET || 'wedding-bazaar-secret-key',
+      { expiresIn: '24h' }
+    );
+    
+    console.log('✅ [AUTH] User registered successfully:', newUser.id);
+    
+    res.status(201).json({
+      success: true,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        first_name: newUser.first_name,
+        last_name: newUser.last_name,
+        user_type: newUser.user_type
+      },
+      token,
+      message: 'User registered successfully',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [AUTH] Registration error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Registration failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Token verification endpoint
