@@ -248,9 +248,25 @@ router.put('/:serviceId', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Update service error:', error);
+    console.error('❌ Full error object:');
+    console.dir(error, { depth: null });
+    console.error('❌ Error properties:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      constraint: error.constraint,
+      table: error.table,
+      column: error.column,
+      stack: error.stack
+    });
+    
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: error.message || String(error),
+      errorCode: error.code,
+      errorDetail: error.detail,
+      errorConstraint: error.constraint,
       timestamp: new Date().toISOString()
     });
   }
@@ -287,9 +303,25 @@ router.delete('/:serviceId', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Delete service error:', error);
+    console.error('❌ Full error object:');
+    console.dir(error, { depth: null });
+    console.error('❌ Error properties:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      constraint: error.constraint,
+      table: error.table,
+      column: error.column,
+      stack: error.stack
+    });
+    
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: error.message || String(error),
+      errorCode: error.code,
+      errorDetail: error.detail,
+      errorConstraint: error.constraint,
       timestamp: new Date().toISOString()
     });
   }
