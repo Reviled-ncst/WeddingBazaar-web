@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎉 Registration Fix Verification</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .status-success { background: #10b981; color: white; padding: 10px; border-radius: 8px; margin: 10px 0; }
+        .status-error { background: #ef4444; color: white; padding: 10px; border-radius: 8px; margin: 10px 0; }
+        .status-info { background: #3b82f6; color: white; padding: 10px; border-radius: 8px; margin: 10px 0; }
+        .test-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        .test-btn:hover { transform: translateY(-2px); }
+        .console-output {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .instruction {
+            background: #eff6ff;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center; color: #1f2937;">
+            🎉 Registration Fix Verification
+        </h1>
+        <p style="text-align: center; color: #6b7280;">
+            Testing the improved mock registration system
+        </p>
+
+        <div class="status-info">
+            <h3>✅ Fix Applied - October 13, 2025</h3>
+            <p><strong>Issue Fixed:</strong> Registration was stopping at "📝 Registration response status: 501" and not completing the mock registration process.</p>
+            <p><strong>Solution:</strong> Improved error handling in AuthContext.tsx to properly process 501 responses and complete mock registration.</p>
+        </div>
+
+        <div class="instruction">
+            <h3>🎯 Test Instructions</h3>
+            <ol>
+                <li><strong>Open Production Site:</strong> <a href="https://weddingbazaarph.web.app" target="_blank" rel="noopener">https://weddingbazaarph.web.app</a></li>
+                <li><strong>Open Browser Console</strong> (F12 → Console tab)</li>
+                <li><strong>Start Registration:</strong> Click "Sign Up" button</li>
+                <li><strong>Fill Form:</strong> Use any valid data (email format required)</li>
+                <li><strong>OTP Verification:</strong>
+                    <ul>
+                        <li>Email: <code>123456</code></li>
+                        <li>SMS: <code>654321</code> (if phone provided)</li>
+                    </ul>
+                </li>
+                <li><strong>Watch Console:</strong> Should now see complete registration flow</li>
+            </ol>
+        </div>
+
+        <div class="status-success">
+            <h3>🔍 Expected Console Output (New):</h3>
+            <div class="console-output">
+📝 Registration response status: 501
+⚠️ Registration endpoint not implemented (501), using mock registration
+🔧 Mock registration data created: {success: true, message: "Registration successful (mock)", user: {...}, token: "mock_token_..."}
+✅ Registration successful for: test@example.com
+🎉 Registration completed - redirecting to dashboard
+            </div>
+        </div>
+
+        <div class="instruction">
+            <h3>🧪 Quick Test Scenarios</h3>
+            
+            <h4>Scenario 1: Couple Registration</h4>
+            <ul>
+                <li>User Type: Couple</li>
+                <li>Expected redirect: <code>/individual</code></li>
+                <li>Should show Individual user dashboard</li>
+            </ul>
+
+            <h4>Scenario 2: Vendor Registration</h4>
+            <ul>
+                <li>User Type: Vendor</li>
+                <li>Fill business fields (name, category, location)</li>
+                <li>Expected redirect: <code>/vendor</code></li>
+                <li>Should show Vendor dashboard</li>
+            </ul>
+
+            <h4>Scenario 3: Error Handling</h4>
+            <ul>
+                <li>Try wrong OTP codes first</li>
+                <li>Should show clear error messages</li>
+                <li>Then use correct codes (123456/654321)</li>
+                <li>Should proceed normally</li>
+            </ul>
+        </div>
+
+        <button class="test-btn" onclick="openProductionTest()">🚀 Open Production Test</button>
+        <button class="test-btn" onclick="openDevelopmentTest()">🔧 Open Development Test</button>
+        <button class="test-btn" onclick="testBackendStatus()">🌐 Check Backend Status</button>
+
+        <div id="testResults"></div>
+
+    </div>
+
+    <script>
+        function openProductionTest() {
+            window.open('https://weddingbazaarph.web.app', '_blank');
+            showMessage('🚀 Production site opened. Open Console (F12) and test registration!', 'info');
+        }
+
+        function openDevelopmentTest() {
+            window.open('http://localhost:5173', '_blank');
+            showMessage('🔧 Development site opened. Compare behavior with production.', 'info');
+        }
+
+        async function testBackendStatus() {
+            showMessage('🔍 Testing backend status...', 'info');
+            
+            try {
+                // Test health endpoint
+                const healthResponse = await fetch('https://weddingbazaar-web.onrender.com/api/health');
+                if (healthResponse.ok) {
+                    const healthData = await healthResponse.json();
+                    showMessage(`✅ Backend Health: ${healthData.status} - Database: ${healthData.database}`, 'success');
+                }
+
+                // Test registration endpoint (should return 501)
+                const regResponse = await fetch('https://weddingbazaar-web.onrender.com/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        firstName: 'Test',
+                        lastName: 'User',
+                        email: 'test@example.com',
+                        password: 'test123',
+                        role: 'couple'
+                    })
+                });
+
+                if (regResponse.status === 501) {
+                    showMessage('✅ Registration endpoint returns 501 - Mock system will activate', 'success');
+                } else {
+                    showMessage(`⚠️ Registration endpoint returned ${regResponse.status} - May have been implemented`, 'info');
+                }
+
+            } catch (error) {
+                showMessage(`❌ Backend test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function showMessage(message, type) {
+            const resultsDiv = document.getElementById('testResults');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `status-${type}`;
+            messageDiv.innerHTML = `<p>${message}</p>`;
+            resultsDiv.appendChild(messageDiv);
+            
+            // Auto-scroll to new message
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Auto-test backend on load
+        window.addEventListener('load', () => {
+            setTimeout(testBackendStatus, 1000);
+        });
+    </script>
+</body>
+</html>

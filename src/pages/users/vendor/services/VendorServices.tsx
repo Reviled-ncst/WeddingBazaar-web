@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { getVendorIdForUser } from '../../../utils/vendorIdMapping';
+import { getVendorIdForUser } from '../../../../utils/vendorIdMapping';
 import {
   Plus,
   Edit,
-  Edit3,
   Trash2,
   Eye,
   EyeOff,
@@ -14,42 +13,38 @@ import {
   Grid,
   List,
   Search,
-  MapPin,
-  Crown,
-  Copy
+  AlertTriangle,
+  Loader2,
+  RefreshCw,
+  Settings
 } from 'lucide-react';
-import { VendorHeader } from '../../../shared/components/layout/VendorHeader';
-import { UsageLimit } from '../../../shared/components/ui/UsageLimit';
-import { UpgradePrompt } from '../../../shared/components/ui/UpgradePrompt';
-import { useSubscription } from '../../../shared/contexts/SubscriptionContext';
-import { useAuth } from '../../../shared/contexts/AuthContext';
-import { serviceManager } from '../../../shared/services/ServiceManager';
+import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
+import { useAuth } from '../../../../shared/contexts/AuthContext';
 import { AddServiceForm } from './components/AddServiceForm';
 
 // Service interface based on the actual API response
 interface Service {
   id: string;
-  vendorId: string; // 'vendorId' field from API response
-  vendor_id?: string; // Keep for backward compatibility with AddServiceForm
-  name: string; // 'name' field from API response
-  title?: string; // Keep for backward compatibility
+  vendorId: string;
+  vendor_id?: string;
+  name: string;
+  title?: string;
   description: string;
   category: string;
-  price: string; // API returns price as string like "55000.00"
-  imageUrl?: string | null; // Single image URL from API
-  images?: string[]; // ARRAY of image URLs (keep for backward compatibility)
+  price: string;
+  imageUrl?: string | null;
+  images?: string[];
   rating: number;
   reviewCount: number;
-  isActive: boolean; // 'isActive' field from API
-  is_active?: boolean; // Keep for backward compatibility
+  isActive: boolean;
+  is_active?: boolean;
   featured: boolean;
-  // Extended fields for UI (may not be in DB)
   vendor_name?: string;
   location?: string;
-  review_count?: number; // Keep for backward compatibility
-  price_range?: string; // '₱', '₱₱', '₱₱₱', '₱₱₱₱'
+  review_count?: number;
+  price_range?: string;
   availability?: boolean;
-  gallery?: string[]; // Alias for images
+  gallery?: string[];
   features?: string[];
   contact_info?: {
     phone?: string;
@@ -81,19 +76,9 @@ const SERVICE_CATEGORIES = [
   'Transportation Services'
 ];
 
-
-
 export const VendorServices: React.FC = () => {
   // Auth context to get the logged-in vendor
   const { user } = useAuth();
-  
-  // Subscription context
-  const {
-    subscription,
-    getFeatureLimitMessage,
-    upgradePrompt,
-    hideUpgradePrompt
-  } = useSubscription();
 
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,12 +91,18 @@ export const VendorServices: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
 
   // Get API base URL
-  const apiUrl = import.meta.env.VITE_API_URL ||const vendorId = getVendorIdForUser(user);
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
   // Get current vendor ID from auth context with fallback
-  const vendorId = user?.id ||const vendorId = getVendorIdForUser(user);
+  const vendorId = user?.vendorId || user?.id || getVendorIdForUser(user as any) || '';
   
-  // No debug logging in production
+  // Debug logging
+  console.log('🔍 VendorServices Debug Info:', {
+    user: user,
+    vendorId: vendorId,
+    userRole: user?.role,
+    isAuthenticated: !!user
+  });
 
   // Service statistics
   const serviceStats = {
@@ -119,12 +110,12 @@ export const VendorServices: React.FC = () => {
     active: services.filter(s => s.isActive ?? s.is_active).length,
     inactive: services.filter(s => !(s.isActive ?? s.is_active)).length,
     categories: new Set(services.map(s => s.category)).size,
-    avgRating: services.length > 0 ? services.reduce((acc, s) => acc + (s.rating || 4.5), 0) / services.length : 4.5 // Default to 4.5 if no rating
+    avgRating: services.length > 0 ? services.reduce((acc, s) => acc + (s.rating || 4.5), 0) / services.length : 4.5
   };
 
   // Filtered services
   const filteredServices = services.filter(service => {
-    const serviceName = service.name || service.title ||const vendorId = getVendorIdForUser(user);
+    const serviceName = service.name || service.title || 'Untitled Service';
     const matchesSearch = serviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (service.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
     const matchesCategory = !filterCategory || service.category === filterCategory;
@@ -135,7 +126,7 @@ export const VendorServices: React.FC = () => {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  // Load services directly from API
+  // Load services from API
   const fetchServices = async () => {
     try {
       setLoading(true);
@@ -147,125 +138,32 @@ export const VendorServices: React.FC = () => {
         return;
       }
 
-      console.log(`🔄 [VendorServices] Loading services for vendor ${vendorId}...`);
+      console.log(`🔄 Loading services for vendor ${vendorId}...`);
       
-      // Try the new vendor-specific endpoint first
-      try {
-        const response = await fetch(`${apiUrl}/api/services/vendor/${vendorId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+      const response = await fetch(`${apiUrl}/api/services/vendor/${vendorId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-        if (response.ok) {
-          const result = await response.json();
-          
-          if (result.success && result.services.length > 0) {
-            console.log('✅ [VendorServices] Loaded services from API:', result.services.length);
-            
-            // SECURITY: Filter to ensure only current vendor's services are shown
-            const vendorOnlyServices = result.services.filter((service: any) => {
-              const serviceVendorId = service.vendorId || service.vendor_id;
-              const isOwnService = serviceVendorId === vendorId;
-              if (!isOwnService) {
-                console.warn('🚨 [VendorServices] SECURITY: Filtered out service not owned by vendor:', {
-                  serviceId: service.id,
-                  serviceName: service.name,
-                  serviceVendorId,
-                  currentVendorId: vendorId
-                });
-              }
-              return isOwnService;
-            });
-
-            // Map API response to component interface
-            const mappedServices = vendorOnlyServices.map((service: any) => ({
-              id: service.id,
-              vendorId: service.vendorId || service.vendor_id,
-              name: service.name,
-              description: service.description || '',
-              category: service.category,
-              price: typeof service.price === 'string' ? service.price : String(service.price || '0.00'),
-              imageUrl: service.imageUrl || service.image,
-              images: service.images || [service.imageUrl || service.image].filter(Boolean),
-              rating: service.rating || 4.5,
-              reviewCount: service.reviewCount || 0,
-              isActive: service.isActive !== undefined ? service.isActive : service.is_active,
-              featured: service.featured || false,
-              vendor_name: service.vendor_name,
-              location: service.location,
-              features: service.features || [],
-              contact_info: service.contact_info || {},
-              created_at: service.created_at,
-              updated_at: service.updated_at
-            }));
-            
-            console.log(`🔒 [VendorServices] SECURITY CHECK: Showing ${mappedServices.length} services for vendor ${vendorId}`);
-            setServices(mappedServices);
-            return;
-          }
-        }
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Services loaded successfully:', result);
         
-        // If vendor endpoint fails or returns no data, try centralized manager as fallback
-        console.log('🔄 [VendorServices] Trying centralized service manager as fallback...');
-        const result = await serviceManager.getVendorServices(vendorId);
-        
-        if (result.success && result.services.length > 0) {
-          console.log('✅ [VendorServices] Loaded services from centralized manager:', result.services.length);
-          
-          // SECURITY: Double-check that centralized manager only returned vendor's services
-          const vendorOnlyServices = result.services.filter((service: any) => {
-            const serviceVendorId = service.vendorId || service.vendor_id;
-            const isOwnService = serviceVendorId === vendorId;
-            if (!isOwnService) {
-              console.warn('🚨 [VendorServices] SECURITY: Centralized manager returned non-vendor service:', {
-                serviceId: service.id,
-                serviceName: service.name || service.title,
-                serviceVendorId,
-                currentVendorId: vendorId
-              });
-            }
-            return isOwnService;
-          });
-
-          const mappedServices = vendorOnlyServices.map((service: any) => ({
-            id: service.id,
-            vendorId: service.vendorId || service.vendor_id,
-            name: service.name || service.title,
-            description: service.description,
-            category: service.category,
-            price: typeof service.price === 'string' ? service.price : String(service.price || '0.00'),
-            imageUrl: service.image || service.imageUrl,
-            images: service.images || service.gallery || [],
-            rating: service.rating,
-            reviewCount: service.reviewCount,
-            isActive: service.is_active !== undefined ? service.is_active : service.availability,
-            featured: service.featured,
-            vendor_name: service.vendorName,
-            location: service.location,
-            features: service.features || [],
-            contact_info: service.contactInfo || {},
-            created_at: service.created_at,
-            updated_at: service.updated_at
-          }));
-          
-          console.log(`🔒 [VendorServices] SECURITY CHECK: Centralized manager returned ${mappedServices.length} verified vendor services`);
-          setServices(mappedServices);
+        if (result.success && Array.isArray(result.services)) {
+          setServices(result.services);
         } else {
-          console.log('⚠️ [VendorServices] No services found for vendor');
           setServices([]);
-          setError('No services created yet. Click "Add Service" to get started!');
         }
-        
-      } catch (error) {
-        console.error('❌ [VendorServices] Error loading services:', error);
+      } else {
+        console.warn('⚠️ API response not OK, trying fallback...');
         setServices([]);
-        setError('Unable to load services. Please try again or contact support.');
       }
       
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message :const vendorId = getVendorIdForUser(user);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      console.error('❌ Error loading services:', errorMessage);
       setError(errorMessage);
       setServices([]);
     } finally {
@@ -279,25 +177,28 @@ export const VendorServices: React.FC = () => {
     }
   }, [vendorId]);
 
-  // Handle form submission
+  // Handle form submission with enhanced debugging
   const handleSubmit = async (serviceData: any) => {
     try {
-      console.log('💾 [VendorServices] Saving service:', serviceData);
+      console.log('💾 Saving service:', serviceData);
       
       const url = editingService 
         ? `${apiUrl}/api/services/${editingService.id}`
         : `${apiUrl}/api/services`;
       
-      const method = editingService ? 'PUT' :const vendorId = getVendorIdForUser(user);
+      const method = editingService ? 'PUT' : 'POST';
       
-      // Ensure vendor_id is included
       const payload = {
         ...serviceData,
         vendor_id: serviceData.vendor_id || vendorId,
         vendorId: serviceData.vendorId || vendorId
       };
       
-      console.log(`🔄 [VendorServices] ${method} ${url}`, payload);
+      console.log('🔍 [VendorServices] Making API request:', {
+        url,
+        method,
+        payload: JSON.stringify(payload, null, 2)
+      });
       
       const response = await fetch(url, {
         method,
@@ -307,15 +208,31 @@ export const VendorServices: React.FC = () => {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to ${editingService ? 'update' : 'create'} service`);
+      console.log('📥 [VendorServices] API Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        url: response.url
+      });
+
+      const responseText = await response.text();
+      console.log('📄 [VendorServices] Raw response:', responseText);
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('❌ [VendorServices] Failed to parse response as JSON:', parseError);
+        throw new Error(`Invalid JSON response: ${responseText}`);
       }
 
-      const result = await response.json();
+      if (!response.ok) {
+        console.error('❌ [VendorServices] API Error Response:', result);
+        throw new Error(result.error || result.message || `Failed to ${editingService ? 'update' : 'create'} service`);
+      }
+
       console.log('✅ [VendorServices] Service saved successfully:', result);
 
-      // Close form and refresh services
       setIsCreating(false);
       setEditingService(null);
       await fetchServices();
@@ -323,8 +240,9 @@ export const VendorServices: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : `Failed to ${editingService ? 'update' : 'create'} service`;
       console.error('❌ [VendorServices] Error saving service:', errorMessage);
+      console.error('❌ [VendorServices] Full error:', err);
       setError(errorMessage);
-      throw err; // Re-throw so AddServiceForm can handle it
+      throw err;
     }
   };
 
@@ -337,10 +255,10 @@ export const VendorServices: React.FC = () => {
   // Delete service with confirmation
   const deleteService = async (serviceId: string) => {
     const confirmed = confirm(
-      '⚠️ Delete Service Confirmationconst vendorId = getVendorIdForUser(user);nconst vendorId = getVendorIdForUser(user);n' +
-      'Are you sure you want to delete this service?const vendorId = getVendorIdForUser(user);nconst vendorId = getVendorIdForUser(user);n' +
-      '• If this service has existing bookings, it will be hidden from customers but preserved in our recordsconst vendorId = getVendorIdForUser(user);n' +
-      '• If no bookings exist, it will be completely removedconst vendorId = getVendorIdForUser(user);nconst vendorId = getVendorIdForUser(user);n' +
+      '⚠️ Delete Service Confirmation\\n\\n' +
+      'Are you sure you want to delete this service?\\n\\n' +
+      '• If this service has existing bookings, it will be hidden from customers but preserved in our records\\n' +
+      '• If no bookings exist, it will be completely removed\\n\\n' +
       'Continue with deletion?'
     );
     
@@ -349,7 +267,7 @@ export const VendorServices: React.FC = () => {
     }
 
     try {
-      console.log(`🗑️ [VendorServices] Deleting service ${serviceId}...`);
+      console.log(`🗑️ Deleting service ${serviceId}...`);
       
       const response = await fetch(`${apiUrl}/api/services/${serviceId}`, {
         method: 'DELETE',
@@ -364,23 +282,19 @@ export const VendorServices: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('✅ [VendorServices] Service deleted successfully:', result);
+      console.log('✅ Service deleted successfully:', result);
 
-      // Show appropriate success message based on delete type
       if (result.softDelete) {
-        console.log('🔄 Service soft deleted (preserved due to existing bookings)');
-        alert('✅ Service deleted successfully!const vendorId = getVendorIdForUser(user);nconst vendorId = getVendorIdForUser(user);nNote: The service was preserved in our records due to existing bookings, but itconst vendorId = getVendorIdForUser(user);'s no longer visible to customers.');
+        alert('✅ Service deleted successfully!\n\nNote: The service was preserved in our records due to existing bookings, but it\'s no longer visible to customers.');
       } else {
-        console.log('🗑️ Service completely removed');
         alert('✅ Service deleted successfully and completely removed!');
       }
 
-      // Refresh services list
       await fetchServices();
       
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message :const vendorId = getVendorIdForUser(user);
-      console.error('❌ [VendorServices] Error deleting service:', errorMessage);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete service';
+      console.error('❌ Error deleting service:', errorMessage);
       setError(errorMessage);
     }
   };
@@ -391,7 +305,7 @@ export const VendorServices: React.FC = () => {
       const currentStatus = service.isActive ?? service.is_active;
       const newStatus = !currentStatus;
       
-      console.log(`🔄 [VendorServices] Toggling service ${service.id} availability: ${currentStatus} → ${newStatus}`);
+      console.log(`🔄 Toggling service ${service.id} availability: ${currentStatus} → ${newStatus}`);
       
       const response = await fetch(`${apiUrl}/api/services/${service.id}`, {
         method: 'PUT',
@@ -414,10 +328,6 @@ export const VendorServices: React.FC = () => {
         throw new Error(errorData.message || 'Failed to update service availability');
       }
 
-      const result = await response.json();
-      console.log('✅ [VendorServices] Service availability updated:', result);
-
-      // Update local state immediately for better UX
       setServices(prevServices => 
         prevServices.map(s => 
           s.id === service.id 
@@ -426,61 +336,9 @@ export const VendorServices: React.FC = () => {
         )
       );
 
-      // Optionally refresh from server
-      // await fetchServices();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message :const vendorId = getVendorIdForUser(user);
-      console.error('❌ [VendorServices] Error toggling availability:', errorMessage);
-      setError(errorMessage);
-    }
-  };
-
-  // Toggle service featured status
-  const toggleServiceFeatured = async (service: Service) => {
-    try {
-      const currentFeaturedStatus = service.featured;
-      const newFeaturedStatus = !currentFeaturedStatus;
-      
-      console.log(`⭐ [VendorServices] Toggling service ${service.id} featured status: ${currentFeaturedStatus} → ${newFeaturedStatus}`);
-      
-      const response = await fetch(`${apiUrl}/api/services/${service.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: service.name,
-          category: service.category,
-          description: service.description,
-          price: service.price,
-          isActive: service.isActive ?? service.is_active,
-          is_active: service.isActive ?? service.is_active,
-          featured: newFeaturedStatus
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to update service featured status');
-      }
-
-      const result = await response.json();
-      console.log('✅ [VendorServices] Service featured status updated:', result);
-
-      // Update the local state immediately for better UX
-      setServices(prevServices => 
-        prevServices.map(s => 
-          s.id === service.id 
-            ? { ...s, featured: newFeaturedStatus }
-            : s
-        )
-      );
-
-      // Optionally refresh from server
-      // await fetchServices();
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message :const vendorId = getVendorIdForUser(user);
-      console.error('❌ [VendorServices] Error toggling featured status:', errorMessage);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to toggle availability';
+      console.error('❌ Error toggling availability:', errorMessage);
       setError(errorMessage);
     }
   };
@@ -491,35 +349,62 @@ export const VendorServices: React.FC = () => {
     setEditingService(null);
   };
 
+  // Authentication check
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+        <VendorHeader />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <AlertTriangle className="h-16 w-16 text-amber-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
+            <p className="text-gray-600 mb-4">Please log in as a vendor to manage your services.</p>
+            <button
+              onClick={() => window.location.href = '/vendor'}
+              className="px-6 py-3 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors"
+            >
+              Go to Vendor Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
+  // Vendor role check
+  if (user.role !== 'vendor') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+        <VendorHeader />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <AlertTriangle className="h-16 w-16 text-amber-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Vendor Access Required</h2>
+            <p className="text-gray-600 mb-4">This page is only accessible to registered vendors.</p>
+            <p className="text-sm text-gray-500">Your current role: {user.role}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
         <VendorHeader />
-        <main className="pt-24 pb-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="w-12 h-12 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading services...</p>
-              </div>
-            </div>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-rose-500 mx-auto mb-4" />
+            <p className="text-gray-600">Loading your services...</p>
+            <p className="text-xs text-gray-500 mt-2">Vendor ID: {vendorId}</p>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 relative">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
-        <div className="absolute top-0 left-0 w-64 h-64 bg-gradient-radial from-rose-200/30 to-transparent rounded-full -translate-x-32 -translate-y-32"></div>
-        <div className="absolute top-1/3 right-0 w-96 h-96 bg-gradient-radial from-pink-200/30 to-transparent rounded-full translate-x-48"></div>
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-gradient-radial from-rose-300/20 to-transparent rounded-full translate-y-40"></div>
-      </div>
-      
       <VendorHeader />
       
       <main className="pt-24 pb-12 relative z-10">
@@ -629,63 +514,6 @@ export const VendorServices: React.FC = () => {
               </motion.div>
             </div>
 
-            {/* Subscription Status */}
-            {subscription && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="bg-gradient-to-br from-rose-50 to-pink-50 rounded-2xl p-8 border border-rose-200/50 shadow-lg mb-8"
-              >
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="p-3 bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl shadow-lg">
-                    <Crown className="w-7 h-7 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">{subscription.plan.name} Plan</h3>
-                    <p className="text-gray-600">{getFeatureLimitMessage('services')}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <UsageLimit
-                    current={services.length} // Use actual service count
-                    limit={subscription.plan.limits.max_services}
-                    label="Services"
-                    description="Active service listings"
-                    unlimited={subscription.plan.limits.max_services === -1}
-                  />
-                  
-                  <UsageLimit
-                    current={6} // Based on our realistic booking data analysis
-                    limit={subscription.plan.limits.max_monthly_bookings}
-                    label="Monthly Bookings"
-                    description="Bookings this month"
-                    unlimited={subscription.plan.limits.max_monthly_bookings === -1}
-                  />
-                  
-                  <UsageLimit
-                    current={serviceStats.total * 3} // Realistic: ~3 images per service
-                    limit={subscription.plan.limits.max_portfolio_items}
-                    label="Portfolio Items"
-                    description="Images in gallery"
-                    unlimited={subscription.plan.limits.max_portfolio_items === -1}
-                  />
-                </div>
-
-                {/* Temporarily disabled - may show false warnings during development
-                {(isNearLimit('services') || isNearLimit('bookings')) && (
-                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-yellow-600" />
-                    <p className="text-sm text-yellow-800">
-                      You're approaching your subscription limits. Consider upgrading to continue growing your business.
-                    </p>
-                  </div>
-                )}
-                */}
-              </motion.div>
-            )}
-
             {/* Search and Filter Controls */}
             <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 border border-white/30 shadow-xl mb-8">
               <div className="flex flex-col lg:flex-row gap-6">
@@ -759,529 +587,162 @@ export const VendorServices: React.FC = () => {
           {error && (
             <div className="mb-6 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-2xl p-6 shadow-lg">
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                    <span className="text-red-500 text-sm">⚠️</span>
-                  </div>
-                </div>
+                <AlertTriangle className="h-6 w-6 text-red-500 flex-shrink-0 mt-1" />
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-red-800 mb-2">Services Loading Issue</h3>
-                  <p className="text-red-700 mb-4">{error}</p>
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={() => {
-                        setError(null);
-                        fetchServices();
-                      }}
-                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
-                    >
-                      🔄 Retry Loading
-                    </button>
-                    <button
-                      onClick={() => setError(null)}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                    >
-                      Dismiss
-                    </button>
-                    <button
-                      onClick={handleQuickCreateService}
-                      className="px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors font-medium"
-                    >
-                      ➕ Add First Service
-                    </button>
-                  </div>
+                  <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Services</h3>
+                  <p className="text-red-700">{error}</p>
+                  <button
+                    onClick={fetchServices}
+                    className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                  >
+                    <RefreshCw size={16} />
+                    Retry
+                  </button>
                 </div>
               </div>
             </div>
           )}
 
-
-
           {/* Services Display */}
-          {viewMode === 'grid' ? (
-            /* Grid View */
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
-            {filteredServices.map((service, index) => (
-              <motion.div
-                key={service.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className={`group bg-white/80 backdrop-blur-md border border-white/30 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden hover:-translate-y-2 ${
-                  viewMode === 'list' ? 'rounded-2xl p-8' : 'rounded-2xl p-0'
-                }`}
+          {filteredServices.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Settings className="h-16 w-16 text-gray-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">No Services Found</h3>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                {services.length === 0 
+                  ? "Ready to showcase your wedding services? Create your first service listing to start attracting couples."
+                  : "No services match your current filters. Try adjusting your search criteria."
+                }
+              </p>
+              <button
+                onClick={handleQuickCreateService}
+                className="px-8 py-4 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-2xl hover:from-rose-600 hover:to-pink-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105"
               >
-                {/* Service Content */}
-                <div className={viewMode === 'list' ? 'flex gap-8' : ''}>
-                  {/* Service Image */}
-                  <div className={`relative ${viewMode === 'list' ? 'w-64 flex-shrink-0' : 'w-full'}`}>
-                    <div className="relative overflow-hidden">
-                      <img
-                        src={service.imageUrl || 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop&auto=format'}
-                        alt={service.name || service.title}
-                        className={`object-cover transition-transform duration-300 group-hover:scale-110 ${
-                          viewMode === 'list' ? 'w-full h-40 rounded-2xl' : 'w-full h-56 rounded-t-2xl'
-                        }`}
-                        onError={(e) => {
-                          // Create unique fallback based on service category
-                          const categoryImages = {
-                            'Photographer & Videographer': 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=600&h=400&fit=crop&auto=format',
-                            'Wedding Planner': 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&h=400&fit=crop&auto=format',
-                            'Florist': 'https://images.unsplash.com/photo-1460978812857-470ed1c77af0?w=600&h=400&fit=crop&auto=format',
-                            'Hair & Makeup Artists': 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600&h=400&fit=crop&auto=format',
-                            'Caterer': 'https://images.unsplash.com/photo-1555244162-803834f70033?w=600&h=400&fit=crop&auto=format',
-                            'DJ/Band': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=400&fit=crop&auto=format',
-                            'Officiant': 'https://images.unsplash.com/photo-1519167758481-83f29b1fe9c2?w=600&h=400&fit=crop&auto=format',
-                            'Venue Coordinator': 'https://images.unsplash.com/photo-1519167758481-83f29b1fe9c2?w=600&h=400&fit=crop&auto=format',
-                            'Event Rentals': 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=600&h=400&fit=crop&auto=format',
-                            'Cake Designer': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&h=400&fit=crop&auto=format',
-                            'Dress Designer/Tailor': 'https://images.unsplash.com/photo-1594736797933-d0d0419b7725?w=600&h=400&fit=crop&auto=format',
-                            'Security & Guest Management': 'https://images.unsplash.com/photo-1556741533-6e6a62bd8b49?w=600&h=400&fit=crop&auto=format',
-                            'Sounds & Lights': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=400&fit=crop&auto=format',
-                            'Stationery Designer': 'https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=600&h=400&fit=crop&auto=format',
-                            'Transportation Services': 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=600&h=400&fit=crop&auto=format'
-                          };
-                          
-                          const fallbackUrl = categoryImages[service.category as keyof typeof categoryImages] || 
-                                            const vendorId = getVendorIdForUser(user);
-                          
-                          if (e.currentTarget.src !== fallbackUrl) {
-                            e.currentTarget.src = fallbackUrl;
-                          } else {
-                            // Even fallback failed, hide image and show placeholder
-                            const imgElement = e.currentTarget;
-                            const imageContainer = imgElement.parentElement;
-                            if (imageContainer) {
-                              imageContainer.classList.add('hidden');
-                              const placeholder = imageContainer.parentElement?.querySelector('.image-placeholder') as HTMLElement;
-                              if (placeholder) {
-                                placeholder.classList.remove('hidden');
-                                placeholder.classList.add('flex');
-                              }
-                            }
-                          }
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    </div>
-                    
-                    {/* Error fallback placeholder */}
-                    <div className={`image-placeholder bg-gradient-to-br from-gray-100 to-gray-200 items-center justify-center relative overflow-hidden hidden ${
-                      viewMode === 'list' ? 'w-full h-40 rounded-2xl' : 'w-full h-56 rounded-t-2xl'
-                    }`}>
-                      <Image className="h-16 w-16 text-gray-400" />
-                      <div className="absolute inset-0 bg-gradient-to-br from-rose-50/30 to-pink-50/30"></div>
-                      <div className="absolute bottom-2 left-2 text-xs text-gray-500 bg-white/80 px-2 py-1 rounded">
-                        Image unavailable
-                      </div>
-                    </div>
-
-                    
-                    {/* Status Badge */}
-                    <div className={`absolute ${viewMode === 'list' ? 'top-3 right-3' : 'top-4 right-4'}`}>
-                      <div className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md ${
-                        (service.isActive ?? service.is_active)
-                          ? 'bg-green-500/90 text-white' 
-                          : 'bg-gray-500/90 text-white'
-                      }`}>
-                        {(service.isActive ?? service.is_active) ? 'Available' : 'Unavailable'}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={`${viewMode === 'list' ? 'flex-1' : 'p-6'}`}>
-                    {/* Service Header */}
-                    <div className="mb-4">
-                      <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 text-xl mb-2 group-hover:text-rose-600 transition-colors duration-200">{service.name || service.title}</h3>
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="flex items-center gap-2 px-3 py-1 bg-rose-50 rounded-full">
-                            <Tag className="h-4 w-4 text-rose-500" />
-                            <span className="text-sm font-medium text-rose-700">{service.category}</span>
-                          </div>
-                        </div>
-                        {service.location && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm text-gray-600">{service.location}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Service Description */}
-                    <p className="text-gray-600 mb-6 leading-relaxed line-clamp-3">
-                      {service.description}
-                    </p>
-
-                    {/* Service Rating & Price */}
-                    <div className="flex items-center justify-between mb-6">
-                      {service.rating && (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 rounded-full">
-                          <Star className="h-5 w-5 text-yellow-500 fill-current" />
-                          <span className="font-semibold text-yellow-700">{service.rating.toFixed(1)}</span>
-                          {(service.reviewCount ?? service.review_count) && (
-                            <span className="text-sm text-yellow-600">({service.reviewCount ?? service.review_count})</span>
-                          )}
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center gap-3">
-                        {service.price_range && (
-                          <span className="px-3 py-2 bg-green-50 text-green-700 font-bold rounded-full">
-                            {service.price_range}
-                          </span>
-                        )}
-                        {service.price && (
-                          <span className="text-lg font-bold text-gray-900">
-                            ₱{(typeof service.price === 'string' ? parseFloat(service.price) : service.price).toLocaleString()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Features */}
-                    {service.features && service.features.length > 0 && (
-                      <div className="mb-4">
-                        <div className="flex flex-wrap gap-1">
-                          {service.features.slice(0, 3).map((feature, index) => (
-                            <span
-                              key={index}
-                              className="text-xs bg-rose-50 text-rose-700 px-2 py-1 rounded-full"
-                            >
-                              {feature}
-                            </span>
-                          ))}
-                          {service.features.length > 3 && (
-                            <span className="text-xs text-gray-500">
-                              +{service.features.length - 3} more
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Buttons - Improved Symmetrical Layout */}
-                    <div className="pt-4 border-t border-gray-100">
-                      {/* Two balanced rows of buttons for perfect alignment */}
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        {/* First Row - Primary Actions */}
-                        <button
-                          onClick={() => editService(service)}
-                          className="group flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 rounded-xl hover:from-blue-100 hover:to-indigo-100 transition-all duration-200 font-medium shadow-sm hover:shadow-md hover:scale-105"
-                          title="Edit service details"
-                        >
-                          <Edit3 size={16} className="group-hover:rotate-12 transition-transform duration-200" />
-                          Edit
-                        </button>
-                        
-                        <button
-                          onClick={() => toggleServiceAvailability(service)}
-                          className={`group flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-200 font-medium shadow-sm hover:shadow-md hover:scale-105 ${
-                            (service.isActive ?? service.is_active)
-                              ? 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-600 hover:from-amber-100 hover:to-yellow-100'
-                              : 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-600 hover:from-green-100 hover:to-emerald-100'
-                          }`}
-                          title={(service.isActive ?? service.is_active) ? 'Mark as unavailable' : 'Mark as available'}
-                        >
-                          {(service.isActive ?? service.is_active) ? (
-                            <EyeOff size={16} className="group-hover:scale-110 transition-transform duration-200" />
-                          ) : (
-                            <Eye size={16} className="group-hover:scale-110 transition-transform duration-200" />
-                          )}
-                          {(service.isActive ?? service.is_active) ? 'Hide' : 'Show'}
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        {/* Second Row - Secondary Actions */}
-                        <button
-                          onClick={() => toggleServiceFeatured(service)}
-                          className={`group flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-200 font-medium shadow-sm hover:shadow-md hover:scale-105 ${
-                            service.featured
-                              ? 'bg-gradient-to-r from-yellow-50 to-amber-50 text-yellow-600 hover:from-yellow-100 hover:to-amber-100'
-                              : 'bg-gradient-to-r from-gray-50 to-slate-50 text-gray-600 hover:from-gray-100 hover:to-slate-100'
-                          }`}
-                          title={service.featured ? 'Remove from featured' : 'Mark as featured'}
-                        >
-                          <Star size={16} className={`group-hover:scale-110 transition-transform duration-200 ${service.featured ? 'fill-current' : ''}`} />
-                          {service.featured ? 'Unfeature' : 'Feature'}
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            const duplicatedService = {
-                              ...service,
-                              id: `temp-${Date.now()}`, // Temporary ID for new service
-                              name: `${service.name} (Copy)`,
-                              title: `${service.title || service.name} (Copy)`
-                            };
-                            setEditingService(duplicatedService);
-                            setIsCreating(true);
-                          }}
-                          className="group flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-50 to-violet-50 text-purple-600 rounded-xl hover:from-purple-100 hover:to-violet-100 transition-all duration-200 font-medium shadow-sm hover:shadow-md hover:scale-105"
-                          title="Duplicate this service"
-                        >
-                          <Copy size={16} className="group-hover:scale-110 transition-transform duration-200" />
-                          Copy
-                        </button>
-                      </div>
-
-                      {/* Delete button - Full width for emphasis */}
-                      <div className="mt-3">
-                        <button
-                          onClick={() => deleteService(service.id)}
-                          className="group flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-red-50 to-pink-50 text-red-600 rounded-xl hover:from-red-100 hover:to-pink-100 transition-all duration-200 font-medium shadow-sm hover:shadow-md hover:scale-105"
-                          title="Delete service permanently"
-                        >
-                          <Trash2 size={16} className="group-hover:scale-110 transition-transform duration-200" />
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                <Plus className="inline-block w-5 h-5 mr-2" />
+                Create Your First Service
+              </button>
             </div>
           ) : (
-            /* Enhanced List View */
-            <div className="space-y-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
               {filteredServices.map((service, index) => (
                 <motion.div
                   key={service.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="group bg-white/90 backdrop-blur-md rounded-2xl border border-white/40 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden hover:-translate-y-1"
+                  className="group bg-white/90 backdrop-blur-md rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border border-white/50"
                 >
-                  <div className="flex">
-                    {/* Service Image */}
-                    <div className="relative w-80 h-48 flex-shrink-0 overflow-hidden">
-                      {service.imageUrl || (service.images && service.images[0]) ? (
-                        <img
-                          src={service.imageUrl || service.images?.[0]}
-                          alt={service.name || service.title || 'Service'}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          onError={(e) => {
-                            // Category-specific fallback images
-                            const categoryImages = {
-                              'Cake Designer': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&h=400&fit=crop&auto=format',
-                              'Caterer': 'https://images.unsplash.com/photo-1555244162-803834f70033?w=600&h=400&fit=crop&auto=format',
-                              'Photographer & Videographer': 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=600&h=400&fit=crop&auto=format',
-                              'Wedding Planner': 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&h=400&fit=crop&auto=format',
-                              'Florist': 'https://images.unsplash.com/photo-1460978812857-470ed1c77af0?w=600&h=400&fit=crop&auto=format'
-                            };
-                            
-                            const fallbackUrl = categoryImages[service.category as keyof typeof categoryImages] || 
-                                              const vendorId = getVendorIdForUser(user);
-                            
-                            if (e.currentTarget.src !== fallbackUrl) {
-                              e.currentTarget.src = fallbackUrl;
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-rose-100 via-pink-50 to-purple-100 flex items-center justify-center">
-                          <div className="text-center">
-                            <Grid className="h-16 w-16 text-rose-300 mx-auto mb-2" />
-                            <p className="text-sm text-rose-400 font-medium">No Image</p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Overlay with gradient */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent"></div>
-                      
-                      {/* Status and Featured Badges */}
-                      <div className="absolute top-4 left-4 flex flex-col gap-2">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm ${
-                          (service.isActive ?? service.is_active)
-                            ? 'bg-green-500/90 text-white'
-                            : 'bg-red-500/90 text-white'
-                        }`}>
-                          {(service.isActive ?? service.is_active) ? '● AVAILABLE' : '● UNAVAILABLE'}
-                        </span>
-                        
-                        {service.featured && (
-                          <span className="bg-yellow-500/90 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm flex items-center gap-1">
-                            <Star className="h-3 w-3 fill-current" />
-                            FEATURED
-                          </span>
-                        )}
+                  {/* Service Image */}
+                  <div className="relative h-48 bg-gradient-to-br from-rose-100 to-pink-100 overflow-hidden">
+                    {service.imageUrl ? (
+                      <img
+                        src={service.imageUrl}
+                        alt={service.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Image className="h-16 w-16 text-rose-300" />
                       </div>
+                    )}
+                    
+                    {/* Status Badge */}
+                    <div className="absolute top-3 left-3">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        service.isActive ?? service.is_active
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-500 text-white'
+                      }`}>
+                        {service.isActive ?? service.is_active ? 'Available' : 'Unavailable'}
+                      </span>
+                    </div>
 
-                      {/* Price Badge */}
-                      <div className="absolute bottom-4 left-4">
-                        <div className="bg-white/95 backdrop-blur-sm text-rose-600 px-4 py-2 rounded-xl shadow-lg">
-                          <span className="text-2xl font-bold">
-                            ₱{typeof service.price === 'string' ? parseFloat(service.price).toLocaleString() : service.price?.toLocaleString() || '0'}
-                          </span>
-                        </div>
+                    {/* Featured Badge */}
+                    {service.featured && (
+                      <div className="absolute top-3 right-3">
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500 text-white flex items-center gap-1">
+                          <Star size={12} className="fill-current" />
+                          Featured
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Service Content */}
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="text-xl font-bold text-gray-900 line-clamp-1">
+                        {service.name || service.title || 'Untitled Service'}
+                      </h3>
+                      <div className="flex items-center gap-1 text-amber-500">
+                        <Star size={16} className="fill-current" />
+                        <span className="text-sm font-medium">{service.rating?.toFixed(1) || '4.5'}</span>
                       </div>
                     </div>
 
-                    {/* Service Content */}
-                    <div className="flex-1 p-8">
-                      {/* Header Section */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-2xl font-bold text-gray-900 group-hover:text-rose-600 transition-colors">
-                              {service.name || service.title || 'Untitled Service'}
-                            </h3>
-                            <span className="bg-gradient-to-r from-rose-100 to-pink-100 text-rose-700 px-3 py-1 rounded-lg text-sm font-semibold border border-rose-200">
-                              {service.category}
-                            </span>
-                          </div>
-                          
-                          {/* Rating */}
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="flex items-center gap-1 bg-yellow-50 px-3 py-1 rounded-lg">
-                              <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                              <span className="font-semibold text-yellow-700">{service.rating || 4.5}</span>
-                              <span className="text-sm text-yellow-600">({service.reviewCount || 0} reviews)</span>
-                            </div>
-                          </div>
-                        </div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Tag size={14} className="text-gray-400" />
+                      <span className="text-sm text-gray-600">{service.category}</span>
+                    </div>
+
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                      {service.description || 'Professional wedding service with exceptional quality.'}
+                    </p>
+
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-2xl font-bold text-rose-600">
+                        ₱{typeof service.price === 'string' ? parseFloat(service.price).toLocaleString() : (service.price as number)?.toLocaleString() || '0'}
                       </div>
-
-                      {/* Description */}
-                      <p className="text-gray-600 text-lg leading-relaxed mb-6 line-clamp-3">
-                        {service.description || 'Professional service with attention to detail and customer satisfaction.'}
-                      </p>
-
-                      {/* Features Tags */}
-                      {service.features && service.features.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-6">
-                          {service.features.slice(0, 4).map((feature, idx) => (
-                            <span
-                              key={idx}
-                              className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium border border-blue-200"
-                            >
-                              {feature}
-                            </span>
-                          ))}
-                          {service.features.length > 4 && (
-                            <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">
-                              +{service.features.length - 4} more
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Action Buttons - Enhanced Visibility */}
-                      <div className="flex flex-col gap-4 pt-6 border-t border-gray-200">
-                        {/* Primary Action Row */}
-                        <div className="flex flex-wrap items-center gap-3">
-                          <button
-                            onClick={() => editService(service)}
-                            className="group flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 min-w-[140px]"
-                          >
-                            <Edit size={20} className="group-hover:rotate-12 transition-transform duration-200" />
-                            Edit Service
-                          </button>
-                          
-                          <button
-                            onClick={() => toggleServiceAvailability(service)}
-                            className={`group flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 min-w-[160px] ${
-                              (service.isActive ?? service.is_active)
-                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700'
-                                : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
-                            }`}
-                          >
-                            {(service.isActive ?? service.is_active) ? (
-                              <>
-                                <EyeOff size={20} className="group-hover:scale-110 transition-transform duration-200" />
-                                Hide Service
-                              </>
-                            ) : (
-                              <>
-                                <Eye size={20} className="group-hover:scale-110 transition-transform duration-200" />
-                                Show Service
-                              </>
-                            )}
-                          </button>
-
-                          <button
-                            onClick={() => toggleServiceFeatured(service)}
-                            className={`group flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 min-w-[140px] ${
-                              service.featured
-                                ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white hover:from-yellow-600 hover:to-amber-700'
-                                : 'bg-gradient-to-r from-gray-500 to-slate-600 text-white hover:from-gray-600 hover:to-slate-700'
-                            }`}
-                          >
-                            <Star size={20} className={`group-hover:scale-110 transition-transform duration-200 ${service.featured ? 'fill-current' : ''}`} />
-                            {service.featured ? 'Unfeatured' : 'Feature'}
-                          </button>
-                        </div>
-
-                        {/* Secondary Action Row */}
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => {
-                              const duplicatedService = {
-                                ...service,
-                                id: `temp-${Date.now()}`,
-                                name: `${service.name} (Copy)`,
-                                title: `${service.title || service.name} (Copy)`
-                              };
-                              setEditingService(duplicatedService);
-                              setIsCreating(true);
-                            }}
-                            className="group flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-violet-600 text-white rounded-xl hover:from-purple-600 hover:to-violet-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 min-w-[140px]"
-                          >
-                            <Copy size={20} className="group-hover:scale-110 transition-transform duration-200" />
-                            Duplicate
-                          </button>
-                          
-                          <button
-                            onClick={() => deleteService(service.id)}
-                            className="group flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:from-red-600 hover:to-pink-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-2xl hover:scale-105 min-w-[140px]"
-                          >
-                            <Trash2 size={20} className="group-hover:scale-110 transition-transform duration-200" />
-                            Delete
-                          </button>
-                        </div>
+                      <div className="text-sm text-gray-500">
+                        {service.reviewCount || service.review_count || 0} reviews
                       </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => editService(service)}
+                        className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2"
+                      >
+                        <Edit size={16} />
+                        Edit
+                      </button>
+                      
+                      <button
+                        onClick={() => toggleServiceAvailability(service)}
+                        className={`flex-1 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2 ${
+                          service.isActive ?? service.is_active
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700'
+                            : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
+                        }`}
+                      >
+                        {service.isActive ?? service.is_active ? (
+                          <>
+                            <EyeOff size={16} />
+                            Hide
+                          </>
+                        ) : (
+                          <>
+                            <Eye size={16} />
+                            Show
+                          </>
+                        )}
+                      </button>
+                      
+                      <button
+                        onClick={() => deleteService(service.id)}
+                        className="px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl hover:from-red-600 hover:to-rose-700 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2"
+                        title="Delete service"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   </div>
                 </motion.div>
               ))}
             </div>
-          )}
-
-          {/* Empty State */}
-          {filteredServices.length === 0 && !loading && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center py-20"
-            >
-              <div className="bg-white/80 backdrop-blur-md rounded-3xl p-12 border border-white/30 shadow-2xl max-w-lg mx-auto">
-                <div className="w-24 h-24 bg-gradient-to-br from-rose-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                  <Grid className="h-12 w-12 text-rose-500" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-3">No services found</h3>
-                <p className="text-gray-600 mb-8 text-lg leading-relaxed">
-                  {searchTerm || filterCategory || filterStatus !== 'all'
-                    ? 'Try adjusting your search or filters to find more services'
-                    : 'Showcase your expertise by adding your first wedding service'}
-                </p>
-                {!searchTerm && !filterCategory && filterStatus === 'all' && (
-                  <button
-                    onClick={() => {
-                      setIsCreating(true);
-                      setEditingService(null);
-                    }}
-                    className="group bg-gradient-to-r from-rose-500 to-pink-600 text-white px-8 py-4 rounded-2xl font-semibold flex items-center gap-3 hover:from-rose-600 hover:to-pink-700 transition-all duration-300 mx-auto shadow-lg hover:shadow-2xl hover:scale-105"
-                  >
-                    <Plus size={22} className="group-hover:rotate-90 transition-transform duration-300" />
-                    Add Your First Service
-                  </button>
-                )}
-              </div>
-            </motion.div>
           )}
         </div>
       </main>
@@ -1296,53 +757,31 @@ export const VendorServices: React.FC = () => {
         onSubmit={handleSubmit}
         editingService={editingService ? {
           ...editingService,
-          vendor_id: editingService.vendorId || editingService.vendor_id || vendorId,
+          vendor_id: (editingService.vendorId || editingService.vendor_id || vendorId) as string,
           title: editingService.name || editingService.title || '',
           is_active: editingService.isActive ?? editingService.is_active ?? true,
-          price: typeof editingService.price === 'string' ? parseFloat(editingService.price) : editingService.price,
+          price: typeof editingService.price === 'string' ? parseFloat(editingService.price) : (editingService.price as number),
           created_at: editingService.created_at || new Date().toISOString(),
           updated_at: editingService.updated_at || new Date().toISOString()
         } : null}
-        vendorId={vendorId}
+        vendorId={vendorId || ''}
         isLoading={false}
       />
 
-      {/* Upgrade Prompt Modal */}
-      <UpgradePrompt
-        isOpen={upgradePrompt.show}
-        onClose={hideUpgradePrompt}
-        message={upgradePrompt.message}
-        requiredTier={upgradePrompt.requiredTier}
-      />
-
-      {/* Enhanced Floating Add Service Button - Always Visible */}
+      {/* Floating Add Service Button */}
       <motion.div
-        className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-4"
+        className="fixed bottom-8 right-8 z-50"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.5 }}
       >
-        {/* Tooltip */}
-        <div className="bg-black/80 text-white px-3 py-2 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
-          Add New Service
-        </div>
-        
-        {/* Main Button */}
-        <motion.button
+        <button
           onClick={handleQuickCreateService}
-          className="group w-24 h-24 bg-gradient-to-br from-rose-500 to-pink-600 text-white rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 flex items-center justify-center relative overflow-hidden"
-          whileHover={{ scale: 1.15, rotate: 10 }}
-          whileTap={{ scale: 0.9 }}
+          className="w-16 h-16 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-full shadow-2xl hover:shadow-3xl hover:from-rose-600 hover:to-pink-700 transition-all duration-300 hover:scale-110 flex items-center justify-center group"
+          title="Add New Service"
         >
-          {/* Glow Effect */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          
-          {/* Pulse Animation */}
-          <div className="absolute inset-0 rounded-full bg-rose-400/50 animate-ping"></div>
-          
-          {/* Icon */}
-          <Plus size={32} className="group-hover:rotate-180 transition-transform duration-500 relative z-10 drop-shadow-lg" />
-        </motion.button>
+          <Plus size={24} className="group-hover:rotate-90 transition-transform duration-300" />
+        </button>
       </motion.div>
     </div>
   );

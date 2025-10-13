@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Service Creation Debug</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            background: rgba(255,255,255,0.1); 
+            padding: 30px; 
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .test-section {
+            background: rgba(255,255,255,0.15);
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 12px;
+            border-left: 4px solid #4CAF50;
+        }
+        button { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .success { color: #4CAF50; font-weight: bold; }
+        .error { color: #f44336; font-weight: bold; }
+        .info { color: #2196F3; font-weight: bold; }
+        .warning { color: #ff9800; font-weight: bold; }
+        pre { 
+            background: rgba(0,0,0,0.3); 
+            padding: 15px; 
+            border-radius: 8px; 
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Service Creation Debug Tool</h1>
+        <p class="info">Debugging why services aren't being saved to database</p>
+
+        <div class="test-section">
+            <h3>🔍 Backend Health Check</h3>
+            <button onclick="checkBackendHealth()">Check Backend Health</button>
+            <div id="healthResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📡 Test Service Endpoint Directly</h3>
+            <p>Using the exact same data structure as the frontend logs:</p>
+            <button onclick="testServiceCreation()">Test Service Creation</button>
+            <div id="serviceResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🗄️ Check Current Services</h3>
+            <button onclick="checkCurrentServices()">Get Current Services</button>
+            <div id="currentServicesResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 Network Debug</h3>
+            <button onclick="testWithDifferentData()">Test with Minimal Data</button>
+            <div id="networkDebugResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com/api';
+        const VENDOR_ID = 'USR-69086401';
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info';
+            return `<div class="${className}">[${timestamp}] ${message}</div>`;
+        }
+
+        async function checkBackendHealth() {
+            const resultDiv = document.getElementById('healthResult');
+            resultDiv.innerHTML = log('🔍 Checking backend health...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                resultDiv.innerHTML = 
+                    log('✅ Backend is healthy!', 'success') +
+                    log(`Version: ${data.version}`, 'info') +
+                    log(`Database: ${data.database}`, 'info') +
+                    `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                resultDiv.innerHTML = log(`❌ Health check failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testServiceCreation() {
+            const resultDiv = document.getElementById('serviceResult');
+            resultDiv.innerHTML = log('🚀 Testing service creation with exact frontend data...', 'info');
+
+            // Using the exact data structure from the logs
+            const serviceData = {
+                vendor_id: 'USR-69086401',
+                title: 'Test Service Debug',
+                description: 'Testing service creation from debug tool',
+                category: 'Security & Guest Management',
+                price: 25000,
+                images: [
+                    'https://res.cloudinary.com/dht64xt1g/image/upload/v1760370462/qbiclfhlnunyrbrwn5f0.png'
+                ],
+                features: ['Professional service', 'Full coverage'],
+                is_active: true,
+                featured: false,
+                location: 'Manila, Philippines',
+                price_range: '₱₱',
+                contact_info: {
+                    phone: '+63 123 456 7890',
+                    email: 'test@example.com',
+                    website: 'https://example.com'
+                },
+                tags: ['security', 'professional'],
+                keywords: 'security professional service'
+            };
+
+            try {
+                resultDiv.innerHTML += log('📤 Making POST request...', 'info');
+                
+                const response = await fetch(`${API_BASE}/services`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(serviceData)
+                });
+
+                resultDiv.innerHTML += log(`📥 Response received: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch {
+                    data = { raw: responseText };
+                }
+                
+                if (response.ok) {
+                    resultDiv.innerHTML += 
+                        log('✅ SERVICE CREATED SUCCESSFULLY!', 'success') +
+                        log(`Service ID: ${data.service?.id}`, 'info') +
+                        log('🎯 Service saved to database!', 'success') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML += 
+                        log(`❌ Service creation failed!`, 'error') +
+                        log(`Error: ${data.error || 'Unknown error'}`, 'error') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML += log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkCurrentServices() {
+            const resultDiv = document.getElementById('currentServicesResult');
+            resultDiv.innerHTML = log('📋 Getting current services...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/services/vendor/${VENDOR_ID}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = 
+                        log('✅ SERVICES RETRIEVED!', 'success') +
+                        log(`Total Services: ${data.count || data.services?.length || 0}`, 'info') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = 
+                        log(`❌ Failed to get services: ${data.error}`, 'error') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testWithDifferentData() {
+            const resultDiv = document.getElementById('networkDebugResult');
+            resultDiv.innerHTML = log('🔧 Testing with minimal data...', 'info');
+
+            // Minimal required data only
+            const minimalData = {
+                vendor_id: 'USR-69086401',
+                title: 'Minimal Test Service',
+                description: 'Minimal test description',
+                category: 'Photographer & Videographer'
+            };
+
+            try {
+                resultDiv.innerHTML += log('📤 Testing minimal data structure...', 'info');
+                
+                const response = await fetch(`${API_BASE}/services`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(minimalData)
+                });
+
+                const responseText = await response.text();
+                resultDiv.innerHTML += log(`📥 Response: ${response.status} - ${responseText}`, response.ok ? 'success' : 'error');
+
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch {
+                    data = { raw: responseText };
+                }
+
+                if (response.ok) {
+                    resultDiv.innerHTML += 
+                        log('✅ MINIMAL SERVICE CREATED!', 'success') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML += 
+                        log(`❌ Minimal service creation failed!`, 'error') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML += log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-check health on page load
+        window.onload = function() {
+            checkBackendHealth();
+        };
+    </script>
+</body>
+</html>

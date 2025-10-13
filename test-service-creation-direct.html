@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Service Creation Test</title>
+</head>
+<body>
+    <h1>Testing Service Creation</h1>
+    <div id="results"></div>
+    <script>
+// Test service creation endpoint directly
+const testData = {
+  vendor_id: '1',
+  vendorId: '1',
+  title: 'Test Photography Service',
+  name: 'Test Photography Service',
+  category: 'Photography',
+  description: 'A test photography service to debug creation',
+  price: 5000,
+  images: [
+    'https://res.cloudinary.com/wedding-bazaar/image/upload/test1.jpg',
+    'https://res.cloudinary.com/wedding-bazaar/image/upload/test2.jpg'
+  ]
+};
+
+console.log('🧪 Testing service creation in production...');
+console.log('Payload:', testData);
+
+fetch('https://weddingbazaar-web.onrender.com/api/services', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify(testData)
+})
+.then(response => {
+  console.log('📊 Response status:', response.status);
+  return response.json();
+})
+.then(data => {
+  console.log('✅ Response data:', data);
+  
+  if (data.success) {
+    console.log('🎉 Service created successfully!');
+    console.log('Service ID:', data.service?.id);
+    console.log('Service details:', data.service);
+  } else {
+    console.log('❌ Service creation failed:', data.error || data.message);
+  }
+})
+.catch(error => {
+  console.error('❌ Request failed:', error.message);
+});
+    </script>
+</body>
+</html>

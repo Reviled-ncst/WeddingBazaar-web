@@ -44,6 +44,9 @@ export const EmailVerification: React.FC<EmailVerificationProps> = ({
     setStep('sending');
     setError(null);
 
+    // Development bypass - if API not available, provide test code
+    const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
+
     try {
       const response = await fetch('/api/auth/send-verification-email', {
         method: 'POST',
@@ -64,8 +67,18 @@ export const EmailVerification: React.FC<EmailVerificationProps> = ({
       }
     } catch (error) {
       console.error('Email sending error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to send verification email');
-      setStep('failed');
+      
+      // Development fallback
+      if (isDevelopment) {
+        console.log('🔧 Development mode: Using test verification code 123456');
+        setError('Development mode: Use code 123456 to verify');
+        setStep('sent');
+        setTimeLeft(60);
+        setCanResend(false);
+      } else {
+        setError(error instanceof Error ? error.message : 'Failed to send verification email');
+        setStep('failed');
+      }
     }
   };
 
@@ -77,6 +90,15 @@ export const EmailVerification: React.FC<EmailVerificationProps> = ({
 
     setStep('verifying');
     setError(null);
+
+    // Development bypass
+    const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
+    if (isDevelopment && verificationCode === '123456') {
+      console.log('🔧 Development bypass: Using test code 123456');
+      setStep('success');
+      onVerificationComplete(true);
+      return;
+    }
 
     try {
       const response = await fetch('/api/auth/verify-email-code', {
@@ -279,7 +301,7 @@ export const EmailVerification: React.FC<EmailVerificationProps> = ({
 
           {/* Action Buttons */}
           <div className="space-y-3">
-            {(step === 'sent') && (
+            {(step === 'sent' || step === 'verifying') && (
               <button
                 onClick={verifyCode}
                 disabled={verificationCode.length !== 6 || step === 'verifying'}

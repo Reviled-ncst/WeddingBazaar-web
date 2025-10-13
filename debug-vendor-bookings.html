@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Vendor Bookings - 2-2025-003</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        button { padding: 10px 15px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Vendor Bookings for 2-2025-003</h1>
+    
+    <div class="section info">
+        <h3>📊 Expected Data</h3>
+        <p>Based on your JSON data, vendor <strong>2-2025-003</strong> should have:</p>
+        <ul>
+            <li><strong>Booking ID:</strong> 1760288385</li>
+            <li><strong>Service:</strong> DJ Service (SRV-1758769064490)</li>
+            <li><strong>Client:</strong> 1-2025-001</li>
+            <li><strong>Status:</strong> request</li>
+            <li><strong>Event Date:</strong> 2025-10-15</li>
+            <li><strong>Notes:</strong> QUOTE_SENT: Quote has been sent to client</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h3>🧪 API Tests</h3>
+        <button class="btn-primary" onclick="testDirectAPI()">Test Direct API Call</button>
+        <button class="btn-secondary" onclick="testWithAuth()">Test with Auth Token</button>
+        <button class="btn-secondary" onclick="testBackendHealth()">Test Backend Health</button>
+        <div id="apiResults"></div>
+    </div>
+
+    <div class="section">
+        <h3>🔑 Authentication Test</h3>
+        <input type="email" id="email" placeholder="vendor0@gmail.com" value="vendor0@gmail.com">
+        <input type="password" id="password" placeholder="Password" value="admin123">
+        <button class="btn-primary" onclick="testLogin()">Login & Test</button>
+        <div id="authResults"></div>
+    </div>
+
+    <div class="section">
+        <h3>📝 Debug Log</h3>
+        <div id="debugLog" style="max-height: 400px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 4px;"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com';
+        let authToken = null;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById('debugLog');
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'blue';
+            logDiv.innerHTML += `<div style="color: ${color};">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        async function testBackendHealth() {
+            log('🏥 Testing backend health...');
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+                log(`✅ Backend Health: ${response.status} - ${JSON.stringify(data)}`, 'success');
+            } catch (error) {
+                log(`❌ Backend Health Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDirectAPI() {
+            log('🎯 Testing direct API call to /api/bookings/vendor/2-2025-003...');
+            const resultsDiv = document.getElementById('apiResults');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/bookings/vendor/2-2025-003`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(authToken && { 'Authorization': `Bearer ${authToken}` })
+                    }
+                });
+
+                const data = await response.json();
+                
+                resultsDiv.innerHTML = `
+                    <div class="${response.ok ? 'success' : 'error'}">
+                        <h4>Response: ${response.status} ${response.statusText}</h4>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+
+                if (response.ok) {
+                    log(`✅ API Success: Found ${data.bookings?.length || 0} bookings`, 'success');
+                    if (data.bookings && data.bookings.length > 0) {
+                        log(`📋 Booking Details: ${JSON.stringify(data.bookings[0], null, 2)}`, 'info');
+                    }
+                } else {
+                    log(`❌ API Error: ${response.status} - ${data.message || data.error}`, 'error');
+                    
+                    if (response.status === 403) {
+                        log('🔒 403 Forbidden - This might be an authentication issue', 'error');
+                        log('💡 Try logging in first, then test with auth token', 'info');
+                    }
+                }
+            } catch (error) {
+                const errorMsg = `Network Error: ${error.message}`;
+                resultsDiv.innerHTML = `<div class="error"><h4>Error</h4><pre>${errorMsg}</pre></div>`;
+                log(`💥 ${errorMsg}`, 'error');
+            }
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultsDiv = document.getElementById('authResults');
+            
+            log(`🔐 Testing login for ${email}...`);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.token) {
+                    authToken = data.token;
+                    log(`✅ Login successful! User ID: ${data.user?.id}`, 'success');
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="success">
+                            <h4>Login Successful!</h4>
+                            <p><strong>User ID:</strong> ${data.user?.id}</p>
+                            <p><strong>Role:</strong> ${data.user?.user_type}</p>
+                            <p><strong>Name:</strong> ${data.user?.first_name} ${data.user?.last_name}</p>
+                            <p><strong>Email:</strong> ${data.user?.email}</p>
+                        </div>
+                    `;
+                    
+                    // Auto-test the API with auth
+                    setTimeout(() => {
+                        log('🔄 Auto-testing API with authentication...', 'info');
+                        testWithAuth();
+                    }, 1000);
+                    
+                } else {
+                    log(`❌ Login failed: ${data.message || 'Unknown error'}`, 'error');
+                    resultsDiv.innerHTML = `<div class="error"><h4>Login Failed</h4><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+                }
+            } catch (error) {
+                log(`💥 Login error: ${error.message}`, 'error');
+                resultsDiv.innerHTML = `<div class="error"><h4>Login Error</h4><pre>${error.message}</pre></div>`;
+            }
+        }
+
+        async function testWithAuth() {
+            if (!authToken) {
+                log('❌ No auth token available. Please login first.', 'error');
+                return;
+            }
+            
+            log('🔑 Testing API with authentication token...');
+            await testDirectAPI();
+        }
+
+        // Auto-run health check on page load
+        window.onload = () => {
+            log('🚀 Debug page loaded', 'info');
+            testBackendHealth();
+        };
+    </script>
+</body>
+</html>

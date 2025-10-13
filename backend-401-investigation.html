@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Login 401 Investigation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border-left: 4px solid #ffd700;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .success { background: rgba(0, 255, 0, 0.2); }
+        .error { background: rgba(255, 0, 0, 0.2); }
+        .info { background: rgba(0, 123, 255, 0.2); }
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+            transition: transform 0.3s ease;
+        }
+        button:hover { transform: scale(1.05); }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        input::placeholder { color: rgba(255, 255, 255, 0.7); }
+        .credentials-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Backend Login 401 Investigation</h1>
+        <p><strong>Status:</strong> JWT validation fixed ✅ - Now investigating backend 401 responses</p>
+
+        <div class="section">
+            <h3>🏥 Step 1: Backend Health & User Check</h3>
+            <button onclick="checkBackendHealth()">Check Backend Health</button>
+            <button onclick="listUsers()">List Available Users</button>
+            <div id="healthResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>🔐 Step 2: Test Multiple Login Credentials</h3>
+            <div class="credentials-grid">
+                <button onclick="testLogin('couples@weddingbazaar.com', '123456')">Test: couples@weddingbazaar.com</button>
+                <button onclick="testLogin('vendor@weddingbazaar.com', '123456')">Test: vendor@weddingbazaar.com</button>
+                <button onclick="testLogin('test@example.com', 'password123')">Test: test@example.com</button>
+                <button onclick="testLogin('admin@weddingbazaar.com', 'admin123')">Test: admin@weddingbazaar.com</button>
+            </div>
+            <div id="loginResults"></div>
+        </div>
+
+        <div class="section">
+            <h3>📝 Step 3: Create and Test New User</h3>
+            <input type="email" id="newEmail" placeholder="New Email" value="logintest2@example.com">
+            <input type="password" id="newPassword" placeholder="New Password" value="test123">
+            <button onclick="createAndTestUser()">Create User & Test Login</button>
+            <div id="createResults"></div>
+        </div>
+
+        <div class="section">
+            <h3>🔍 Step 4: Raw API Response Analysis</h3>
+            <input type="email" id="debugEmail" placeholder="Debug Email" value="couples@weddingbazaar.com">
+            <input type="password" id="debugPassword" placeholder="Debug Password" value="123456">
+            <button onclick="debugLogin()">Debug Login Response</button>
+            <div id="debugResults"></div>
+        </div>
+
+        <div class="section">
+            <h3>🎯 Step 5: Backend Database Query</h3>
+            <button onclick="queryDatabase()">Query User Database</button>
+            <div id="queryResults"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com';
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `${new Date().toLocaleTimeString()}: ${message}`;
+            element.appendChild(div);
+        }
+
+        function clearResult(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        async function checkBackendHealth() {
+            clearResult('healthResult');
+            try {
+                log('healthResult', '🏥 Checking backend health and endpoints...', 'info');
+                
+                // Check health endpoint
+                const healthResponse = await fetch(`${API_BASE}/api/health`);
+                if (healthResponse.ok) {
+                    const healthData = await healthResponse.json();
+                    log('healthResult', `✅ Backend healthy: ${JSON.stringify(healthData)}`, 'success');
+                } else {
+                    log('healthResult', `⚠️ Health check failed: ${healthResponse.status}`, 'error');
+                }
+
+                // Check if auth endpoints exist
+                const endpoints = ['/api/auth/login', '/api/auth/register', '/api/users'];
+                for (const endpoint of endpoints) {
+                    try {
+                        const response = await fetch(`${API_BASE}${endpoint}`, { method: 'OPTIONS' });
+                        log('healthResult', `📍 ${endpoint}: ${response.status} (${response.statusText})`, 'info');
+                    } catch (e) {
+                        log('healthResult', `📍 ${endpoint}: Connection error`, 'error');
+                    }
+                }
+
+            } catch (error) {
+                log('healthResult', `❌ Health check error: ${error.message}`, 'error');
+            }
+        }
+
+        async function listUsers() {
+            try {
+                log('healthResult', '👥 Attempting to list users (if endpoint exists)...', 'info');
+                
+                const response = await fetch(`${API_BASE}/api/users`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const users = await response.json();
+                    log('healthResult', `✅ Found ${users.length || 0} users in database`, 'success');
+                    if (users.length > 0) {
+                        users.slice(0, 5).forEach(user => {
+                            log('healthResult', `👤 User: ${user.email} (${user.user_type || user.role})`, 'info');
+                        });
+                    }
+                } else {
+                    log('healthResult', `⚠️ Users endpoint not accessible: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('healthResult', `❌ Users list error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLogin(email, password) {
+            try {
+                log('loginResults', `\n🔐 Testing login: ${email}`, 'info');
+                
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                log('loginResults', `📡 Response: ${response.status} ${response.statusText}`, 'info');
+                log('loginResults', `📋 Headers: ${JSON.stringify(Object.fromEntries(response.headers))}`, 'info');
+
+                const responseText = await response.text();
+                
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(responseText);
+                        log('loginResults', `✅ LOGIN SUCCESS: ${JSON.stringify(data.user)}`, 'success');
+                        log('loginResults', `🎫 Token: ${data.token ? 'Present' : 'Missing'}`, data.token ? 'success' : 'error');
+                    } catch (e) {
+                        log('loginResults', `⚠️ Response not JSON: ${responseText}`, 'error');
+                    }
+                } else {
+                    log('loginResults', `❌ LOGIN FAILED: ${responseText}`, 'error');
+                    
+                    // Try to parse error as JSON
+                    try {
+                        const errorData = JSON.parse(responseText);
+                        log('loginResults', `🔍 Error details: ${JSON.stringify(errorData)}`, 'error');
+                    } catch (e) {
+                        log('loginResults', `📄 Raw error: ${responseText}`, 'error');
+                    }
+                }
+
+            } catch (error) {
+                log('loginResults', `❌ Login test error for ${email}: ${error.message}`, 'error');
+            }
+        }
+
+        async function createAndTestUser() {
+            clearResult('createResults');
+            const email = document.getElementById('newEmail').value;
+            const password = document.getElementById('newPassword').value;
+
+            try {
+                log('createResults', `👤 Creating user: ${email}`, 'info');
+                
+                const registerResponse = await fetch(`${API_BASE}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        first_name: 'Test',
+                        last_name: 'User',
+                        user_type: 'couple'
+                    })
+                });
+
+                const registerText = await registerResponse.text();
+                
+                if (registerResponse.ok) {
+                    log('createResults', `✅ User created successfully`, 'success');
+                    
+                    // Now test login
+                    log('createResults', `🔐 Testing login for new user...`, 'info');
+                    await testLoginDetailed(email, password, 'createResults');
+                } else {
+                    log('createResults', `❌ Registration failed: ${registerText}`, 'error');
+                }
+
+            } catch (error) {
+                log('createResults', `❌ Create user error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLoginDetailed(email, password, resultId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const responseText = await response.text();
+                
+                log(resultId, `📡 Login response: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                if (response.ok) {
+                    const data = JSON.parse(responseText);
+                    log(resultId, `✅ Login successful for: ${data.user.email}`, 'success');
+                } else {
+                    log(resultId, `❌ Login failed: ${responseText}`, 'error');
+                }
+                
+            } catch (error) {
+                log(resultId, `❌ Login test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function debugLogin() {
+            clearResult('debugResults');
+            const email = document.getElementById('debugEmail').value;
+            const password = document.getElementById('debugPassword').value;
+
+            try {
+                log('debugResults', `🔍 Deep debugging login for: ${email}`, 'info');
+                log('debugResults', `📤 Sending: ${JSON.stringify({ email, password })}`, 'info');
+                
+                const startTime = Date.now();
+                
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+                
+                log('debugResults', `⏱️ Response time: ${responseTime}ms`, 'info');
+                log('debugResults', `📡 Status: ${response.status} ${response.statusText}`, 'info');
+                log('debugResults', `🌐 URL: ${response.url}`, 'info');
+                log('debugResults', `📋 Response headers:`, 'info');
+                
+                for (const [key, value] of response.headers) {
+                    log('debugResults', `  ${key}: ${value}`, 'info');
+                }
+
+                const responseText = await response.text();
+                log('debugResults', `📄 Raw response body: ${responseText}`, response.ok ? 'success' : 'error');
+                
+                // Try to parse as JSON
+                try {
+                    const jsonData = JSON.parse(responseText);
+                    log('debugResults', `📊 Parsed JSON: ${JSON.stringify(jsonData, null, 2)}`, 'info');
+                } catch (e) {
+                    log('debugResults', `⚠️ Response is not valid JSON`, 'error');
+                }
+
+            } catch (error) {
+                log('debugResults', `❌ Debug login error: ${error.message}`, 'error');
+                log('debugResults', `🔍 Error stack: ${error.stack}`, 'error');
+            }
+        }
+
+        async function queryDatabase() {
+            clearResult('queryResults');
+            try {
+                log('queryResults', '🗃️ Querying backend database...', 'info');
+
+                // Try different endpoints that might give us user info
+                const endpoints = [
+                    '/api/users',
+                    '/api/auth/users', 
+                    '/api/debug/users',
+                    '/api/admin/users'
+                ];
+
+                for (const endpoint of endpoints) {
+                    try {
+                        log('queryResults', `📍 Trying: ${endpoint}`, 'info');
+                        
+                        const response = await fetch(`${API_BASE}${endpoint}`, {
+                            method: 'GET',
+                            headers: { 'Accept': 'application/json' }
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            log('queryResults', `✅ ${endpoint} success: ${JSON.stringify(data).substring(0, 200)}...`, 'success');
+                            break;
+                        } else {
+                            log('queryResults', `❌ ${endpoint}: ${response.status}`, 'error');
+                        }
+                    } catch (e) {
+                        log('queryResults', `❌ ${endpoint}: ${e.message}`, 'error');
+                    }
+                }
+
+            } catch (error) {
+                log('queryResults', `❌ Database query error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run health check on load
+        window.addEventListener('load', () => {
+            setTimeout(checkBackendHealth, 1000);
+        });
+    </script>
+</body>
+</html>

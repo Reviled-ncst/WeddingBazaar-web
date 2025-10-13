@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Issue Debug & Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 1000px; margin: 0 auto; }
+        .log { background: #f5f5f5; padding: 10px; margin: 5px 0; border-radius: 5px; font-family: monospace; font-size: 14px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; }
+        button { padding: 10px 20px; margin: 10px 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #1e7e34; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 3px; width: 200px; }
+        .section { margin: 20px 0; padding: 15px; border: 2px solid #ddd; border-radius: 8px; }
+        .section h3 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Login Issue Diagnosis & Fix</h1>
+    <p><strong>Issue:</strong> Login attempts returning 401 Unauthorized</p>
+    
+    <div class="section">
+        <h3>🧪 Step 1: Create Test User</h3>
+        <p>First, let's create a test user we can log in with:</p>
+        <button class="btn-success" onclick="createTestUser()">Create Test User</button>
+        <div id="createResults"></div>
+    </div>
+    
+    <div class="section">
+        <h3>🔐 Step 2: Test Login</h3>
+        <p>Test login with the created user or your own credentials:</p>
+        <input type="email" id="loginEmail" placeholder="Email" value="test@example.com">
+        <input type="password" id="loginPassword" placeholder="Password" value="password123">
+        <button onclick="testLogin()">Test Login</button>
+        <div id="loginResults"></div>
+    </div>
+    
+    <div class="section">
+        <h3>🔍 Step 3: Inspect Backend Response</h3>
+        <p>Check what the backend is actually returning:</p>
+        <button onclick="inspectLoginResponse()">Inspect Login Response</button>
+        <div id="inspectResults"></div>
+    </div>
+    
+    <div class="section">
+        <h3>🛠️ Step 4: Fix Login Issue</h3>
+        <p>Apply fixes based on findings:</p>
+        <button class="btn-danger" onclick="clearBrowserCache()">Clear Browser Cache</button>
+        <button onclick="testWithCurl()">Test with Raw HTTP</button>
+        <div id="fixResults"></div>
+    </div>
+    
+    <div id="allResults"></div>
+
+    <script>
+        function log(message, type = 'info', containerId = 'allResults') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            container.appendChild(div);
+            console.log(message);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function createTestUser() {
+            log('🔧 Creating test user...', 'info', 'createResults');
+            
+            const testUser = {
+                email: 'test@example.com',
+                password: 'password123',
+                first_name: 'Test',
+                last_name: 'User',
+                user_type: 'couple'
+            };
+            
+            try {
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testUser)
+                });
+                
+                log(`📊 Registration Status: ${response.status}`, response.ok ? 'success' : 'error', 'createResults');
+                
+                const data = await response.json();
+                log(`📦 Registration Response: ${JSON.stringify(data, null, 2)}`, response.ok ? 'success' : 'error', 'createResults');
+                
+                if (response.ok) {
+                    log('✅ Test user created successfully!', 'success', 'createResults');
+                    log('🔑 Credentials: test@example.com / password123', 'success', 'createResults');
+                } else if (response.status === 409) {
+                    log('ℹ️ User already exists - that\'s fine, we can test login', 'warning', 'createResults');
+                } else {
+                    log(`❌ Failed to create user: ${data.error || data.message}`, 'error', 'createResults');
+                }
+            } catch (error) {
+                log(`❌ Error creating test user: ${error.message}`, 'error', 'createResults');
+            }
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('loginEmail').value || 'test@example.com';
+            const password = document.getElementById('loginPassword').value || 'password123';
+            
+            log(`🔐 Testing login for: ${email}`, 'info', 'loginResults');
+            
+            try {
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                log(`📊 Login Status: ${response.status}`, response.ok ? 'success' : 'error', 'loginResults');
+                
+                const data = await response.json();
+                log(`📦 Login Response: ${JSON.stringify(data, null, 2)}`, response.ok ? 'success' : 'error', 'loginResults');
+                
+                if (response.ok) {
+                    log('✅ Login successful!', 'success', 'loginResults');
+                    log(`👤 User: ${data.user?.email} (${data.user?.user_type})`, 'success', 'loginResults');
+                    log(`🔑 Token: ${data.token?.substring(0, 20)}...`, 'success', 'loginResults');
+                } else {
+                    log(`❌ Login failed: ${data.error || data.message}`, 'error', 'loginResults');
+                    
+                    if (response.status === 401) {
+                        log('🔍 401 Unauthorized - Possible causes:', 'warning', 'loginResults');
+                        log('  • Wrong email/password combination', 'warning', 'loginResults');
+                        log('  • User doesn\'t exist in database', 'warning', 'loginResults');
+                        log('  • Password hash mismatch', 'warning', 'loginResults');
+                        log('  • Backend authentication logic issue', 'warning', 'loginResults');
+                    }
+                }
+            } catch (error) {
+                log(`❌ Login test error: ${error.message}`, 'error', 'loginResults');
+            }
+        }
+
+        async function inspectLoginResponse() {
+            log('🔍 Inspecting detailed login response...', 'info', 'inspectResults');
+            
+            try {
+                // Test with different credentials to see patterns
+                const testCases = [
+                    { email: 'test@example.com', password: 'password123', name: 'Test User' },
+                    { email: 'nonexistent@example.com', password: 'wrongpass', name: 'Non-existent User' },
+                    { email: 'test@example.com', password: 'wrongpassword', name: 'Wrong Password' },
+                    { email: '', password: '', name: 'Empty Fields' }
+                ];
+                
+                for (const testCase of testCases) {
+                    log(`\n🧪 Testing: ${testCase.name}`, 'info', 'inspectResults');
+                    
+                    try {
+                        const response = await fetch('https://weddingbazaar-web.onrender.com/api/auth/login', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ 
+                                email: testCase.email, 
+                                password: testCase.password 
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        log(`  Status: ${response.status}`, response.ok ? 'success' : 'error', 'inspectResults');
+                        log(`  Response: ${JSON.stringify(data)}`, response.ok ? 'success' : 'warning', 'inspectResults');
+                        
+                        // Small delay between requests
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                    } catch (error) {
+                        log(`  Error: ${error.message}`, 'error', 'inspectResults');
+                    }
+                }
+                
+            } catch (error) {
+                log(`❌ Inspection error: ${error.message}`, 'error', 'inspectResults');
+            }
+        }
+
+        function clearBrowserCache() {
+            log('🧹 Clearing browser storage...', 'info', 'fixResults');
+            
+            // Clear all authentication-related storage
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('cached_user_data');
+            sessionStorage.removeItem('auth_token');
+            sessionStorage.removeItem('cached_user_data');
+            
+            // Clear all localStorage and sessionStorage
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            log('✅ Browser storage cleared', 'success', 'fixResults');
+            log('🔄 Try refreshing the page and logging in again', 'info', 'fixResults');
+        }
+
+        async function testWithCurl() {
+            log('🌐 Testing with raw HTTP request...', 'info', 'fixResults');
+            
+            const curlCommand = `curl -X POST https://weddingbazaar-web.onrender.com/api/auth/login \\
+-H "Content-Type: application/json" \\
+-d '{"email":"test@example.com","password":"password123"}'`;
+            
+            log('📋 Equivalent curl command:', 'info', 'fixResults');
+            log(curlCommand, 'info', 'fixResults');
+            
+            // Test the raw fetch
+            try {
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'User-Agent': 'Wedding-Bazaar-Debug-Tool'
+                    },
+                    body: JSON.stringify({ 
+                        email: 'test@example.com', 
+                        password: 'password123' 
+                    })
+                });
+                
+                log(`📊 Raw HTTP Status: ${response.status}`, response.ok ? 'success' : 'error', 'fixResults');
+                log(`📝 Response Headers: ${JSON.stringify(Object.fromEntries(response.headers))}`, 'info', 'fixResults');
+                
+                const text = await response.text();
+                log(`📦 Raw Response Body: ${text}`, response.ok ? 'success' : 'error', 'fixResults');
+                
+                try {
+                    const jsonData = JSON.parse(text);
+                    log(`✅ Valid JSON Response: ${JSON.stringify(jsonData, null, 2)}`, 'success', 'fixResults');
+                } catch (e) {
+                    log(`❌ Invalid JSON Response - this might be the issue!`, 'error', 'fixResults');
+                }
+                
+            } catch (error) {
+                log(`❌ Raw HTTP test error: ${error.message}`, 'error', 'fixResults');
+            }
+        }
+
+        // Auto-run initial diagnosis
+        window.addEventListener('load', function() {
+            log('🚀 Login Issue Diagnosis Tool Loaded', 'info');
+            log('📋 Steps to diagnose the login issue:', 'info');
+            log('1. Create a test user first', 'info');
+            log('2. Test login with known credentials', 'info');
+            log('3. Inspect the backend response details', 'info');
+            log('4. Apply fixes based on findings', 'info');
+        });
+    </script>
+</body>
+</html>

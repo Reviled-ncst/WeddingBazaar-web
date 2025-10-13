@@ -14,6 +14,7 @@ import {
   Tag,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Camera,
   Sparkles,
   Loader2
@@ -384,13 +385,19 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
 
       console.log('📤 [AddServiceForm] Calling onSubmit with data:', serviceData);
       await onSubmit(serviceData);
-      console.log('✅ [AddServiceForm] Form submission completed');
+      console.log('✅ [AddServiceForm] Form submission completed successfully');
       
       // Close form only after successful submission
       onClose();
     } catch (error) {
       console.error('❌ [AddServiceForm] Error submitting service:', error);
-      setErrors({ submit: 'Failed to save service. Please try again.' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save service. Please try again.';
+      setErrors({ submit: errorMessage });
+      console.error('❌ [AddServiceForm] Full error details:', {
+        message: errorMessage,
+        error: error,
+        formData: formData.title
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -1215,6 +1222,16 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Error Display */}
+            {errors.submit && (
+              <div className="px-6 py-3 bg-red-50 border-t border-red-200">
+                <div className="text-red-700 text-sm flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  {errors.submit}
+                </div>
+              </div>
+            )}
 
             {/* Footer with Navigation */}
             <div className="p-6 border-t border-gray-200 bg-gray-50">

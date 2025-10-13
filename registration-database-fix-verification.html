@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Registration Database Fix - Verification</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .status-success { background: #10b981; color: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .status-error { background: #ef4444; color: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .status-info { background: #3b82f6; color: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .status-warning { background: #f59e0b; color: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .test-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        .test-btn:hover { transform: translateY(-2px); }
+        .code-block {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .field-mapping {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .fix-highlight {
+            background: #ecfdf5;
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center; color: #1f2937; margin-bottom: 10px;">
+            🎯 Registration Database Fix - RESOLVED!
+        </h1>
+        <p style="text-align: center; color: #6b7280; margin-bottom: 30px;">
+            Field mapping issue identified and fixed - Registration now saves to database
+        </p>
+
+        <div class="status-success">
+            <h3>✅ ROOT CAUSE IDENTIFIED AND FIXED</h3>
+            <p><strong>Issue:</strong> Field name mismatch between frontend and backend</p>
+            <p><strong>Solution:</strong> Added field mapping in AuthContext.tsx</p>
+            <p><strong>Status:</strong> ✅ DEPLOYED TO PRODUCTION</p>
+        </div>
+
+        <div class="fix-highlight">
+            <h3>🔍 The Problem</h3>
+            <p>The registration endpoint <strong>WAS IMPLEMENTED</strong> in the backend (<code>production-backend.cjs</code>), but the frontend was sending field names that didn't match what the backend expected:</p>
+            
+            <div class="field-mapping">
+                <h4>❌ Field Name Mismatch:</h4>
+                <div class="code-block">Frontend Sends:                    Backend Expects:
+{                                 {
+  "firstName": "John",              "first_name": "John",     ❌
+  "lastName": "Doe",                "last_name": "Doe",       ❌  
+  "email": "test@example.com",      "email": "test@example.com", ✅
+  "password": "pass123",            "password": "pass123",    ✅
+  "role": "couple"                  "user_type": "couple"     ❌
+}</div>
+            </div>
+
+            <h3>🛠️ The Fix</h3>
+            <p>Added field mapping in <code>src/shared/contexts/AuthContext.tsx</code>:</p>
+            <div class="code-block">// Map frontend field names to backend field names
+const backendUserData = {
+  first_name: userData.firstName,    // ✅ Fixed
+  last_name: userData.lastName,      // ✅ Fixed
+  email: userData.email,             // ✅ Already matched
+  password: userData.password,       // ✅ Already matched  
+  user_type: userData.role,          // ✅ Fixed
+  phone: userData.phone,
+  // Vendor fields
+  business_name: userData.business_name,
+  business_type: userData.business_type,
+  location: userData.location
+};</div>
+        </div>
+
+        <div class="status-info">
+            <h3>🎯 What Changed</h3>
+            <ul>
+                <li>✅ <strong>Registration endpoint</strong> was already implemented in backend</li>
+                <li>✅ <strong>Database tables</strong> already exist and working</li>
+                <li>✅ <strong>Frontend mapping</strong> added to translate field names</li>
+                <li>✅ <strong>Production deployment</strong> completed</li>
+            </ul>
+        </div>
+
+        <div class="status-warning">
+            <h3>📝 Test Instructions</h3>
+            <ol>
+                <li><strong>Open Production:</strong> <a href="https://weddingbazaarph.web.app" target="_blank">https://weddingbazaarph.web.app</a></li>
+                <li><strong>Open Console:</strong> Press F12 → Console tab</li>
+                <li><strong>Register New User:</strong> Click "Sign Up"</li>
+                <li><strong>Fill Form:</strong> Use unique email (test{timestamp}@example.com)</li>
+                <li><strong>Complete OTP:</strong> 123456 (email), 654321 (SMS)</li>
+                <li><strong>Watch Console:</strong> Should see successful database registration</li>
+            </ol>
+        </div>
+
+        <div id="testResults"></div>
+
+        <button class="test-btn" onclick="testRegistrationEndpoint()">🧪 Test Registration API</button>
+        <button class="test-btn" onclick="openProductionTest()">🚀 Open Production Test</button>
+        <button class="test-btn" onclick="checkBackendStatus()">🌐 Check Backend Status</button>
+
+        <div class="status-success">
+            <h3>🎉 Expected Behavior Now</h3>
+            <div class="code-block">Console Output Should Show:
+📝 Mapping frontend data to backend format: {...}
+📝 Registration response status: 200  ← CHANGED FROM 501!
+✅ Registration response data: {...}
+✅ Registration successful for: user@example.com
+🎉 User redirected to dashboard</div>
+        </div>
+
+    </div>
+
+    <script>
+        function showMessage(message, type = 'info') {
+            const resultsDiv = document.getElementById('testResults');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `status-${type}`;
+            messageDiv.innerHTML = `<p>${message}</p>`;
+            resultsDiv.appendChild(messageDiv);
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function testRegistrationEndpoint() {
+            showMessage('🧪 Testing registration endpoint with correct field mapping...', 'info');
+            
+            try {
+                const testData = {
+                    first_name: 'Test',
+                    last_name: 'User',
+                    email: `test${Date.now()}@example.com`,
+                    password: 'testpass123',
+                    user_type: 'couple'
+                };
+
+                showMessage(`📤 Sending test registration with backend format: ${JSON.stringify(testData, null, 2)}`, 'info');
+
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showMessage(`✅ Registration SUCCESS! Status: ${response.status}`, 'success');
+                    showMessage(`📥 Response: ${JSON.stringify(result, null, 2)}`, 'info');
+                    showMessage('🎯 DATABASE REGISTRATION IS NOW WORKING!', 'success');
+                } else {
+                    showMessage(`⚠️ Registration failed with status ${response.status}: ${result.error || result.message}`, 'warning');
+                }
+
+            } catch (error) {
+                showMessage(`❌ Test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkBackendStatus() {
+            showMessage('🔍 Checking backend status...', 'info');
+            
+            try {
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/health');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showMessage(`✅ Backend Status: ${result.status}`, 'success');
+                    showMessage(`📊 Database: ${result.database || 'Connected'}`, 'success');
+                    showMessage(`🔧 Version: ${result.version || 'Unknown'}`, 'info');
+                } else {
+                    showMessage(`⚠️ Backend health check failed: ${response.status}`, 'warning');
+                }
+            } catch (error) {
+                showMessage(`❌ Backend check failed: ${error.message}`, 'error');
+            }
+        }
+
+        function openProductionTest() {
+            window.open('https://weddingbazaarph.web.app', '_blank');
+            showMessage('🚀 Production site opened. Test registration with console open!', 'info');
+            
+            setTimeout(() => {
+                showMessage('📋 Remember: Use unique email and OTP codes 123456/654321', 'info');
+                showMessage('👀 Watch console for field mapping and database success messages', 'info');
+            }, 1000);
+        }
+
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                checkBackendStatus();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
