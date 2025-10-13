@@ -155,7 +155,7 @@ router.post('/', async (req, res) => {
       ) VALUES (
         ${serviceId}, ${finalVendorId}, ${finalTitle}, ${description}, ${category}, ${price || 0},
         ${processedImages}, ${is_active}, ${featured}, 
-        ${location || 'Philippines'}, ${price_range || '₱'}, NOW(), NOW()
+        ${location || 'Philippines'}, ${price_range || '₱10,000 - ₱25,000'}, NOW(), NOW()
       ) RETURNING *
     `;
     
