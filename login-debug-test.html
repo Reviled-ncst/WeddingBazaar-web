@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .log { background: #f5f5f5; padding: 10px; margin: 5px 0; border-radius: 5px; font-family: monospace; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; }
+        button { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 3px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Login Functionality Debug</h1>
+    
+    <div>
+        <h2>Quick Test</h2>
+        <input type="email" id="testEmail" placeholder="Enter email" value="test@example.com">
+        <input type="password" id="testPassword" placeholder="Enter password" value="password123">
+        <button onclick="testSingleLogin()">Test Login</button>
+        <button onclick="runLoginTests()">Run All Tests</button>
+        <button onclick="createTestUser()">Create Test User</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+function log(message, type = 'info') {
+    const results = document.getElementById('results');
+    const div = document.createElement('div');
+    div.className = `log ${type}`;
+    div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+    results.appendChild(div);
+    console.log(message);
+}
+
+async function testSingleLogin() {
+    const email = document.getElementById('testEmail').value;
+    const password = document.getElementById('testPassword').value;
+    
+    if (!email || !password) {
+        log('❌ Please enter both email and password', 'error');
+        return;
+    }
+    
+    await testLogin({ email, password });
+}
+
+async function createTestUser() {
+    log('🔧 Creating test user...', 'info');
+    
+    const testUser = {
+        email: 'test@example.com',
+        password: 'password123',
+        first_name: 'Test',
+        last_name: 'User',
+        user_type: 'couple'
+    };
+    
+    try {
+        const response = await fetch('https://weddingbazaar-web.onrender.com/api/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(testUser)
+        });
+        
+        const data = await response.json();
+        log(`📊 Registration status: ${response.status}`, response.ok ? 'success' : 'error');
+        log(`📦 Registration response: ${JSON.stringify(data, null, 2)}`, response.ok ? 'success' : 'error');
+        
+        if (response.ok) {
+            log('✅ Test user created successfully!', 'success');
+            log('🔄 Now try logging in with test@example.com / password123', 'info');
+        }
+    } catch (error) {
+        log(`❌ Error creating test user: ${error.message}`, 'error');
+    }
+}
+
+// Test login functionality directly with production backend
+log('🔍 Testing login functionality...', 'info');
+
+// Test with known credentials
+const testCredentials = [
+  { email: 'test@example.com', password: 'password123' },
+  { email: 'admin@weddingbazaar.com', password: 'admin123' },
+  { email: 'vendor@test.com', password: 'vendor123' },
+  { email: 'couple@test.com', password: 'couple123' }
+];
+
+async function testLogin(credentials) {
+  try {
+    console.log(`\n🧪 Testing login for: ${credentials.email}`);
+    
+    const response = await fetch('https://weddingbazaar-web.onrender.com/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(credentials)
+    });
+
+    console.log(`📊 Response status: ${response.status}`);
+    
+    const data = await response.json();
+    console.log('📦 Response data:', data);
+    
+    if (response.ok) {
+      console.log('✅ Login successful!');
+      return data;
+    } else {
+      console.log('❌ Login failed:', data.error || data.message);
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ Login test error:', error.message);
+    return null;
+  }
+}
+
+async function checkUsersInDatabase() {
+  try {
+    console.log('\n🔍 Checking users in database...');
+    
+    const response = await fetch('https://weddingbazaar-web.onrender.com/api/users', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    console.log(`📊 Users endpoint status: ${response.status}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('👥 Users found:', data);
+    } else {
+      console.log('❌ Could not fetch users (expected if endpoint not implemented)');
+    }
+  } catch (error) {
+    console.error('❌ Users check error:', error.message);
+  }
+}
+
+async function runLoginTests() {
+  console.log('🚀 Starting comprehensive login tests...');
+  
+  // Check if users exist in database
+  await checkUsersInDatabase();
+  
+  // Test each credential set
+  for (const credentials of testCredentials) {
+    const result = await testLogin(credentials);
+    if (result) {
+      console.log('🎉 Found working credentials:', credentials.email);
+      break;
+    }
+  }
+  
+  console.log('\n🏁 Login tests complete');
+}
+
+// Run the tests
+runLoginTests();
+    </script>
+</body>
+</html>

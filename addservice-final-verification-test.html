@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AddServiceForm Backend Test - Final Verification</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #fdf2f8 0%, #fff7ed 100%);
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 20px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .test-section { 
+            margin: 30px 0; 
+            padding: 20px; 
+            border: 2px solid #f3f4f6; 
+            border-radius: 12px; 
+            background: #f9fafb;
+        }
+        .success { border-color: #10b981; background: #f0fdf4; }
+        .error { border-color: #ef4444; background: #fef2f2; }
+        .loading { border-color: #f59e0b; background: #fffbeb; }
+        button { 
+            background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 600;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(236, 72, 153, 0.3);
+        }
+        button:disabled { 
+            opacity: 0.5; 
+            cursor: not-allowed;
+            transform: none;
+        }
+        pre { 
+            background: #1f2937; 
+            color: #f9fafb; 
+            padding: 15px; 
+            border-radius: 8px; 
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background: #10b981; }
+        .status-error { background: #ef4444; }
+        .status-pending { background: #f59e0b; }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #374151;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #ec4899;
+            box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+        }
+        .test-results {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 AddServiceForm Final Verification Test</h1>
+        <p>Testing the resolved service creation system with the live backend.</p>
+        
+        <div class="test-section" id="backendStatus">
+            <h2><span class="status-indicator status-pending"></span>Backend Health Check</h2>
+            <p>Checking backend connectivity and service endpoints...</p>
+            <button onclick="testBackendHealth()">Test Backend Health</button>
+            <div id="healthResults"></div>
+        </div>
+
+        <div class="test-section" id="serviceCreation">
+            <h2><span class="status-indicator status-pending"></span>Service Creation Test</h2>
+            <p>Test the service creation endpoint with actual data:</p>
+            
+            <div class="form-group">
+                <label>Vendor ID:</label>
+                <input type="text" id="vendorId" value="2-2025-003" placeholder="Vendor ID">
+            </div>
+            
+            <div class="form-group">
+                <label>Service Title:</label>
+                <input type="text" id="serviceTitle" value="Final Test Service" placeholder="Service title">
+            </div>
+            
+            <div class="form-group">
+                <label>Description:</label>
+                <textarea id="serviceDescription" rows="3" placeholder="Service description">Professional service from final testing of the AddServiceForm system. This confirms that the backend and frontend integration is working correctly.</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Category:</label>
+                <select id="serviceCategory">
+                    <option value="photography">Photography</option>
+                    <option value="catering">Catering</option>
+                    <option value="planning">Wedding Planning</option>
+                    <option value="music">Music/DJ</option>
+                    <option value="flowers">Florist</option>
+                    <option value="venue">Venue</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Price:</label>
+                <input type="number" id="servicePrice" value="999.00" placeholder="Service price" step="0.01">
+            </div>
+            
+            <button onclick="testServiceCreation()">Create Test Service</button>
+            <div id="creationResults"></div>
+        </div>
+
+        <div class="test-section" id="dataValidation">
+            <h2><span class="status-indicator status-pending"></span>Data Format Validation</h2>
+            <p>Verify that the data format matches the database schema:</p>
+            <button onclick="validateDataFormat()">Validate Data Format</button>
+            <div id="validationResults"></div>
+        </div>
+
+        <div class="test-section" id="errorHandling">
+            <h2><span class="status-indicator status-pending"></span>Error Handling Test</h2>
+            <p>Test error handling with invalid data:</p>
+            <button onclick="testErrorHandling()">Test Error Scenarios</button>
+            <div id="errorResults"></div>
+        </div>
+
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com/api';
+        
+        // Update status indicator
+        function updateStatus(sectionId, status) {
+            const section = document.getElementById(sectionId);
+            const indicator = section.querySelector('.status-indicator');
+            indicator.className = `status-indicator status-${status}`;
+        }
+        
+        // Test backend health
+        async function testBackendHealth() {
+            updateStatus('backendStatus', 'pending');
+            const resultsDiv = document.getElementById('healthResults');
+            resultsDiv.innerHTML = '<p>Testing backend endpoints...</p>';
+            
+            try {
+                // Test main health endpoint
+                const healthResponse = await fetch(`${API_BASE}/health`);
+                const healthData = await healthResponse.json();
+                
+                // Test services endpoint
+                const servicesResponse = await fetch(`${API_BASE}/services?limit=1`);
+                const servicesData = await servicesResponse.json();
+                
+                // Test vendor services endpoint
+                const vendorResponse = await fetch(`${API_BASE}/services/vendor/2-2025-003`);
+                const vendorData = await vendorResponse.json();
+                
+                const results = {
+                    health: { status: healthResponse.status, data: healthData },
+                    services: { status: servicesResponse.status, data: servicesData },
+                    vendor: { status: vendorResponse.status, data: vendorData }
+                };
+                
+                updateStatus('backendStatus', 'success');
+                resultsDiv.innerHTML = `
+                    <div class="test-results">
+                        <h4>✅ Backend Health: EXCELLENT</h4>
+                        <pre>${JSON.stringify(results, null, 2)}</pre>
+                    </div>
+                `;
+                
+            } catch (error) {
+                updateStatus('backendStatus', 'error');
+                resultsDiv.innerHTML = `
+                    <div class="test-results">
+                        <h4>❌ Backend Health: ERROR</h4>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+            }
+        }
+        
+        // Test service creation
+        async function testServiceCreation() {
+            updateStatus('serviceCreation', 'pending');
+            const resultsDiv = document.getElementById('creationResults');
+            resultsDiv.innerHTML = '<p>Creating test service...</p>';
+            
+            const serviceData = {
+                vendor_id: document.getElementById('vendorId').value,
+                title: document.getElementById('serviceTitle').value,
+                description: document.getElementById('serviceDescription').value,
+                category: document.getElementById('serviceCategory').value,
+                price: parseFloat(document.getElementById('servicePrice').value),
+                images: ['https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=600'],
+                featured: false,
+                is_active: true,
+                features: ['Professional service', 'High quality', 'Reliable'],
+                location: 'Test Location',
+                price_range: '₱',
+                contact_info: {
+                    phone: '+1234567890',
+                    email: 'test@example.com',
+                    website: 'https://example.com'
+                },
+                tags: ['test', 'verification', 'final'],
+                keywords: 'test service verification final'
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/services`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(serviceData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    updateStatus('serviceCreation', 'success');
+                    resultsDiv.innerHTML = `
+                        <div class="test-results">
+                            <h4>✅ Service Creation: SUCCESS</h4>
+                            <p><strong>Service ID:</strong> ${result.service.id}</p>
+                            <p><strong>Title:</strong> ${result.service.title}</p>
+                            <p><strong>Category:</strong> ${result.service.category}</p>
+                            <p><strong>Price:</strong> ₱${result.service.price}</p>
+                            <details>
+                                <summary>Full Response</summary>
+                                <pre>${JSON.stringify(result, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error || 'Service creation failed');
+                }
+                
+            } catch (error) {
+                updateStatus('serviceCreation', 'error');
+                resultsDiv.innerHTML = `
+                    <div class="test-results">
+                        <h4>❌ Service Creation: ERROR</h4>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+            }
+        }
+        
+        // Validate data format
+        async function validateDataFormat() {
+            updateStatus('dataValidation', 'pending');
+            const resultsDiv = document.getElementById('validationResults');
+            
+            const expectedFields = [
+                'id', 'vendor_id', 'title', 'description', 'category', 'price',
+                'images', 'featured', 'is_active', 'created_at', 'updated_at',
+                'location', 'price_range', 'contact_info', 'tags', 'keywords', 'features'
+            ];
+            
+            try {
+                // Get a sample service from the database
+                const response = await fetch(`${API_BASE}/services?limit=1`);
+                const data = await response.json();
+                
+                if (data.success && data.services.length > 0) {
+                    const service = data.services[0];
+                    const serviceFields = Object.keys(service);
+                    
+                    const missingFields = expectedFields.filter(field => !serviceFields.includes(field));
+                    const extraFields = serviceFields.filter(field => !expectedFields.includes(field));
+                    
+                    updateStatus('dataValidation', missingFields.length === 0 ? 'success' : 'error');
+                    resultsDiv.innerHTML = `
+                        <div class="test-results">
+                            <h4>${missingFields.length === 0 ? '✅' : '⚠️'} Data Format Validation</h4>
+                            <p><strong>Expected Fields:</strong> ${expectedFields.length}</p>
+                            <p><strong>Service Fields:</strong> ${serviceFields.length}</p>
+                            ${missingFields.length > 0 ? `<p><strong>Missing:</strong> ${missingFields.join(', ')}</p>` : ''}
+                            ${extraFields.length > 0 ? `<p><strong>Extra:</strong> ${extraFields.join(', ')}</p>` : ''}
+                            <details>
+                                <summary>Sample Service Structure</summary>
+                                <pre>${JSON.stringify(service, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    throw new Error('No services found for validation');
+                }
+                
+            } catch (error) {
+                updateStatus('dataValidation', 'error');
+                resultsDiv.innerHTML = `
+                    <div class="test-results">
+                        <h4>❌ Data Validation: ERROR</h4>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+            }
+        }
+        
+        // Test error handling
+        async function testErrorHandling() {
+            updateStatus('errorHandling', 'pending');
+            const resultsDiv = document.getElementById('errorResults');
+            resultsDiv.innerHTML = '<p>Testing error scenarios...</p>';
+            
+            const errorTests = [
+                {
+                    name: 'Missing required fields',
+                    data: { /* empty data */ }
+                },
+                {
+                    name: 'Invalid vendor ID',
+                    data: {
+                        vendor_id: 'invalid-id',
+                        title: 'Test Service',
+                        category: 'test'
+                    }
+                },
+                {
+                    name: 'Missing title',
+                    data: {
+                        vendor_id: '2-2025-003',
+                        category: 'test',
+                        description: 'Test description'
+                    }
+                }
+            ];
+            
+            const results = [];
+            
+            for (const test of errorTests) {
+                try {
+                    const response = await fetch(`${API_BASE}/services`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(test.data)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    results.push({
+                        test: test.name,
+                        status: response.status,
+                        success: result.success,
+                        error: result.error,
+                        handled: !result.success && result.error
+                    });
+                    
+                } catch (error) {
+                    results.push({
+                        test: test.name,
+                        status: 'Network Error',
+                        error: error.message,
+                        handled: false
+                    });
+                }
+            }
+            
+            const allHandled = results.every(r => r.handled);
+            updateStatus('errorHandling', allHandled ? 'success' : 'error');
+            
+            resultsDiv.innerHTML = `
+                <div class="test-results">
+                    <h4>${allHandled ? '✅' : '⚠️'} Error Handling Test</h4>
+                    ${results.map(r => `
+                        <div style="margin: 10px 0; padding: 10px; background: ${r.handled ? '#f0fdf4' : '#fef2f2'}; border-radius: 6px;">
+                            <strong>${r.test}:</strong> 
+                            ${r.handled ? '✅ Handled' : '❌ Not handled'} 
+                            (${r.status})
+                            ${r.error ? `<br><small>${r.error}</small>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        // Auto-run health check on page load
+        window.addEventListener('load', () => {
+            setTimeout(testBackendHealth, 1000);
+        });
+    </script>
+</body>
+</html>

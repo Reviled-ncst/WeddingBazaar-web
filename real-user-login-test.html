@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Test with Real User</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border-left: 4px solid #ffd700;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { background: rgba(0, 255, 0, 0.2); }
+        .error { background: rgba(255, 0, 0, 0.2); }
+        .info { background: rgba(0, 123, 255, 0.2); }
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+            transition: transform 0.3s ease;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Login Test with Real Database User</h1>
+        <p>Testing with actual user from the database: <strong>bauto.renzrussel@ncst.edu.ph</strong></p>
+
+        <div class="section">
+            <h3>🧹 Step 1: Clear Browser Storage</h3>
+            <button onclick="clearStorage()">Clear All Auth Storage</button>
+            <div id="clearResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>🔐 Step 2: Test Real User Login</h3>
+            <input type="email" id="loginEmail" placeholder="Email" value="bauto.renzrussel@ncst.edu.ph">
+            <input type="password" id="loginPassword" placeholder="Password" value="test123">
+            <button onclick="testRealUserLogin()">Test Login with Real User</button>
+            <div id="loginResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>🔍 Step 3: Debug User Database</h3>
+            <button onclick="checkDatabaseUsers()">Get All Database Users</button>
+            <div id="usersResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>🛠️ Step 4: Password Hash Test</h3>
+            <button onclick="testPasswordHash()">Test Password Hashing</button>
+            <div id="hashResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>✅ Step 5: Complete Login Flow Test</h3>
+            <button onclick="fullLoginFlowTest()">Full Login Flow with Real User</button>
+            <div id="fullResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com';
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `${new Date().toLocaleTimeString()}: ${message}`;
+            element.appendChild(div);
+        }
+
+        function clearResult(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        async function clearStorage() {
+            clearResult('clearResult');
+            try {
+                // Clear all auth storage
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Clear specific auth keys
+                ['auth_token', 'cached_user_data', 'jwt_token', 'user_token', 'access_token'].forEach(key => {
+                    localStorage.removeItem(key);
+                    sessionStorage.removeItem(key);
+                });
+
+                log('clearResult', '✅ All browser storage cleared successfully', 'success');
+                
+            } catch (error) {
+                log('clearResult', `❌ Error clearing storage: ${error.message}`, 'error');
+            }
+        }
+
+        async function testRealUserLogin() {
+            clearResult('loginResult');
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                log('loginResult', `🔐 Testing login with real user: ${email}`, 'info');
+                
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                log('loginResult', `📡 Response status: ${response.status}`, 'info');
+                log('loginResult', `📋 Response headers: ${JSON.stringify(Object.fromEntries(response.headers))}`, 'info');
+
+                const responseText = await response.text();
+                log('loginResult', `📄 Raw response: ${responseText}`, 'info');
+
+                if (!response.ok) {
+                    log('loginResult', `❌ Login failed (${response.status})`, 'error');
+                    
+                    try {
+                        const errorData = JSON.parse(responseText);
+                        log('loginResult', `🔍 Error details: ${JSON.stringify(errorData, null, 2)}`, 'error');
+                    } catch (e) {
+                        log('loginResult', `📄 Raw error: ${responseText}`, 'error');
+                    }
+                    return;
+                }
+
+                const data = JSON.parse(responseText);
+                log('loginResult', `✅ LOGIN SUCCESSFUL!`, 'success');
+                log('loginResult', `👤 User data: ${JSON.stringify(data.user, null, 2)}`, 'success');
+                log('loginResult', `🎫 Token received: ${data.token ? 'Yes' : 'No'}`, data.token ? 'success' : 'error');
+                
+                if (data.token) {
+                    // Store the token like AuthContext would
+                    localStorage.setItem('auth_token', data.token);
+                    sessionStorage.setItem('auth_token', data.token);
+                    localStorage.setItem('cached_user_data', JSON.stringify(data.user));
+                    
+                    log('loginResult', `💾 Token and user data stored in browser`, 'success');
+                    log('loginResult', `🎉 READY TO TEST IN PRODUCTION APP!`, 'success');
+                }
+
+            } catch (error) {
+                log('loginResult', `❌ Login test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkDatabaseUsers() {
+            clearResult('usersResult');
+            try {
+                log('usersResult', '🔍 Fetching all database users...', 'info');
+                
+                const response = await fetch(`${API_BASE}/api/debug/users`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log('usersResult', `❌ Failed to get users (${response.status}): ${errorText}`, 'error');
+                    return;
+                }
+
+                const data = await response.json();
+                log('usersResult', `📊 Total users in database: ${data.users ? data.users.length : 0}`, 'success');
+                
+                if (data.users && data.users.length > 0) {
+                    data.users.forEach((user, index) => {
+                        log('usersResult', `👤 User ${index + 1}: ${user.email} (${user.user_type}) - ID: ${user.id}`, 'info');
+                    });
+                } else {
+                    log('usersResult', '⚠️ No users found in database', 'error');
+                }
+
+            } catch (error) {
+                log('usersResult', `❌ Database users check error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPasswordHash() {
+            clearResult('hashResult');
+            try {
+                log('hashResult', '🔐 Testing password hashing mechanism...', 'info');
+                
+                const testPassword = 'test123';
+                log('hashResult', `🧪 Testing with password: "${testPassword}"`, 'info');
+                
+                // This is just for debugging - in real app, never send passwords in GET requests
+                const response = await fetch(`${API_BASE}/api/debug/hash-test?password=${encodeURIComponent(testPassword)}`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log('hashResult', `✅ Hash test successful`, 'success');
+                    log('hashResult', `🔐 Password hash info: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log('hashResult', `⚠️ Hash test endpoint not available (${response.status})`, 'info');
+                    log('hashResult', `💡 This is normal - hash testing is typically not exposed`, 'info');
+                }
+
+            } catch (error) {
+                log('hashResult', `❌ Password hash test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function fullLoginFlowTest() {
+            clearResult('fullResult');
+            try {
+                log('fullResult', '🎯 Starting complete login flow test...', 'info');
+                
+                // Step 1: Clear storage
+                await clearStorage();
+                log('fullResult', '✅ Step 1: Browser storage cleared', 'success');
+                
+                // Step 2: Check backend health
+                const healthResponse = await fetch(`${API_BASE}/api/health`);
+                if (!healthResponse.ok) {
+                    log('fullResult', '❌ Step 2: Backend health check failed', 'error');
+                    return;
+                }
+                log('fullResult', '✅ Step 2: Backend is healthy', 'success');
+                
+                // Step 3: Get database users
+                const usersResponse = await fetch(`${API_BASE}/api/debug/users`);
+                if (usersResponse.ok) {
+                    const usersData = await usersResponse.json();
+                    log('fullResult', `✅ Step 3: Found ${usersData.users ? usersData.users.length : 0} users in database`, 'success');
+                } else {
+                    log('fullResult', '⚠️ Step 3: Could not verify database users', 'info');
+                }
+                
+                // Step 4: Test login
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+                
+                log('fullResult', `🔐 Step 4: Testing login with ${email}...`, 'info');
+                
+                const loginResponse = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                if (!loginResponse.ok) {
+                    const errorText = await loginResponse.text();
+                    log('fullResult', `❌ Step 4: Login failed (${loginResponse.status}): ${errorText}`, 'error');
+                    return;
+                }
+
+                const loginData = await loginResponse.json();
+                log('fullResult', '✅ Step 4: Login successful!', 'success');
+                
+                // Step 5: Validate and store token
+                if (loginData.token) {
+                    localStorage.setItem('auth_token', loginData.token);
+                    sessionStorage.setItem('auth_token', loginData.token);
+                    localStorage.setItem('cached_user_data', JSON.stringify(loginData.user));
+                    
+                    log('fullResult', '✅ Step 5: Token and user data stored', 'success');
+                    log('fullResult', '🎉 COMPLETE LOGIN FLOW SUCCESSFUL!', 'success');
+                    log('fullResult', `👤 Logged in as: ${loginData.user.email} (${loginData.user.user_type})`, 'success');
+                    log('fullResult', '🌐 Ready to test in production app at: https://weddingbazaarph.web.app', 'success');
+                } else {
+                    log('fullResult', '❌ Step 5: No token received', 'error');
+                }
+                
+            } catch (error) {
+                log('fullResult', `❌ Full login flow error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run database users check on load
+        window.addEventListener('load', () => {
+            setTimeout(checkDatabaseUsers, 1000);
+        });
+    </script>
+</body>
+</html>

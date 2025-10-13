@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛠️ Service Creation Endpoint Test</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: rgba(255,255,255,0.1); 
+            padding: 30px; 
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .test-section {
+            background: rgba(255,255,255,0.15);
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 12px;
+            border-left: 4px solid #4CAF50;
+        }
+        button { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .success { color: #4CAF50; font-weight: bold; }
+        .error { color: #f44336; font-weight: bold; }
+        .info { color: #2196F3; font-weight: bold; }
+        .warning { color: #ff9800; font-weight: bold; }
+        pre { 
+            background: rgba(0,0,0,0.3); 
+            padding: 15px; 
+            border-radius: 8px; 
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛠️ Service Creation Endpoint Test</h1>
+        <p class="info">Testing the fixed service creation endpoint</p>
+
+        <div class="test-section">
+            <h3>🔍 Backend Health Check</h3>
+            <button onclick="checkHealth()">Check Backend Health</button>
+            <div id="healthResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>➕ Test Service Creation</h3>
+            <button onclick="testServiceCreation()">Create Test Service</button>
+            <div id="serviceResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Test Vendor Services</h3>
+            <button onclick="testVendorServices()">Get Vendor Services</button>
+            <div id="vendorServicesResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com/api';
+        const VENDOR_ID = 'USR-69086401'; // Your vendor ID from the logs
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info';
+            return `<div class="${className}">[${timestamp}] ${message}</div>`;
+        }
+
+        async function checkHealth() {
+            const resultDiv = document.getElementById('healthResult');
+            resultDiv.innerHTML = log('🔍 Checking backend health...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                resultDiv.innerHTML = 
+                    log('✅ Backend is healthy!', 'success') +
+                    log(`Version: ${data.version}`, 'info') +
+                    log(`Database: ${data.database}`, 'info') +
+                    `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                resultDiv.innerHTML = log(`❌ Health check failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testServiceCreation() {
+            const resultDiv = document.getElementById('serviceResult');
+            resultDiv.innerHTML = log('🚀 Testing service creation...', 'info');
+
+            const testService = {
+                vendor_id: VENDOR_ID,
+                title: `Test Service ${Date.now()}`,
+                description: 'This is a test service created via the API endpoint test.',
+                category: 'Photographer & Videographer',
+                price: 15000,
+                location: 'Test City, Philippines',
+                price_range: '₱₱',
+                features: ['Professional equipment', 'Full day coverage', 'Edited photos'],
+                contact_info: {
+                    phone: '+63 123 456 7890',
+                    email: 'test@example.com',
+                    website: 'https://example.com'
+                },
+                tags: ['wedding', 'photography', 'professional'],
+                keywords: 'wedding photography professional coverage',
+                is_active: true,
+                featured: false,
+                images: ['https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400']
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/services`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testService)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = 
+                        log('✅ SERVICE CREATED SUCCESSFULLY!', 'success') +
+                        log(`Service ID: ${data.service?.id}`, 'info') +
+                        log(`Title: ${data.service?.title}`, 'info') +
+                        log(`Category: ${data.service?.category}`, 'info') +
+                        log('🎯 Service creation endpoint is working!', 'success') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = 
+                        log(`❌ Service creation failed: ${data.error}`, 'error') +
+                        log(`Status: ${response.status}`, 'warning') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testVendorServices() {
+            const resultDiv = document.getElementById('vendorServicesResult');
+            resultDiv.innerHTML = log('📋 Getting vendor services...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/services/vendor/${VENDOR_ID}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = 
+                        log('✅ VENDOR SERVICES RETRIEVED!', 'success') +
+                        log(`Total Services: ${data.count}`, 'info') +
+                        log('🎯 Service listing endpoint is working!', 'success') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = 
+                        log(`❌ Failed to get services: ${data.error}`, 'error') +
+                        log(`Status: ${response.status}`, 'warning') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-check health on page load
+        window.onload = function() {
+            checkHealth();
+        };
+    </script>
+</body>
+</html>

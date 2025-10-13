@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 Registration Deployment Test</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: rgba(255,255,255,0.1); 
+            padding: 30px; 
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .test-card {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        button { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .success { color: #4CAF50; font-weight: bold; }
+        .error { color: #f44336; font-weight: bold; }
+        .info { color: #2196F3; font-weight: bold; }
+        .warning { color: #ff9800; font-weight: bold; }
+        pre { 
+            background: rgba(0,0,0,0.3); 
+            padding: 15px; 
+            border-radius: 8px; 
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        input[type="text"], input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 16px;
+        }
+        input::placeholder { color: rgba(255,255,255,0.7); }
+        .form-group { margin: 15px 0; }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-pending { background-color: #ff9800; }
+        .status-success { background-color: #4CAF50; }
+        .status-error { background-color: #f44336; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Registration Deployment Test</h1>
+        <p class="info">Testing the deployed registration endpoint fix</p>
+
+        <div class="test-card">
+            <h3>📊 Deployment Status Check</h3>
+            <button onclick="checkDeploymentStatus()">Check Backend Status</button>
+            <div id="deploymentStatus"></div>
+        </div>
+
+        <div class="test-card">
+            <h3>📝 Test Registration Form</h3>
+            <div class="form-group">
+                <input type="text" id="firstName" placeholder="First Name" value="Test">
+            </div>
+            <div class="form-group">
+                <input type="text" id="lastName" placeholder="Last Name" value="User">
+            </div>
+            <div class="form-group">
+                <input type="email" id="email" placeholder="Email" value="">
+            </div>
+            <div class="form-group">
+                <input type="password" id="password" placeholder="Password" value="testpass123">
+            </div>
+            <div class="form-group">
+                <select id="userType" style="width: 100%; padding: 10px; border: none; border-radius: 5px; background: rgba(255,255,255,0.2); color: white; font-size: 16px;">
+                    <option value="couple">Couple</option>
+                    <option value="vendor">Vendor</option>
+                </select>
+            </div>
+            <button onclick="generateRandomEmail()">Generate Random Email</button>
+            <button onclick="testRegistration()">Test Registration</button>
+            <div id="registrationResult"></div>
+        </div>
+
+        <div class="test-card">
+            <h3>🔐 Test Login with New User</h3>
+            <p>After successful registration, test login with the same credentials:</p>
+            <button onclick="testLoginWithNewUser()">Test Login</button>
+            <div id="loginResult"></div>
+        </div>
+
+        <div class="test-card">
+            <h3>💾 Database Verification</h3>
+            <button onclick="verifyDatabaseEntry()">Check User in Database</button>
+            <div id="databaseResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com/api';
+        let lastCreatedUser = null;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info';
+            return `<div class="${className}">[${timestamp}] ${message}</div>`;
+        }
+
+        function generateRandomEmail() {
+            const randomId = Math.random().toString(36).substring(2, 8);
+            const email = `testuser${randomId}@example.com`;
+            document.getElementById('email').value = email;
+            document.getElementById('registrationResult').innerHTML = log(`Generated email: ${email}`, 'info');
+        }
+
+        async function checkDeploymentStatus() {
+            const statusDiv = document.getElementById('deploymentStatus');
+            statusDiv.innerHTML = log('Checking deployment status...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                statusDiv.innerHTML = 
+                    log('✅ Backend is live!', 'success') +
+                    log(`Version: ${data.version || 'Unknown'}`, 'info') +
+                    log(`Database: ${data.database || 'Unknown'}`, 'info') +
+                    `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                statusDiv.innerHTML = log(`❌ Backend check failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testRegistration() {
+            const resultDiv = document.getElementById('registrationResult');
+            
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const user_type = document.getElementById('userType').value;
+
+            if (!email) {
+                resultDiv.innerHTML = log('❌ Please enter an email or generate one', 'error');
+                return;
+            }
+
+            resultDiv.innerHTML = log('🚀 Testing registration...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        first_name: firstName,
+                        last_name: lastName,
+                        email: email,
+                        password: password,
+                        user_type: user_type
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    lastCreatedUser = { email, password };
+                    resultDiv.innerHTML = 
+                        log('✅ REGISTRATION SUCCESSFUL!', 'success') +
+                        log(`User ID: ${data.user?.id}`, 'info') +
+                        log(`Email: ${data.user?.email}`, 'info') +
+                        log(`Type: ${data.user?.user_type}`, 'info') +
+                        log('🎯 User saved to database!', 'success') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = 
+                        log(`❌ Registration failed: ${data.error}`, 'error') +
+                        log(`Status: ${response.status}`, 'warning') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLoginWithNewUser() {
+            const resultDiv = document.getElementById('loginResult');
+
+            if (!lastCreatedUser) {
+                resultDiv.innerHTML = log('❌ Please register a user first', 'error');
+                return;
+            }
+
+            resultDiv.innerHTML = log('🔐 Testing login with registered user...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: lastCreatedUser.email,
+                        password: lastCreatedUser.password
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = 
+                        log('✅ LOGIN SUCCESSFUL!', 'success') +
+                        log('🎯 Registration → Login flow working perfectly!', 'success') +
+                        log(`Welcome: ${data.user?.firstName} ${data.user?.lastName}`, 'info') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = 
+                        log(`❌ Login failed: ${data.error}`, 'error') +
+                        log(`Status: ${response.status}`, 'warning') +
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function verifyDatabaseEntry() {
+            const resultDiv = document.getElementById('databaseResult');
+
+            if (!lastCreatedUser) {
+                resultDiv.innerHTML = log('❌ Please register a user first', 'error');
+                return;
+            }
+
+            resultDiv.innerHTML = log('💾 Checking database entry...', 'info');
+
+            try {
+                // Try to get user info via login (which queries the database)
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: lastCreatedUser.email,
+                        password: lastCreatedUser.password
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = 
+                        log('✅ USER FOUND IN DATABASE!', 'success') +
+                        log('🎯 Registration successfully saved to database', 'success') +
+                        log(`Database ID: ${data.user?.id}`, 'info') +
+                        log(`Stored Email: ${data.user?.email}`, 'info') +
+                        log(`User Type: ${data.user?.userType}`, 'info');
+                } else {
+                    resultDiv.innerHTML = log('❌ User not found in database', 'error');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = log(`❌ Database check failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-check deployment status on page load
+        window.onload = function() {
+            checkDeploymentStatus();
+            generateRandomEmail();
+        };
+    </script>
+</body>
+</html>
