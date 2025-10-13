@@ -45,7 +45,7 @@ import { VendorDashboard } from '../pages/users/vendor/dashboard';
 import { VendorDashboardEnhanced } from '../pages/users/vendor/dashboard/VendorDashboardEnhanced';
 import { VendorBookings } from '../pages/users/vendor/bookings';
 import { VendorProfile } from '../pages/users/vendor/profile';
-import { VendorServices } from '../pages/users/vendor/services';
+// import { VendorServices } from '../pages/users/vendor/services'; // Temporarily disabled due to file corruption
 import { VendorAnalytics } from '../pages/users/vendor/analytics';
 import { VendorAvailability } from '../pages/users/vendor/availability';
 import { VendorFinances } from '../pages/users/vendor/finances';
@@ -205,7 +205,11 @@ export const AppRouter: React.FC = () => {
             } />
             <Route path="/vendor/services" element={
               <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
-                <VendorServices />
+                <div className="p-8 text-center">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-4">Services Management</h2>
+                  <p className="text-gray-600">Services management is temporarily unavailable while we deploy fixes.</p>
+                  <p className="text-sm text-gray-500 mt-2">Please check back soon or contact support.</p>
+                </div>
               </RoleProtectedRoute>
             } />
             <Route path="/vendor/bookings" element={

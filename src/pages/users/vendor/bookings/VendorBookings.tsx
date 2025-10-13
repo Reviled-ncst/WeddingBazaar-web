@@ -50,6 +50,15 @@ import type {
   UIBookingsListResponse
 } from '../../../../shared/types/ui-booking.types';
 
+// Import modular utilities for enhanced data processing
+import { 
+  transformBookingData,
+  getEnhancedContactInfo,
+  getRealisticBudgetRange,
+  type BookingRawData,
+  type ProcessedBookingData
+} from './utils/bookingDataMapper';
+
 // Import user API service for couple name lookup
 import { userAPIService, type UserData } from '../../../../services/api/userAPIService';
 
@@ -58,6 +67,9 @@ import { useAuth } from '../../../../shared/contexts/AuthContext';
 
 // Import currency formatting utility
 import { formatPHP } from '../../../../utils/currency';
+
+// Import vendor ID mapping utility
+import { getVendorIdForUser, debugVendorIdResolution, getWorkingVendorId } from '../../../../utils/vendorIdMapping';
 
 // Import notification system
 import { useNotifications } from '../../../../shared/components/notifications/NotificationProvider';
@@ -111,21 +123,58 @@ export const VendorBookings: React.FC = () => {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [selectedServiceData, setSelectedServiceData] = useState<any>(null);
   
-  // Use authenticated vendor ID - For vendors, user.id IS the vendor ID
-  // TEMPORARY: Use vendor "2" since that's where the actual bookings are in the database
-  const vendorId = user?.role === 'vendor' ? user.id : (user?.vendorId || '2');
+  // DYNAMIC VENDOR ID RESOLUTION  
+  // Use intelligent pattern-based mapping to extract the correct vendor ID
+  const baseVendorId = user?.role === 'vendor' ? getVendorIdForUser(user) : null;
+  const [workingVendorId, setWorkingVendorId] = useState<string | null>(baseVendorId);
+  
+  // Debug vendor ID resolution
+  debugVendorIdResolution(user);
+  
+  // Security check: Block access if no valid vendor ID
+  if (!baseVendorId) {
+    console.error('🚫 [VendorBookings] SECURITY: No valid vendor ID found. Access denied.');
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <h2 className="text-xl font-semibold text-red-800 mb-2">Access Denied</h2>
+          <p className="text-red-600">You must be logged in as a vendor to access bookings.</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Smart vendor ID resolution with automatic backend compatibility detection
+  useEffect(() => {
+    const resolveWorkingVendorId = async () => {
+      if (baseVendorId) {
+        console.log('🔍 [VendorBookings] Resolving working vendor ID for:', baseVendorId);
+        const resolvedId = await getWorkingVendorId(baseVendorId);
+        setWorkingVendorId(resolvedId);
+        console.log('✅ [VendorBookings] Working vendor ID resolved:', resolvedId);
+      }
+    };
+    
+    resolveWorkingVendorId();
+  }, [baseVendorId]);
   
   // API URL
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
   
   // Debug logging for vendor identification
-  console.log('🔍 [VendorBookings] Vendor identification debug:', {
+  console.log('🔍 [VendorBookings] USER OBJECT COMPLETE DEBUG:', {
+    'Complete user object': user,
     'user?.id': user?.id,
     'user?.role': user?.role,
     'user?.vendorId': user?.vendorId, 
     'user?.businessName': user?.businessName,
-    'final vendorId used': vendorId,
-    'logic': user?.role === 'vendor' ? 'Using user.id as vendorId' : 'Using vendorId field or fallback'
+    'user?.email': user?.email,
+    'typeof user?.id': typeof user?.id,
+    'user?.id length': user?.id?.length,
+    'base vendorId': baseVendorId,
+    'working vendorId': workingVendorId,
+    'API will call': `${apiUrl}/api/bookings/vendor/${workingVendorId}`,
+    'logic': 'Dynamic pattern-based extraction with smart backend compatibility'
   });
 
   // Debug effect to monitor bookings state changes
@@ -137,11 +186,13 @@ export const VendorBookings: React.FC = () => {
   }, [bookings, loading]);
 
   useEffect(() => {
-    console.log('🔄 [VendorBookings] Effect triggered with:', { vendorId, filterStatus, currentPage });
-    // Always try to load real data first, fall back to mock if it fails
-    loadBookings();
-    loadStats();
-  }, [filterStatus, dateRange, sortBy, sortOrder, currentPage, vendorId]);
+    console.log('🔄 [VendorBookings] Effect triggered with:', { workingVendorId, filterStatus, currentPage });
+    // Only load data once we have a working vendor ID
+    if (workingVendorId) {
+      loadBookings();
+      loadStats();
+    }
+  }, [filterStatus, dateRange, sortBy, sortOrder, currentPage, workingVendorId]);
 
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
@@ -159,7 +210,7 @@ export const VendorBookings: React.FC = () => {
   useEffect(() => {
     // Poll for new data every 30 seconds
     const pollInterval = setInterval(() => {
-      if (!loading) {
+      if (!loading && workingVendorId) {
         console.log('🔄 [VendorBookings] Auto-refreshing data...');
         loadBookings(true); // Silent refresh
         loadStats();
@@ -170,7 +221,7 @@ export const VendorBookings: React.FC = () => {
     return () => {
       clearInterval(pollInterval);
     };
-  }, [loading, vendorId]);
+  }, [loading, workingVendorId]);
 
 
 
@@ -225,104 +276,84 @@ export const VendorBookings: React.FC = () => {
 
   const loadBookings = async (silent = false) => {
     try {
+      if (!workingVendorId) {
+        console.log('⏳ [VendorBookings] Waiting for vendor ID...');
+        return;
+      }
+      
       if (!silent) setLoading(true);
-      console.log('🚨🚨🚨 [VendorBookings] DIRECT API ONLY VERSION 🚨🚨🚨 - vendor:', vendorId);
+      console.log('🎯 [VendorBookings] SIMPLE APPROACH - Loading bookings for vendor:', workingVendorId);
       
-      // ONLY TEST VENDOR IDs THAT HAVE BOOKINGS
-      const vendorIdsToTest = ['2', vendorId];
-      let foundBookings = false;
-      let allBookingsData: any[] = [];
+      // DIRECT API CALL - no complex mapping
+      const response = await fetch(`${apiUrl}/api/bookings/vendor/${workingVendorId}`);
+      const data = await response.json();
       
-      for (const testVendorId of vendorIdsToTest) {
-        console.log('🔍 [VendorBookings] Testing vendor ID:', testVendorId);
-        try {
-          const directResponse = await fetch(`${apiUrl}/api/bookings/vendor/${testVendorId}`);
-          const directData = await directResponse.json();
-          
-          console.log(`🔗 [VendorBookings] API Response for vendor ${testVendorId}:`, directData);
-          
-          if (directData.success && directData.bookings && directData.bookings.length > 0) {
-            console.log(`✅ [VendorBookings] Found ${directData.bookings.length} bookings for vendor ${testVendorId}!`);
-            allBookingsData = directData.bookings;
-            foundBookings = true;
-            break;
-          } else {
-            console.log(`❌ [VendorBookings] No bookings found for vendor ${testVendorId}`);
+      console.log('📊 [VendorBookings] API Response:', {
+        status: response.status,
+        success: data.success,
+        bookingCount: data.bookings?.length || 0,
+        fullResponse: data
+      });
+      
+      if (response.status === 200 && data.success && data.bookings) {
+        console.log(`✅ [VendorBookings] SUCCESS: Found ${data.bookings.length} bookings!`);
+        
+        // Simple conversion to UI format
+        const uiBookings = data.bookings.map((booking: any) => ({
+          id: booking.id,
+          vendorId: booking.vendor_id,
+          coupleId: booking.couple_id,
+          coupleName: booking.couple_name || `Customer ${booking.couple_id}`,
+          contactEmail: booking.contact_email || 'Email pending',
+          contactPhone: booking.contact_phone || 'Phone pending',
+          serviceType: booking.service_type || booking.service_name || 'Service',
+          serviceName: booking.service_name || 'Wedding Service',
+          eventDate: booking.event_date || new Date().toISOString().split('T')[0],
+          eventTime: booking.event_time || '18:00',
+          eventLocation: booking.event_location || 'Venue TBD',
+          guestCount: booking.guest_count || 'TBD',
+          specialRequests: booking.special_requests || 'None specified',
+          status: booking.status || 'pending',
+          budgetRange: booking.budget_range || 'To be discussed',
+          totalAmount: parseFloat(booking.total_amount || '0'),
+          quoteAmount: parseFloat(booking.quote_amount || booking.total_amount || '0'),
+          totalPaid: parseFloat(booking.total_paid || '0'),
+          createdAt: booking.created_at,
+          updatedAt: booking.updated_at,
+          notes: booking.notes || '',
+          responseMessage: booking.response_message || booking.notes || '',
+          formatted: {
+            totalAmount: `₱${parseFloat(booking.total_amount || '0').toLocaleString()}`,
+            totalPaid: `₱${parseFloat(booking.total_paid || '0').toLocaleString()}`,
+            remainingBalance: `₱${Math.max(parseFloat(booking.total_amount || '0') - parseFloat(booking.total_paid || '0'), 0).toLocaleString()}`,
+            paymentProgress: `${parseFloat(booking.total_amount || '0') > 0 ? Math.round((parseFloat(booking.total_paid || '0') / parseFloat(booking.total_amount || '0')) * 100) : 0}%`
           }
-        } catch (error) {
-          console.error(`💥 [VendorBookings] Error testing vendor ${testVendorId}:`, error);
-        }
-      }
-      
-      if (foundBookings && allBookingsData.length > 0) {
-        console.log('✅ [VendorBookings] SUCCESS! Converting bookings to UI format...');
-        console.log('📊 [VendorBookings] Raw bookings count:', allBookingsData.length);
+        }));
         
-        // Convert raw bookings to UI format with enhanced couple name lookup
-        const uiBookingsPromises = allBookingsData.map(async (booking: any) => {
-          // Get enhanced couple name with API lookup
-          const coupleName = await getCoupleDisplayName(booking);
-          
-          return {
-            id: booking.id,
-            vendorId: booking.vendor_id || vendorId,
-            vendorName: booking.vendor_name || 'Vendor',
-            coupleId: booking.couple_id,
-            coupleName: coupleName,
-            contactEmail: booking.contact_email || 'no-email@example.com',
-            contactPhone: booking.contact_phone || 'N/A',
-            serviceType: booking.service_type || booking.service_name || 'Service',
-            eventDate: booking.event_date ? booking.event_date.split('T')[0] : 'TBD',
-            eventTime: booking.event_time || 'TBD',
-            eventLocation: booking.event_location || 'TBD',
-            guestCount: booking.guest_count || 0,
-            specialRequests: booking.special_requests || '',
-            status: booking.status || 'pending',
-            budgetRange: booking.budget_range || 'TBD',
-            totalAmount: booking.total_amount || 0,
-            quoteAmount: booking.quote_amount,
-            downpaymentAmount: booking.deposit_amount,
-            totalPaid: booking.total_paid || 0,
-            remainingBalance: (booking.total_amount || 0) - (booking.total_paid || 0),
-            paymentProgressPercentage: booking.total_amount ? ((booking.total_paid || 0) / booking.total_amount) * 100 : 0,
-            createdAt: booking.created_at,
-            updatedAt: booking.updated_at,
-            preferredContactMethod: booking.preferred_contact_method || 'email',
-            responseMessage: booking.response_message,
-            formatted: {
-              totalAmount: formatPHP(booking.total_amount || 0),
-              totalPaid: formatPHP(booking.total_paid || 0),
-              remainingBalance: formatPHP((booking.total_amount || 0) - (booking.total_paid || 0)),
-              downpaymentAmount: formatPHP(booking.deposit_amount || 0)
-            }
-          };
-        });
-        
-        // Wait for all couple name lookups to complete
-        const uiBookings = await Promise.all(uiBookingsPromises);
-        
-        console.log('🎯 [VendorBookings] DIRECT API SUCCESS - Setting', uiBookings.length, 'bookings in state');
+        console.log('📋 [VendorBookings] Setting bookings in state:', uiBookings);
         setBookings(uiBookings);
-        setPagination({
-          current_page: 1,
-          total_pages: 1,
-          total_items: uiBookings.length,
-          per_page: 10,
-          hasNext: false,
-          hasPrev: false
-        });
         
-        // Show success notification
-        if (!silent && uiBookings.length > 0) {
-          showSuccess('Bookings Loaded', `Found ${uiBookings.length} booking${uiBookings.length === 1 ? '' : 's'} for your vendor account`);
+        if (!silent) {
+          showSuccess('Bookings Loaded', `Found ${uiBookings.length} booking${uiBookings.length === 1 ? '' : 's'}`);
         }
         
-        console.log('🎯 [VendorBookings] RETURNING from loadBookings - bookings should now be displayed');
-        return; // Skip fallback to mock data
+        return;
+        
+      } else if (response.status === 403) {
+        console.log('🚨 [VendorBookings] BLOCKED by backend security');
+        if (!silent) {
+          showError('Security Block', 'Backend security is still blocking this vendor ID. Deployment in progress.');
+        }
+        setBookings([]);
+        return;
+        
       } else {
-        console.log('⚠️ [VendorBookings] No real bookings found, using mock data for demonstration');
-        throw new Error('No bookings data returned from API');
+        console.log('❌ [VendorBookings] API returned no bookings');
+        setBookings([]);
+        return;
       }
+
+
       
     } catch (error) {
       console.error('💥 [VendorBookings] Error in direct API approach:', error);
@@ -330,49 +361,13 @@ export const VendorBookings: React.FC = () => {
         showError('Loading Error', 'Failed to load bookings. Please try again.');
       }
       
-      // Use mock bookings for demonstration
-      console.log('🔧 [VendorBookings] Using mock bookings for demonstration');
-      const mockBookings: UIBooking[] = [
-        {
-          id: 'mock-booking-001',
-          vendorId: vendorId,
-          vendorName: 'Test Vendor Business',
-          coupleId: '1-2025-001',
-          coupleName: 'Sarah & Michael Johnson',
-          contactEmail: 'sarah.johnson@email.com',
-          contactPhone: '+1-555-0123',
-          serviceType: 'Photography',
-          eventDate: '2025-12-15',
-          eventTime: '14:00',
-          eventLocation: 'Central Park Wedding Venue',
-          guestCount: 120,
-          specialRequests: 'Outdoor ceremony with drone shots',
-          status: 'quote_requested' as BookingStatus,
-          budgetRange: '3000-5000',
-          totalAmount: 3500,
-          quoteAmount: undefined,
-          downpaymentAmount: 1050,
-          totalPaid: 0,
-          remainingBalance: 3500,
-          paymentProgressPercentage: 0,
-          createdAt: '2025-10-10T10:00:00Z',
-          updatedAt: '2025-10-11T03:00:00Z',
-          preferredContactMethod: 'email',
-          responseMessage: undefined,
-          formatted: {
-            totalAmount: '₱3,500.00',
-            totalPaid: '₱0.00',
-            remainingBalance: '₱3,500.00',
-            downpaymentAmount: '₱1,050.00'
-          }
-        }
-      ];
-      
-      setBookings(mockBookings);
+      // SECURITY: Never show mock/fake data to vendors - always show empty state on API failure
+      console.log('🔒 [VendorBookings] SECURITY: API failed, showing empty state (no mock data)');
+      setBookings([]);
       setPagination({
         current_page: 1,
         total_pages: 1,
-        total_items: mockBookings.length,
+        total_items: 0,
         per_page: 10,
         hasNext: false,
         hasPrev: false
@@ -384,9 +379,14 @@ export const VendorBookings: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      console.log('📊 [VendorBookings] Loading stats with comprehensive API for vendor:', vendorId);
+      if (!workingVendorId) {
+        console.log('⏳ [VendorBookings] Waiting for vendor ID resolution before loading stats...');
+        return;
+      }
       
-      const statsResponse = await bookingApiService.getBookingStats(undefined, vendorId);
+      console.log('📊 [VendorBookings] Loading stats with comprehensive API for vendor:', workingVendorId);
+      
+      const statsResponse = await bookingApiService.getBookingStats(undefined, workingVendorId);
       console.log('✅ [VendorBookings] Comprehensive stats loaded:', statsResponse);
       
       // Map API stats to UI format
@@ -395,19 +395,19 @@ export const VendorBookings: React.FC = () => {
     } catch (error) {
       console.error('💥 [VendorBookings] Error loading stats with comprehensive API:', error);
       
-      // TEMPORARY: Use mock stats to show the UI working
-      console.log('🔧 [VendorBookings] TEMPORARY: Using mock stats for demonstration');
-      const mockStats: UIBookingStats = {
-        totalBookings: bookings.length || 3,
-        inquiries: 1,
-        confirmedBookings: 1,
-        fullyPaidBookings: 1,
-        totalRevenue: 10900,
+      // SECURITY: Calculate real stats from current bookings data (no mock data)
+      console.log('� [VendorBookings] SECURITY: Using real bookings data for stats calculation');
+      const realStats: UIBookingStats = {
+        totalBookings: bookings.length,
+        inquiries: bookings.filter(b => b.status === 'pending' || b.status === 'quote_requested').length,
+        confirmedBookings: bookings.filter(b => b.status === 'confirmed' || b.status === 'in_progress').length,
+        fullyPaidBookings: bookings.filter(b => b.paymentProgressPercentage >= 100).length,
+        totalRevenue: bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0),
         formatted: {
-          totalRevenue: '₱10,900.00'
+          totalRevenue: formatPHP(bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0))
         }
       };
-      setStats(mockStats);
+      setStats(realStats);
     }
   };
 
@@ -521,38 +521,7 @@ export const VendorBookings: React.FC = () => {
 
 
 
-  // Generate mock activities
-  const generateMockActivities = (): LiveActivity[] => {
-    const now = new Date();
-    return [
-      {
-        id: '1',
-        type: 'new_inquiry',
-        title: 'Sarah & Michael',
-        description: 'Viewed your photography portfolio',
-        timestamp: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
-        bookingId: 'booking-001',
-        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=32&h=32&fit=crop&crop=face'
-      },
-      {
-        id: '2',
-        type: 'quote_viewed',
-        title: 'Jennifer & David',
-        description: 'Opened your quote for wedding package',
-        timestamp: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
-        bookingId: 'booking-002',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=32&h=32&fit=crop&crop=face'
-      },
-      {
-        id: '3',
-        type: 'payment_made',
-        title: 'Rodriguez Wedding',
-        description: 'Downpayment processed successfully',
-        timestamp: new Date(now.getTime() - 45 * 60 * 1000).toISOString(),
-        status: 'downpayment_paid'
-      }
-    ];
-  };
+  // SECURITY: Mock activities function removed to prevent fake data display
 
 
 
@@ -577,7 +546,7 @@ export const VendorBookings: React.FC = () => {
       console.log('🔍 [VendorBookings] Fetching service data for booking:', booking.id, 'serviceType:', booking.serviceType);
       
       // Try to fetch vendor's service that matches the booking's service type
-      const response = await fetch(`${apiUrl}/api/services/vendor/${vendorId}`);
+      const response = await fetch(`${apiUrl}/api/services/vendor/${workingVendorId}`);
       
       if (response.ok) {
         const result = await response.json();
@@ -628,26 +597,17 @@ export const VendorBookings: React.FC = () => {
     return amount ? formatPHP(amount) : 'N/A';
   };
 
-  const exportBookings = () => {
-    const csvContent = [
-      ['ID', 'Couple Name', 'Service Type', 'Event Date', 'Status', 'Total Amount'].join(','),
-      ...bookings.map(booking => [
-        booking.id,
-        `"${booking.coupleName}"`,
-        booking.serviceType,
-        booking.eventDate,
-        booking.status,
-        booking.totalAmount || 0
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bookings-${vendorId}-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const handleDownload = (format: 'csv' | 'json' = 'csv') => {
+    try {
+      // Import the download utilities
+      import('./utils/downloadUtils').then(({ downloadBookings }) => {
+        downloadBookings(bookings as any[], workingVendorId, { format });
+        showSuccess('Download Started', `Bookings exported as ${format.toUpperCase()} file`);
+      });
+    } catch (error) {
+      console.error('Download failed:', error);
+      showError('Download Failed', 'Failed to export bookings. Please try again.');
+    }
   };
 
   // ============================================================================
@@ -962,15 +922,28 @@ export const VendorBookings: React.FC = () => {
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-3">
-                    <button 
-                      onClick={exportBookings}
-                      className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
-                      title="Export bookings to CSV"
-                      aria-label="Export all bookings to CSV file"
-                    >
-                      <Download className="h-5 w-5" />
-                      <span className="font-medium">Export</span>
-                    </button>
+                    <div className="relative group">
+                      <button 
+                        onClick={() => handleDownload('csv')}
+                        className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+                        title="Download bookings as CSV"
+                        aria-label="Download all bookings as CSV file"
+                      >
+                        <Download className="h-5 w-5" />
+                        <span className="font-medium">Download CSV</span>
+                      </button>
+                      
+                      {/* JSON Download Button */}
+                      <button 
+                        onClick={() => handleDownload('json')}
+                        className="ml-2 flex items-center space-x-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl hover:from-blue-600 hover:to-indigo-600 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+                        title="Download bookings as JSON"
+                        aria-label="Download all bookings as JSON file"
+                      >
+                        <Download className="h-4 w-4" />
+                        <span className="font-medium text-sm">JSON</span>
+                      </button>
+                    </div>
 
                     <button
                       onClick={() => {
@@ -1020,7 +993,77 @@ export const VendorBookings: React.FC = () => {
               ) : (
                 <>
                   <div className="divide-y divide-rose-200/30">
-                    {bookings.map((booking, index) => {
+                    {bookings
+                      .filter(booking => {
+                        // Status filter
+                        if (filterStatus !== 'all' && booking.status !== filterStatus) {
+                          return false;
+                        }
+                        
+                        // Search filter
+                        if (searchQuery) {
+                          const searchLower = searchQuery.toLowerCase();
+                          return (
+                            (booking.coupleName || '').toLowerCase().includes(searchLower) ||
+                            (booking.serviceType || '').toLowerCase().includes(searchLower) ||
+                            (booking.specialRequests || '').toLowerCase().includes(searchLower) ||
+                            (booking.eventLocation || '').toLowerCase().includes(searchLower)
+                          );
+                        }
+                        
+                        // Date range filter
+                        if (dateRange !== 'all') {
+                          const bookingDate = new Date(booking.createdAt);
+                          const now = new Date();
+                          const daysDiff = Math.floor((now.getTime() - bookingDate.getTime()) / (1000 * 60 * 60 * 24));
+                          
+                          switch (dateRange) {
+                            case 'week':
+                              return daysDiff <= 7;
+                            case 'month':
+                              return daysDiff <= 30;
+                            case 'quarter':
+                              return daysDiff <= 90;
+                            default:
+                              return true;
+                          }
+                        }
+                        
+                        return true;
+                      })
+                      .sort((a, b) => {
+                        // Apply sorting
+                        let aValue: any, bValue: any;
+                        
+                        switch (sortBy) {
+                          case 'created_at':
+                            aValue = new Date(a.createdAt).getTime();
+                            bValue = new Date(b.createdAt).getTime();
+                            break;
+                          case 'updated_at':
+                            aValue = new Date(a.updatedAt).getTime();
+                            bValue = new Date(b.updatedAt).getTime();
+                            break;
+                          case 'event_date':
+                            aValue = new Date(a.eventDate).getTime();
+                            bValue = new Date(b.eventDate).getTime();
+                            break;
+                          case 'status':
+                            aValue = a.status;
+                            bValue = b.status;
+                            break;
+                          default:
+                            aValue = new Date(a.createdAt).getTime();
+                            bValue = new Date(b.createdAt).getTime();
+                        }
+                        
+                        if (sortOrder === 'ASC') {
+                          return aValue > bValue ? 1 : -1;
+                        } else {
+                          return aValue < bValue ? 1 : -1;
+                        }
+                      })
+                      .map((booking, index) => {
                       return (
                         <motion.div
                           key={booking.id}
@@ -1051,7 +1094,7 @@ export const VendorBookings: React.FC = () => {
                                     booking.status === 'completed' ? 'bg-purple-100 text-purple-800' :
                                     'bg-gray-100 text-gray-800'
                                   }`}>
-                                    {booking.status === 'request' ? 'New Request' : booking.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    {booking.status === 'request' ? 'New Request' : booking.status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                                   </span>
                                 </div>
                               </div>
@@ -1063,17 +1106,33 @@ export const VendorBookings: React.FC = () => {
                                 </div>
                                 <div>
                                   <span className="text-gray-500">Guests:</span>
-                                  <p className="font-medium text-gray-900">{booking.guestCount}</p>
+                                  <p className="font-medium text-gray-900">{booking.guestCount} {typeof booking.guestCount === 'number' && booking.guestCount > 0 ? 'guests' : ''}</p>
                                 </div>
                                 <div>
                                   <span className="text-gray-500">Budget:</span>
                                   <p className="font-medium text-gray-900">
-                                    {booking.formatted?.totalAmount || formatCurrency(booking.totalAmount)}
+                                    {booking.formatted?.totalAmount || 'Quote pending'}
                                   </p>
                                 </div>
                               </div>
                               
-                              {booking.specialRequests && (
+                              {/* Payment Progress Bar */}
+                              {booking.totalAmount > 0 && (
+                                <div className="mt-3">
+                                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                    <span>Payment Progress</span>
+                                    <span>{booking.formatted?.paymentProgress || `${booking.paymentProgressPercentage}%`}</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div 
+                                      className="bg-gradient-to-r from-green-400 to-emerald-500 h-2 rounded-full transition-all duration-300"
+                                      style={{ width: `${Math.min(booking.paymentProgressPercentage, 100)}%` }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {booking.specialRequests && booking.specialRequests !== 'No special requirements specified' && (
                                 <div className="mt-3">
                                   <span className="text-gray-500 text-sm">Special Requests:</span>
                                   <p className="text-sm text-gray-700 mt-1">{booking.specialRequests}</p>
@@ -1113,7 +1172,7 @@ export const VendorBookings: React.FC = () => {
                                 onClick={() => {
                                   const coupleName = booking.coupleName && booking.coupleName !== 'Unknown Couple' ? booking.coupleName : 'there';
                                   const emailSubject = encodeURIComponent('Regarding your wedding booking');
-                                  const emailBody = encodeURIComponent(`Hi ${coupleName},\n\nThank you for your inquiry about our ${booking.serviceType} services for your special day.\n\nBest regards`);
+                                  const emailBody = encodeURIComponent(`Hi ${coupleName},\import { getVendorIdForUser, debugVendorIdResolution } from '../../../../utils/vendorIdMapping';\nn\nThank you for your inquiry about our ${booking.serviceType} services for your special day.\n\nBest regards`);
                                   window.open(`mailto:${booking.contactEmail}?subject=${emailSubject}&body=${emailBody}`);
                                 }}
                                 className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-rose-200 text-rose-600 rounded-lg hover:bg-rose-50 transition-all duration-300 text-sm font-medium"
@@ -1351,8 +1410,59 @@ export const VendorBookings: React.FC = () => {
                 } else {
                   // Backend update succeeded, reload from server
                   console.log('🔄 [VendorBookings] Backend update succeeded, reloading from server...');
-                  await loadBookings();
+                  
+                  // Add a small delay to ensure backend has fully processed
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                  
+                  // Reload bookings and stats
+                  await loadBookings(true); // Silent reload
                   await loadStats();
+                  
+                  // Update the selected booking for the details modal
+                  const refreshedBookings = await fetch(`${apiUrl}/api/bookings/vendor/${vendorId}`);
+                  const refreshedData = await refreshedBookings.json();
+                  if (refreshedData.success && refreshedData.bookings) {
+                    const updatedBooking = refreshedData.bookings.find((b: any) => b.id.toString() === selectedBooking.id.toString());
+                    if (updatedBooking) {
+                      // Convert to UI format for consistency
+                      const coupleName = await getCoupleDisplayName(updatedBooking);
+                      const uiUpdatedBooking = {
+                        id: updatedBooking.id,
+                        vendorId: updatedBooking.vendor_id || workingVendorId,
+                        vendorName: updatedBooking.vendor_name || 'Vendor',
+                        coupleId: updatedBooking.couple_id,
+                        coupleName: coupleName,
+                        contactEmail: updatedBooking.contact_email || 'no-email@example.com',
+                        contactPhone: updatedBooking.contact_phone || 'N/A',
+                        serviceType: updatedBooking.service_type || updatedBooking.service_name || 'Service',
+                        eventDate: updatedBooking.event_date ? updatedBooking.event_date.split('T')[0] : 'TBD',
+                        eventTime: updatedBooking.event_time || 'TBD',
+                        eventLocation: updatedBooking.event_location || 'TBD',
+                        guestCount: updatedBooking.guest_count || 0,
+                        specialRequests: updatedBooking.special_requests || '',
+                        status: updatedBooking.status || 'pending',
+                        budgetRange: updatedBooking.budget_range || 'TBD',
+                        totalAmount: updatedBooking.total_amount || 0,
+                        quoteAmount: updatedBooking.quote_amount,
+                        downpaymentAmount: updatedBooking.deposit_amount,
+                        totalPaid: updatedBooking.total_paid || 0,
+                        remainingBalance: (updatedBooking.total_amount || 0) - (updatedBooking.total_paid || 0),
+                        paymentProgressPercentage: updatedBooking.total_amount ? ((updatedBooking.total_paid || 0) / updatedBooking.total_amount) * 100 : 0,
+                        createdAt: updatedBooking.created_at,
+                        updatedAt: updatedBooking.updated_at,
+                        preferredContactMethod: updatedBooking.preferred_contact_method || 'email',
+                        responseMessage: updatedBooking.response_message,
+                        formatted: {
+                          totalAmount: formatPHP(updatedBooking.total_amount || 0),
+                          totalPaid: formatPHP(updatedBooking.total_paid || 0),
+                          remainingBalance: formatPHP((updatedBooking.total_amount || 0) - (updatedBooking.total_paid || 0)),
+                          downpaymentAmount: formatPHP(updatedBooking.deposit_amount || 0)
+                        }
+                      };
+                      setSelectedBooking(uiUpdatedBooking as any);
+                      console.log('✅ [VendorBookings] Selected booking updated with latest status:', uiUpdatedBooking.status);
+                    }
+                  }
                 }
                 
                 // Show appropriate success message based on what actually worked
@@ -1390,7 +1500,12 @@ export const VendorBookings: React.FC = () => {
                 console.log('⚠️ [VendorBookings] Quote created successfully but status update failed');
               }
               
-              setShowQuoteModal(false);
+              // Close modals with a small delay to allow success message to show
+              setTimeout(() => {
+                setShowQuoteModal(false);
+                // Also close details modal so user can see the updated booking list
+                setShowDetails(false);
+              }, 1000);
               
             } catch (error) {
               console.error('💥 [VendorBookings] Quote sending failure:', error);

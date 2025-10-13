@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { getVendorIdForUser } from '../../../utils/vendorIdMapping';
 import {
   Plus,
   Edit,
@@ -17,13 +18,13 @@ import {
   Crown,
   Copy
 } from 'lucide-react';
-import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
-import { UsageLimit } from '../../../../shared/components/subscription/SubscriptionGate';
-import { UpgradePrompt } from '../../../../shared/components/subscription/UpgradePrompt';
-import { useSubscription } from '../../../../shared/contexts/SubscriptionContext';
-import { useAuth } from '../../../../shared/contexts/AuthContext';
-import { serviceManager } from '../../../../shared/services/CentralizedServiceManager';
-import { AddServiceForm } from './components';
+import { VendorHeader } from '../../../shared/components/layout/VendorHeader';
+import { UsageLimit } from '../../../shared/components/ui/UsageLimit';
+import { UpgradePrompt } from '../../../shared/components/ui/UpgradePrompt';
+import { useSubscription } from '../../../shared/contexts/SubscriptionContext';
+import { useAuth } from '../../../shared/contexts/AuthContext';
+import { serviceManager } from '../../../shared/services/ServiceManager';
+import { AddServiceForm } from './components/AddServiceForm';
 
 // Service interface based on the actual API response
 interface Service {
@@ -105,10 +106,10 @@ export const VendorServices: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
 
   // Get API base URL
-  const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+  const apiUrl = import.meta.env.VITE_API_URL ||const vendorId = getVendorIdForUser(user);
 
   // Get current vendor ID from auth context with fallback
-  const vendorId = user?.id || '2-2025-003';
+  const vendorId = user?.id ||const vendorId = getVendorIdForUser(user);
   
   // No debug logging in production
 
@@ -123,7 +124,7 @@ export const VendorServices: React.FC = () => {
 
   // Filtered services
   const filteredServices = services.filter(service => {
-    const serviceName = service.name || service.title || '';
+    const serviceName = service.name || service.title ||const vendorId = getVendorIdForUser(user);
     const matchesSearch = serviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (service.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
     const matchesCategory = !filterCategory || service.category === filterCategory;
@@ -264,7 +265,7 @@ export const VendorServices: React.FC = () => {
       }
       
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch services';
+      const errorMessage = err instanceof Error ? err.message :const vendorId = getVendorIdForUser(user);
       setError(errorMessage);
       setServices([]);
     } finally {
@@ -287,7 +288,7 @@ export const VendorServices: React.FC = () => {
         ? `${apiUrl}/api/services/${editingService.id}`
         : `${apiUrl}/api/services`;
       
-      const method = editingService ? 'PUT' : 'POST';
+      const method = editingService ? 'PUT' :const vendorId = getVendorIdForUser(user);
       
       // Ensure vendor_id is included
       const payload = {
@@ -336,10 +337,10 @@ export const VendorServices: React.FC = () => {
   // Delete service with confirmation
   const deleteService = async (serviceId: string) => {
     const confirmed = confirm(
-      '⚠️ Delete Service Confirmation\n\n' +
-      'Are you sure you want to delete this service?\n\n' +
-      '• If this service has existing bookings, it will be hidden from customers but preserved in our records\n' +
-      '• If no bookings exist, it will be completely removed\n\n' +
+      '⚠️ Delete Service Confirmationconst vendorId = getVendorIdForUser(user);nconst vendorId = getVendorIdForUser(user);n' +
+      'Are you sure you want to delete this service?const vendorId = getVendorIdForUser(user);nconst vendorId = getVendorIdForUser(user);n' +
+      '• If this service has existing bookings, it will be hidden from customers but preserved in our recordsconst vendorId = getVendorIdForUser(user);n' +
+      '• If no bookings exist, it will be completely removedconst vendorId = getVendorIdForUser(user);nconst vendorId = getVendorIdForUser(user);n' +
       'Continue with deletion?'
     );
     
@@ -368,7 +369,7 @@ export const VendorServices: React.FC = () => {
       // Show appropriate success message based on delete type
       if (result.softDelete) {
         console.log('🔄 Service soft deleted (preserved due to existing bookings)');
-        alert('✅ Service deleted successfully!\n\nNote: The service was preserved in our records due to existing bookings, but it\'s no longer visible to customers.');
+        alert('✅ Service deleted successfully!const vendorId = getVendorIdForUser(user);nconst vendorId = getVendorIdForUser(user);nNote: The service was preserved in our records due to existing bookings, but itconst vendorId = getVendorIdForUser(user);'s no longer visible to customers.');
       } else {
         console.log('🗑️ Service completely removed');
         alert('✅ Service deleted successfully and completely removed!');
@@ -378,7 +379,7 @@ export const VendorServices: React.FC = () => {
       await fetchServices();
       
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete service';
+      const errorMessage = err instanceof Error ? err.message :const vendorId = getVendorIdForUser(user);
       console.error('❌ [VendorServices] Error deleting service:', errorMessage);
       setError(errorMessage);
     }
@@ -428,7 +429,7 @@ export const VendorServices: React.FC = () => {
       // Optionally refresh from server
       // await fetchServices();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update service availability';
+      const errorMessage = err instanceof Error ? err.message :const vendorId = getVendorIdForUser(user);
       console.error('❌ [VendorServices] Error toggling availability:', errorMessage);
       setError(errorMessage);
     }
@@ -478,7 +479,7 @@ export const VendorServices: React.FC = () => {
       // Optionally refresh from server
       // await fetchServices();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update service featured status';
+      const errorMessage = err instanceof Error ? err.message :const vendorId = getVendorIdForUser(user);
       console.error('❌ [VendorServices] Error toggling featured status:', errorMessage);
       setError(errorMessage);
     }
@@ -842,7 +843,7 @@ export const VendorServices: React.FC = () => {
                           };
                           
                           const fallbackUrl = categoryImages[service.category as keyof typeof categoryImages] || 
-                                             'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop&auto=format';
+                                            const vendorId = getVendorIdForUser(user);
                           
                           if (e.currentTarget.src !== fallbackUrl) {
                             e.currentTarget.src = fallbackUrl;
@@ -1073,7 +1074,7 @@ export const VendorServices: React.FC = () => {
                             };
                             
                             const fallbackUrl = categoryImages[service.category as keyof typeof categoryImages] || 
-                                               'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop&auto=format';
+                                              const vendorId = getVendorIdForUser(user);
                             
                             if (e.currentTarget.src !== fallbackUrl) {
                               e.currentTarget.src = fallbackUrl;

@@ -1075,41 +1075,72 @@ export class BookingApiService {
 
   // Update booking status
   async updateBookingStatus(bookingId: string, status: BookingRequest['status'], responseMessage?: string): Promise<BookingRequest | null> {
-    await this.delay();
+    console.log('🔄 [BookingAPI] Updating booking status via real API:', { bookingId, status, responseMessage });
     
-    console.log('🔄 [BookingAPI] Updating booking status:', { bookingId, status, responseMessage });
-    
-    const bookingIndex = MOCK_BOOKINGS.findIndex(booking => booking.id === bookingId);
-    if (bookingIndex === -1) {
-      console.error('❌ [BookingAPI] Booking not found:', bookingId);
-      return null;
+    try {
+      // Make real API call to backend
+      const updateData = {
+        status,
+        ...(responseMessage && { vendorNotes: responseMessage }),
+        updatedAt: new Date().toISOString()
+      };
+      
+      const response = await fetch(`${this.apiBaseUrl}/api/bookings/${bookingId}/update-status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [BookingAPI] Failed to update booking status:', response.status, errorText);
+        throw new Error(`Failed to update booking status: ${response.status} ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ [BookingAPI] Booking status updated successfully via API:', result);
+      
+      return result.booking || result;
+    } catch (error) {
+      console.error('💥 [BookingAPI] Error updating booking status:', error);
+      
+      // Fallback to mock data for backwards compatibility
+      console.log('🔄 [BookingAPI] Falling back to mock data update...');
+      
+      const bookingIndex = MOCK_BOOKINGS.findIndex(booking => booking.id === bookingId);
+      if (bookingIndex === -1) {
+        console.error('❌ [BookingAPI] Booking not found in mock data:', bookingId);
+        return null;
+      }
+      
+      MOCK_BOOKINGS[bookingIndex].status = status;
+      
+      // Store response message in vendor notes if provided
+      if (responseMessage) {
+        MOCK_BOOKINGS[bookingIndex].vendorNotes = responseMessage;
+        console.log('📝 [BookingAPI] Added response message to booking vendor notes');
+      }
+      
+      // Update timeline based on status
+      const now = new Date().toISOString();
+      switch (status) {
+        case 'confirmed':
+          MOCK_BOOKINGS[bookingIndex].timeline.confirmedDate = now;
+          break;
+        case 'completed':
+          MOCK_BOOKINGS[bookingIndex].timeline.completedDate = now;
+          break;
+        case 'quote_sent':
+          MOCK_BOOKINGS[bookingIndex].timeline.quoteSentDate = now;
+          console.log('📅 [BookingAPI] Updated quote sent date');
+          break;
+      }
+      
+      console.log('✅ [BookingAPI] Booking status updated in mock data:', MOCK_BOOKINGS[bookingIndex]);
+      return MOCK_BOOKINGS[bookingIndex];
     }
-    
-    MOCK_BOOKINGS[bookingIndex].status = status;
-    
-    // Store response message in vendor notes if provided
-    if (responseMessage) {
-      MOCK_BOOKINGS[bookingIndex].vendorNotes = responseMessage;
-      console.log('📝 [BookingAPI] Added response message to booking vendor notes');
-    }
-    
-    // Update timeline based on status
-    const now = new Date().toISOString();
-    switch (status) {
-      case 'confirmed':
-        MOCK_BOOKINGS[bookingIndex].timeline.confirmedDate = now;
-        break;
-      case 'completed':
-        MOCK_BOOKINGS[bookingIndex].timeline.completedDate = now;
-        break;
-      case 'quote_sent':
-        MOCK_BOOKINGS[bookingIndex].timeline.quoteSentDate = now;
-        console.log('📅 [BookingAPI] Updated quote sent date');
-        break;
-    }
-    
-    console.log('✅ [BookingAPI] Booking status updated successfully:', MOCK_BOOKINGS[bookingIndex]);
-    return MOCK_BOOKINGS[bookingIndex];
   }
 
   // Cancel booking

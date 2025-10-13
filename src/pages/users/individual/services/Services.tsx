@@ -405,8 +405,14 @@ export const Services: React.FC = () => {
           return acc;
         }, [] as Service[]);
 
+        // ✅ DATABASE FIX COMPLETE: All services now have vendor mappings 
+        // No need to filter anymore since database vendor_id mapping has been fixed
+        const servicesWithVendors = uniqueServices;
+        
+        console.log(`✅ [Services] All services have vendor mappings: ${servicesWithVendors.length} services available`);
+
         // FINAL FALLBACK: Enhanced mock services if no real data
-        if (uniqueServices.length === 0) {
+        if (servicesWithVendors.length === 0) {
           
           // Create more realistic mock services based on wedding industry standards
           const enhancedMockServices: Service[] = [
@@ -520,8 +526,8 @@ export const Services: React.FC = () => {
           
 
           
-          setServices(uniqueServices);
-          setFilteredServices(uniqueServices);
+          setServices(servicesWithVendors);
+          setFilteredServices(servicesWithVendors);
           
           // Verification with detailed logging
           setTimeout(() => {

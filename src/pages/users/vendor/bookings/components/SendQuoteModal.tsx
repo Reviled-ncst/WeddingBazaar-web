@@ -1087,9 +1087,14 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen && booking) {
-      // Initialize with service items if available, otherwise empty form
-      if (serviceData && serviceData.features && serviceData.features.length > 0) {
-        console.log('🎯 [SendQuoteModal] Using service items for prefill:', serviceData);
+      // First check if this is an edit quote (booking has quote_sent status and existing quote data)
+      const isEditMode = booking.status === 'quote_sent' && booking.quoteAmount && booking.quoteAmount > 0;
+      
+      if (isEditMode) {
+        console.log('✏️ [SendQuoteModal] EDIT MODE - Loading previously sent quote data');
+        loadExistingQuoteData();
+      } else if (serviceData && serviceData.features && serviceData.features.length > 0) {
+        console.log('🎯 [SendQuoteModal] NEW QUOTE - Using service items for prefill:', serviceData);
         
         // Convert service items to quote items
         const basePrice = parseFloat(serviceData.price) || 10000;
@@ -1111,20 +1116,68 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
         console.log('✅ [SendQuoteModal] Prefilled with', prefillItems.length, 'items from service inventory');
       } else {
         // Reset to empty form - no pre-filled values
-        console.log('📝 [SendQuoteModal] No service data available, starting with empty form');
+        console.log('📝 [SendQuoteModal] No existing data, starting with empty form');
         setQuoteItems([]);
         setQuoteMessage('');
       }
       
-      setTerms('');
-      
-      // Set default validity to 1 week from now
-      const oneWeekFromNow = new Date();
-      oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
-      const formattedDate = oneWeekFromNow.toISOString().split('T')[0]; // YYYY-MM-DD format
-      setValidUntil(formattedDate);
+      if (!isEditMode) {
+        setTerms('');
+        
+        // Set default validity to 1 week from now
+        const oneWeekFromNow = new Date();
+        oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+        const formattedDate = oneWeekFromNow.toISOString().split('T')[0]; // YYYY-MM-DD format
+        setValidUntil(formattedDate);
+      }
     }
   }, [isOpen, booking, serviceData]);
+
+  // Function to load existing quote data when editing
+  const loadExistingQuoteData = async () => {
+    try {
+      console.log('🔍 [SendQuoteModal] Loading existing quote for booking:', booking.id);
+      
+      // For now, reconstruct quote from booking data
+      // In a real system, you'd fetch from /api/quotes/:bookingId
+      if (booking.quoteAmount && booking.quoteAmount > 0) {
+        const existingQuoteItems: QuoteItem[] = [
+          {
+            id: 'existing-1',
+            name: `${booking.serviceType} Service Package`,
+            description: booking.notes || `Complete ${booking.serviceType.toLowerCase()} service for your wedding`,
+            quantity: 1,
+            unitPrice: booking.quoteAmount,
+            total: booking.quoteAmount,
+            category: `${booking.serviceType} Services`
+          }
+        ];
+        
+        setQuoteItems(existingQuoteItems);
+        setQuoteMessage(`EDIT QUOTE: Previously sent quote for ${booking.coupleName}'s wedding on ${booking.eventDate}`);
+        
+        // Set terms based on existing booking data
+        setTerms('Payment terms: 50% deposit required to secure booking, remaining balance due 7 days before event.');
+        
+        // Set validity based on event date
+        const eventDate = new Date(booking.eventDate);
+        const validityDate = new Date(eventDate);
+        validityDate.setDate(validityDate.getDate() - 14); // Valid until 2 weeks before event
+        setValidUntil(validityDate.toISOString().split('T')[0]);
+        
+        console.log('✅ [SendQuoteModal] Loaded existing quote:', {
+          amount: booking.quoteAmount,
+          items: existingQuoteItems.length,
+          editMode: true
+        });
+      }
+    } catch (error) {
+      console.error('❌ [SendQuoteModal] Failed to load existing quote:', error);
+      // Fall back to empty form
+      setQuoteItems([]);
+      setQuoteMessage('');
+    }
+  };
 
   // Function to save current prices as vendor's default
   const saveVendorPricing = () => {
