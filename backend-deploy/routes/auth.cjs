@@ -152,8 +152,17 @@ router.post('/register', async (req, res) => {
     if (user_type === 'vendor') {
       console.log('🏢 Creating vendor record for user:', userId);
       const vendorResult = await sql`
-        INSERT INTO vendors (id, user_id, name, category, location, created_at, updated_at)
-        VALUES (${userId}, ${userId}, ${first_name + ' ' + (last_name || '')}, 'general', 'Philippines', NOW(), NOW())
+        INSERT INTO vendors (
+          id, user_id, business_name, business_type, description, 
+          years_experience, location, created_at, updated_at, 
+          verified, rating, review_count
+        )
+        VALUES (
+          ${userId}, ${userId}, ${first_name + ' ' + (last_name || '') + ' Services'}, 
+          'general', 'Professional wedding service provider', 
+          5, 'Philippines', NOW(), NOW(),
+          true, 4.5, 0
+        )
         RETURNING id
       `;
       console.log('✅ Vendor record created:', vendorResult[0]);
