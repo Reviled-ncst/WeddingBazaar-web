@@ -85,20 +85,33 @@ router.post('/', async (req, res) => {
   
   try {
     const { 
+      vendor_id,
       vendorId, 
+      title,
       name, 
       description, 
       category, 
       price, 
-      duration,
       images = [],
-      features = []
+      features = [],
+      is_active = true,
+      featured = false,
+      location,
+      price_range,
+      contact_info = {},
+      tags = [],
+      keywords = ''
     } = req.body;
     
-    if (!vendorId || !name || !category || !price) {
+    // Use either vendor_id or vendorId
+    const finalVendorId = vendor_id || vendorId;
+    // Use either title or name
+    const finalTitle = title || name;
+    
+    if (!finalVendorId || !finalTitle || !category) {
       return res.status(400).json({
         success: false,
-        error: 'vendorId, name, category, and price are required',
+        error: 'vendor_id, title, and category are required',
         timestamp: new Date().toISOString()
       });
     }
@@ -107,11 +120,14 @@ router.post('/', async (req, res) => {
     
     const service = await sql`
       INSERT INTO services (
-        id, vendor_id, name, description, category, price, 
-        duration, images, features, created_at, updated_at
+        id, vendor_id, title, description, category, price, 
+        images, features, is_active, featured, location, price_range,
+        contact_info, tags, keywords, created_at, updated_at
       ) VALUES (
-        ${serviceId}, ${vendorId}, ${name}, ${description}, ${category}, ${price},
-        ${duration}, ${JSON.stringify(images)}, ${JSON.stringify(features)}, NOW(), NOW()
+        ${serviceId}, ${finalVendorId}, ${finalTitle}, ${description}, ${category}, ${price || 0},
+        ${JSON.stringify(images)}, ${JSON.stringify(features)}, ${is_active}, ${featured},
+        ${location || ''}, ${price_range || '₱'}, ${JSON.stringify(contact_info)}, 
+        ${JSON.stringify(tags)}, ${keywords}, NOW(), NOW()
       ) RETURNING *
     `;
     
