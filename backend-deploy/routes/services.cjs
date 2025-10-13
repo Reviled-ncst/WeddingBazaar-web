@@ -152,7 +152,7 @@ router.post('/', async (req, res) => {
         images, is_active, featured, location, price_range, created_at, updated_at
       ) VALUES (
         ${serviceId}, ${finalVendorId}, ${finalTitle}, ${description}, ${category}, ${price || 0},
-        ${processedImages}::jsonb, ${is_active}, ${featured}, 
+        ${JSON.stringify(processedImages)}, ${is_active}, ${featured}, 
         ${location || 'Philippines'}, ${price_range || '₱'}, NOW(), NOW()
       ) RETURNING *
     `;
