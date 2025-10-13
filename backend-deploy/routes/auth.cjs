@@ -148,6 +148,17 @@ router.post('/register', async (req, res) => {
     const newUser = result[0];
     console.log('✅ User inserted into database:', newUser);
     
+    // If vendor, also create vendor record
+    if (user_type === 'vendor') {
+      console.log('🏢 Creating vendor record for user:', userId);
+      const vendorResult = await sql`
+        INSERT INTO vendors (id, user_id, name, category, location, created_at, updated_at)
+        VALUES (${userId}, ${userId}, ${first_name + ' ' + (last_name || '')}, 'general', 'Philippines', NOW(), NOW())
+        RETURNING id
+      `;
+      console.log('✅ Vendor record created:', vendorResult[0]);
+    }
+    
     // Generate JWT token
     const token = jwt.sign(
       { userId: newUser.id, email: newUser.email, userType: newUser.user_type },
