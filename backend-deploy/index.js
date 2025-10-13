@@ -12,6 +12,7 @@ const dotenv_1 = require("dotenv");
 // Date: September 28, 2025
 // Purpose: Get production backend online immediately
 const pg_1 = require("pg");
+const { getNextUserId } = require('./utils/id-generation-pg.cjs');
 (0, dotenv_1.config)();
 const app = (0, express_1.default)();
 const PORT = process.env.BACKEND_PORT || process.env.PORT || 3001;
@@ -852,8 +853,8 @@ app.post('/api/auth/register', async (req, res) => {
                 });
             }
             
-            // Generate user ID
-            const userId = `${role === 'vendor' ? '2' : '1'}-2025-${String(Date.now()).slice(-3)}`;
+            // Generate user ID using proper sequential format
+            const userId = await getNextUserId(db, role);
             
             // Insert user into database
             const insertUserQuery = `
@@ -869,10 +870,10 @@ app.post('/api/auth/register', async (req, res) => {
             
             const newUser = userResult.rows[0];
             
-            // If vendor, also create vendor record
+            // If vendor, also create vendor record with matching ID format
             let vendorId = null;
             if (role === 'vendor') {
-                vendorId = `vendor_${Date.now()}`;
+                vendorId = userId; // Vendor ID should match user ID for consistency
                 const insertVendorQuery = `
                     INSERT INTO vendors (id, user_id, name, category, location, created_at, updated_at)
                     VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
