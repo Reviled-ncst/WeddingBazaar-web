@@ -60,6 +60,7 @@ interface FormData {
   description: string;
   category: string;
   price: string;
+  max_price?: string;
   images: string[];
   featured: boolean;
   is_active: boolean;
@@ -105,17 +106,37 @@ const SERVICE_CATEGORIES = [
 ];
 
 const PRICE_RANGES = [
-  { value: '₱', label: '₱ - Budget Friendly (Under ₱25,000)', color: 'bg-green-100 text-green-800' },
-  { value: '₱₱', label: '₱₱ - Moderate (₱25,000 - ₱75,000)', color: 'bg-blue-100 text-blue-800' },
-  { value: '₱₱₱', label: '₱₱₱ - Premium (₱75,000 - ₱150,000)', color: 'bg-purple-100 text-purple-800' },
-  { value: '₱₱₱₱', label: '₱₱₱₱ - Luxury (₱150,000+)', color: 'bg-gold-100 text-gold-800' }
+  { 
+    value: 'budget', 
+    label: 'Budget Friendly', 
+    range: '₱10,000 - ₱25,000',
+    description: 'Affordable options for couples on a tight budget',
+    color: 'bg-green-100 text-green-800' 
+  },
+  { 
+    value: 'moderate', 
+    label: 'Moderate', 
+    range: '₱25,000 - ₱75,000',
+    description: 'Mid-range services with good value',
+    color: 'bg-blue-100 text-blue-800' 
+  },
+  { 
+    value: 'premium', 
+    label: 'Premium', 
+    range: '₱75,000 - ₱150,000',
+    description: 'High-quality services with premium features',
+    color: 'bg-purple-100 text-purple-800' 
+  },
+  { 
+    value: 'luxury', 
+    label: 'Luxury', 
+    range: '₱150,000+',
+    description: 'Exclusive, top-tier services',
+    color: 'bg-amber-100 text-amber-800' 
+  }
 ];
 
-const PLACEHOLDER_IMAGES = [
-  'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400',
-  'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400',
-  'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=400'
-];
+
 
 // Item/Equipment examples for different service categories to help vendors
 const getCategoryExamples = (category: string): string[] => {
@@ -225,12 +246,12 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     description: '',
     category: '',
     price: '',
+    max_price: '',
     images: [],
     featured: false,
     is_active: true,
     location: '',
-    locationData: undefined,
-    price_range: '₱',
+    locationData: undefined,        price_range: 'budget',
     features: [],
     contact_info: {
       phone: '',
@@ -257,12 +278,13 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         description: editingService.description || '',
         category: editingService.category || '',
         price: editingService.price?.toString() || '',
+        max_price: '',
         images: editingService.images || [],
         featured: editingService.featured || false,
         is_active: editingService.is_active ?? true,
         location: editingService.location || '',
         locationData: undefined, // Will be populated if location has coordinates
-        price_range: editingService.price_range || '₱',
+        price_range: editingService.price_range || 'budget',
         features: editingService.features || [],
         contact_info: {
           phone: editingService.contact_info?.phone || '',
@@ -279,12 +301,13 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         description: '',
         category: '',
         price: '',
+        max_price: '',
         images: [],
         featured: false,
         is_active: true,
         location: '',
         locationData: undefined,
-        price_range: '₱',
+        price_range: 'budget',
         features: [],
         contact_info: {
           phone: '',
@@ -330,8 +353,8 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   };
 
   // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
     
     // Prevent multiple submissions
     if (isLoading || isUploading || isSubmitting) {
@@ -372,7 +395,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         description: formData.description.trim(),
         category: formData.category,
         price: formData.price ? parseFloat(formData.price) : 0,
-        images: formData.images.length > 0 ? formData.images : [PLACEHOLDER_IMAGES[0]],
+        images: formData.images.length > 0 ? formData.images : [],
         features: formData.features.filter(f => f.trim()),
         is_active: formData.is_active,
         featured: formData.featured,
@@ -414,37 +437,37 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
       
       const uploadPromises = Array.from(files).map(async (file) => {
         try {
-          console.log('📤 [AddServiceForm] Uploading image:', file.name);
+          console.log('📤 [AddServiceForm] Uploading image:', file.name, 'Size:', file.size);
           const result = await cloudinaryService.uploadImage(file, 'vendor-services');
-          console.log('✅ [AddServiceForm] Image uploaded:', result.secure_url);
+          console.log('✅ [AddServiceForm] Image uploaded successfully:', result.secure_url);
           return result.secure_url;
         } catch (error) {
-          console.error('❌ [AddServiceForm] Error uploading image:', error);
-          // Fallback to placeholder on error
-          return PLACEHOLDER_IMAGES[0];
+          console.error('❌ [AddServiceForm] Failed to upload image:', file.name, error);
+          throw error; // Don't fall back to placeholder, let user know it failed
         }
       });
       
       const newImages = await Promise.all(uploadPromises);
       
-      if (isMain) {
-        setFormData(prev => ({ ...prev, images: [newImages[0], ...prev.images.slice(1)] }));
-      } else {
-        setFormData(prev => ({ ...prev, images: [...prev.images, ...newImages] }));
+      // Only add images if they were successfully uploaded
+      if (newImages.length > 0) {
+        if (isMain) {
+          setFormData(prev => ({ ...prev, images: [newImages[0], ...prev.images.slice(1)] }));
+        } else {
+          setFormData(prev => ({ ...prev, images: [...prev.images, ...newImages] }));
+        }
+        
+        console.log('✅ [AddServiceForm] Images added to form:', newImages.length);
       }
       
     } catch (error) {
-      console.error('❌ [AddServiceForm] Error in image upload process:', error);
-      // Fallback to placeholder images on error
-      const fallbackImages = Array.from(files).map((_, index) => 
-        PLACEHOLDER_IMAGES[index % PLACEHOLDER_IMAGES.length]
-      );
+      console.error('❌ [AddServiceForm] Image upload failed:', error);
       
-      if (isMain) {
-        setFormData(prev => ({ ...prev, images: [fallbackImages[0], ...prev.images.slice(1)] }));
-      } else {
-        setFormData(prev => ({ ...prev, images: [...prev.images, ...fallbackImages] }));
-      }
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload image';
+      alert(`❌ Image Upload Failed\n\n${errorMessage}\n\nPlease try again or check your internet connection.`);
+      
+      // Don't add placeholder images - let user retry
     } finally {
       setIsUploading(false);
     }
@@ -537,7 +560,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
           initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden"
+          className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -595,7 +618,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
           </div>
 
           {/* Form Content */}
-          <form onSubmit={handleSubmit} className="flex flex-col h-[calc(95vh-200px)]">
+          <div className="flex flex-col flex-1 min-h-0">
             <div className="flex-1 overflow-y-auto p-6">
               <AnimatePresence mode="wait">
                 {/* Step 1: Basic Information */}
@@ -792,9 +815,9 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                         <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-green-200">
                           💰 Select the price range that best fits your service. This helps couples find options within their budget.
                         </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {PRICE_RANGES.map(range => (
-                            <label key={range.value} className="relative cursor-pointer">
+                            <label key={range.value} className="relative cursor-pointer group">
                               <input
                                 type="radio"
                                 name="price_range"
@@ -802,20 +825,36 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                                 checked={formData.price_range === range.value}
                                 onChange={(e) => setFormData(prev => ({ ...prev, price_range: e.target.value }))}
                                 className="sr-only"
-                                aria-label={range.label}
+                                aria-label={`${range.label} - ${range.range}`}
                               />
-                              <div className={`p-4 rounded-xl border-2 transition-all ${
+                              <div className={`p-5 rounded-2xl border-2 transition-all duration-300 transform ${
                                 formData.price_range === range.value
-                                  ? 'border-green-500 bg-green-100 shadow-lg scale-105'
-                                  : 'border-gray-200 bg-white/70 hover:border-green-300 hover:shadow-md'
+                                  ? 'border-green-500 bg-green-50 shadow-xl scale-[1.02] ring-2 ring-green-200'
+                                  : 'border-gray-200 bg-white/80 hover:border-green-300 hover:shadow-lg hover:scale-[1.01] group-hover:bg-green-50/30'
                               }`}>
-                                <div className="flex items-center justify-between">
-                                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${range.color}`}>
-                                    {range.label}
-                                  </span>
-                                  {formData.price_range === range.value && (
-                                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                  )}
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-2">
+                                      <div className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold shadow-sm ${range.color}`}>
+                                        {range.label}
+                                      </div>
+                                    </div>
+                                    <div className="text-lg font-bold text-gray-900 mb-1">
+                                      {range.range}
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                      {range.description}
+                                    </div>
+                                  </div>
+                                  <div className="flex-shrink-0 ml-3">
+                                    {formData.price_range === range.value ? (
+                                      <div className="flex items-center justify-center w-8 h-8 bg-green-500 rounded-full">
+                                        <CheckCircle2 className="h-5 w-5 text-white" />
+                                      </div>
+                                    ) : (
+                                      <div className="w-8 h-8 border-2 border-gray-300 rounded-full group-hover:border-green-300 transition-colors"></div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </label>
@@ -823,29 +862,61 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                         </div>
                       </div>
 
-                      {/* Base Price */}
+                      {/* Specific Pricing */}
                       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
                         <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
                           <span className="p-1 bg-blue-600 text-white rounded-full text-sm">₱</span>
-                          Starting Price (Optional)
+                          Specific Pricing (Optional)
                         </label>
                         <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-blue-200">
-                          💡 Add a starting price to give couples an idea of your rates. You can always provide detailed quotes later.
+                          💡 Provide specific minimum and maximum prices for your service. This helps couples understand your exact pricing range.
                         </p>
                         <div className="bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white">
-                          <div className="relative">
-                            <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-400" />
-                            <input
-                              type="number"
-                              value={formData.price}
-                              onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                              className={`w-full pl-12 pr-5 py-4 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg ${
-                                errors.price ? 'border-red-300 bg-red-50' : 'border-transparent bg-transparent'
-                              }`}
-                              placeholder="e.g., 25000.00"
-                              min="0"
-                              step="100"
-                            />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Minimum Price */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Minimum Price
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">₱</span>
+                                <input
+                                  type="number"
+                                  value={formData.price}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                                  className={`w-full pl-8 pr-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base ${
+                                    errors.price ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                                  }`}
+                                  placeholder="10,000"
+                                  min="0"
+                                  step="1000"
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Maximum Price */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Maximum Price
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">₱</span>
+                                <input
+                                  type="number"
+                                  value={formData.max_price || ''}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, max_price: e.target.value }))}
+                                  className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base bg-white"
+                                  placeholder="25,000"
+                                  min="0"
+                                  step="1000"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-3 text-xs text-gray-500 flex items-center gap-1">
+                            <span>💡</span>
+                            <span>Leave empty if you prefer to provide custom quotes for each client</span>
                           </div>
                         </div>
                         {errors.price && (
@@ -1090,7 +1161,7 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    className="space-y-6"
+                    className="space-y-4 pb-6"
                   >
                     <div className="text-center mb-6">
                       <h3 className="text-xl font-semibold text-gray-900 mb-2">Images & Tags</h3>
@@ -1098,7 +1169,7 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                     </div>
 
                     {/* Image Upload */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       <h4 className="font-medium text-gray-900 flex items-center gap-2">
                         <Camera className="h-5 w-5" />
                         Service Images
@@ -1106,7 +1177,7 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                       
                       {/* Main Image Upload */}
                       <div
-                        className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+                        className={`border-2 border-dashed rounded-xl p-4 text-center transition-all ${
                           isDragOver
                             ? 'border-rose-400 bg-rose-50'
                             : 'border-gray-300 hover:border-rose-300'
@@ -1138,10 +1209,10 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                             </>
                           ) : (
                             <>
-                              <Upload className="h-12 w-12 text-gray-400 mb-4" />
-                              <p className="text-lg font-medium text-gray-700">Upload service images</p>
+                              <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                              <p className="text-base font-medium text-gray-700">Upload service images</p>
                               <p className="text-sm text-gray-500">Drag & drop or click to select</p>
-                              <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 10MB each</p>
+                              <p className="text-xs text-gray-400">PNG, JPG up to 10MB each</p>
                             </>
                           )}
                         </label>
@@ -1149,13 +1220,13 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
 
                       {/* Image Preview */}
                       {formData.images.length > 0 && (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
                           {formData.images.map((image, index) => (
                             <div key={index} className="relative group">
                               <img
                                 src={image}
                                 alt={`Service image ${index + 1}`}
-                                className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                                className="w-full h-16 object-cover rounded-lg border border-gray-200"
                               />
                               <button
                                 type="button"
@@ -1178,12 +1249,12 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                     </div>
 
                     {/* Tags */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       <h4 className="font-medium text-gray-900 flex items-center gap-2">
                         <Tag className="h-5 w-5" />
                         Search Tags
                       </h4>
-                      <div className="flex flex-wrap gap-2 mb-3">
+                      <div className="flex flex-wrap gap-2 mb-2">
                         {formData.tags.map((tag, index) => (
                           <span
                             key={index}
@@ -1201,22 +1272,22 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                             </button>
                           </span>
                         ))}
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="Add tags (press Enter)"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent"
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const value = e.currentTarget.value.trim();
-                            if (value) {
-                              addTag(value);
-                              e.currentTarget.value = '';
+                      </div>                        <input
+                          type="text"
+                          placeholder="Add tags (press Enter)"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const value = e.currentTarget.value.trim();
+                              if (value) {
+                                addTag(value);
+                                e.currentTarget.value = '';
+                              }
                             }
-                          }
-                        }}
-                      />
+                          }}
+                        />
                     </div>
                   </motion.div>
                 )}
@@ -1234,7 +1305,7 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
             )}
 
             {/* Footer with Navigation */}
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <button
                   type="button"
@@ -1261,7 +1332,8 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                   </button>
                 ) : (
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={handleSubmit}
                     disabled={isLoading || isUploading || isSubmitting}
                     className="px-8 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-all font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -1280,7 +1352,7 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                 )}
               </div>
             </div>
-          </form>
+          </div>
         </motion.div>
       </motion.div>
     </AnimatePresence>
