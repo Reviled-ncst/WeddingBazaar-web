@@ -8,7 +8,6 @@ import {
   MapPin,
   DollarSign,
   Star,
-
   Phone,
   Mail,
   Globe,
@@ -16,7 +15,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Camera,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { LocationPicker } from '../../../../../shared/components/forms/LocationPicker';
 
@@ -242,6 +242,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -331,40 +332,67 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate all steps
-    let isValid = true;
-    for (let i = 1; i <= totalSteps; i++) {
-      if (!validateStep(i)) {
-        isValid = false;
-        setCurrentStep(i);
-        break;
-      }
+    // Prevent multiple submissions
+    if (isLoading || isUploading || isSubmitting) {
+      console.log('🚫 [AddServiceForm] Submission blocked - already processing', {
+        isLoading,
+        isUploading,
+        isSubmitting
+      });
+      return;
+    }
+    
+    // Basic validation
+    if (!formData.title.trim()) {
+      setErrors({ title: 'Service name is required' });
+      setCurrentStep(1);
+      return;
+    }
+    
+    if (!formData.category) {
+      setErrors({ category: 'Category is required' });
+      setCurrentStep(1);
+      return;
     }
 
-    if (!isValid) return;
+    if (!formData.description.trim()) {
+      setErrors({ description: 'Description is required' });
+      setCurrentStep(1);
+      return;
+    }
 
+    setIsSubmitting(true);
     try {
+      console.log('🚀 [AddServiceForm] Starting form submission...');
+      
       const serviceData = {
-        ...formData,
-        price: formData.price ? parseFloat(formData.price) : null,
         vendor_id: vendorId,
-        // Include location coordinates if available
-        location_coordinates: formData.locationData?.lat && formData.locationData?.lng 
-          ? { lat: formData.locationData.lat, lng: formData.locationData.lng }
-          : null,
-        location_details: formData.locationData ? {
-          city: formData.locationData.city,
-          state: formData.locationData.state,
-          country: formData.locationData.country
-        } : null,
-        // Ensure we have at least one placeholder image
-        images: formData.images.length > 0 ? formData.images : [PLACEHOLDER_IMAGES[0]]
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        category: formData.category,
+        price: formData.price ? parseFloat(formData.price) : 0,
+        images: formData.images.length > 0 ? formData.images : [PLACEHOLDER_IMAGES[0]],
+        features: formData.features.filter(f => f.trim()),
+        is_active: formData.is_active,
+        featured: formData.featured,
+        location: formData.location.trim(),
+        price_range: formData.price_range,
+        contact_info: formData.contact_info,
+        tags: formData.tags.filter(t => t.trim()),
+        keywords: formData.keywords.trim()
       };
 
+      console.log('📤 [AddServiceForm] Calling onSubmit with data:', serviceData);
       await onSubmit(serviceData);
+      console.log('✅ [AddServiceForm] Form submission completed');
+      
+      // Close form only after successful submission
       onClose();
     } catch (error) {
-      console.error('Error submitting service:', error);
+      console.error('❌ [AddServiceForm] Error submitting service:', error);
+      setErrors({ submit: 'Failed to save service. Please try again.' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1217,11 +1245,20 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                 ) : (
                   <button
                     type="submit"
-                    disabled={isLoading || isUploading}
-                    className="px-8 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-all font-medium flex items-center gap-2 disabled:opacity-50"
+                    disabled={isLoading || isUploading || isSubmitting}
+                    className="px-8 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-all font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Save size={18} />
-                    {editingService ? 'Update Service' : 'Create Service'}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        {editingService ? 'Updating...' : 'Creating...'}
+                      </>
+                    ) : (
+                      <>
+                        <Save size={18} />
+                        {editingService ? 'Update Service' : 'Create Service'}
+                      </>
+                    )}
                   </button>
                 )}
               </div>
