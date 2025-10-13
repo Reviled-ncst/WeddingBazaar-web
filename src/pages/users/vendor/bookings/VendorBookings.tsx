@@ -245,29 +245,12 @@ export const VendorBookings: React.FC = () => {
         console.warn(`⚠️ [VendorBookings] Failed to fetch user data for ${booking.couple_id}:`, error);
       }
 
-      // Fallback to mapping if API fails
-      const coupleIdNameMap: Record<string, string> = {
-        '1-2025-001': 'Couple1 One',
-        '1-2025-002': 'John Smith', 
-        '1-2025-003': 'Test User',
-        '1-2025-004': 'TestUser Demo',
-        '1-2025-005': 'TestCouple User',
-        '1-2025-006': 'John Doe',
-        '1-2025-007': 'Jane Smith',
-        '1-2025-008': 'Test User',
-        '1-2025-009': 'Test User',
-        '1-2025-010': 'Test User',
-        '1-2025-011': 'Test Couple'
-      };
-      
-      if (coupleIdNameMap[booking.couple_id]) {
-        return coupleIdNameMap[booking.couple_id];
-      }
-
-      // Generate from couple_id pattern
+      // DYNAMIC FALLBACK: Generate display name from couple ID pattern
+      // Pattern: 1-2025-003 → "Client #003" or "Wedding Client #3"
       const match = booking.couple_id.match(/(\d+)-(\d+)-(\d+)/);
       if (match) {
-        return `Couple #${match[3]}`;
+        const clientNumber = parseInt(match[3], 10);
+        return `Wedding Client #${clientNumber}`;
       }
     }
 
@@ -284,8 +267,58 @@ export const VendorBookings: React.FC = () => {
       if (!silent) setLoading(true);
       console.log('🎯 [VendorBookings] SIMPLE APPROACH - Loading bookings for vendor:', workingVendorId);
       
-      // DIRECT API CALL - no complex mapping
-      const response = await fetch(`${apiUrl}/api/bookings/vendor/${workingVendorId}`);
+      // Get authentication token
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+      
+      if (!token) {
+        console.error('� [VendorBookings] No authentication token found');
+        if (!silent) {
+          showError('Authentication Error', 'Please log in again to view bookings.');
+        }
+        setBookings([]);
+        return;
+      }
+      
+      // TRY ORIGINAL VENDOR ID FIRST, THEN FALLBACK TO SIMPLE ID
+      let response;
+      let finalVendorId = workingVendorId;
+      
+      // First attempt: Use original complex vendor ID
+      console.log(`🎯 [VendorBookings] First attempt with original ID: ${workingVendorId}`);
+      response = await fetch(`${apiUrl}/api/bookings/vendor/${workingVendorId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // If we get MALFORMED_VENDOR_ID error, try fallback mapping
+      if (response.status === 403) {
+        const errorData = await response.json();
+        if (errorData.code === 'MALFORMED_VENDOR_ID') {
+          console.log('🔄 [VendorBookings] Complex ID rejected, trying fallback mapping...');
+          
+          // DYNAMIC FALLBACK: Extract numeric part from complex vendor ID
+          // Pattern: 2-2025-003 → extract the last number (003 → 3)
+          const vendorIdMatch = workingVendorId.match(/^(\d+)-\d{4}-(\d+)$/);
+          if (vendorIdMatch) {
+            const extractedId = parseInt(vendorIdMatch[2], 10).toString();
+            finalVendorId = extractedId;
+            console.log(`🎯 [VendorBookings] Dynamic fallback: ${workingVendorId} → ${finalVendorId}`);
+            
+            response = await fetch(`${apiUrl}/api/bookings/vendor/${finalVendorId}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              }
+            });
+          } else {
+            console.log(`⚠️ [VendorBookings] Could not extract simple ID from: ${workingVendorId}`);
+          }
+        }
+      }
       const data = await response.json();
       
       console.log('📊 [VendorBookings] API Response:', {
@@ -299,36 +332,43 @@ export const VendorBookings: React.FC = () => {
         console.log(`✅ [VendorBookings] SUCCESS: Found ${data.bookings.length} bookings!`);
         
         // Simple conversion to UI format
-        const uiBookings = data.bookings.map((booking: any) => ({
-          id: booking.id,
-          vendorId: booking.vendor_id,
-          coupleId: booking.couple_id,
-          coupleName: booking.couple_name || `Customer ${booking.couple_id}`,
-          contactEmail: booking.contact_email || 'Email pending',
-          contactPhone: booking.contact_phone || 'Phone pending',
-          serviceType: booking.service_type || booking.service_name || 'Service',
-          serviceName: booking.service_name || 'Wedding Service',
-          eventDate: booking.event_date || new Date().toISOString().split('T')[0],
-          eventTime: booking.event_time || '18:00',
-          eventLocation: booking.event_location || 'Venue TBD',
-          guestCount: booking.guest_count || 'TBD',
-          specialRequests: booking.special_requests || 'None specified',
-          status: booking.status || 'pending',
-          budgetRange: booking.budget_range || 'To be discussed',
-          totalAmount: parseFloat(booking.total_amount || '0'),
-          quoteAmount: parseFloat(booking.quote_amount || booking.total_amount || '0'),
-          totalPaid: parseFloat(booking.total_paid || '0'),
-          createdAt: booking.created_at,
-          updatedAt: booking.updated_at,
-          notes: booking.notes || '',
-          responseMessage: booking.response_message || booking.notes || '',
-          formatted: {
-            totalAmount: `₱${parseFloat(booking.total_amount || '0').toLocaleString()}`,
-            totalPaid: `₱${parseFloat(booking.total_paid || '0').toLocaleString()}`,
-            remainingBalance: `₱${Math.max(parseFloat(booking.total_amount || '0') - parseFloat(booking.total_paid || '0'), 0).toLocaleString()}`,
-            paymentProgress: `${parseFloat(booking.total_amount || '0') > 0 ? Math.round((parseFloat(booking.total_paid || '0') / parseFloat(booking.total_amount || '0')) * 100) : 0}%`
-          }
-        }));
+        const uiBookings = data.bookings.map((booking: any) => {
+          const totalAmount = parseFloat(booking.total_amount || '0');
+          const totalPaid = parseFloat(booking.total_paid || '0');
+          const paymentProgressPercentage = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
+          
+          return {
+            id: booking.id,
+            vendorId: booking.vendor_id,
+            coupleId: booking.couple_id,
+            coupleName: booking.couple_name || `Customer ${booking.couple_id}`,
+            contactEmail: booking.contact_email || 'Email pending',
+            contactPhone: booking.contact_phone || 'Phone pending',
+            serviceType: booking.service_type || booking.service_name || 'Service',
+            serviceName: booking.service_name || 'Wedding Service',
+            eventDate: booking.event_date || new Date().toISOString().split('T')[0],
+            eventTime: booking.event_time || '18:00',
+            eventLocation: booking.event_location || 'Venue TBD',
+            guestCount: booking.guest_count || 'TBD',
+            specialRequests: booking.special_requests || 'None specified',
+            status: booking.status || 'pending',
+            budgetRange: booking.budget_range || 'To be discussed',
+            totalAmount,
+            quoteAmount: parseFloat(booking.quote_amount || booking.total_amount || '0'),
+            totalPaid,
+            paymentProgressPercentage,
+            createdAt: booking.created_at,
+            updatedAt: booking.updated_at,
+            notes: booking.notes || '',
+            responseMessage: booking.response_message || booking.notes || '',
+            formatted: {
+              totalAmount: `₱${totalAmount.toLocaleString()}`,
+              totalPaid: `₱${totalPaid.toLocaleString()}`,
+              remainingBalance: `₱${Math.max(totalAmount - totalPaid, 0).toLocaleString()}`,
+              paymentProgress: `${paymentProgressPercentage}%`
+            }
+          };
+        });
         
         console.log('📋 [VendorBookings] Setting bookings in state:', uiBookings);
         setBookings(uiBookings);
@@ -340,15 +380,42 @@ export const VendorBookings: React.FC = () => {
         return;
         
       } else if (response.status === 403) {
-        console.log('🚨 [VendorBookings] BLOCKED by backend security');
+        const errorData = await response.json();
+        console.log('🚨 [VendorBookings] 403 Error:', errorData);
+        
+        if (errorData.code === 'MALFORMED_VENDOR_ID') {
+          if (!silent) {
+            showError('Backend Compatibility Issue', 
+              `The backend currently doesn't support complex vendor ID format (${finalVendorId}). ` +
+              'This will be fixed in the next backend deployment.'
+            );
+          }
+        } else {
+          if (!silent) {
+            showError('Access Denied', 'You do not have permission to view these bookings.');
+          }
+        }
+        setBookings([]);
+        return;
+        
+      } else if (response.status === 404) {
+        console.log('❌ [VendorBookings] Endpoint not found');
         if (!silent) {
-          showError('Security Block', 'Backend security is still blocking this vendor ID. Deployment in progress.');
+          showError('API Error', 'Booking endpoint not available. Please contact support.');
         }
         setBookings([]);
         return;
         
       } else {
-        console.log('❌ [VendorBookings] API returned no bookings');
+        console.log('❌ [VendorBookings] API returned no bookings or error');
+        const errorData = await response.json().catch(() => null);
+        if (!silent) {
+          if (errorData?.message) {
+            showError('Error', errorData.message);
+          } else {
+            showInfo('No Bookings', 'No bookings found for your account. New bookings will appear here.');
+          }
+        }
         setBookings([]);
         return;
       }
@@ -384,16 +451,42 @@ export const VendorBookings: React.FC = () => {
         return;
       }
       
-      console.log('📊 [VendorBookings] Loading stats with comprehensive API for vendor:', workingVendorId);
+      // Get authentication token
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
       
-      const statsResponse = await bookingApiService.getBookingStats(undefined, workingVendorId);
-      console.log('✅ [VendorBookings] Comprehensive stats loaded:', statsResponse);
+      if (!token) {
+        console.error('� [VendorBookings] No authentication token found for stats');
+        // Calculate basic stats from current bookings data
+        const realStats: UIBookingStats = {
+          totalBookings: bookings.length,
+          inquiries: bookings.filter(b => b.status === 'pending' || b.status === 'quote_requested').length,
+          confirmedBookings: bookings.filter(b => b.status === 'confirmed' || b.status === 'in_progress').length,
+          fullyPaidBookings: bookings.filter(b => b.paymentProgressPercentage >= 100).length,
+          totalRevenue: bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0),
+          formatted: {
+            totalRevenue: formatPHP(bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0))
+          }
+        };
+        setStats(realStats);
+        return;
+      }
       
-      // Map API stats to UI format
-      const uiStats = mapToUIBookingStats(statsResponse);
-      setStats(uiStats);
+      console.log('📊 [VendorBookings] Loading stats with authentication for vendor:', workingVendorId);
+      
+      // Try to use comprehensive API if available, otherwise calculate from current data
+      try {
+        const statsResponse = await bookingApiService.getBookingStats(undefined, workingVendorId);
+        console.log('✅ [VendorBookings] Comprehensive stats loaded:', statsResponse);
+        
+        // Map API stats to UI format
+        const uiStats = mapToUIBookingStats(statsResponse);
+        setStats(uiStats);
+      } catch (apiError) {
+        console.warn('⚠️ [VendorBookings] Comprehensive API unavailable, using current bookings data');
+        throw apiError; // Re-throw to trigger fallback calculation
+      }
     } catch (error) {
-      console.error('💥 [VendorBookings] Error loading stats with comprehensive API:', error);
+      console.error('💥 [VendorBookings] Error loading stats:', error);
       
       // SECURITY: Calculate real stats from current bookings data (no mock data)
       console.log('� [VendorBookings] SECURITY: Using real bookings data for stats calculation');
@@ -601,7 +694,7 @@ export const VendorBookings: React.FC = () => {
     try {
       // Import the download utilities
       import('./utils/downloadUtils').then(({ downloadBookings }) => {
-        downloadBookings(bookings as any[], workingVendorId, { format });
+        downloadBookings(bookings as any[], workingVendorId || 'unknown', { format });
         showSuccess('Download Started', `Bookings exported as ${format.toUpperCase()} file`);
       });
     } catch (error) {
@@ -1419,7 +1512,7 @@ export const VendorBookings: React.FC = () => {
                   await loadStats();
                   
                   // Update the selected booking for the details modal
-                  const refreshedBookings = await fetch(`${apiUrl}/api/bookings/vendor/${vendorId}`);
+                  const refreshedBookings = await fetch(`${apiUrl}/api/bookings/vendor/${workingVendorId}`);
                   const refreshedData = await refreshedBookings.json();
                   if (refreshedData.success && refreshedData.bookings) {
                     const updatedBooking = refreshedData.bookings.find((b: any) => b.id.toString() === selectedBooking.id.toString());

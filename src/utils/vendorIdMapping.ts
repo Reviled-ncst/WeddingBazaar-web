@@ -29,16 +29,17 @@ interface User {
 let BACKEND_SUPPORTS_COMPLEX_IDS: boolean | null = null;
 
 /**
- * TEMPORARY FALLBACK MAPPING (only used if backend rejects complex IDs)
- * Maps complex vendor IDs to simple numeric IDs as temporary workaround
+ * DYNAMIC FALLBACK FUNCTION (no hardcoded mappings)
+ * Extracts simple numeric ID from complex vendor ID format
  */
-const TEMP_FALLBACK_MAPPING: Record<string, string> = {
-  '2-2025-003': '2', // Current user - use simple ID if complex ID fails
-  '2-2025-001': '1', 
-  '2-2025-002': '1',
-  '2-2025-004': '1', 
-  '2-2025-005': '1',
-};
+function extractSimpleVendorId(complexId: string): string | null {
+  // Pattern: 2-2025-003 → extract the last number (003 → 3)
+  const match = complexId.match(/^(\d+)-\d{4}-(\d+)$/);
+  if (match) {
+    return parseInt(match[2], 10).toString();
+  }
+  return null;
+}
 
 /**
  * Extract vendor ID from user based on ID pattern analysis
@@ -162,9 +163,9 @@ export async function getWorkingVendorId(originalVendorId: string): Promise<stri
         console.log(`⚠️ [VendorIdMapping] Backend rejects complex ID, using fallback mapping`);
         BACKEND_SUPPORTS_COMPLEX_IDS = false;
         
-        // Use fallback mapping
-        const fallbackId = TEMP_FALLBACK_MAPPING[originalVendorId] || '1';
-        console.log(`🔄 [VendorIdMapping] Fallback mapping: ${originalVendorId} -> ${fallbackId}`);
+        // Use dynamic extraction
+        const fallbackId = extractSimpleVendorId(originalVendorId) || '1';
+        console.log(`🔄 [VendorIdMapping] Dynamic fallback: ${originalVendorId} -> ${fallbackId}`);
         return fallbackId;
       }
     }
@@ -183,16 +184,18 @@ export async function getWorkingVendorId(originalVendorId: string): Promise<stri
  * Check if backend fix is deployed by testing a complex vendor ID
  * @returns Promise<boolean> - True if backend accepts complex vendor IDs
  */
-export async function isBackendFixDeployed(): Promise<boolean> {
+export async function isBackendFixDeployed(testVendorId?: string): Promise<boolean> {
   if (BACKEND_SUPPORTS_COMPLEX_IDS !== null) {
     return BACKEND_SUPPORTS_COMPLEX_IDS;
   }
   
+  // Use provided test ID or generate a sample complex ID for testing
+  const sampleTestId = testVendorId || '2-2025-001';
+  
   try {
     const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-    const testId = '2-2025-003';
     
-    const response = await fetch(`${apiUrl}/api/bookings/vendor/${testId}`);
+    const response = await fetch(`${apiUrl}/api/bookings/vendor/${sampleTestId}`);
     const isWorking = response.status === 200;
     
     BACKEND_SUPPORTS_COMPLEX_IDS = isWorking;
@@ -206,12 +209,9 @@ export async function isBackendFixDeployed(): Promise<boolean> {
 }
 
 /**
- * Remove temporary mappings when backend fix is confirmed deployed
+ * Reset backend compatibility cache when backend fix is confirmed deployed
  */
 export function clearTemporaryMappings(): void {
-  console.log('🗑️ [VendorIdMapping] Clearing temporary mappings - backend fix deployed!');
-  // Clear the mapping object
-  Object.keys(TEMP_VENDOR_ID_MAPPING).forEach(key => {
-    delete TEMP_VENDOR_ID_MAPPING[key];
-  });
+  console.log('🗑️ [VendorIdMapping] Resetting backend compatibility cache - backend fix deployed!');
+  BACKEND_SUPPORTS_COMPLEX_IDS = true;
 }
