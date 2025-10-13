@@ -107,32 +107,24 @@ const SERVICE_CATEGORIES = [
 
 const PRICE_RANGES = [
   { 
-    value: 'budget', 
+    value: '₱10,000 - ₱25,000', 
     label: 'Budget Friendly', 
-    range: '₱10,000 - ₱25,000',
-    description: 'Affordable options for couples on a tight budget',
-    color: 'bg-green-100 text-green-800' 
+    description: 'Affordable options for couples on a tight budget'
   },
   { 
-    value: 'moderate', 
+    value: '₱25,000 - ₱75,000', 
     label: 'Moderate', 
-    range: '₱25,000 - ₱75,000',
-    description: 'Mid-range services with good value',
-    color: 'bg-blue-100 text-blue-800' 
+    description: 'Mid-range services with good value'
   },
   { 
-    value: 'premium', 
+    value: '₱75,000 - ₱150,000', 
     label: 'Premium', 
-    range: '₱75,000 - ₱150,000',
-    description: 'High-quality services with premium features',
-    color: 'bg-purple-100 text-purple-800' 
+    description: 'High-quality services with premium features'
   },
   { 
-    value: 'luxury', 
+    value: '₱150,000+', 
     label: 'Luxury', 
-    range: '₱150,000+',
-    description: 'Exclusive, top-tier services',
-    color: 'bg-amber-100 text-amber-800' 
+    description: 'Exclusive, top-tier services'
   }
 ];
 
@@ -251,7 +243,8 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     featured: false,
     is_active: true,
     location: '',
-    locationData: undefined,        price_range: 'budget',
+    locationData: undefined,
+    price_range: '₱10,000 - ₱25,000',
     features: [],
     contact_info: {
       phone: '',
@@ -284,7 +277,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         is_active: editingService.is_active ?? true,
         location: editingService.location || '',
         locationData: undefined, // Will be populated if location has coordinates
-        price_range: editingService.price_range || 'budget',
+        price_range: editingService.price_range || '₱10,000 - ₱25,000',
         features: editingService.features || [],
         contact_info: {
           phone: editingService.contact_info?.phone || '',
@@ -307,7 +300,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         is_active: true,
         location: '',
         locationData: undefined,
-        price_range: 'budget',
+        price_range: '₱10,000 - ₱25,000',
         features: [],
         contact_info: {
           phone: '',
@@ -825,7 +818,7 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                                 checked={formData.price_range === range.value}
                                 onChange={(e) => setFormData(prev => ({ ...prev, price_range: e.target.value }))}
                                 className="sr-only"
-                                aria-label={`${range.label} - ${range.range}`}
+                                aria-label={`${range.label} - ${range.value}`}
                               />
                               <div className={`p-5 rounded-2xl border-2 transition-all duration-300 transform ${
                                 formData.price_range === range.value
@@ -835,12 +828,12 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-2">
-                                      <div className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold shadow-sm ${range.color}`}>
+                                      <div className="inline-flex px-3 py-1 rounded-full text-sm font-semibold shadow-sm bg-green-100 text-green-800">
                                         {range.label}
                                       </div>
                                     </div>
                                     <div className="text-lg font-bold text-gray-900 mb-1">
-                                      {range.range}
+                                      {range.value}
                                     </div>
                                     <div className="text-sm text-gray-600">
                                       {range.description}
