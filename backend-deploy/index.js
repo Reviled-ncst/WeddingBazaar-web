@@ -1472,8 +1472,9 @@ app.get('/api/bookings/vendor/:vendorId', async (req, res) => {
     // SECURITY CHECK: Basic validation for malformed IDs
     const isMalformedUserId = (id) => {
       if (!id || typeof id !== 'string') return true;
-      // Check for patterns like "2-2025-003" which should not be user IDs
-      if (/^\d+-\d{4}-\d{3}$/.test(id)) return true;
+      // Allow legitimate vendor IDs while blocking obvious booking IDs
+      // Temporarily allow "2-2025-003" format until database migration completes
+      if (/^\d+-\d{4}-\d{6,}$/.test(id)) return true; // Block very long booking-like IDs
       // Check for other suspicious patterns
       if (id.includes('-') && id.length > 10) return true;
       return false;
