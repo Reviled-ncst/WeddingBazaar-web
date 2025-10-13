@@ -82,6 +82,12 @@ router.get('/', async (req, res) => {
 // Create a new service
 router.post('/', async (req, res) => {
   console.log('➕ Creating new service:', req.body);
+  console.log('🔍 Images field details:', {
+    images: req.body.images,
+    type: typeof req.body.images,
+    isArray: Array.isArray(req.body.images),
+    length: req.body.images?.length
+  });
   
   try {
     const { 
@@ -114,13 +120,32 @@ router.post('/', async (req, res) => {
     
     const serviceId = `SRV-${Date.now()}`;
     
+    // Handle images array properly - check if it's already a string or needs stringification
+    let processedImages;
+    if (typeof images === 'string') {
+      // If images is already a JSON string, use it directly
+      processedImages = images;
+    } else if (Array.isArray(images)) {
+      // If images is an array, stringify it
+      processedImages = JSON.stringify(images);
+    } else {
+      // Default to empty array
+      processedImages = JSON.stringify([]);
+    }
+    
+    console.log('🖼️ Processing images:', { 
+      original: images, 
+      type: typeof images, 
+      processed: processedImages 
+    });
+
     const service = await sql`
       INSERT INTO services (
         id, vendor_id, title, description, category, price, 
         images, is_active, featured, location, price_range, created_at, updated_at
       ) VALUES (
         ${serviceId}, ${finalVendorId}, ${finalTitle}, ${description}, ${category}, ${price || 0},
-        ${JSON.stringify(images)}, ${is_active}, ${featured}, 
+        ${processedImages}, ${is_active}, ${featured}, 
         ${location || 'Philippines'}, ${price_range || '₱'}, NOW(), NOW()
       ) RETURNING *
     `;
