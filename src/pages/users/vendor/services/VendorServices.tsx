@@ -16,7 +16,18 @@ import {
   AlertTriangle,
   Loader2,
   RefreshCw,
-  Settings
+  Settings,
+  TrendingUp,
+  DollarSign,
+  Calendar,
+  MapPin,
+  Copy,
+  Share2,
+  MoreVertical,
+  Filter,
+  SortDesc,
+  Camera,
+  CheckCircle2
 } from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { useAuth } from '../../../../shared/contexts/AuthContext';
@@ -89,6 +100,7 @@ export const VendorServices: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [highlightedServiceId, setHighlightedServiceId] = useState<string | null>(null);
 
   // Get API base URL
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
@@ -96,32 +108,52 @@ export const VendorServices: React.FC = () => {
   // Get current vendor ID from auth context with fallback
   const vendorId = user?.vendorId || user?.id || getVendorIdForUser(user as any) || '';
   
+  // Check for highlighted service from URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get('highlight');
+    if (highlightId) {
+      setHighlightedServiceId(highlightId);
+      // Remove highlight after 5 seconds
+      setTimeout(() => setHighlightedServiceId(null), 5000);
+    }
+  }, []);
+  
   // Debug logging
   console.log('🔍 VendorServices Debug Info:', {
     user: user,
     vendorId: vendorId,
     userRole: user?.role,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    highlightedServiceId: highlightedServiceId
   });
 
-  // Service statistics
+  // Service statistics with proper field mapping - dynamic calculations
   const serviceStats = {
     total: services.length,
-    active: services.filter(s => s.isActive ?? s.is_active).length,
-    inactive: services.filter(s => !(s.isActive ?? s.is_active)).length,
-    categories: new Set(services.map(s => s.category)).size,
-    avgRating: services.length > 0 ? services.reduce((acc, s) => acc + (s.rating || 4.5), 0) / services.length : 4.5
+    active: services.filter(s => s.is_active === true).length,
+    inactive: services.filter(s => s.is_active === false).length,
+    categories: new Set(services.map(s => s.category).filter(Boolean)).size,
+    featured: services.filter(s => s.featured === true).length,
+    avgPrice: services.length > 0 ? services.reduce((acc, s) => acc + parseFloat(s.price || '0'), 0) / services.length : 0,
+    totalRevenue: services.reduce((acc, s) => acc + parseFloat(s.price || '0'), 0),
+    recentServices: services.filter(s => {
+      const createdDate = new Date(s.created_at || '');
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return createdDate > weekAgo;
+    }).length
   };
 
-  // Filtered services
+  // Filtered services with proper field mapping
   const filteredServices = services.filter(service => {
-    const serviceName = service.name || service.title || 'Untitled Service';
+    const serviceName = service.title || service.name || 'Untitled Service';
     const matchesSearch = serviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (service.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
     const matchesCategory = !filterCategory || service.category === filterCategory;
     const matchesStatus = filterStatus === 'all' || 
-                         (filterStatus === 'active' && (service.isActive ?? service.is_active)) ||
-                         (filterStatus === 'inactive' && !(service.isActive ?? service.is_active));
+                         (filterStatus === 'active' && service.is_active === true) ||
+                         (filterStatus === 'inactive' && service.is_active === false);
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
@@ -302,7 +334,7 @@ export const VendorServices: React.FC = () => {
   // Toggle service availability
   const toggleServiceAvailability = async (service: Service) => {
     try {
-      const currentStatus = service.isActive ?? service.is_active;
+      const currentStatus = service.is_active;
       const newStatus = !currentStatus;
       
       console.log(`🔄 Toggling service ${service.id} availability: ${currentStatus} → ${newStatus}`);
@@ -313,13 +345,15 @@ export const VendorServices: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: service.name,
+          title: service.title,
           category: service.category,
           description: service.description,
           price: service.price,
-          isActive: newStatus,
           is_active: newStatus,
-          featured: service.featured
+          featured: service.featured,
+          location: service.location,
+          price_range: service.price_range,
+          images: service.images
         }),
       });
 
@@ -331,7 +365,7 @@ export const VendorServices: React.FC = () => {
       setServices(prevServices => 
         prevServices.map(s => 
           s.id === service.id 
-            ? { ...s, isActive: newStatus, is_active: newStatus }
+            ? { ...s, is_active: newStatus, isActive: newStatus }
             : s
         )
       );
@@ -347,6 +381,42 @@ export const VendorServices: React.FC = () => {
   const handleQuickCreateService = () => {
     setIsCreating(true);
     setEditingService(null);
+  };
+
+  // Utility functions for better UX
+
+  const exportServiceData = () => {
+    try {
+      const exportData = services.map(service => ({
+        id: service.id,
+        title: service.title,
+        description: service.description,
+        category: service.category,
+        price: service.price,
+        location: service.location,
+        status: service.is_active ? 'Active' : 'Inactive',
+        featured: service.featured ? 'Yes' : 'No',
+        created: service.created_at,
+        updated: service.updated_at
+      }));
+
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `services-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log('✅ Service data exported successfully');
+    } catch (error) {
+      console.error('❌ Error exporting service data:', error);
+      setError('Failed to export service data');
+    }
   };
 
   // Authentication check
@@ -426,7 +496,7 @@ export const VendorServices: React.FC = () => {
                 </div>
               </div>
               
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <button
                   onClick={handleQuickCreateService}
                   className="group w-full sm:w-auto px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-xl hover:shadow-2xl bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700 hover:scale-105 relative overflow-hidden text-lg"
@@ -436,26 +506,59 @@ export const VendorServices: React.FC = () => {
                   <Plus size={24} className="group-hover:rotate-90 transition-transform duration-300" />
                   <span className="relative z-10">Add New Service</span>
                 </button>
+                
+                {/* Additional Action Buttons */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={exportServiceData}
+                    className="px-4 py-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 rounded-xl hover:bg-white hover:border-gray-300 transition-all duration-200 font-medium text-sm flex items-center gap-2 shadow-md hover:shadow-lg"
+                    title="Export service data"
+                  >
+                    <Share2 size={16} />
+                    Export
+                  </button>
+                  
+                  <button
+                    onClick={fetchServices}
+                    className="px-4 py-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 rounded-xl hover:bg-white hover:border-gray-300 transition-all duration-200 font-medium text-sm flex items-center gap-2 shadow-md hover:shadow-lg"
+                    title="Refresh services"
+                  >
+                    <RefreshCw size={16} />
+                    Refresh
+                  </button>
+                  
+                  <div className="relative">
+                    <button
+                      className="px-4 py-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 rounded-xl hover:bg-white hover:border-gray-300 transition-all duration-200 font-medium text-sm flex items-center gap-2 shadow-md hover:shadow-lg"
+                      title="View options"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Service Statistics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+            {/* Enhanced Service Statistics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="group bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-white/30 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+                className="group bg-white/90 backdrop-blur-md rounded-2xl p-4 border border-white/40 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-cyan-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative z-10 flex items-center gap-4">
-                  <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <Grid className="h-6 w-6 text-white" />
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300">
+                      <Grid className="h-4 w-4 text-white" />
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full ${serviceStats.total > 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                      Total
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">Total Services</p>
-                    <p className="text-3xl font-bold text-gray-900">{serviceStats.total}</p>
-                  </div>
+                  <p className="text-2xl font-bold text-gray-900 mb-1">{serviceStats.total}</p>
+                  <p className="text-xs text-gray-600">Services</p>
                 </div>
               </motion.div>
               
@@ -463,17 +566,20 @@ export const VendorServices: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="group bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-white/30 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+                className="group bg-white/90 backdrop-blur-md rounded-2xl p-4 border border-white/40 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-green-50/50 to-emerald-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative z-10 flex items-center gap-4">
-                  <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <Eye className="h-6 w-6 text-white" />
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300">
+                      <Eye className="h-4 w-4 text-white" />
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full ${serviceStats.active > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      Live
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">Available</p>
-                    <p className="text-3xl font-bold text-gray-900">{serviceStats.active}</p>
-                  </div>
+                  <p className="text-2xl font-bold text-gray-900 mb-1">{serviceStats.active}</p>
+                  <p className="text-xs text-gray-600">Available</p>
                 </div>
               </motion.div>
               
@@ -481,17 +587,20 @@ export const VendorServices: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="group bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-white/30 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+                className="group bg-white/90 backdrop-blur-md rounded-2xl p-4 border border-white/40 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-50/50 to-yellow-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative z-10 flex items-center gap-4">
-                  <div className="p-3 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <Tag className="h-6 w-6 text-white" />
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300">
+                      <Star className="h-4 w-4 text-white" />
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full ${serviceStats.featured > 0 ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-600'}`}>
+                      Premium
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">Categories</p>
-                    <p className="text-3xl font-bold text-gray-900">{serviceStats.categories}</p>
-                  </div>
+                  <p className="text-2xl font-bold text-gray-900 mb-1">{serviceStats.featured}</p>
+                  <p className="text-xs text-gray-600">Featured</p>
                 </div>
               </motion.div>
               
@@ -499,17 +608,62 @@ export const VendorServices: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="group bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-white/30 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+                className="group bg-white/90 backdrop-blur-md rounded-2xl p-4 border border-white/40 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-red-50/50 to-pink-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative z-10 flex items-center gap-4">
-                  <div className="p-3 bg-gradient-to-br from-red-500 to-pink-600 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <EyeOff className="h-6 w-6 text-white" />
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300">
+                      <Tag className="h-4 w-4 text-white" />
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800">
+                      Types
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">Inactive</p>
-                    <p className="text-3xl font-bold text-gray-900">{serviceStats.inactive}</p>
+                  <p className="text-2xl font-bold text-gray-900 mb-1">{serviceStats.categories}</p>
+                  <p className="text-xs text-gray-600">Categories</p>
+                </div>
+              </motion.div>
+              
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="group bg-white/90 backdrop-blur-md rounded-2xl p-4 border border-white/40 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300">
+                      <TrendingUp className="h-4 w-4 text-white" />
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full ${serviceStats.recentServices > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'}`}>
+                      New
+                    </span>
                   </div>
+                  <p className="text-2xl font-bold text-gray-900 mb-1">{serviceStats.recentServices}</p>
+                  <p className="text-xs text-gray-600">This Week</p>
+                </div>
+              </motion.div>
+              
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="group bg-white/90 backdrop-blur-md rounded-2xl p-4 border border-white/40 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-rose-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300">
+                      <DollarSign className="h-4 w-4 text-white" />
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full ${serviceStats.avgPrice > 0 ? 'bg-rose-100 text-rose-800' : 'bg-gray-100 text-gray-600'}`}>
+                      Avg
+                    </span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900 mb-1">₱{serviceStats.avgPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
+                  <p className="text-xs text-gray-600">Avg Price</p>
                 </div>
               </motion.div>
             </div>
@@ -605,24 +759,61 @@ export const VendorServices: React.FC = () => {
 
           {/* Services Display */}
           {filteredServices.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Settings className="h-16 w-16 text-gray-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">No Services Found</h3>
-              <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                {services.length === 0 
-                  ? "Ready to showcase your wedding services? Create your first service listing to start attracting couples."
-                  : "No services match your current filters. Try adjusting your search criteria."
-                }
-              </p>
-              <button
-                onClick={handleQuickCreateService}
-                className="px-8 py-4 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-2xl hover:from-rose-600 hover:to-pink-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105"
+            <div className="text-center py-20">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                className="w-32 h-32 bg-gradient-to-br from-rose-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg"
               >
-                <Plus className="inline-block w-5 h-5 mr-2" />
-                Create Your First Service
-              </button>
+                <Settings className="h-16 w-16 text-rose-400" />
+              </motion.div>
+              <motion.h3 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-3xl font-bold text-gray-900 mb-4"
+              >
+                {services.length === 0 ? "Start Your Journey" : "No Services Found"}
+              </motion.h3>
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-gray-600 mb-8 max-w-lg mx-auto text-lg leading-relaxed"
+              >
+                {services.length === 0 
+                  ? "Transform your wedding expertise into beautiful service listings. Create professional showcases that attract your ideal couples and grow your business."
+                  : "No services match your current filters. Try adjusting your search criteria or browse all services."
+                }
+              </motion.p>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+              >
+                <button
+                  onClick={handleQuickCreateService}
+                  className="group px-8 py-4 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-2xl hover:from-rose-600 hover:to-pink-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-3"
+                >
+                  <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+                  {services.length === 0 ? "Create Your First Service" : "Add New Service"}
+                </button>
+                {services.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setFilterCategory('');
+                      setFilterStatus('all');
+                    }}
+                    className="px-6 py-4 bg-white text-gray-700 border-2 border-gray-200 rounded-2xl hover:border-rose-300 hover:text-rose-600 transition-all duration-300 font-medium flex items-center gap-2"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Clear Filters
+                  </button>
+                )}
+              </motion.div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
@@ -630,32 +821,66 @@ export const VendorServices: React.FC = () => {
                 <motion.div
                   key={service.id}
                   initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  animate={{ 
+                    opacity: 1, 
+                    y: 0,
+                    scale: highlightedServiceId === service.id ? [1, 1.02, 1] : 1
+                  }}
                   transition={{ delay: index * 0.1 }}
-                  className="group bg-white/90 backdrop-blur-md rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border border-white/50"
+                  className={`group bg-white/90 backdrop-blur-md rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border ${
+                    highlightedServiceId === service.id 
+                      ? 'border-rose-400 shadow-rose-200 ring-2 ring-rose-300 bg-rose-50/50' 
+                      : 'border-white/50'
+                  }`}
                 >
-                  {/* Service Image */}
-                  <div className="relative h-48 bg-gradient-to-br from-rose-100 to-pink-100 overflow-hidden">
-                    {service.imageUrl ? (
-                      <img
-                        src={service.imageUrl}
-                        alt={service.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
+                  {/* Service Image with Enhanced Design */}
+                  <div className="relative h-56 bg-gradient-to-br from-rose-100 via-pink-50 to-purple-100 overflow-hidden">
+                    {service.images && service.images.length > 0 && service.images[0] ? (
+                      <>
+                        <img
+                          src={service.images[0]}
+                          alt={service.title || service.name || 'Service'}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const fallbackDiv = document.createElement('div');
+                            fallbackDiv.className = 'w-full h-full flex items-center justify-center bg-gradient-to-br from-rose-200 to-pink-200';
+                            fallbackDiv.innerHTML = '<div class="text-center"><svg class="h-16 w-16 text-rose-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg><p class="text-sm text-rose-600 font-medium">Image failed to load</p></div>';
+                            target.parentElement?.appendChild(fallbackDiv);
+                          }}
+                        />
+                        {/* Image Overlay Gradient */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        
+                        {/* Image Type Indicator */}
+                        {service.images[0].includes('cloudinary.com') && (
+                          <div className="absolute top-3 right-3">
+                            <div className="px-2 py-1 rounded-full text-xs font-semibold bg-green-500 text-white flex items-center gap-1">
+                              <CheckCircle2 size={12} />
+                              Uploaded
+                            </div>
+                          </div>
+                        )}
+                      </>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Image className="h-16 w-16 text-rose-300" />
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-rose-200 to-pink-200">
+                        <div className="text-center">
+                          <Camera className="h-16 w-16 text-rose-400 mx-auto mb-2" />
+                          <p className="text-sm text-rose-600 font-medium">No photos uploaded</p>
+                          <p className="text-xs text-rose-500 mt-1">Click Edit to add images</p>
+                        </div>
                       </div>
                     )}
                     
                     {/* Status Badge */}
                     <div className="absolute top-3 left-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        service.isActive ?? service.is_active
+                        service.is_active === true
                           ? 'bg-green-500 text-white'
                           : 'bg-gray-500 text-white'
                       }`}>
-                        {service.isActive ?? service.is_active ? 'Available' : 'Unavailable'}
+                        {service.is_active === true ? 'Available' : 'Unavailable'}
                       </span>
                     </div>
 
@@ -670,74 +895,259 @@ export const VendorServices: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Service Content */}
+                  {/* Enhanced Service Content */}
                   <div className="p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-xl font-bold text-gray-900 line-clamp-1">
-                        {service.name || service.title || 'Untitled Service'}
-                      </h3>
-                      <div className="flex items-center gap-1 text-amber-500">
-                        <Star size={16} className="fill-current" />
-                        <span className="text-sm font-medium">{service.rating?.toFixed(1) || '4.5'}</span>
+                    {/* Header with Service Name and Rating */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-xl font-bold text-gray-900 mb-1 line-clamp-2">
+                          {service.title || service.name || 'Untitled Service'}
+                        </h3>
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <Tag size={12} />
+                          <span>{service.category}</span>
+                          {service.location && (
+                            <>
+                              <span>•</span>
+                              <MapPin size={12} />
+                              <span className="truncate max-w-32">{service.location.split(',')[0]}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end ml-4">
+                        <div className="flex items-center gap-1 text-amber-500 mb-1">
+                          <Star size={14} className="fill-current" />
+                          <span className="text-sm font-bold">{service.rating?.toFixed(1) || '4.5'}</span>
+                        </div>
+                        <span className="text-xs text-gray-500">{service.review_count || service.reviewCount || 0} reviews</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 mb-3">
-                      <Tag size={14} className="text-gray-400" />
-                      <span className="text-sm text-gray-600">{service.category}</span>
-                    </div>
-
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                      {service.description || 'Professional wedding service with exceptional quality.'}
+                    {/* Service Description */}
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-3 leading-relaxed">
+                      {service.description || 'Professional wedding service designed to make your special day unforgettable. Contact us for detailed information about our offerings.'}
                     </p>
 
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-2xl font-bold text-rose-600">
-                        ₱{typeof service.price === 'string' ? parseFloat(service.price).toLocaleString() : (service.price as number)?.toLocaleString() || '0'}
+                    {/* Service Meta Information */}
+                    <div className="flex items-center justify-between mb-4 p-3 bg-gray-50/50 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl font-bold text-rose-600">
+                          {service.price_range && service.price_range !== '₱' 
+                            ? service.price_range 
+                            : `₱${typeof service.price === 'string' ? parseFloat(service.price).toLocaleString() : (service.price as number)?.toLocaleString() || '0'}`}
+                        </div>
+                        {service.featured && (
+                          <span className="px-2 py-1 bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-bold rounded-lg flex items-center gap-1">
+                            <Star size={10} className="fill-current" />
+                            Premium
+                          </span>
+                        )}
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {service.reviewCount || service.review_count || 0} reviews
+                      <div className="text-right">
+                        <div className="text-xs text-gray-500 mb-1">
+                          Created {new Date(service.created_at || '').toLocaleDateString()}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          ID: {service.id}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => editService(service)}
-                        className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2"
-                      >
-                        <Edit size={16} />
-                        Edit
-                      </button>
-                      
-                      <button
-                        onClick={() => toggleServiceAvailability(service)}
-                        className={`flex-1 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2 ${
-                          service.isActive ?? service.is_active
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700'
-                            : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
-                        }`}
-                      >
-                        {service.isActive ?? service.is_active ? (
-                          <>
-                            <EyeOff size={16} />
-                            Hide
-                          </>
-                        ) : (
-                          <>
-                            <Eye size={16} />
-                            Show
-                          </>
-                        )}
-                      </button>
-                      
-                      <button
-                        onClick={() => deleteService(service.id)}
-                        className="px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl hover:from-red-600 hover:to-rose-700 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2"
-                        title="Delete service"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                    {/* Enhanced Action Buttons */}
+                    <div className="space-y-3">
+                      {/* Primary Actions */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => editService(service)}
+                          className="flex-1 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+                        >
+                          <Edit size={16} />
+                          Edit Details
+                        </button>
+                        
+                        <button
+                          onClick={() => toggleServiceAvailability(service)}
+                          className={`flex-1 px-4 py-2.5 rounded-xl transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg ${
+                            service.is_active === true
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700'
+                              : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
+                          }`}
+                        >
+                          {service.is_active === true ? (
+                            <>
+                              <EyeOff size={16} />
+                              Hide
+                            </>
+                          ) : (
+                            <>
+                              <Eye size={16} />
+                              Show
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Secondary Actions */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            const url = `${window.location.origin}/vendor/services?highlight=${service.id}`;
+                            try {
+                              await navigator.clipboard.writeText(url);
+                              // Create a temporary toast notification
+                              const toast = document.createElement('div');
+                              toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all';
+                              toast.textContent = '✓ Service link copied to clipboard!';
+                              document.body.appendChild(toast);
+                              setTimeout(() => {
+                                toast.style.opacity = '0';
+                                setTimeout(() => document.body.removeChild(toast), 300);
+                              }, 2000);
+                            } catch (err) {
+                              alert('Service link copied: ' + url);
+                            }
+                          }}
+                          className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-xs font-medium"
+                          title="Copy service link"
+                        >
+                          <Copy size={14} />
+                          Copy Link
+                        </button>
+                        
+                        <button
+                          onClick={async () => {
+                            const url = `${window.location.origin}/vendor/services?highlight=${service.id}`;
+                            const shareData = {
+                              title: `${service.title || service.name} - Wedding Service`,
+                              text: service.description || 'Check out this amazing wedding service!',
+                              url: url
+                            };
+                            
+                            if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+                              try {
+                                await navigator.share(shareData);
+                              } catch (err) {
+                                console.log('Share cancelled or failed');
+                              }
+                            } else {
+                              // Fallback to clipboard
+                              try {
+                                await navigator.clipboard.writeText(url);
+                                const toast = document.createElement('div');
+                                toast.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all';
+                                toast.textContent = '✓ Service link copied to clipboard!';
+                                document.body.appendChild(toast);
+                                setTimeout(() => {
+                                  toast.style.opacity = '0';
+                                  setTimeout(() => document.body.removeChild(toast), 300);
+                                }, 2000);
+                              } catch (err) {
+                                alert('Service link: ' + url);
+                              }
+                            }
+                          }}
+                          className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-xs font-medium"
+                          title="Share service"
+                        >
+                          <Share2 size={14} />
+                          Share
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            // Create a detailed preview modal
+                            const modalHtml = `
+                              <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onclick="this.remove()">
+                                <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                                  <div class="p-6">
+                                    <div class="flex items-center justify-between mb-4">
+                                      <h2 class="text-2xl font-bold text-gray-900">${service.title || service.name || 'Service Details'}</h2>
+                                      <button onclick="this.closest('.fixed').remove()" class="p-2 hover:bg-gray-100 rounded-lg">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                      </button>
+                                    </div>
+                                    
+                                    ${service.images && service.images.length > 0 ? `
+                                      <div class="mb-4 rounded-2xl overflow-hidden">
+                                        <img src="${service.images[0]}" alt="Service" class="w-full h-64 object-cover">
+                                      </div>
+                                    ` : ''}
+                                    
+                                    <div class="space-y-4">
+                                      <div>
+                                        <h3 class="font-semibold text-gray-900 mb-2">Category</h3>
+                                        <p class="text-gray-600">${service.category || 'Not specified'}</p>
+                                      </div>
+                                      
+                                      <div>
+                                        <h3 class="font-semibold text-gray-900 mb-2">Description</h3>
+                                        <p class="text-gray-600">${service.description || 'No description available'}</p>
+                                      </div>
+                                      
+                                      <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <h3 class="font-semibold text-gray-900 mb-2">Price</h3>
+                                          <p class="text-2xl font-bold text-rose-600">
+                                            ${service.price_range && service.price_range !== '₱' 
+                                              ? service.price_range 
+                                              : `₱${typeof service.price === 'string' ? parseFloat(service.price).toLocaleString() : ((service.price as number) || 0).toLocaleString()}`}
+                                          </p>
+                                        </div>
+                                        
+                                        <div>
+                                          <h3 class="font-semibold text-gray-900 mb-2">Status</h3>
+                                          <span class="px-3 py-1 rounded-full text-sm font-medium ${service.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                                            ${service.is_active ? 'Available' : 'Unavailable'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      
+                                      ${service.location ? `
+                                        <div>
+                                          <h3 class="font-semibold text-gray-900 mb-2">Location</h3>
+                                          <p class="text-gray-600">${service.location}</p>
+                                        </div>
+                                      ` : ''}
+                                      
+                                      <div class="pt-4 border-t border-gray-200">
+                                        <div class="text-sm text-gray-500">
+                                          <p><strong>Service ID:</strong> ${service.id}</p>
+                                          <p><strong>Created:</strong> ${new Date(service.created_at || '').toLocaleDateString()}</p>
+                                          <p><strong>Last Updated:</strong> ${new Date(service.updated_at || '').toLocaleDateString()}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            `;
+                            
+                            const modalElement = document.createElement('div');
+                            modalElement.innerHTML = modalHtml;
+                            const modalEl = modalElement.firstElementChild;
+                            if (modalEl) {
+                              document.body.appendChild(modalEl);
+                            }
+                          }}
+                          className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-xs font-medium"
+                          title="Preview service details"
+                        >
+                          <Eye size={14} />
+                          Preview
+                        </button>
+                        
+                        <button
+                          onClick={() => deleteService(service.id)}
+                          className="flex items-center gap-2 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-xs font-medium"
+                          title="Delete service"
+                        >
+                          <Trash2 size={14} />
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -758,8 +1168,8 @@ export const VendorServices: React.FC = () => {
         editingService={editingService ? {
           ...editingService,
           vendor_id: (editingService.vendorId || editingService.vendor_id || vendorId) as string,
-          title: editingService.name || editingService.title || '',
-          is_active: editingService.isActive ?? editingService.is_active ?? true,
+          title: editingService.title || editingService.name || '',
+          is_active: editingService.is_active ?? editingService.isActive ?? true,
           price: typeof editingService.price === 'string' ? parseFloat(editingService.price) : (editingService.price as number),
           created_at: editingService.created_at || new Date().toISOString(),
           updated_at: editingService.updated_at || new Date().toISOString()
