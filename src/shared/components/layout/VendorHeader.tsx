@@ -22,7 +22,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/HybridAuthContext';
 import { useNotifications } from '../notifications/NotificationProvider';
 import { VendorProfileDropdownModal } from '../../../pages/users/vendor/components/header/modals/VendorProfileDropdownModal';
 import { vendorNotificationService, type VendorNotification } from '../../../services/vendorNotificationService';

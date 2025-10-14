@@ -234,4 +234,83 @@ router.post('/verify', async (req, res) => {
   }
 });
 
+// User profile endpoint - Get user profile by email
+router.get('/profile', async (req, res) => {
+  try {
+    console.log('👤 Profile request received');
+    
+    // Get email from query params or headers
+    const email = req.query.email || req.headers['x-user-email'];
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email required',
+        message: 'Email parameter is required to fetch profile'
+      });
+    }
+    
+    console.log('🔍 Looking up user profile for email:', email);
+    
+    // Get user from database using the modular sql connection
+    const users = await sql`
+      SELECT id, first_name, last_name, email, user_type, phone, created_at, updated_at 
+      FROM users 
+      WHERE email = ${email}
+    `;
+    
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+        message: 'No user found with this email address'
+      });
+    }
+    
+    const user = users[0];
+    
+    // If user is a vendor, get additional vendor info
+    let vendorInfo = null;
+    if (user.user_type === 'vendor') {
+      const vendors = await sql`
+        SELECT id, name as business_name, category as business_type, location 
+        FROM vendors 
+        WHERE user_id = ${user.id}
+      `;
+      
+      if (vendors.length > 0) {
+        vendorInfo = vendors[0];
+      }
+    }
+    
+    const profileData = {
+      id: user.id,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      email: user.email,
+      role: user.user_type,  // Map user_type to role for frontend compatibility
+      phone: user.phone,
+      businessName: vendorInfo?.business_name || '',
+      vendorId: vendorInfo?.id || null,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
+    };
+    
+    console.log('✅ Profile data retrieved:', { email: profileData.email, role: profileData.role });
+    
+    res.json({
+      success: true,
+      user: profileData
+    });
+    
+  } catch (error) {
+    console.error('❌ Profile fetch failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch profile',
+      message: error instanceof Error ? error.message : 'Unknown error occurred'
+    });
+  }
+});
+
 module.exports = router;

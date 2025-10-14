@@ -3,7 +3,7 @@ import { Menu, X, Heart, Search, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '../../../utils/cn';
 import { LoginModal, RegisterModal } from '../modals';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/HybridAuthContext';
 
 export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

@@ -48,7 +48,7 @@ import {
 // Import existing services (don't break what's working)
 import { centralizedBookingAPI as bookingApiService } from '../../../../services/api/CentralizedBookingAPI';
 import type { BookingStatus } from '../../../../shared/types/comprehensive-booking.types';
-import { useAuth } from '../../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { formatPHP } from '../../../../utils/currency';
 import { useNotifications } from '../../../../shared/components/notifications/NotificationProvider';
 

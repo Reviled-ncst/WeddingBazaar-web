@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { availabilityService, type VendorAvailability, type VendorOffDay } from '../../../services/availabilityService';
 import { bookingAvailabilityService, type VendorCalendarView } from '../../../services/bookingAvailabilityService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/HybridAuthContext';
 import { cn } from '../../../utils/cn';
 
 interface VendorAvailabilityCalendarProps {

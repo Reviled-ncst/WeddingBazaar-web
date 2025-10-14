@@ -1,0 +1,185 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Bazaar Registration Test</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success { border-left: 5px solid #10b981; }
+        .warning { border-left: 5px solid #f59e0b; }
+        .error { border-left: 5px solid #ef4444; }
+        .info { border-left: 5px solid #3b82f6; }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 10px 10px 10px 0;
+            transition: transform 0.2s;
+        }
+        .button:hover { transform: translateY(-2px); }
+        .google-button {
+            background: white;
+            color: #333;
+            border: 2px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .test-status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        .status-pass { background: #dcfce7; color: #166534; }
+        .status-fail { background: #fef2f2; color: #991b1b; }
+        .status-partial { background: #fef3c7; color: #92400e; }
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+        .instructions {
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .email-highlight {
+            background: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎉 Wedding Bazaar Registration Test</h1>
+        <p>Test Google OAuth and email registration with <span class="email-highlight">bauto.renzrussel@ncst.edu.ph</span></p>
+    </div>
+
+    <div class="test-card success">
+        <h2>✅ Backend Status</h2>
+        <p><strong>Production API:</strong> https://weddingbazaar-web.onrender.com</p>
+        <div class="test-status status-pass">Backend is healthy and ready for testing</div>
+        <p>All registration and authentication endpoints are functional.</p>
+    </div>
+
+    <div class="test-card warning">
+        <h2>⚠️ Google OAuth Status</h2>
+        <div class="test-status status-partial">Partially Ready - Missing Firebase Credentials</div>
+        <p><strong>Google Client ID:</strong> ✅ Configured</p>
+        <p><strong>Firebase Config:</strong> ❌ Using demo values</p>
+        <p><strong>Expected Behavior:</strong> Google button will show error message about Firebase configuration</p>
+    </div>
+
+    <div class="test-card info">
+        <h2>🧪 Testing Instructions</h2>
+        <div class="instructions">
+            <h3>1. Start Development Server</h3>
+            <p>Run in terminal: <code>npm run dev</code></p>
+            
+            <h3>2. Open Registration Modal</h3>
+            <p>Navigate to <code>http://localhost:5173</code> and click the registration button</p>
+            
+            <h3>3. Test Google OAuth Button</h3>
+            <p>Look for the <strong>"Continue with Google"</strong> button with Google logo</p>
+            <p>Expected: Shows helpful message about Firebase configuration</p>
+            
+            <h3>4. Test Email Registration</h3>
+            <p>Use the test email: <span class="email-highlight">bauto.renzrussel@ncst.edu.ph</span></p>
+            <p>Expected: User already exists message (this is correct)</p>
+            
+            <h3>5. Test User Type Selection</h3>
+            <p>Switch between "Planning My Wedding" and "Wedding Vendor"</p>
+            <p>Expected: Form fields update accordingly</p>
+        </div>
+    </div>
+
+    <div class="test-card info">
+        <h2>🔗 Quick Actions</h2>
+        <a href="http://localhost:5173" class="button" target="_blank">Open Wedding Bazaar</a>
+        <a href="https://weddingbazaar-web.onrender.com/api/health" class="button" target="_blank">Check Backend Health</a>
+        <a href="https://console.firebase.google.com/" class="button" target="_blank">Firebase Console</a>
+    </div>
+
+    <div class="test-card success">
+        <h2>✅ What's Working</h2>
+        <ul>
+            <li>✅ Google OAuth UI button implemented</li>
+            <li>✅ Firebase service methods created</li>
+            <li>✅ HybridAuthContext integration complete</li>
+            <li>✅ Backend registration API functional</li>
+            <li>✅ Test users already exist in database</li>
+            <li>✅ Error handling for missing Firebase config</li>
+        </ul>
+    </div>
+
+    <div class="test-card warning">
+        <h2>🔧 To Enable Google OAuth</h2>
+        <ol>
+            <li>Set up Firebase project with your Google Client ID</li>
+            <li>Update <code>.env</code> files with real Firebase credentials</li>
+            <li>Enable Email/Password and Google providers in Firebase Console</li>
+            <li>Add authorized domains in Firebase Authentication settings</li>
+        </ol>
+        <p><strong>Google Client ID provided:</strong> <code>543533138006-pt0q7sk867c77ba5rfcdpptsqkgom92b.apps.googleusercontent.com</code></p>
+    </div>
+
+    <div class="test-card info">
+        <h2>📝 Test Results Summary</h2>
+        <div class="test-status status-partial">Google OAuth: PARTIAL (UI ready, needs Firebase config)</div>
+        <div class="test-status status-pass">Email Registration: WORKING</div>
+        <div class="test-status status-pass">Backend API: WORKING</div>
+        <div class="test-status status-pass">User Interface: COMPLETE</div>
+    </div>
+
+    <script>
+        // Auto-refresh backend health check
+        async function checkBackendHealth() {
+            try {
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/health');
+                const data = await response.json();
+                console.log('Backend Health Check:', data);
+                return true;
+            } catch (error) {
+                console.error('Backend Health Check Failed:', error);
+                return false;
+            }
+        }
+
+        // Run health check on page load
+        checkBackendHealth();
+
+        console.log('🎉 Wedding Bazaar Registration Test Page Loaded');
+        console.log('📧 Test Email: bauto.renzrussel@ncst.edu.ph');
+        console.log('🔑 Google Client ID configured: 543533138006-pt0q7sk867c77ba5rfcdpptsqkgom92b.apps.googleusercontent.com');
+    </script>
+</body>
+</html>

@@ -12,7 +12,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { CoupleHeader } from '../landing/CoupleHeader';
-import { useAuth } from '../../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { useSubscription } from '../../../../shared/contexts/SubscriptionContext';
 import { Link } from 'react-router-dom';
 

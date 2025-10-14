@@ -25,7 +25,7 @@ import {
 import { cn } from '../../../../../utils/cn';
 import type { Service } from '../../../../../modules/services/types';
 import { dssApiService } from './DSSApiService';
-import { useAuth } from '../../../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../../../shared/contexts/HybridAuthContext';
 
 // Import booking functionality
 import { BookingRequestModal } from '../../../../../modules/services/components/BookingRequestModal';

@@ -20,6 +20,8 @@ import {
   Loader2,
   AlertTriangle
 } from 'lucide-react';
+import { VendorMap, type VendorLocation } from '../../../shared/components/maps/VendorMap';
+import { VendorAvailabilityCalendar } from '../../../shared/components/calendar/VendorAvailabilityCalendar';
 
 interface Service {
   id: string;
@@ -34,6 +36,11 @@ interface Service {
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
+  location?: string;
+  price_range?: string;
+  features?: string[];
+  tags?: string[];
+  keywords?: string;
   vendor?: {
     id: string;
     name: string;
@@ -56,6 +63,27 @@ export const ServicePreview: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [locationCoords, setLocationCoords] = useState<[number, number] | null>(null);
+
+  // Function to geocode address to coordinates
+  const geocodeAddress = async (address: string): Promise<[number, number] | null> => {
+    try {
+      // Use a free geocoding service (Nominatim)
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        return [lat, lng];
+      }
+    } catch (error) {
+      console.warn('Geocoding failed:', error);
+    }
+    
+    // Default to Manila coordinates if geocoding fails
+    return [14.5995, 120.9842];
+  };
 
   useEffect(() => {
     const fetchService = async () => {
@@ -79,6 +107,13 @@ export const ServicePreview: React.FC = () => {
         
         if (data.success && data.service) {
           setService(data.service);
+          
+          // Geocode the service location if available
+          const serviceLocation = (data.service as any).location;
+          if (serviceLocation) {
+            const coords = await geocodeAddress(serviceLocation);
+            setLocationCoords(coords);
+          }
         } else {
           throw new Error('Service data not available');
         }
@@ -239,105 +274,335 @@ export const ServicePreview: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content - Full Width Layout */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Image Gallery */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            className="space-y-4"
-          >
-            {hasImages ? (
-              <>
-                <div className="aspect-video rounded-2xl overflow-hidden bg-white shadow-xl">
-                  <img
-                    src={images[currentImageIndex]}
-                    alt={service.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                
-                {images.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto pb-2">
-                    {images.map((image, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentImageIndex(index)}
-                        className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                          index === currentImageIndex
-                            ? 'border-rose-500 shadow-lg'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <img
-                          src={image}
-                          alt={`${service.title} ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                    ))}
+        
+        {/* Hero Section - Full Width */}
+        <div className="mb-12">
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-12">
+            
+            {/* Image Gallery - Takes 3/5 width on extra large screens */}
+            <div className="xl:col-span-3">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+                className="space-y-6"
+              >
+                {hasImages ? (
+                  <>
+                    <div className="aspect-video rounded-2xl overflow-hidden bg-white shadow-xl">
+                      <img
+                        src={images[currentImageIndex]}
+                        alt={service.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    
+                    {images.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {images.map((image, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentImageIndex(index)}
+                            className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                              index === currentImageIndex
+                                ? 'border-rose-500 shadow-lg'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <img
+                              src={image}
+                              alt={`${service.title} ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="aspect-video rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-xl">
+                    <div className="text-center">
+                      <ImageIcon size={48} className="text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-500 font-medium">No images available</p>
+                    </div>
                   </div>
                 )}
-              </>
-            ) : (
-              <div className="aspect-video rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-xl">
-                <div className="text-center">
-                  <ImageIcon size={48} className="text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-500 font-medium">No images available</p>
+              </motion.div>
+            </div>
+
+            {/* Service Header Info - Takes 2/5 width */}
+            <div className="xl:col-span-2">
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="space-y-6"
+              >
+                {/* Service Header */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-sm font-medium">
+                      {service.category}
+                    </span>
+                    {service.featured && (
+                      <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                        Featured
+                      </span>
+                    )}
+                  </div>
+                  
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    {service.title || service.name}
+                  </h1>
+                  
+                  <div className="flex items-center gap-4 text-gray-600">
+                    <div className="text-2xl font-bold text-rose-600">
+                      {(service as any).price_range && (service as any).price_range !== '₱' 
+                        ? (service as any).price_range 
+                        : formatPrice(service.price)}
+                    </div>
+                    
+                    {service.vendor?.rating && (
+                      <div className="flex items-center gap-1">
+                        <Star size={16} className="text-yellow-400 fill-current" />
+                        <span className="font-medium">{service.vendor.rating}</span>
+                        {service.vendor.review_count && (
+                          <span className="text-sm">({service.vendor.review_count} reviews)</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-3">About This Service</h2>
+                  <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
+                    {service.description || 'No description provided for this service.'}
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => navigate('/individual/services')}
+                    className="flex-1 px-6 py-4 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl font-semibold hover:from-rose-600 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  >
+                    <MessageCircle size={20} className="inline mr-2" />
+                    Book This Service
+                  </button>
+                  
+                  <button className="px-6 py-4 bg-white/60 backdrop-blur-sm text-gray-700 rounded-xl font-semibold hover:bg-white/80 transition-all duration-300 border border-white/20">
+                    <Heart size={20} className="inline mr-2" />
+                    Save
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+
+        {/* Full Width Content Sections */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="space-y-12"
+        >
+
+          {/* Service Details */}
+          <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Service Details</h2>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Package Details */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-gray-900">Package Information</h3>
+                <div className="space-y-2">
+                  <p className="text-gray-600">Base service package</p>
+                  {(service as any).price_range && (service as any).price_range !== '₱' && (
+                    <p className="text-sm text-gray-500">
+                      Additional packages may be available within the price range
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Availability Status */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-gray-900">Current Status</h3>
+                <span className={`inline-flex px-4 py-2 rounded-full text-sm font-medium ${
+                  (service as any).is_active !== false
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {(service as any).is_active !== false ? '✓ Accepting Bookings' : '✗ Not Available'}
+                </span>
+              </div>
+
+              {/* Location Info */}
+              {(service as any).location && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-gray-900">Service Location</h3>
+                  <div className="flex items-start gap-2 text-gray-600">
+                    <MapPin size={16} className="mt-1 flex-shrink-0" />
+                    <span className="text-sm">{(service as any).location}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Location & Availability - Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Interactive Map */}
+            {(service as any).location && (
+              <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Service Location</h2>
+                <div className="h-80 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+                  <VendorMap
+                    vendors={[{
+                      id: service.id,
+                      name: service.title || service.name || 'Service Location',
+                      category: service.category,
+                      latitude: locationCoords ? locationCoords[0] : 14.5995,
+                      longitude: locationCoords ? locationCoords[1] : 120.9842,
+                      address: (service as any).location,
+                      priceRange: (service as any).price_range,
+                      description: service.description,
+                      rating: service.vendor?.rating,
+                      reviewCount: service.vendor?.review_count
+                    } as VendorLocation]}
+                    center={locationCoords || [14.5995, 120.9842]}
+                    zoom={15}
+                    height="320px"
+                    showAddressSearch={false}
+                    showVendorCount={false}
+                    showUserLocation={false}
+                    className="w-full h-full"
+                  />
                 </div>
               </div>
             )}
-          </motion.div>
 
-          {/* Service Details */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="space-y-6"
-          >
-            {/* Service Header */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-sm font-medium">
-                  {service.category}
-                </span>
-                {service.featured && (
-                  <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-                    Featured
-                  </span>
-                )}
+            {/* Availability Calendar */}
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Check Availability</h2>
+              <div className="bg-white rounded-xl p-4">
+                <VendorAvailabilityCalendar
+                  vendorId={service.vendor_id}
+                  className="w-full"
+                  onDateSelect={(date, availability) => {
+                    console.log('Selected date:', date, 'Availability:', availability);
+                  }}
+                />
               </div>
+              <p className="text-sm text-gray-500 mt-3 text-center">
+                Select a date to check availability and book this service
+              </p>
+            </div>
+          </div>
+
+
+
+          {/* Features and Tags - Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Service Features */}
+            {(service as any).features && (service as any).features.length > 0 && (
+              <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Service Features</h2>
+                <div className="space-y-2">
+                  {(service as any).features.map((feature: string, index: number) => (
+                    <div key={index} className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                      <CheckCircle2 size={18} className="text-green-600 flex-shrink-0" />
+                      <span className="text-gray-700">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tags */}
+            {(service as any).tags && (service as any).tags.length > 0 && (
+              <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Tags</h2>
+                <div className="flex flex-wrap gap-3">
+                  {(service as any).tags.map((tag: string, index: number) => (
+                    <span key={index} className="px-4 py-2 bg-purple-100 text-purple-800 rounded-xl text-sm font-medium">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Service and Vendor Information - Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Service Information */}
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Service Information</h2>
               
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {service.title || service.name}
-              </h1>
-              
-              <div className="flex items-center gap-4 text-gray-600">
-                <div className="text-2xl font-bold text-rose-600">
-                  {formatPrice(service.price)}
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Service ID:</span>
+                  <span className="font-mono text-gray-900">{service.id}</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Business:</span>
+                  <span className="font-medium text-gray-900">
+                    {service.vendor?.business_name || service.vendor?.name || `ID: ${service.vendor_id}`}
+                  </span>
                 </div>
                 
                 {service.vendor?.rating && (
-                  <div className="flex items-center gap-1">
-                    <Star size={16} className="text-yellow-400 fill-current" />
-                    <span className="font-medium">{service.vendor.rating}</span>
-                    {service.vendor.review_count && (
-                      <span className="text-sm">({service.vendor.review_count} reviews)</span>
-                    )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Rating:</span>
+                    <div className="flex items-center gap-1">
+                      <Star size={14} className="text-yellow-400 fill-current" />
+                      <span className="font-medium">{service.vendor.rating.toFixed(1)}</span>
+                    </div>
+                  </div>
+                )}
+                
+                {(service as any).created_at && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Created:</span>
+                    <span className="text-gray-900">
+                      {new Date((service as any).created_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                )}
+                
+                {(service as any).updated_at && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Last Updated:</span>
+                    <span className="text-gray-900">
+                      {new Date((service as any).updated_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                )}
+                
+                {(service as any).keywords && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Keywords:</span>
+                    <span className="text-gray-900 text-right max-w-32 truncate" title={(service as any).keywords}>
+                      {(service as any).keywords}
+                    </span>
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Description */}
-            <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-              <h2 className="text-xl font-semibold text-gray-900 mb-3">About This Service</h2>
-              <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {service.description}
-              </p>
             </div>
 
             {/* Vendor Information */}
@@ -345,13 +610,13 @@ export const ServicePreview: React.FC = () => {
               <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Vendor Information</h2>
                 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
-                    <h3 className="font-medium text-gray-900">
+                    <h3 className="font-semibold text-gray-900 text-lg">
                       {service.vendor.business_name || service.vendor.name}
                     </h3>
                     {service.vendor.category && (
-                      <p className="text-sm text-gray-600">{service.vendor.category}</p>
+                      <p className="text-sm text-gray-600 mt-1">{service.vendor.category}</p>
                     )}
                   </div>
                   
@@ -359,6 +624,22 @@ export const ServicePreview: React.FC = () => {
                     <div className="flex items-center gap-2 text-gray-600">
                       <MapPin size={16} />
                       <span>{service.vendor.location}</span>
+                    </div>
+                  )}
+                  
+                  {(service.vendor.rating || service.vendor.review_count) && (
+                    <div className="flex items-center gap-4 text-sm">
+                      {service.vendor.rating && (
+                        <div className="flex items-center gap-1">
+                          <Star size={16} className="text-yellow-400 fill-current" />
+                          <span className="font-medium">{service.vendor.rating.toFixed(1)}</span>
+                        </div>
+                      )}
+                      {service.vendor.review_count && (
+                        <span className="text-gray-600">
+                          {service.vendor.review_count} reviews
+                        </span>
+                      )}
                     </div>
                   )}
                   
@@ -399,26 +680,29 @@ export const ServicePreview: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
 
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-3">
+          {/* Final Action Buttons */}
+          <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
               <button
                 onClick={() => navigate('/individual/services')}
-                className="flex-1 px-6 py-4 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl font-semibold hover:from-rose-600 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                className="flex-1 px-8 py-4 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl font-semibold hover:from-rose-600 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
               >
                 <MessageCircle size={20} className="inline mr-2" />
                 Book This Service
               </button>
               
               <button
-                className="px-6 py-4 bg-white/60 backdrop-blur-sm text-gray-700 rounded-xl font-semibold hover:bg-white/80 transition-all duration-300 border border-white/20"
+                className="px-8 py-4 bg-white/60 backdrop-blur-sm text-gray-700 rounded-xl font-semibold hover:bg-white/80 transition-all duration-300 border border-white/20"
               >
                 <Heart size={20} className="inline mr-2" />
                 Save
               </button>
             </div>
-          </motion.div>
-        </div>
+          </div>
+
+        </motion.div>
       </div>
     </div>
   );

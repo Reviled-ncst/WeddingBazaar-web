@@ -143,22 +143,32 @@ export function debugVendorIdResolution(user: User | null | undefined): void {
  * Smart vendor ID resolver with automatic fallback detection
  * Tests if backend accepts complex vendor IDs, falls back to simple mapping if needed
  * @param originalVendorId - The authentic vendor ID to test
+ * @param authToken - Optional authentication token for testing authenticated endpoints
  * @returns Promise<string> - The vendor ID that works with the current backend
  */
-export async function getWorkingVendorId(originalVendorId: string): Promise<string> {
+export async function getWorkingVendorId(originalVendorId: string, authToken?: string): Promise<string> {
   try {
     const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
     
+    // Build headers with auth if available
+    const headers: HeadersInit = {};
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
     // First, try the original complex vendor ID
     console.log(`🧪 [VendorIdMapping] Testing original vendor ID: ${originalVendorId}`);
-    const response = await fetch(`${apiUrl}/api/bookings/vendor/${originalVendorId}`);
+    const response = await fetch(`${apiUrl}/api/bookings/vendor/${originalVendorId}`, {
+      method: 'GET',
+      headers
+    });
     
     if (response.status === 200) {
       console.log(`✅ [VendorIdMapping] Backend accepts complex vendor ID: ${originalVendorId}`);
       BACKEND_SUPPORTS_COMPLEX_IDS = true;
       return originalVendorId;
-    } else if (response.status === 403) {
-      const data = await response.json();
+    } else if (response.status === 403 || response.status === 400) {
+      const data = await response.json().catch(() => ({}));
       if (data.code === 'MALFORMED_VENDOR_ID') {
         console.log(`⚠️ [VendorIdMapping] Backend rejects complex ID, using fallback mapping`);
         BACKEND_SUPPORTS_COMPLEX_IDS = false;

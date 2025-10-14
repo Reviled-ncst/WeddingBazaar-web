@@ -33,7 +33,7 @@ import type { Service } from '../types';
 type ContactMethod = 'email' | 'phone' | 'message';
 
 // Import auth context and components
-import { useAuth } from '../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../shared/contexts/HybridAuthContext';
 import { LocationPicker } from '../../../shared/components/forms/LocationPicker';
 import { BookingSuccessModal } from './BookingSuccessModal';
 
@@ -698,55 +698,49 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
           
           if (backendAvailable) {
             console.log('🌐 [BookingModal] Using real backend API...');
-            // Use direct API call to booking creation endpoint
-            const apiPromise = fetch(`${import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com'}/api/bookings/request`, {
+            // Use direct API call to booking creation endpoint with comprehensive request object
+            console.log('📡 [BookingModal] Making booking API request...');
+            
+            const bookingPayload = {
+              // Use camelCase format that /api/bookings/request endpoint expects
+              coupleId: effectiveUserId,
+              vendorId: service.vendorId,
+              serviceId: service.id,
+              serviceName: service.name,
+              serviceType: service.category,
+              eventDate: submissionData.eventDate,
+              eventTime: submissionData.eventTime || '10:00',
+              eventLocation: submissionData.eventLocation,
+              guestCount: submissionData.guestCount ? parseInt(submissionData.guestCount) : undefined,
+              specialRequests: submissionData.specialRequests,
+              contactPhone: submissionData.contactPhone,
+              contactEmail: submissionData.contactEmail,
+              preferredContactMethod: submissionData.preferredContactMethod || 'email',
+              budgetRange: submissionData.budgetRange
+            };
+            
+            console.log('📤 [BookingModal] Booking payload:', bookingPayload);
+            
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com'}/api/bookings/request`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
               },
-              body: JSON.stringify({
-                coupleId: effectiveUserId,
-                vendorId: service.vendorId,
-                serviceId: service.id,
-                serviceName: service.name,
-                serviceType: service.category,
-                eventDate: submissionData.eventDate,
-                eventTime: submissionData.eventTime || '10:00',
-                venue: submissionData.location,
-                totalAmount: parseFloat(submissionData.totalAmount) || 0,
-                specialRequests: submissionData.specialRequests,
-                contactInfo: {
-                  phone: submissionData.phone,
-                  email: submissionData.email,
-                  method: submissionData.preferredContact
-                }
-              }),
-              signal: AbortSignal.timeout(15000) // 15 second timeout
-            }).then(async response => {
-              if (!response.ok) {
-                throw new Error(`API Error: ${response.status} ${response.statusText}`);
-              }
-              const result = await response.json();
-              console.log('✅ [BookingModal] Real API response:', result);
-              return result;
+              body: JSON.stringify(bookingPayload)
             });
             
-            console.log('🏁 [BookingModal] Racing API call with manual timeout...');
+            console.log('📡 [BookingModal] Response status:', response.status);
+            console.log('📡 [BookingModal] Response ok:', response.ok);
             
-            // Add promise state logging
-            apiPromise
-              .then(result => {
-                console.log('✅ [BookingModal] API promise resolved with:', result);
-                return result;
-              })
-              .catch(error => {
-                console.error('❌ [BookingModal] API promise rejected with:', error);
-                throw error;
-              });
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error('❌ [BookingModal] API Error Response:', errorText);
+              throw new Error(`API Error: ${response.status} - ${errorText}`);
+            }
             
-            console.log('⚡ [BookingModal] Executing API call directly (no Promise.race)...');
-            createdBooking = await apiPromise;
+            createdBooking = await response.json();
+            console.log('✅ [BookingModal] Real API response:', createdBooking);
             
             // 🎉 ENHANCED SUCCESS CONFIRMATION
             console.log('🎉 [BookingModal] REAL BOOKING CREATED SUCCESSFULLY!');
@@ -758,41 +752,41 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
             // Try the real API anyway - it might work despite health check failure
             try {
               console.log('🌐 [BookingModal] Attempting direct API call despite health check failure...');
-              const directApiPromise = fetch(`${import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com'}/api/bookings/request`, {
+              
+              const fallbackPayload = {
+                // Use camelCase format that /api/bookings/request endpoint expects
+                coupleId: effectiveUserId,
+                vendorId: service.vendorId,
+                serviceId: service.id,
+                serviceName: service.name,
+                serviceType: service.category,
+                eventDate: submissionData.eventDate,
+                eventTime: submissionData.eventTime || '10:00',
+                eventLocation: submissionData.eventLocation,
+                guestCount: submissionData.guestCount ? parseInt(submissionData.guestCount) : undefined,
+                specialRequests: submissionData.specialRequests,
+                contactPhone: submissionData.contactPhone,
+                contactEmail: submissionData.contactEmail,
+                preferredContactMethod: submissionData.preferredContactMethod || 'email',
+                budgetRange: submissionData.budgetRange
+              };
+              
+              const directResponse = await fetch(`${import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com'}/api/bookings/request`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   'Accept': 'application/json'
                 },
-                body: JSON.stringify({
-                  coupleId: effectiveUserId,
-                  vendorId: service.vendorId,
-                  serviceId: service.id,
-                  serviceName: service.name,
-                  serviceType: service.category,
-                  eventDate: submissionData.eventDate,
-                  eventTime: submissionData.eventTime || '10:00',
-                  venue: submissionData.location,
-                  totalAmount: parseFloat(submissionData.totalAmount) || 0,
-                  specialRequests: submissionData.specialRequests,
-                  contactInfo: {
-                    phone: submissionData.phone,
-                    email: submissionData.email,
-                    method: submissionData.preferredContact
-                  }
-                }),
-                signal: AbortSignal.timeout(10000) // Shorter timeout for retry
-              }).then(async response => {
-                if (!response.ok) {
-                  throw new Error(`API Error: ${response.status} ${response.statusText}`);
-                }
-                const result = await response.json();
-                console.log('✅ [BookingModal] Direct API success despite health check failure:', result);
-                return result;
+                body: JSON.stringify(fallbackPayload)
               });
               
-              createdBooking = await directApiPromise;
-              console.log('� [BookingModal] DIRECT API BOOKING CREATED SUCCESSFULLY!');
+              if (!directResponse.ok) {
+                const errorText = await directResponse.text();
+                throw new Error(`API Error: ${directResponse.status} - ${errorText}`);
+              }
+              
+              createdBooking = await directResponse.json();
+              console.log('✅ [BookingModal] DIRECT API BOOKING CREATED SUCCESSFULLY!');
               console.log('📊 [BookingModal] Direct booking details:', createdBooking);
               
             } catch (directApiError) {

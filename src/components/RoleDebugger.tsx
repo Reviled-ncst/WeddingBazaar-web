@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../shared/contexts/AuthContext';
+import { useAuth } from '../shared/contexts/HybridAuthContext';
 
 export const RoleDebugger: React.FC = () => {
   const { user, isAuthenticated } = useAuth();

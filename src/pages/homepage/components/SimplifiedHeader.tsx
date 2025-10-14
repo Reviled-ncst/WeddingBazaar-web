@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, Menu, X, Search, MessageCircle, Calendar } from 'lucide-react';
-import { useAuth } from '../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../shared/contexts/HybridAuthContext';
 
 export const SimplifiedHeader: React.FC = () => {
   const navigate = useNavigate();

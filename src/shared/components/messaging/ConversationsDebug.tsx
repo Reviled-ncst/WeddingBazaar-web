@@ -1,7 +1,7 @@
 // Create a debug component to show conversation data structure
 import React, { useEffect, useState } from 'react';
 import { useUnifiedMessaging } from '../../contexts/UnifiedMessagingContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/HybridAuthContext';
 
 export const ConversationsDebug: React.FC = () => {
   const { user } = useAuth();

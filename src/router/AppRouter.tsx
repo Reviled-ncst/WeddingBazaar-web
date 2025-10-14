@@ -68,11 +68,12 @@ import { VendorPromotions } from '../pages/users/vendor/promotions';
 import { VendorSubscriptionPage } from '../pages/users/vendor/subscription';
 
 // Auth Context
-import { AuthProvider } from '../shared/contexts/AuthContext';
+import { AuthProvider } from '../shared/contexts/HybridAuthContext';
 import { SubscriptionProvider } from '../shared/contexts/SubscriptionContext';
 
 // Universal Messaging System
 import { UnifiedMessagingProvider } from '../shared/contexts/UnifiedMessagingContext';
+import { GlobalFloatingChatButton } from '../shared/components/messaging/GlobalFloatingChatButton';
 
 // Notification System
 import { NotificationProvider } from '../shared/components/notifications/NotificationProvider';
@@ -394,7 +395,7 @@ export const AppRouter: React.FC = () => {
           </Routes>
           
           {/* Unified Floating Chat Components - Single Source of Truth */}
-          {/* <GlobalFloatingChat /> - Temporarily disabled, using UnifiedMessaging system */}
+          <GlobalFloatingChatButton />
         </div>
       </Router>
           </UnifiedMessagingProvider>

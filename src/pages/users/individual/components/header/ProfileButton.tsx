@@ -1,6 +1,6 @@
 import React from 'react';
 import { User, ChevronDown } from 'lucide-react';
-import { useAuth } from '../../../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../../../shared/contexts/HybridAuthContext';
 
 interface ProfileButtonProps {
   isDropdownOpen: boolean;

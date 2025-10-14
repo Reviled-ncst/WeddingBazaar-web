@@ -14,7 +14,7 @@ import {
   Clock,
   Sparkles
 } from 'lucide-react';
-import { useAuth } from '../../../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../../../shared/contexts/HybridAuthContext';
 
 interface MobileMenuProps {
   isOpen: boolean;

@@ -21,7 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../../../utils/cn';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { VendorAvailabilityCalendar } from '../../../../shared/components/calendar/VendorAvailabilityCalendar';
-import { useAuth } from '../../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { serviceManager, SERVICE_BUSINESS_RULES } from '../../../../shared/services/CentralizedServiceManager';
 
 // Local interface definitions to avoid module resolution issues

@@ -1,8 +1,58 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from './HybridAuthContext';
 import { MessagingApiService } from '../../services/api/messagingApiService';
 import { ConnectedChatModal } from '../components/messaging/ConnectedChatModal';
+
+// Local Storage utilities for mock conversations
+const MOCK_CONVERSATIONS_KEY = 'wedding_bazaar_mock_conversations';
+const MOCK_MESSAGES_KEY = 'wedding_bazaar_mock_messages';
+
+const saveMockConversations = (conversations: any[]) => {
+  try {
+    localStorage.setItem(MOCK_CONVERSATIONS_KEY, JSON.stringify(conversations));
+    console.log('💾 [UnifiedMessaging] Saved mock conversations to localStorage:', conversations.length);
+  } catch (error) {
+    console.warn('⚠️ [UnifiedMessaging] Failed to save mock conversations:', error);
+  }
+};
+
+const loadMockConversations = (): any[] => {
+  try {
+    const stored = localStorage.getItem(MOCK_CONVERSATIONS_KEY);
+    if (stored) {
+      const conversations = JSON.parse(stored);
+      console.log('📂 [UnifiedMessaging] Loaded mock conversations from localStorage:', conversations.length);
+      return conversations;
+    }
+  } catch (error) {
+    console.warn('⚠️ [UnifiedMessaging] Failed to load mock conversations:', error);
+  }
+  return [];
+};
+
+const saveMockMessages = (conversationId: string, messages: any[]) => {
+  try {
+    const allMessages = JSON.parse(localStorage.getItem(MOCK_MESSAGES_KEY) || '{}');
+    allMessages[conversationId] = messages;
+    localStorage.setItem(MOCK_MESSAGES_KEY, JSON.stringify(allMessages));
+    console.log('💾 [UnifiedMessaging] Saved mock messages for conversation:', conversationId, messages.length);
+  } catch (error) {
+    console.warn('⚠️ [UnifiedMessaging] Failed to save mock messages:', error);
+  }
+};
+
+const loadMockMessages = (conversationId: string): any[] => {
+  try {
+    const allMessages = JSON.parse(localStorage.getItem(MOCK_MESSAGES_KEY) || '{}');
+    const messages = allMessages[conversationId] || [];
+    console.log('📂 [UnifiedMessaging] Loaded mock messages for conversation:', conversationId, messages.length);
+    return messages;
+  } catch (error) {
+    console.warn('⚠️ [UnifiedMessaging] Failed to load mock messages:', error);
+  }
+  return [];
+};
 
 // Unified types for all messaging components
 export interface UnifiedMessage {
@@ -196,8 +246,39 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
     if (apiConversations !== null) {
       const unifiedConversations = (apiConversations || []).map(transformToUnifiedConversation);
       
+      // Load mock conversations from localStorage and merge them
+      const mockConversations = loadMockConversations()
+        .filter((mockConv: any) => {
+          // Only include mock conversations for this user
+          // Check multiple possible participant fields for better compatibility
+          const isParticipant = mockConv.participants?.includes(user.id) ||
+                               mockConv.participant_id === user.id ||
+                               mockConv.creator_id === user.id ||
+                               mockConv.user_id === user.id;
+          
+          console.log('🔍 [UnifiedMessaging] Mock conv filter:', {
+            convId: mockConv.id,
+            userId: user.id,
+            participants: mockConv.participants,
+            participantId: mockConv.participant_id,
+            creatorId: mockConv.creator_id,
+            isParticipant
+          });
+          
+          return isParticipant;
+        })
+        .map(transformToUnifiedConversation);
+      
+      console.log('📂 [UnifiedMessaging] Merging conversations - API:', unifiedConversations.length, 'Mock:', mockConversations.length);
+      
+      // Merge API and mock conversations, removing duplicates by ID
+      const allConversations = [...unifiedConversations, ...mockConversations];
+      const uniqueConversations = allConversations.filter((conv, index, arr) => 
+        arr.findIndex(c => c.id === conv.id) === index
+      );
+      
       // Sort conversations by updatedAt (most recent first)
-      const sortedConversations = unifiedConversations.sort((a: UnifiedConversation, b: UnifiedConversation) => 
+      const sortedConversations = uniqueConversations.sort((a: UnifiedConversation, b: UnifiedConversation) => 
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
       
@@ -221,8 +302,25 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
 
     if (apiMessages) {
       const unifiedMessages = apiMessages.map(transformToUnifiedMessage);
-      setMessages(unifiedMessages);
-      console.log('✅ [UnifiedMessaging] Loaded messages:', unifiedMessages.length);
+      
+      // Load mock messages from localStorage and merge them
+      const mockMessages = loadMockMessages(conversationId).map(transformToUnifiedMessage);
+      
+      console.log('📂 [UnifiedMessaging] Merging messages - API:', unifiedMessages.length, 'Mock:', mockMessages.length);
+      
+      // Merge API and mock messages, removing duplicates by ID
+      const allMessages = [...unifiedMessages, ...mockMessages];
+      const uniqueMessages = allMessages.filter((msg, index, arr) => 
+        arr.findIndex(m => m.id === msg.id) === index
+      );
+      
+      // Sort messages by timestamp (oldest first for chat display)
+      const sortedMessages = uniqueMessages.sort((a: UnifiedMessage, b: UnifiedMessage) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+      
+      setMessages(sortedMessages);
+      console.log('✅ [UnifiedMessaging] Loaded messages:', sortedMessages.length);
     }
   }, []);
 
@@ -261,6 +359,19 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
       console.log('✅ [UnifiedMessaging] Message sent, transforming and adding to UI');
       const unifiedMessage = transformToUnifiedMessage(newMessage);
       console.log('🔄 [UnifiedMessaging] Transformed message:', unifiedMessage);
+      
+      // Check if this is a mock message (created due to API failure)
+      const isMockMessage = newMessage.id?.startsWith('msg_') && 
+                           typeof newMessage.timestamp === 'string';
+      
+      // If this is a mock message, save it to localStorage
+      if (isMockMessage) {
+        console.log('💾 [UnifiedMessaging] Saving mock message to localStorage:', newMessage.id);
+        const existingMockMessages = loadMockMessages(conversationId);
+        const updatedMockMessages = [...existingMockMessages, newMessage];
+        saveMockMessages(conversationId, updatedMockMessages);
+      }
+      
       setMessages(prev => {
         const updated = [...prev, unifiedMessage];
         console.log('📝 [UnifiedMessaging] Updated messages array length:', updated.length);
@@ -315,6 +426,20 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
 
     if (newConversation) {
       const unifiedConversation = transformToUnifiedConversation(newConversation);
+      
+      // Check if this is a mock conversation (created due to API failure)
+      const isMockConversation = newConversation.id?.startsWith('conv_') && 
+                                !newConversation.id?.includes('api') && 
+                                typeof newConversation.created_at === 'string';
+      
+      // If this is a mock conversation, save it to localStorage
+      if (isMockConversation) {
+        console.log('💾 [UnifiedMessaging] Saving mock conversation to localStorage:', newConversation.id);
+        const existingMockConversations = loadMockConversations();
+        const updatedMockConversations = [newConversation, ...existingMockConversations.filter(c => c.id !== newConversation.id)];
+        saveMockConversations(updatedMockConversations);
+      }
+      
       setConversations(prev => {
         const updatedConversations = [unifiedConversation, ...prev];
         // Sort conversations by updatedAt (most recent first)

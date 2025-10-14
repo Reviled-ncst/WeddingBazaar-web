@@ -38,7 +38,7 @@ import { BookingSuccessModal } from './BookingSuccessModal';
 import type { Booking } from '../../../pages/users/individual/bookings/types/booking.types';
 import { mapToUIBooking } from '../../../pages/users/individual/bookings/types/booking.types';
 import { bookingApiService } from '../../../services/api/bookingApiService';
-import { useAuth } from '../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../shared/contexts/HybridAuthContext';
 import { LoginModal } from '../../../shared/components/modals/LoginModal';
 import { RegisterModal } from '../../../shared/components/modals/RegisterModal';
 

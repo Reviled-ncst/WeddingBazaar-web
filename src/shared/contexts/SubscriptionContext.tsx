@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from './HybridAuthContext';
 import type { VendorSubscription } from '../types/subscription';
 import { SubscriptionAccess, SUBSCRIPTION_PLANS } from '../types/subscription';
 
