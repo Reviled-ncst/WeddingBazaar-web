@@ -11,6 +11,9 @@ import { IndividualLanding } from '../pages/users/individual/landing';
 import { VendorLanding } from '../pages/users/vendor/landing';
 import { AdminLanding } from '../pages/users/admin/landing';
 
+// Shared Pages
+import { ServicePreview } from '../pages/shared/service-preview';
+
 // Admin Pages  
 import { AdminDashboard } from '../pages/users/admin/dashboard';
 import { UserManagement } from '../pages/users/admin/users';
@@ -95,6 +98,13 @@ export const AppRouter: React.FC = () => {
                     </main>
                     <Footer />
                   </>
+                </ProtectedRoute>
+              } />
+
+              {/* Public Service Preview - accessible to everyone */}
+              <Route path="/service/:serviceId" element={
+                <ProtectedRoute requireAuth={false}>
+                  <ServicePreview />
                 </ProtectedRoute>
               } />
             

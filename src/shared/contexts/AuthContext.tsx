@@ -314,11 +314,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Only store token and user if login was successful
       if (data.success && data.user && data.token) {
         // Fix backend user data mapping - userType -> role
+        const userRole = data.user.userType || data.user.user_type || data.user.role || 'couple';
         const mappedUser = {
           ...data.user,
-          role: data.user.userType || data.user.role || 'couple', // Map userType to role
+          role: userRole, // Map userType to role
           firstName: data.user.firstName || data.user.first_name || '',
-          lastName: data.user.lastName || data.user.last_name || ''
+          lastName: data.user.lastName || data.user.last_name || '',
+          // For vendor users, set vendorId to user id (they match in our system)
+          vendorId: userRole === 'vendor' ? data.user.id : null
         };
         
         // Store in both localStorage and sessionStorage for better persistence
@@ -472,11 +475,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Store token and user data
       if (data.success && data.user && data.token) {
         // Fix backend user data mapping - userType -> role
+        const userRole = data.user.userType || data.user.user_type || data.user.role || 'couple';
         const mappedUser = {
           ...data.user,
-          role: data.user.userType || data.user.role || 'couple',
+          role: userRole,
           firstName: data.user.firstName || data.user.first_name || '',
-          lastName: data.user.lastName || data.user.last_name || ''
+          lastName: data.user.lastName || data.user.last_name || '',
+          // For vendor users, set vendorId to user id (they match in our system)
+          vendorId: userRole === 'vendor' ? data.user.id : null
         };
         
         // Store in both localStorage and sessionStorage for better persistence
