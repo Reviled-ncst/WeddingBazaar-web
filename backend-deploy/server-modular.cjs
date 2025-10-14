@@ -177,7 +177,7 @@ app.use('/api/*', (req, res) => {
       ping: 'GET /api/ping',
       auth: 'POST /api/auth/login, POST /api/auth/verify',
       conversations: 'GET /api/conversations/:userId, GET /api/conversations/:id/messages, POST /api/conversations/:id/messages',
-      services: 'GET /api/services, GET /api/services/vendor/:vendorId, POST /api/services, PUT /api/services/:id, DELETE /api/services/:id',
+      services: 'GET /api/services, GET /api/services/:serviceId, GET /api/services/vendor/:vendorId, POST /api/services, PUT /api/services/:id, DELETE /api/services/:id',
       vendors: 'GET /api/vendors, GET /api/vendors/featured, GET /api/vendors/:id, GET /api/vendors/:id/services',
       vendorOffDays: 'GET /api/vendors/:vendorId/off-days, POST /api/vendors/:vendorId/off-days, POST /api/vendors/:vendorId/off-days/bulk, DELETE /api/vendors/:vendorId/off-days/:offDayId, GET /api/vendors/:vendorId/off-days/count',
       bookings: 'GET /api/bookings/vendor/:vendorId, GET /api/bookings/user/:userId, GET /api/bookings/couple/:userId, GET /api/bookings/enhanced, GET /api/bookings/stats, POST /api/bookings, PATCH /api/bookings/:id/status, PUT /api/bookings/:id/update-status, PUT /api/bookings/:id/accept-quote, PUT /api/bookings/:id/process-payment, GET /api/bookings/:id/payment-status',
