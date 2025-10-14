@@ -13,6 +13,7 @@ import { AdminLanding } from '../pages/users/admin/landing';
 
 // Shared Pages
 import { ServicePreview } from '../pages/shared/service-preview';
+import { ServiceHighlightDemo } from '../pages/shared/service-demo';
 
 // Admin Pages  
 import { AdminDashboard } from '../pages/users/admin/dashboard';
@@ -105,6 +106,18 @@ export const AppRouter: React.FC = () => {
               <Route path="/service/:serviceId" element={
                 <ProtectedRoute requireAuth={false}>
                   <ServicePreview />
+                </ProtectedRoute>
+              } />
+
+              {/* Service Highlight Demo - accessible to everyone */}
+              <Route path="/demo/services" element={
+                <ProtectedRoute requireAuth={false}>
+                  <ServiceHighlightDemo />
+                </ProtectedRoute>
+              } />
+              <Route path="/demo/services/:serviceId" element={
+                <ProtectedRoute requireAuth={false}>
+                  <ServiceHighlightDemo />
                 </ProtectedRoute>
               } />
             
