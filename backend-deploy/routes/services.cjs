@@ -202,31 +202,42 @@ router.put('/:serviceId', async (req, res) => {
       updates.images = processedImages;
     }
     
-    // Build the update using SQL template literals for proper JSON handling
-    // Define valid database columns to prevent "column does not exist" errors
-    const validColumns = ['title', 'description', 'category', 'price', 'images', 'is_active', 'featured', 'location', 'price_range'];
+    // Only include fields that actually exist in the database schema
+    // Based on schema check: id, vendor_id, title, description, category, price, images, featured, is_active, created_at, updated_at, name, location, price_range
+    const allowedFields = [
+      'title', 
+      'description', 
+      'category', 
+      'price', 
+      'images', 
+      'featured', 
+      'is_active', 
+      'location', 
+      'price_range'
+    ];
+    
     const setFields = [];
     const values = {};
     
-    console.log('📥 [UPDATE] Request body:', updates);
-    console.log('📋 [UPDATE] Valid columns:', validColumns);
-    
     for (const [key, value] of Object.entries(updates)) {
-      if (key !== 'id' && value !== undefined && validColumns.includes(key)) {
-        setFields.push(key);
-        values[key] = value;
-        console.log(`✅ [UPDATE] Adding field: ${key} = ${JSON.stringify(value)}`);
-      } else if (key !== 'id' && !validColumns.includes(key)) {
-        console.log(`⚠️ [UPDATE] Skipping invalid field: ${key} (not in database schema)`);
+      if (key !== 'id' && value !== undefined) {
+        if (allowedFields.includes(key)) {
+          setFields.push(key);
+          values[key] = value;
+          console.log(`✅ Including field: ${key} = ${typeof value === 'object' ? JSON.stringify(value) : value}`);
+        } else {
+          console.log(`⚠️  Skipping field '${key}' - not in database schema (value: ${typeof value === 'object' ? JSON.stringify(value) : value})`);
+        }
       }
     }
-    
-    console.log('🔧 [UPDATE] Final updates - Fields:', setFields, 'Values:', values);
     
     if (setFields.length === 0) {
       return res.status(400).json({
         success: false,
         error: 'No valid fields to update',
+        allowedFields: allowedFields,
+        receivedFields: Object.keys(updates),
+        skippedFields: Object.keys(updates).filter(key => !allowedFields.includes(key) && key !== 'id'),
         timestamp: new Date().toISOString()
       });
     }
