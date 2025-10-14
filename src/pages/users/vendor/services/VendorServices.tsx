@@ -113,9 +113,23 @@ export const VendorServices: React.FC = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const highlightId = urlParams.get('highlight');
     if (highlightId) {
+      console.log('🎯 Highlighting service:', highlightId);
       setHighlightedServiceId(highlightId);
-      // Remove highlight after 5 seconds
-      setTimeout(() => setHighlightedServiceId(null), 5000);
+      
+      // Scroll to highlighted service after a short delay
+      setTimeout(() => {
+        const element = document.querySelector(`[data-service-id="${highlightId}"]`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          console.log('📜 Scrolled to highlighted service:', highlightId);
+        }
+      }, 1000);
+      
+      // Remove highlight after 10 seconds (extended for better visibility)
+      setTimeout(() => {
+        console.log('⏰ Removing highlight from service:', highlightId);
+        setHighlightedServiceId(null);
+      }, 10000);
     }
   }, []);
   
@@ -820,16 +834,20 @@ export const VendorServices: React.FC = () => {
               {filteredServices.map((service, index) => (
                 <motion.div
                   key={service.id}
+                  data-service-id={service.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ 
                     opacity: 1, 
                     y: 0,
-                    scale: highlightedServiceId === service.id ? [1, 1.02, 1] : 1
+                    scale: highlightedServiceId === service.id ? [1, 1.02, 1, 1.02, 1] : 1
                   }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ 
+                    delay: index * 0.1,
+                    scale: highlightedServiceId === service.id ? { duration: 2, repeat: 2, repeatType: "loop" } : {}
+                  }}
                   className={`group bg-white/90 backdrop-blur-md rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border ${
                     highlightedServiceId === service.id 
-                      ? 'border-rose-400 shadow-rose-200 ring-2 ring-rose-300 bg-rose-50/50' 
+                      ? 'border-rose-500 shadow-rose-300 ring-4 ring-rose-400 bg-gradient-to-br from-rose-50 to-pink-50 shadow-2xl' 
                       : 'border-white/50'
                   }`}
                 >
