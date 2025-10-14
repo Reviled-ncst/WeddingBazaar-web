@@ -8,7 +8,6 @@ import {
   Eye,
   EyeOff,
   Star,
-  Image,
   Tag,
   Grid,
   List,
@@ -19,18 +18,15 @@ import {
   Settings,
   TrendingUp,
   DollarSign,
-  Calendar,
   MapPin,
   Copy,
   Share2,
   MoreVertical,
-  Filter,
-  SortDesc,
   Camera,
   CheckCircle2
 } from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
-import { useAuth } from '../../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { AddServiceForm } from './components/AddServiceForm';
 
 // Service interface based on the actual API response
@@ -1010,24 +1006,25 @@ export const VendorServices: React.FC = () => {
                       <div className="flex gap-2">
                         <button
                           onClick={async () => {
-                            const url = `${window.location.origin}/vendor/services?highlight=${service.id}`;
+                            // Use the public preview URL instead of vendor-only URL
+                            const url = `${window.location.origin}/service/${service.id}`;
                             try {
                               await navigator.clipboard.writeText(url);
                               // Create a temporary toast notification
                               const toast = document.createElement('div');
                               toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all';
-                              toast.textContent = '✓ Service link copied to clipboard!';
+                              toast.textContent = '✓ Public service link copied to clipboard!';
                               document.body.appendChild(toast);
                               setTimeout(() => {
                                 toast.style.opacity = '0';
                                 setTimeout(() => document.body.removeChild(toast), 300);
                               }, 2000);
                             } catch (err) {
-                              alert('Service link copied: ' + url);
+                              alert('Public service link copied: ' + url);
                             }
                           }}
                           className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-xs font-medium"
-                          title="Copy service link"
+                          title="Copy public service link"
                         >
                           <Copy size={14} />
                           Copy Link
@@ -1035,7 +1032,8 @@ export const VendorServices: React.FC = () => {
                         
                         <button
                           onClick={async () => {
-                            const url = `${window.location.origin}/vendor/services?highlight=${service.id}`;
+                            // Use the public preview URL for sharing
+                            const url = `${window.location.origin}/service/${service.id}`;
                             const shareData = {
                               title: `${service.title || service.name} - Wedding Service`,
                               text: service.description || 'Check out this amazing wedding service!',
@@ -1054,14 +1052,14 @@ export const VendorServices: React.FC = () => {
                                 await navigator.clipboard.writeText(url);
                                 const toast = document.createElement('div');
                                 toast.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all';
-                                toast.textContent = '✓ Service link copied to clipboard!';
+                                toast.textContent = '✓ Public service link copied to clipboard!';
                                 document.body.appendChild(toast);
                                 setTimeout(() => {
                                   toast.style.opacity = '0';
                                   setTimeout(() => document.body.removeChild(toast), 300);
                                 }, 2000);
                               } catch (err) {
-                                alert('Service link: ' + url);
+                                alert('Public service link: ' + url);
                               }
                             }
                           }}
@@ -1074,67 +1072,201 @@ export const VendorServices: React.FC = () => {
 
                         <button
                           onClick={() => {
-                            // Create a detailed preview modal
+                            // Create a comprehensive detailed preview modal
                             const modalHtml = `
                               <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onclick="this.remove()">
-                                <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-                                  <div class="p-6">
-                                    <div class="flex items-center justify-between mb-4">
-                                      <h2 class="text-2xl font-bold text-gray-900">${service.title || service.name || 'Service Details'}</h2>
-                                      <button onclick="this.closest('.fixed').remove()" class="p-2 hover:bg-gray-100 rounded-lg">
+                                <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto" onclick="event.stopPropagation()">
+                                  <div class="p-8">
+                                    <!-- Header -->
+                                    <div class="flex items-center justify-between mb-6">
+                                      <div class="flex-1">
+                                        <h2 class="text-3xl font-bold text-gray-900 mb-2">${service.title || service.name || 'Service Details'}</h2>
+                                        <div class="flex items-center gap-2 text-gray-600">
+                                          <span class="px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-sm font-medium">${service.category || 'Wedding Service'}</span>
+                                          <span class="px-3 py-1 rounded-full text-sm font-medium ${service.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                                            ${service.is_active ? '✓ Available' : '✗ Unavailable'}
+                                          </span>
+                                          ${service.featured ? '<span class="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">⭐ Featured</span>' : ''}
+                                        </div>
+                                      </div>
+                                      <button onclick="this.closest('.fixed').remove()" class="p-3 hover:bg-gray-100 rounded-xl transition-colors">
                                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                         </svg>
                                       </button>
                                     </div>
                                     
+                                    <!-- Image Gallery -->
                                     ${service.images && service.images.length > 0 ? `
-                                      <div class="mb-4 rounded-2xl overflow-hidden">
-                                        <img src="${service.images[0]}" alt="Service" class="w-full h-64 object-cover">
+                                      <div class="mb-8">
+                                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Service Gallery</h3>
+                                        <div class="grid grid-cols-1 ${service.images.length > 1 ? 'md:grid-cols-2' : ''} gap-4">
+                                          ${service.images.map((img, idx) => `
+                                            <div class="rounded-2xl overflow-hidden bg-gray-100">
+                                              <img src="${img}" alt="Service Image ${idx + 1}" class="w-full h-64 object-cover">
+                                            </div>
+                                          `).join('')}
+                                        </div>
                                       </div>
-                                    ` : ''}
+                                    ` : `
+                                      <div class="mb-8 p-8 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl text-center">
+                                        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                        <p class="text-gray-600 font-medium">No images uploaded yet</p>
+                                        <p class="text-gray-500 text-sm mt-1">Add photos to showcase your service</p>
+                                      </div>
+                                    `}
                                     
-                                    <div class="space-y-4">
-                                      <div>
-                                        <h3 class="font-semibold text-gray-900 mb-2">Category</h3>
-                                        <p class="text-gray-600">${service.category || 'Not specified'}</p>
-                                      </div>
-                                      
-                                      <div>
-                                        <h3 class="font-semibold text-gray-900 mb-2">Description</h3>
-                                        <p class="text-gray-600">${service.description || 'No description available'}</p>
-                                      </div>
-                                      
-                                      <div class="grid grid-cols-2 gap-4">
+                                    <!-- Service Details Grid -->
+                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                                      <!-- Left Column -->
+                                      <div class="space-y-6">
                                         <div>
-                                          <h3 class="font-semibold text-gray-900 mb-2">Price</h3>
-                                          <p class="text-2xl font-bold text-rose-600">
-                                            ${service.price_range && service.price_range !== '₱' 
-                                              ? service.price_range 
-                                              : `₱${typeof service.price === 'string' ? parseFloat(service.price).toLocaleString() : ((service.price as number) || 0).toLocaleString()}`}
-                                          </p>
+                                          <h3 class="text-lg font-semibold text-gray-900 mb-3">Service Description</h3>
+                                          <div class="p-4 bg-gray-50 rounded-xl">
+                                            <p class="text-gray-700 leading-relaxed">${service.description || 'No description provided for this service yet.'}</p>
+                                          </div>
                                         </div>
                                         
                                         <div>
-                                          <h3 class="font-semibold text-gray-900 mb-2">Status</h3>
-                                          <span class="px-3 py-1 rounded-full text-sm font-medium ${service.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
-                                            ${service.is_active ? 'Available' : 'Unavailable'}
-                                          </span>
+                                          <h3 class="text-lg font-semibold text-gray-900 mb-3">Pricing Information</h3>
+                                          <div class="p-4 bg-gradient-to-br from-rose-50 to-pink-50 rounded-xl">
+                                            <div class="text-3xl font-bold text-rose-600 mb-2">
+                                              ${service.price_range && service.price_range !== '₱' 
+                                                ? service.price_range 
+                                                : `₱${typeof service.price === 'string' ? parseFloat(service.price).toLocaleString() : ((service.price as number) || 0).toLocaleString()}`}
+                                            </div>
+                                            <p class="text-gray-600 text-sm">Base service pricing</p>
+                                          </div>
                                         </div>
+                                        
+                                        ${service.location ? `
+                                          <div>
+                                            <h3 class="text-lg font-semibold text-gray-900 mb-3">Service Location</h3>
+                                            <div class="p-4 bg-blue-50 rounded-xl flex items-center gap-3">
+                                              <svg class="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                              </svg>
+                                              <p class="text-gray-700">${service.location}</p>
+                                            </div>
+                                          </div>
+                                        ` : ''}
                                       </div>
                                       
-                                      ${service.location ? `
+                                      <!-- Right Column -->
+                                      <div class="space-y-6">
                                         <div>
-                                          <h3 class="font-semibold text-gray-900 mb-2">Location</h3>
-                                          <p class="text-gray-600">${service.location}</p>
+                                          <h3 class="text-lg font-semibold text-gray-900 mb-3">Service Details</h3>
+                                          <div class="space-y-3">
+                                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                              <span class="text-gray-600">Service Rating</span>
+                                              <div class="flex items-center gap-1">
+                                                <svg class="w-4 h-4 text-amber-400 fill-current" viewBox="0 0 24 24">
+                                                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                                </svg>
+                                                <span class="font-semibold text-gray-900">${service.rating?.toFixed(1) || '4.5'}</span>
+                                                <span class="text-gray-500 text-sm">(${service.review_count || service.reviewCount || 0} reviews)</span>
+                                              </div>
+                                            </div>
+                                            
+                                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                              <span class="text-gray-600">Vendor ID</span>
+                                              <span class="font-mono text-sm text-gray-900">${service.vendor_id || service.vendorId || 'N/A'}</span>
+                                            </div>
+                                            
+                                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                              <span class="text-gray-600">Service ID</span>
+                                              <span class="font-mono text-sm text-gray-900">${service.id}</span>
+                                            </div>
+                                          </div>
                                         </div>
-                                      ` : ''}
-                                      
-                                      <div class="pt-4 border-t border-gray-200">
-                                        <div class="text-sm text-gray-500">
-                                          <p><strong>Service ID:</strong> ${service.id}</p>
-                                          <p><strong>Created:</strong> ${new Date(service.created_at || '').toLocaleDateString()}</p>
-                                          <p><strong>Last Updated:</strong> ${new Date(service.updated_at || '').toLocaleDateString()}</p>
+                                        
+                                        ${service.features && service.features.length > 0 ? `
+                                          <div>
+                                            <h3 class="text-lg font-semibold text-gray-900 mb-3">Service Features</h3>
+                                            <div class="grid grid-cols-1 gap-2">
+                                              ${service.features.map(feature => `
+                                                <div class="flex items-center gap-2 p-2 bg-green-50 rounded-lg">
+                                                  <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                  </svg>
+                                                  <span class="text-gray-700 text-sm">${feature}</span>
+                                                </div>
+                                              `).join('')}
+                                            </div>
+                                          </div>
+                                        ` : ''}
+                                        
+                                        ${service.tags && service.tags.length > 0 ? `
+                                          <div>
+                                            <h3 class="text-lg font-semibold text-gray-900 mb-3">Tags</h3>
+                                            <div class="flex flex-wrap gap-2">
+                                              ${service.tags.map(tag => `
+                                                <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-lg text-xs font-medium">#${tag}</span>
+                                              `).join('')}
+                                            </div>
+                                          </div>
+                                        ` : ''}
+                                      </div>
+                                    </div>
+                                    
+                                    <!-- Contact & Actions Section -->
+                                    <div class="border-t border-gray-200 pt-6">
+                                      <div class="flex flex-col lg:flex-row gap-6 items-start justify-between">
+                                        <!-- Service Metadata -->
+                                        <div class="flex-1">
+                                          <h3 class="text-lg font-semibold text-gray-900 mb-3">Service Information</h3>
+                                          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                                            <div>
+                                              <strong>Created:</strong> ${new Date(service.created_at || '').toLocaleDateString('en-US', { 
+                                                year: 'numeric', 
+                                                month: 'long', 
+                                                day: 'numeric' 
+                                              })}
+                                            </div>
+                                            <div>
+                                              <strong>Last Updated:</strong> ${new Date(service.updated_at || '').toLocaleDateString('en-US', { 
+                                                year: 'numeric', 
+                                                month: 'long', 
+                                                day: 'numeric' 
+                                              })}
+                                            </div>
+                                            ${service.keywords ? `
+                                              <div class="md:col-span-2">
+                                                <strong>Keywords:</strong> ${service.keywords}
+                                              </div>
+                                            ` : ''}
+                                          </div>
+                                        </div>
+                                        
+                                        <!-- Action Buttons -->
+                                        <div class="flex flex-col gap-3 min-w-[200px]">
+                                          <button 
+                                            onclick="window.open('${window.location.origin}/service/${service.id}', '_blank')"
+                                            class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium flex items-center justify-center gap-2"
+                                          >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                            </svg>
+                                            View Public Page
+                                          </button>
+                                          
+                                          <button 
+                                            onclick="navigator.clipboard.writeText('${window.location.origin}/service/${service.id}').then(() => {
+                                              this.innerHTML = '<svg class=\\"w-4 h-4\\" fill=\\"none\\" stroke=\\"currentColor\\" viewBox=\\"0 0 24 24\\"><path stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\" stroke-width=\\"2\\" d=\\"M5 13l4 4L19 7\\"></path></svg> Copied!';
+                                              setTimeout(() => {
+                                                this.innerHTML = '<svg class=\\"w-4 h-4\\" fill=\\"none\\" stroke=\\"currentColor\\" viewBox=\\"0 0 24 24\\"><path stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\" stroke-width=\\"2\\" d=\\"M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z\\"></path></svg> Copy Public Link';
+                                              }, 2000);
+                                            })"
+                                            class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all duration-200 font-medium flex items-center justify-center gap-2"
+                                          >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                            Copy Public Link
+                                          </button>
                                         </div>
                                       </div>
                                     </div>
@@ -1150,17 +1282,72 @@ export const VendorServices: React.FC = () => {
                               document.body.appendChild(modalEl);
                             }
                           }}
-                          className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-xs font-medium"
-                          title="Preview service details"
+                          className="flex items-center gap-2 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors text-xs font-medium"
+                          title="View comprehensive service details"
                         >
                           <Eye size={14} />
-                          Preview
+                          View Details
                         </button>
                         
                         <button
-                          onClick={() => deleteService(service.id)}
+                          onClick={() => {
+                            // Enhanced delete confirmation with better UX
+                            const confirmDelete = () => {
+                              const modalHtml = `
+                                <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                                  <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6">
+                                    <div class="text-center">
+                                      <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                      </div>
+                                      <h3 class="text-xl font-bold text-gray-900 mb-2">Delete Service?</h3>
+                                      <p class="text-gray-600 mb-6">
+                                        Are you sure you want to delete "<strong>${service.title || service.name}</strong>"? This action cannot be undone.
+                                      </p>
+                                      <div class="flex gap-3 justify-center">
+                                        <button 
+                                          onclick="this.closest('.fixed').remove()" 
+                                          class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium"
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button 
+                                          onclick="
+                                            this.innerHTML = 'Deleting...';
+                                            this.disabled = true;
+                                            // Call the actual delete function
+                                            window.deleteServiceConfirmed('${service.id}');
+                                            this.closest('.fixed').remove();
+                                          " 
+                                          class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-medium"
+                                        >
+                                          Delete Service
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              `;
+                              
+                              const modalElement = document.createElement('div');
+                              modalElement.innerHTML = modalHtml;
+                              const modalEl = modalElement.firstElementChild;
+                              if (modalEl) {
+                                document.body.appendChild(modalEl);
+                              }
+                            };
+                            
+                            // Set up the global delete function
+                            (window as any).deleteServiceConfirmed = (serviceId: string) => {
+                              deleteService(serviceId);
+                            };
+                            
+                            confirmDelete();
+                          }}
                           className="flex items-center gap-2 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-xs font-medium"
-                          title="Delete service"
+                          title="Delete service (with confirmation)"
                         >
                           <Trash2 size={14} />
                           Delete

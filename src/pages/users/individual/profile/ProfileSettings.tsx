@@ -16,7 +16,7 @@ import {
   XCircle,
   Clock
 } from 'lucide-react';
-import { useAuth } from '../../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { userService, type UserProfile, type UpdateProfileData } from '../../../../shared/services/userService';
 import { CoupleHeader } from '../landing/CoupleHeader';
 import { SecuritySettings } from '../../../../shared/components/security';

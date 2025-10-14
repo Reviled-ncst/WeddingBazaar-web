@@ -16,7 +16,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/HybridAuthContext';
 
 export const AdminHeader: React.FC = () => {
   const location = useLocation();

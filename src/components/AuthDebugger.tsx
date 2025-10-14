@@ -1,5 +1,5 @@
 // Debug component to check authentication state
-import { useAuth } from '../shared/contexts/AuthContext';
+import { useAuth } from '../shared/contexts/HybridAuthContext';
 
 export const AuthDebugger: React.FC = () => {
   const { user, isAuthenticated } = useAuth();

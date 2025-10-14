@@ -27,7 +27,7 @@ import {
   Award
 } from 'lucide-react';
 import { VendorHeader } from '../../../shared/components/layout/VendorHeader';
-import { useAuth } from '../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 
 // Service interface based on the actual API response
 interface Service {

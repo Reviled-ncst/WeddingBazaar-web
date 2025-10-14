@@ -1,7 +1,7 @@
 import React from 'react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { VendorAvailabilityCalendar } from '../../../../shared/components/calendar/VendorAvailabilityCalendar';
-import { useAuth } from '../../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { 
   Calendar as CalendarIcon,
   Clock,

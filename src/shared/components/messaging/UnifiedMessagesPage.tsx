@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useUnifiedMessaging } from '../../contexts/UnifiedMessagingContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/HybridAuthContext';
 import { cloudinaryService } from '../../../services/cloudinaryService';
 
 interface UnifiedMessagesPageProps {

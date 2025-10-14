@@ -1,9 +1,7 @@
 /**
  * Check Services Table Schema
  */
-require('dotenv').config();
-const { neon } = require('@neondatabase/serverless');
-const sql = neon(process.env.DATABASE_URL);
+const { sql } = require('./backend-deploy/config/database.cjs');
 
 async function checkServicesSchema() {
   console.log('🔍 CHECKING SERVICES TABLE SCHEMA');

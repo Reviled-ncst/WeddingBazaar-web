@@ -12,7 +12,7 @@ import {
   Phone
 } from 'lucide-react';
 import { bookingInteractionService, type BookingInteraction } from '../../services/bookingInteractionService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/HybridAuthContext';
 import type { Booking } from '../../types/comprehensive-booking.types';
 
 interface BookingWorkflowProps {

@@ -925,6 +925,84 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
+// User profile endpoint - Get user profile by email
+app.get('/api/auth/profile', async (req, res) => {
+    try {
+        console.log('👤 Profile request received');
+        
+        // For now, we'll get email from query params since we don't have full JWT verification
+        // In production, this should extract email from JWT token
+        const email = req.query.email || req.headers['x-user-email'];
+        
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                error: 'Email required',
+                message: 'Email parameter is required to fetch profile'
+            });
+        }
+        
+        console.log('🔍 Looking up user profile for email:', email);
+        
+        // Get user from database
+        const userResult = await db.query(
+            'SELECT id, first_name, last_name, email, role, phone, created_at, updated_at FROM users WHERE email = $1',
+            [email]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found',
+                message: 'No user found with this email address'
+            });
+        }
+        
+        const user = userResult.rows[0];
+        
+        // If user is a vendor, get additional vendor info
+        let vendorInfo = null;
+        if (user.role === 'vendor') {
+            const vendorResult = await db.query(
+                'SELECT id, name as business_name, category as business_type, location FROM vendors WHERE user_id = $1',
+                [user.id]
+            );
+            
+            if (vendorResult.rows.length > 0) {
+                vendorInfo = vendorResult.rows[0];
+            }
+        }
+        
+        const profileData = {
+            id: user.id,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            email: user.email,
+            role: user.role,
+            phone: user.phone,
+            businessName: vendorInfo?.business_name || '',
+            vendorId: vendorInfo?.id || null,
+            createdAt: user.created_at,
+            updatedAt: user.updated_at
+        };
+        
+        console.log('✅ Profile data retrieved:', { email: profileData.email, role: profileData.role });
+        
+        res.json({
+            success: true,
+            user: profileData
+        });
+        
+    } catch (error) {
+        console.error('❌ Profile fetch failed:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch profile',
+            message: error instanceof Error ? error.message : 'Unknown error occurred'
+        });
+    }
+});
+
 // Booking request endpoint
 app.post('/api/bookings/request', async (req, res) => {
     try {
@@ -1599,140 +1677,14 @@ app.use('*', (req, res) => {
     });
 });
 // Start server
-
-// SECURITY-ENHANCED: Vendor bookings endpoint with access control
-app.get('/api/bookings/vendor/:vendorId', async (req, res) => {
-  console.log('🔐 SECURITY-ENHANCED: Getting bookings for vendor:', req.params.vendorId);
-  
-  try {
-    const requestedVendorId = req.params.vendorId;
-    
-    // SECURITY CHECK: Fixed validation - allow legitimate vendor IDs
-    const isMalformedUserId = (id) => {
-      if (!id || typeof id !== 'string') return true;
-      
-      // Allow simple numeric vendor IDs (1, 2, 3, etc.)
-      if (/^\d+$/.test(id)) return false;
-      
-      // Allow ALL legitimate vendor IDs in format: X-YYYY-XXX (e.g., 2-2025-003)
-      // This is a VENDOR ID, not a booking ID, so it's legitimate
-      if (/^\d+-\d{4}-\d{3}$/.test(id)) return false;
-      
-      // Allow other patterns that might be vendor IDs
-      if (/^[a-zA-Z0-9_-]+$/.test(id) && id.length <= 50) return false;
-      
-      // Only block obviously malicious patterns
-      if (id.length > 100) return true;
-      if (id.includes('<') || id.includes('>') || id.includes('script')) return true;
-      
-      // Default to allowing - be permissive for vendor IDs
-      return false;
-    };
-    
-    if (isMalformedUserId(requestedVendorId)) {
-      console.log('🚨 SECURITY ALERT: Request blocked for malformed vendor ID:', requestedVendorId);
-      return res.status(403).json({
-        success: false,
-        error: 'Invalid vendor ID format detected. Access denied for security.',
-        code: 'MALFORMED_VENDOR_ID',
-        timestamp: new Date().toISOString()
-      });
-    }
-    
-    const { page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
-    const offset = (page - 1) * limit;
-    
-    console.log('🔍 SECURE: Searching for bookings with exact vendor_id:', requestedVendorId);
-    
-    // SECURITY: Use parameterized query with exact matching
-    let query = `
-      SELECT 
-        b.id,
-        b.service_id,
-        b.user_id,
-        b.vendor_id,
-        b.booking_date,
-        b.status,
-        b.total_amount,
-        b.message,
-        b.created_at,
-        b.updated_at,
-        s.name as service_name,
-        s.category as service_category,
-        u.name as customer_name,
-        u.email as customer_email
-      FROM bookings b
-      LEFT JOIN services s ON b.service_id = s.id
-      LEFT JOIN users u ON b.user_id = u.id
-      WHERE b.vendor_id = $1
-    `;
-    
-    const queryParams = [requestedVendorId];
-    let paramIndex = 2;
-    
-    if (status) {
-      query += ` AND b.status = $${paramIndex}`;
-      queryParams.push(status);
-      paramIndex++;
-    }
-    
-    query += ` ORDER BY b.${sortBy} ${sortOrder} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    queryParams.push(parseInt(limit), parseInt(offset));
-    
-    const result = await db.query(query, queryParams);
-    
-    // Get total count for pagination
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM bookings b
-      WHERE b.vendor_id = $1
-      ${status ? 'AND b.status = $2' : ''}
-    `;
-    const countParams = status ? [requestedVendorId, status] : [requestedVendorId];
-    const countResult = await db.query(countQuery, countParams);
-    
-    const total = parseInt(countResult.rows[0].total);
-    const totalPages = Math.ceil(total / limit);
-    
-    console.log('✅ SECURE: Found bookings for vendor', requestedVendorId, '- Count:', result.rows.length);
-    
-    res.json({
-      success: true,
-      bookings: result.rows,
-      pagination: {
-        current_page: parseInt(page),
-        total_pages: totalPages,
-        total_items: total,
-        items_per_page: parseInt(limit),
-        has_next: parseInt(page) < totalPages,
-        has_previous: parseInt(page) > 1
-      },
-      security: {
-        access_controlled: true,
-        malformed_id_protection: true,
-        exact_matching: true
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ [SECURE VENDOR BOOKINGS] Database error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch vendor bookings',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-      code: 'DATABASE_ERROR',
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-
 app.listen(PORT, () => {
-    console.log(`🚀 Wedding Bazaar Minimal Backend running on port ${PORT}`);
+    console.log(`🚀 Wedding Bazaar Backend running on port ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔗 Health Check: http://localhost:${PORT}/api/health`);
 });
-exports.default = app;
+
+module.exports = app;
+
 // =============================================================================
 // CRITICAL FIX DEPLOYMENT - 2025/10/12 18:26:00
 // Fixed Featured Vendors API to properly map business_name -> name and business_type -> category
@@ -1881,7 +1833,201 @@ app.post('/api/admin/fix-vendor-mappings', async (req, res) => {
     }
 });
 
+// Start server
+app.listen(PORT, () => {
+    console.log(`🚀 Wedding Bazaar Backend running on port ${PORT}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔗 Health Check: http://localhost:${PORT}/api/health`);
+});
+
+module.exports = app;
+
 // =============================================================================
-// AVAILABILITY ENDPOINTS/ /   F o r c e   d e p l o y m e n t 
- 
- 
+// CRITICAL FIX DEPLOYMENT - 2025/10/12 18:26:00
+// Fixed Featured Vendors API to properly map business_name -> name and business_type -> category
+// This deployment fixes the homepage vendor display issue
+// =============================================================================
+// 
+// =============================================================================
+// VENDOR MAPPING FIX DEPLOYMENT - 2025/10/12 16:25:00
+// Added admin endpoint POST /api/admin/fix-vendor-mappings to fix null vendor_id services
+// Fixes 4 services (SRV-39368, SRV-70524, SRV-71896, SRV-70580) that cause booking modal hangs
+// Maps services to: Perfect Weddings Co. (2-2025-004) and Beltran Sound Systems (2-2025-003)
+// This resolves the "Security & Guest Management Service" booking modal issue
+// =============================================================================
+
+// =============================================================================
+// ADMIN ENDPOINTS - DATABASE FIXES
+// =============================================================================
+
+// Admin endpoint to fix vendor mappings for services with null vendor_id
+app.post('/api/admin/fix-vendor-mappings', async (req, res) => {
+    console.log('🔧 [ADMIN] Vendor mapping fix requested at', new Date().toISOString());
+    
+    const client = await db.connect();
+    
+    try {
+        // Check current state
+        const nullVendorQuery = 'SELECT id, name, category, vendor_id FROM services WHERE vendor_id IS NULL';
+        const nullVendorResult = await client.query(nullVendorQuery);
+        
+        console.log(`Found ${nullVendorResult.rows.length} services with null vendor_id`);
+        
+        if (nullVendorResult.rows.length === 0) {
+            return res.json({
+                success: true,
+                message: 'All services already have vendor mappings',
+                servicesFixed: 0,
+                alreadyFixed: true,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Execute the fixes - map unmapped services to appropriate vendors
+        const fixes = [
+            {
+                serviceId: 'SRV-70524',
+                vendorId: '2-2025-004', // Perfect Weddings Co. (Wedding Planning)
+                description: 'Security & Guest Management → Perfect Weddings Co.'
+            },
+            {
+                serviceId: 'SRV-39368', 
+                vendorId: '2-2025-003', // Beltran Sound Systems (DJ)
+                description: 'Photography Service → Beltran Sound Systems'
+            },
+            {
+                serviceId: 'SRV-71896',
+                vendorId: '2-2025-003', // Beltran Sound Systems (DJ)
+                description: 'Photography Service → Beltran Sound Systems'
+            },
+            {
+                serviceId: 'SRV-70580',
+                vendorId: '2-2025-003', // Beltran Sound Systems (DJ)
+                description: 'Photography Service → Beltran Sound Systems'
+            }
+        ];
+
+        // Begin transaction
+        await client.query('BEGIN');
+        console.log('🔄 [ADMIN] Transaction started');
+        
+        let successCount = 0;
+        const results = [];
+        
+        for (const fix of fixes) {
+            try {
+                const updateQuery = 'UPDATE services SET vendor_id = $1 WHERE id = $2';
+                const result = await client.query(updateQuery, [fix.vendorId, fix.serviceId]);
+                
+                if (result.rowCount > 0) {
+                    console.log(`✅ [ADMIN] Fixed: ${fix.description}`);
+                    results.push({
+                        serviceId: fix.serviceId,
+                        vendorId: fix.vendorId,
+                        description: fix.description,
+                        success: true
+                    });
+                    successCount++;
+                } else {
+                    console.log(`⚠️ [ADMIN] No rows updated for ${fix.serviceId}`);
+                    results.push({
+                        serviceId: fix.serviceId,
+                        vendorId: fix.vendorId,
+                        description: fix.description,
+                        success: false,
+                        error: 'Service not found'
+                    });
+                }
+            } catch (error) {
+                console.error(`❌ [ADMIN] Failed to update ${fix.serviceId}:`, error.message);
+                results.push({
+                    serviceId: fix.serviceId,
+                    vendorId: fix.vendorId,
+                    description: fix.description,
+                    success: false,
+                    error: error.message
+                });
+            }
+        }
+
+        // Commit transaction
+        await client.query('COMMIT');
+        console.log(`✅ [ADMIN] Transaction committed - ${successCount}/${fixes.length} updates successful`);
+
+        // Verify the fixes
+        const verifyResult = await client.query(nullVendorQuery);
+        
+        console.log(`🔍 [ADMIN] Verification: ${verifyResult.rows.length} services still have null vendor_id`);
+        
+        res.json({
+            success: true,
+            message: `Successfully fixed ${successCount} service vendor mappings`,
+            servicesFixed: successCount,
+            totalServices: fixes.length,
+            remainingNullVendors: verifyResult.rows.length,
+            results: results,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        // Rollback on error
+        try {
+            await client.query('ROLLBACK');
+            console.log('🔄 [ADMIN] Transaction rolled back due to error');
+        } catch (rollbackError) {
+            console.error('💥 [ADMIN] Rollback failed:', rollbackError.message);
+        }
+        
+        console.error('💥 [ADMIN] Database fix failed:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database fix failed',
+            details: error.message,
+            timestamp: new Date().toISOString()
+        });
+    } finally {
+        client.release();
+    }
+});
+
+// Start server
+app.listen(PORT, () => {
+    console.log(`🚀 Wedding Bazaar Backend running on port ${PORT}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔗 Health Check: http://localhost:${PORT}/api/health`);
+});
+
+module.exports = app;
+
+// =============================================================================
+// CRITICAL FIX DEPLOYMENT - 2025/10/12 18:26:00
+// Fixed Featured Vendors API to properly map business_name -> name and business_type -> category
+// This deployment fixes the homepage vendor display issue
+// =============================================================================
+// 
+// =============================================================================
+// VENDOR MAPPING FIX DEPLOYMENT - 2025/10/12 16:25:00
+// Added admin endpoint POST /api/admin/fix-vendor-mappings to fix null vendor_id services
+// Fixes 4 services (SRV-39368, SRV-70524, SRV-71896, SRV-70580) that cause booking modal hangs
+// Maps services to: Perfect Weddings Co. (2-2025-004) and Beltran Sound Systems (2-2025-003)
+// This resolves the "Security & Guest Management Service" booking modal issue
+// =============================================================================
+
+// =============================================================================
+// ADMIN ENDPOINTS - DATABASE FIXES
+// =============================================================================
+
+// Admin endpoint to fix vendor mappings for services with null vendor_id
+app.post('/api/admin/fix-vendor-mappings', async (req, res) => {
+    console.log('🔧 [ADMIN] Vendor mapping fix requested at', new Date().toISOString());
+    
+    const client = await db.connect();
+    
+    try {
+        // Check current state
+        const nullVendorQuery = 'SELECT id, name, category, vendor_id FROM services WHERE vendor_id IS NULL';
+        const nullVendorResult = await client.query(nullVendorQuery);
+        
+        console.log(`Found ${nullVendorResult.rows.length} services with null vendor_id`);
+        
+        if (nullVendor

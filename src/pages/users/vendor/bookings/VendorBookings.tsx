@@ -63,7 +63,7 @@ import {
 import { userAPIService, type UserData } from '../../../../services/api/userAPIService';
 
 // Import auth context to get the real vendor ID
-import { useAuth } from '../../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 
 // Import currency formatting utility
 import { formatPHP } from '../../../../utils/currency';
@@ -149,7 +149,11 @@ export const VendorBookings: React.FC = () => {
     const resolveWorkingVendorId = async () => {
       if (baseVendorId) {
         console.log('🔍 [VendorBookings] Resolving working vendor ID for:', baseVendorId);
-        const resolvedId = await getWorkingVendorId(baseVendorId);
+        
+        // Get authentication token for testing
+        const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+        
+        const resolvedId = await getWorkingVendorId(baseVendorId, token || undefined);
         setWorkingVendorId(resolvedId);
         console.log('✅ [VendorBookings] Working vendor ID resolved:', resolvedId);
       }
@@ -944,6 +948,7 @@ export const VendorBookings: React.FC = () => {
                     title="Filter bookings by status"
                   >
                     <option value="all">All Status</option>
+                    <option value="request">Requests</option>
                     <option value="quote_requested">New Inquiries</option>
                     <option value="quote_sent">Quote Sent</option>
                     <option value="quote_accepted">Quote Accepted</option>
@@ -1082,11 +1087,24 @@ export const VendorBookings: React.FC = () => {
                   <p className="text-gray-600">
                     {searchQuery || filterStatus !== 'all' ? 'Try adjusting your filters' : 'New bookings will appear here'}
                   </p>
+                  {/* Debug info */}
+                  <div className="mt-4 text-xs text-gray-400">
+                    DEBUG: bookings={bookings?.length || 0}, filterStatus={filterStatus}, searchQuery="{searchQuery}"
+                  </div>
                 </div>
               ) : (
                 <>
                   <div className="divide-y divide-rose-200/30">
-                    {bookings
+                    {(() => {
+                      console.log('🎯 [VendorBookings] RENDER - About to filter bookings:', {
+                        totalBookings: bookings?.length || 0,
+                        filterStatus,
+                        searchQuery,
+                        dateRange,
+                        bookings: bookings?.map(b => ({ id: b.id, status: b.status, couple: b.coupleName }))
+                      });
+                      return bookings;
+                    })()
                       .filter(booking => {
                         // Status filter
                         if (filterStatus !== 'all' && booking.status !== filterStatus) {

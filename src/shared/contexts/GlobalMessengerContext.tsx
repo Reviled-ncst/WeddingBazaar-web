@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from './HybridAuthContext';
 import { MessagingApiService } from '../../services/api/messagingApiService';
 
 // Helper function to convert vendor ID to a realistic business name

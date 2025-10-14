@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../shared/contexts/AuthContext';
+import { useAuth } from '../shared/contexts/HybridAuthContext';
 
 interface RoleProtectedRouteProps {
   children: React.ReactNode;

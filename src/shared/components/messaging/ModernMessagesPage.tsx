@@ -17,7 +17,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { useUnifiedMessaging } from '../../contexts/UnifiedMessagingContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/HybridAuthContext';
 
 interface ModernMessagesPageProps {
   userType: 'vendor' | 'couple' | 'admin';

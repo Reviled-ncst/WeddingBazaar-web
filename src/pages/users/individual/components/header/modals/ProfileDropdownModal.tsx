@@ -11,7 +11,7 @@ import {
   Play, 
   LogOut
 } from 'lucide-react';
-import { useAuth } from '../../../../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../../../../shared/contexts/HybridAuthContext';
 
 interface ProfileDropdownModalProps {
   isOpen: boolean;

@@ -21,7 +21,7 @@ import { PayMongoPaymentModal } from '../../../../shared/components/PayMongoPaym
 import { QuoteAcceptanceService } from '../../../../shared/services/QuoteAcceptanceService';
 
 // Import auth context to get the real user ID
-import { useAuth } from '../../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 
 // Import booking API service
 import { centralizedBookingAPI as bookingApiService } from '../../../../services/api/CentralizedBookingAPI';

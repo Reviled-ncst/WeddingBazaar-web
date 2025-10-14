@@ -3,7 +3,7 @@ import { Eye, EyeOff, Mail, Lock, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from './Modal';
 import { cn } from '../../../utils/cn';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/HybridAuthContext';
 
 interface LoginModalProps {
   isOpen: boolean;

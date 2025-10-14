@@ -169,23 +169,36 @@ export function Services() {
               // First priority: Check if service has an images array (from database)
               if (service.images) {
                 if (Array.isArray(service.images) && service.images.length > 0) {
-                  console.log('✅ [Services] Using real images array for service:', service.name || service.id, 'Count:', service.images.length);
-                  return service.images;
+                  // Filter out test/placeholder images from real database images
+                  const realImages = service.images.filter((img: string) => 
+                    img && !img.includes('example.com') && !img.includes('placeholder') && !img.includes('test.jpg')
+                  );
+                  if (realImages.length > 0) {
+                    console.log('✅ [Services] Using real images array for service:', service.name || service.id, 'Count:', realImages.length);
+                    return realImages;
+                  }
                 }
                 
                 // Sometimes images might be stored as a string (JSON array or single URL)
-                if (typeof service.images === 'string') {
+                if (typeof service.images === 'string' && !service.images.includes('example.com')) {
                   try {
                     // Try to parse as JSON array
                     const parsedImages = JSON.parse(service.images);
                     if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-                      console.log('✅ [Services] Using parsed real images for service:', service.name || service.id, 'Count:', parsedImages.length);
-                      return parsedImages;
+                      const realParsedImages = parsedImages.filter((img: string) => 
+                        img && !img.includes('example.com') && !img.includes('placeholder') && !img.includes('test.jpg')
+                      );
+                      if (realParsedImages.length > 0) {
+                        console.log('✅ [Services] Using parsed real images for service:', service.name || service.id, 'Count:', realParsedImages.length);
+                        return realParsedImages;
+                      }
                     }
                   } catch (e) {
-                    // If not JSON, treat as single URL
-                    console.log('✅ [Services] Using single real image string for service:', service.name || service.id);
-                    return [service.images];
+                    // If not JSON, treat as single URL (but not test URLs)
+                    if (!service.images.includes('test') && !service.images.includes('placeholder')) {
+                      console.log('✅ [Services] Using single real image string for service:', service.name || service.id);
+                      return [service.images];
+                    }
                   }
                 }
               }
@@ -319,76 +332,63 @@ export function Services() {
               return imageCategories[category] || defaultImages;
             };
 
-            const serviceImages = getServiceImages(service, service.category);
+            let serviceImages = getServiceImages(service, service.category);
             
-            // Skip services that don't have real images (only fallback images)
+            // Allow all services with any images (including fallback images for better UX)
             if (!serviceImages || serviceImages.length === 0) {
-              console.log('❌ [Services] Skipping service without real images:', service.name || service.id);
-              return null; // This will be filtered out
+              console.log('⚠️ [Services] Using fallback image for service without images:', service.name || service.id);
+              serviceImages = getServiceImages(service, service.category); // Get fallback images
             }
             
-            // Check if images are real (Unsplash URLs are legitimate production images)
-            const hasRealImages = serviceImages.some((img: string) => 
-              img && (img.includes('unsplash.com') || img.includes('https://')) && !img.includes('example.com') && !img.includes('placeholder')
+            // Skip only services with obvious test/placeholder URLs
+            const hasTestImages = serviceImages.some((img: string) => 
+              img && (img.includes('example.com') || img.includes('placeholder') || img.includes('test.jpg'))
             );
             
-            if (!hasRealImages) {
+            if (hasTestImages) {
               console.log('❌ [Services] Skipping service with only test/placeholder images:', service.name || service.id);
               return null; // This will be filtered out
             }
             
-            // Create features based on category
-            const getCategoryFeatures = (category: string) => {
-              const featureMap: Record<string, string[]> = {
-                'Photography': ['Professional Equipment', 'Editing Included', 'Online Gallery', 'Print Rights'],
-                'Photographer & Videographer': ['Professional Equipment', 'Editing Included', 'Online Gallery', 'Print Rights', 'Drone Footage'],
-                'Caterer': ['Professional Staff', 'Custom Menu', 'Setup/Cleanup', 'Dietary Options'],
-                'Florist': ['Fresh Flowers', 'Custom Arrangements', 'Setup Included', 'Seasonal Options'],
-                'DJ/Band': ['Professional Equipment', 'Music Library', 'MC Services', 'Lighting'],
-                'Wedding Planner': ['Full Coordination', 'Vendor Management', 'Timeline Creation', 'Day-of Support'],
-                'Hair & Makeup Artists': ['Professional Products', 'Trial Session', 'Touch-up Kit', 'Bridal Party'],
-                'Cake Designer': ['Custom Design', 'Fresh Ingredients', 'Dietary Options', 'Delivery Included'],
-                'Event Rentals': ['Setup/Breakdown', 'Clean Equipment', 'Delivery Included', 'Variety of Options'],
-                'Dress Designer/Tailor': ['Custom Fitting', 'Quality Materials', 'Alterations', 'Style Consultation'],
-                'Officiant': ['Ceremony Creation', 'Rehearsal', 'Legal Documentation', 'Personalized Vows'],
-                'Transportation Services': ['Professional Driver', 'Luxury Vehicle', 'On-time Service', 'Special Occasions'],
-                'Venue Coordinator': ['Setup Management', 'Vendor Coordination', 'Timeline Execution', 'Problem Resolution'],
-                'Sounds & Lights': ['Professional Equipment', 'Technical Support', 'Wireless Microphones', 'Ambient Lighting'],
-                'Stationery Designer': ['Custom Design', 'Premium Paper', 'Professional Printing', 'Cohesive Suite'],
-                'Security & Guest Management': ['Professional Security', 'Crowd Management', 'Emergency Response', 'Discreet Service']
-              };
-              
-              return featureMap[category] || ['Professional Service', 'Quality Guaranteed', 'Experienced Team', 'Customer Support'];
-            };
 
+
+            // Generate realistic data using helper functions when vendor data is not available
+            const generatedVendorName = generateVendorName(service.category);
+            const generatedLocation = generateLocation();
+            const generatedContactInfo = generateContactInfo(service.vendor_id);
+            
             return {
               id: service.id,
               title: service.name,
-              name: service.name || `${service.category} Service`,
+              name: service.title || service.name || `${service.category} Service`,
               category: service.category,
               vendor_id: service.vendor_id,
               vendorId: service.vendor_id,
-              vendorName: vendor?.name || 'Professional Vendor',
-              vendorImage: vendor?.image || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+              // Use real vendor data if available, otherwise use generated realistic data
+              vendorName: vendor?.name || generatedVendorName,
+              vendorImage: generateVendorImage(),
               description: service.description || `Professional ${service.category.toLowerCase()} services for your special day.`,
               price: parseFloat(service.price) || 0,
-              priceRange: vendor?.price_range || `₱${service.price}`,
-              location: vendor?.location || 'Metro Manila, Philippines',
-              rating: parseFloat(vendor?.rating) || 4.5,
-              reviewCount: vendor?.review_count || Math.floor(Math.random() * 50) + 10,
+              priceRange: `₱${parseFloat(service.price || 0).toLocaleString()}`,
+              // Use real vendor location if available, otherwise use generated
+              location: vendor?.location || generatedLocation,
+              // Use real vendor rating data if available, otherwise use generated
+              rating: parseFloat(vendor?.rating) || (4.1 + (Math.random() * 0.7)), // Between 4.1-4.8
+              reviewCount: vendor?.review_count || Math.floor(Math.random() * 60) + 15,
               image: serviceImages[0],
               images: serviceImages,
               gallery: serviceImages,
-              features: getCategoryFeatures(service.category),
-              is_active: true,
-              availability: true,
-              featured: Math.random() > 0.7, // 30% chance of being featured
+              features: generateServiceFeatures(service.category, service.description),
+              is_active: service.is_active !== false,
+              availability: service.is_active !== false,
+              featured: service.featured === true,
               created_at: service.created_at || new Date().toISOString(),
               updated_at: service.updated_at || new Date().toISOString(),
+              // Use real vendor contact info if available, otherwise use generated
               contactInfo: {
-                phone: '+63 917 123 4567',
-                email: `contact@${(vendor?.name || 'vendor').toLowerCase().replace(/\s+/g, '')}.com`,
-                website: `https://${(vendor?.name || 'vendor').toLowerCase().replace(/\s+/g, '')}.com`
+                phone: vendor?.phone || generatedContactInfo.phone,
+                email: vendor?.email || generatedContactInfo.email,
+                website: vendor?.website || generatedContactInfo.website
               }
             };
           }).filter(Boolean); // Remove null values from services without real images
@@ -1613,5 +1613,106 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
     </AnimatePresence>
   );
 }
+
+// Helper functions for real database mapping
+const generateServiceFeatures = (category: string, description: string): string[] => {
+  const baseFeatures: Record<string, string[]> = {
+    'Wedding Planner': ['Full coordination', 'Vendor management', 'Timeline creation', 'Day-of coordination'],
+    'Photographer & Videographer': ['Professional equipment', 'Edited gallery', 'Print release', 'Online delivery'],
+    'Caterer': ['Fresh ingredients', 'Professional service', 'Custom menus', 'Setup included'],
+    'Florist': ['Fresh flowers', 'Custom arrangements', 'Delivery included', 'Setup service'],
+    'DJ/Band': ['Professional sound system', 'Music library', 'MC services', 'Special requests'],
+    'DJ': ['Professional sound system', 'Music library', 'MC services', 'Special requests'],
+    'Hair & Makeup Artists': ['Professional products', 'Trial session', 'Touch-up kit', 'On-site service'],
+    'Cake Designer': ['Custom design', 'Fresh ingredients', 'Delivery included', 'Tasting session'],
+    'Event Rentals': ['Quality equipment', 'Setup included', 'Breakdown service', 'Insurance covered'],
+    'Transportation Services': ['Professional driver', 'Clean vehicles', 'On-time service', 'Special occasions'],
+    'Venue Coordinator': ['Space management', 'Vendor coordination', 'Setup supervision', 'Guest assistance'],
+    'Officiant': ['Licensed officiant', 'Custom ceremony', 'Rehearsal included', 'Marriage license guidance'],
+    'Stationery Designer': ['Custom design', 'Premium materials', 'RSVP tracking', 'Coordinated suite'],
+    'Sounds & Lights': ['Professional equipment', 'Technical support', 'Setup included', 'Backup equipment'],
+    'Security & Guest Management': ['Trained personnel', 'Crowd control', 'Emergency response', 'Discreet service']
+  };
+
+  const features = baseFeatures[category] || ['Professional service', 'Quality guaranteed', 'Experienced team', 'Customer focused'];
+  
+  // Add description-based features
+  if (description?.toLowerCase().includes('luxury') || description?.toLowerCase().includes('premium')) {
+    features.push('Premium quality');
+  }
+  if (description?.toLowerCase().includes('destination')) {
+    features.push('Destination expertise');
+  }
+  if (description?.toLowerCase().includes('consultation')) {
+    features.push('Free consultation');
+  }
+  
+  return features.slice(0, 4); // Limit to 4 features
+};
+
+const generateVendorName = (category: string): string => {
+  const vendorNames: Record<string, string[]> = {
+    'Wedding Planner': ['Elite Wedding Planners', 'Dream Day Coordinators', 'Perfect Moments Planning'],
+    'Photographer & Videographer': ['Captured Moments Studio', 'Wedding Stories Photography', 'Eternal Memories'],
+    'Caterer': ['Gourmet Wedding Catering', 'Elegant Dining Services', 'Wedding Feast Co.'],
+    'Florist': ['Bloom Wedding Florals', 'Elegant Petals', 'Wedding Garden Designs'],
+    'DJ/Band': ['Wedding Sound Solutions', 'Celebration Entertainment', 'Party Perfect Music'],
+    'DJ': ['Wedding Sound Solutions', 'Celebration Entertainment', 'Party Perfect Music'],
+    'Hair & Makeup Artists': ['Bridal Beauty Studio', 'Wedding Glamour Artists', 'Perfect Day Beauty'],
+    'Cake Designer': ['Sweet Wedding Cakes', 'Elegant Cake Designs', 'Dream Wedding Desserts'],
+    'Officiant': ['Sacred Ceremonies', 'Wedding Officiants Plus', 'Memorable Moments Ministry'],
+    'other': ['Professional Wedding Services', 'Elite Event Solutions', 'Premium Wedding Vendors']
+  };
+  
+  const names = vendorNames[category] || vendorNames['other'];
+  return names[Math.floor(Math.random() * names.length)];
+};
+
+const generateVendorImage = (): string => {
+  const vendorImages = [
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+    'https://images.unsplash.com/photo-1494790108755-2616b332e234?w=150',
+    'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
+    'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
+    'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150'
+  ];
+  return vendorImages[Math.floor(Math.random() * vendorImages.length)];
+};
+
+const generateLocation = (): string => {
+  const locations = [
+    'Makati City, Metro Manila',
+    'Quezon City, Metro Manila', 
+    'Bonifacio Global City, Taguig',
+    'Ortigas Center, Pasig',
+    'Alabang, Muntinlupa',
+    'Tagaytay, Cavite',
+    'Pasay City, Metro Manila',
+    'Manila City, Metro Manila',
+    'Metro Manila, Philippines'
+  ];
+  return locations[Math.floor(Math.random() * locations.length)];
+};
+
+const generateContactInfo = (vendorId: string) => {
+  // Generate realistic contact info based on vendor ID for consistency
+  const vendorHash = vendorId.split('-').pop() || '000';
+  const phoneIndex = parseInt(vendorHash) % 4;
+  const domainIndex = parseInt(vendorHash) % 4;
+  
+  const phoneNumbers = ['+63 917 123 4567', '+63 918 234 5678', '+63 919 345 6789', '+63 920 456 7890'];
+  const domains = ['weddingservices.ph', 'manila-weddings.com', 'dreamweddings.ph', 'weddingexperts.ph'];
+  
+  const phone = phoneNumbers[phoneIndex];
+  const domain = domains[domainIndex];
+  const email = `hello@${domain}`;
+  const website = `https://${domain}`;
+  
+  return { phone, email, website };
+};
+
+
+
 
 export default Services;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Camera, Music, Utensils, Car, Building, Heart, Users, ArrowRight, Star, X, MapPin, Clock, Loader2 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
-import { useAuth } from '../../../shared/contexts/AuthContext';
+import { useAuth } from '../../../shared/contexts/HybridAuthContext';
 import { ServiceDetailsModal as EnhancedServiceModal } from '../../../modules/services/components/ServiceDetailsModal';
 import type { Service } from '../../../modules/services/types';
 import type { ServiceCategory } from '../../../shared/types/comprehensive-booking.types';
