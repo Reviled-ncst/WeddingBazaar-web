@@ -384,23 +384,10 @@ router.get('/:serviceId', async (req, res) => {
   try {
     const { serviceId } = req.params;
     
-    // Get service with vendor information
+    // Get service (simplified query without JOIN for now)
     const result = await sql`
-      SELECT 
-        s.*,
-        v.id as vendor_id,
-        v.name as vendor_name,
-        v.business_name as vendor_business_name,
-        v.category as vendor_category,
-        v.rating as vendor_rating,
-        v.review_count as vendor_review_count,
-        v.location as vendor_location,
-        v.phone as vendor_phone,
-        v.email as vendor_email,
-        v.website as vendor_website
-      FROM services s
-      LEFT JOIN vendors v ON s.vendor_id = v.id
-      WHERE s.id = ${serviceId}
+      SELECT * FROM services 
+      WHERE id = ${serviceId}
     `;
     
     if (result.length === 0) {
@@ -414,39 +401,11 @@ router.get('/:serviceId', async (req, res) => {
     
     const service = result[0];
     
-    // Structure the response with vendor information
-    const serviceData = {
-      id: service.id,
-      vendor_id: service.vendor_id,
-      title: service.title,
-      name: service.name,
-      description: service.description,
-      category: service.category,
-      price: service.price,
-      images: service.images || [],
-      featured: service.featured,
-      is_active: service.is_active,
-      created_at: service.created_at,
-      updated_at: service.updated_at,
-      vendor: service.vendor_name ? {
-        id: service.vendor_id,
-        name: service.vendor_name,
-        business_name: service.vendor_business_name,
-        category: service.vendor_category,
-        rating: service.vendor_rating,
-        review_count: service.vendor_review_count,
-        location: service.vendor_location,
-        phone: service.vendor_phone,
-        email: service.vendor_email,
-        website: service.vendor_website
-      } : null
-    };
-    
-    console.log(`✅ Found service: ${service.title} by ${service.vendor_name || 'Unknown vendor'}`);
+    console.log(`✅ Found service: ${service.title} (ID: ${service.id})`);
     
     res.json({
       success: true,
-      service: serviceData,
+      service: service,
       timestamp: new Date().toISOString()
     });
     
