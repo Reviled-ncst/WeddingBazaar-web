@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Registration Flow Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container { 
+            background: rgba(255, 255, 255, 0.1); 
+            padding: 20px; 
+            border-radius: 15px; 
+            backdrop-filter: blur(10px);
+        }
+        button { 
+            padding: 10px 20px; 
+            margin: 10px 5px; 
+            border: none; 
+            border-radius: 5px; 
+            background: #4CAF50; 
+            color: white; 
+            cursor: pointer; 
+        }
+        button:hover { background: #45a049; }
+        .error { color: #ffcdd2; background: rgba(244, 67, 54, 0.1); padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .success { color: #c8e6c9; background: rgba(76, 175, 80, 0.1); padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .info { color: #bbdefb; background: rgba(33, 150, 243, 0.1); padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .log { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 5px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; font-size: 12px; max-height: 600px; overflow-y: auto; }
+        input, select { 
+            width: 100%; 
+            padding: 8px; 
+            margin: 5px 0; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        input::placeholder { color: #ccc; }
+        .form-row { display: flex; gap: 10px; }
+        .form-row input, .form-row select { flex: 1; }
+        label { display: block; margin: 10px 0 5px 0; font-weight: bold; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Frontend Registration Flow Test</h1>
+        <div class="info">
+            <strong>Purpose:</strong> Test the exact same registration flow that the frontend uses, including Firebase and backend calls
+        </div>
+
+        <h2>📝 Registration Test</h2>
+        <div class="form-row">
+            <div>
+                <label for="testEmail">Email:</label>
+                <input type="email" id="testEmail" value="newtest@example.com">
+            </div>
+            <div>
+                <label for="testPassword">Password:</label>
+                <input type="password" id="testPassword" value="test123456">
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div>
+                <label for="testFirstName">First Name:</label>
+                <input type="text" id="testFirstName" value="Test">
+            </div>
+            <div>
+                <label for="testLastName">Last Name:</label>
+                <input type="text" id="testLastName" value="User">
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div>
+                <label for="testPhone">Phone:</label>
+                <input type="tel" id="testPhone" value="1234567890">
+            </div>
+            <div>
+                <label for="testRole">User Type:</label>
+                <select id="testRole">
+                    <option value="couple">Couple</option>
+                    <option value="vendor">Vendor</option>
+                </select>
+            </div>
+        </div>
+
+        <button onclick="testRegistrationFlow()" style="width: 100%; padding: 15px; font-size: 16px; margin-top: 20px;">
+            🚀 Test Full Registration Flow (Firebase + Backend)
+        </button>
+
+        <h2>🔧 Individual Tests</h2>
+        <button onclick="testFirebaseOnly()">Test Firebase Registration Only</button>
+        <button onclick="testBackendOnly()">Test Backend Registration Only</button>
+        <button onclick="testHybridFlow()">Test Hybrid Flow (As Frontend Does)</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+
+        <div id="testResults">
+            <h2>📊 Test Results</h2>
+            <div id="log" class="log">Ready to test registration flow...\n</div>
+        </div>
+    </div>
+
+    <script type="module">
+        const log = document.getElementById('log');
+        
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            log.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        window.clearLogs = () => {
+            log.textContent = '';
+        };
+
+        function getFormData() {
+            return {
+                email: document.getElementById('testEmail').value,
+                password: document.getElementById('testPassword').value,
+                firstName: document.getElementById('testFirstName').value,
+                lastName: document.getElementById('testLastName').value,
+                phone: document.getElementById('testPhone').value,
+                role: document.getElementById('testRole').value
+            };
+        }
+
+        // Test Firebase registration (mock)
+        window.testFirebaseOnly = async () => {
+            addLog('🔥 Testing Firebase registration...');
+            const userData = getFormData();
+            
+            try {
+                // This is a mock - we can't actually test Firebase from here without the full app context
+                addLog('📧 Would create Firebase user with email: ' + userData.email);
+                addLog('📧 Would send email verification');
+                addLog('🚪 Would sign out user until email verified');
+                addLog('✅ Firebase registration flow completed (simulated)', 'success');
+                
+                return {
+                    success: true,
+                    firebaseUid: `mock-firebase-${Date.now()}`
+                };
+            } catch (error) {
+                addLog(`❌ Firebase registration failed: ${error.message}`, 'error');
+                return { success: false, error: error.message };
+            }
+        };
+
+        // Test backend registration
+        window.testBackendOnly = async () => {
+            addLog('🏗️ Testing backend registration...');
+            const userData = getFormData();
+            
+            try {
+                const API_BASE_URL = 'https://weddingbazaar-web.onrender.com';
+                
+                const backendData = {
+                    email: userData.email,
+                    password: userData.password,
+                    first_name: userData.firstName,
+                    last_name: userData.lastName,
+                    user_type: userData.role,
+                    phone: userData.phone,
+                    firebase_uid: `test-firebase-${Date.now()}` // Mock Firebase UID
+                };
+
+                addLog(`Sending to backend: ${JSON.stringify(backendData, null, 2)}`);
+
+                const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(backendData)
+                });
+
+                addLog(`Backend response: ${response.status} ${response.statusText}`);
+
+                if (response.ok) {
+                    const result = await response.json();
+                    addLog('✅ Backend registration successful!', 'success');
+                    addLog(`User ID: ${result.user?.id}`);
+                    addLog(`Profile ID: ${result.profile?.id || 'No profile'}`);
+                    addLog(`Response: ${JSON.stringify(result, null, 2)}`);
+                    return { success: true, result };
+                } else {
+                    const errorText = await response.text();
+                    addLog(`❌ Backend registration failed: ${errorText}`, 'error');
+                    return { success: false, error: errorText };
+                }
+
+            } catch (error) {
+                addLog(`❌ Backend registration error: ${error.message}`, 'error');
+                return { success: false, error: error.message };
+            }
+        };
+
+        // Test the hybrid flow as the frontend does it
+        window.testHybridFlow = async () => {
+            addLog('🔄 Testing hybrid flow (Firebase → Backend)...');
+            
+            // Step 1: Mock Firebase registration
+            const firebaseResult = await testFirebaseOnly();
+            if (!firebaseResult.success) {
+                addLog('❌ Firebase step failed, aborting hybrid flow', 'error');
+                return;
+            }
+
+            // Step 2: Backend registration with Firebase UID
+            addLog('➡️ Proceeding to backend registration with Firebase UID...');
+            const userData = getFormData();
+            
+            try {
+                const API_BASE_URL = 'https://weddingbazaar-web.onrender.com';
+                
+                const backendData = {
+                    email: userData.email,
+                    password: userData.password,
+                    first_name: userData.firstName,
+                    last_name: userData.lastName,
+                    user_type: userData.role,
+                    phone: userData.phone,
+                    firebase_uid: firebaseResult.firebaseUid // Use the Firebase UID
+                };
+
+                addLog(`Backend request with Firebase UID: ${JSON.stringify(backendData, null, 2)}`);
+
+                const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(backendData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    addLog('✅ Hybrid flow completed successfully!', 'success');
+                    addLog(`Firebase UID: ${firebaseResult.firebaseUid}`);
+                    addLog(`Backend User ID: ${result.user?.id}`);
+                    addLog(`Profile Created: ${result.profile ? 'Yes' : 'No'}`);
+                } else {
+                    const errorText = await response.text();
+                    addLog(`⚠️ Backend step failed (non-fatal in real app): ${errorText}`, 'warning');
+                }
+
+            } catch (error) {
+                addLog(`❌ Hybrid flow error: ${error.message}`, 'error');
+            }
+        };
+
+        // Test full registration flow
+        window.testRegistrationFlow = async () => {
+            addLog('🚀 Starting full registration flow test...');
+            addLog('This simulates the exact flow the frontend uses');
+            
+            await testHybridFlow();
+        };
+
+        // Initial backend connectivity test
+        setTimeout(async () => {
+            addLog('🌐 Testing backend connectivity...');
+            try {
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/health');
+                const data = await response.json();
+                if (response.ok) {
+                    addLog(`✅ Backend connected: ${data.status} v${data.version}`, 'success');
+                } else {
+                    addLog(`❌ Backend error: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addLog(`❌ Backend connection failed: ${error.message}`, 'error');
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

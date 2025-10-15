@@ -43,11 +43,17 @@ class FirebaseAuthService {
    */
   async registerWithEmailVerification(data: RegistrationData): Promise<{ success: boolean; message: string; firebaseUid?: string; user?: User }> {
     if (!auth) {
+      console.error('❌ Firebase Auth is not configured - check environment variables');
       throw new Error('Firebase Auth is not configured');
     }
 
     try {
       console.log('🔧 Creating Firebase user with email verification...');
+      console.log('🔧 Firebase config check:', {
+        hasAuth: !!auth,
+        email: data.email,
+        dataReceived: Object.keys(data)
+      });
       
       // Step 1: Create Firebase user account
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
@@ -55,15 +61,16 @@ class FirebaseAuthService {
       
       console.log('✅ Firebase user created:', firebaseUser.uid);
       
-      // Step 2: Send email verification
+      // Step 2: Send email verification (user remains logged in)
       await sendEmailVerification(firebaseUser, {
         url: `${window.location.origin}/?verified=true`, // Redirect URL after verification
         handleCodeInApp: false
       });
       
       console.log('📧 Firebase email verification sent to:', data.email);
+      console.log('✅ User remains logged in but needs to verify email for full access');
       
-      // Step 3: Store registration data for later backend creation
+      // Step 4: Store registration data for later backend creation
       const pendingProfile = {
         firebase_uid: firebaseUser.uid,
         email: data.email,
@@ -78,10 +85,6 @@ class FirebaseAuthService {
       
       localStorage.setItem('pending_user_profile', JSON.stringify(pendingProfile));
       console.log('💾 Stored pending user profile for post-verification creation');
-      
-      // Step 4: Sign out user until they verify email
-      await signOut(auth);
-      console.log('🚪 User signed out - must verify email before login');
       
       return {
         success: true,
@@ -110,14 +113,15 @@ class FirebaseAuthService {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // Check if email is verified
+      // Allow login regardless of email verification status
+      // Feature restrictions will be handled by the UI based on verification state
       if (!user.emailVerified) {
-        console.log('❌ Email not verified for user:', email);
-        await signOut(auth); // Sign out immediately
-        throw new Error('Please verify your email before logging in. Check your inbox for the verification link.');
+        console.log('⚠️ User logged in with unverified email - limited access will be enforced by UI:', email);
+      } else {
+        console.log('✅ User logged in with verified email - full access granted:', email);
       }
       
-      console.log('✅ Firebase sign in successful for verified user:', email);
+      console.log('✅ Firebase sign in successful:', email);
       return userCredential;
       
     } catch (error: any) {

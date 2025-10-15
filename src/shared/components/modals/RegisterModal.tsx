@@ -193,6 +193,21 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     setError(null);
 
     try {
+      console.log('🚀 RegisterModal: Starting registration process...');
+      console.log('📧 RegisterModal: User email:', formData.email);
+      console.log('👤 RegisterModal: User type:', userType);
+      console.log('📱 RegisterModal: Form data:', {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        userType: userType,
+        ...(userType === 'vendor' && {
+          business_name: formData.business_name,
+          business_type: formData.business_type,
+        })
+      });
+      
       // Register (will use Firebase if configured, otherwise backend)
       await register({
         firstName: formData.firstName,
@@ -209,27 +224,26 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         receiveUpdates: formData.receiveUpdates,
       });
 
-      console.log('✅ Backend registration completed successfully - showing email verification screen');
+      console.log('✅ RegisterModal: Registration call completed successfully - user logged in with restrictions');
       
-      // Always show email verification screen after backend registration
-      setShowEmailVerification(true);
-      setVerificationSent(true);
-      setIsSuccess(false);
-      setVerificationEmail(formData.email);
+      // Show success state briefly, then close modal (user is now logged in)
+      setIsSuccess(true);
+      setShowEmailVerification(false);
+      setVerificationSent(false);
       
-      // Notify parent component that we're in email verification mode
-      onEmailVerificationModeChange?.(true);
+      // Notify parent component that we're no longer in email verification mode
+      onEmailVerificationModeChange?.(false);
       
-      // Save verification state to localStorage for persistence
-      localStorage.setItem('emailVerificationPending', JSON.stringify({
-        email: formData.email,
-        timestamp: Date.now()
-      }));
+      // Clean up any pending verification state
+      localStorage.removeItem('emailVerificationPending');
       
-      console.log('📧 showEmailVerification state set to: true');
-      console.log('📧 verificationSent state set to: true');
-      console.log('💾 Verification state saved to localStorage');
-      console.log('✅ User must verify email before login');
+      console.log('✅ Registration successful - user logged in with limited access until email verification');
+      console.log('🎯 User can now explore dashboard but will see verification prompts for restricted features');
+      
+      // Auto-close modal after showing success briefly
+      setTimeout(() => {
+        onClose();
+      }, 2000);
       
       // Add debugging to check modal state
       console.log('🔍 Modal state after registration:', {
@@ -241,8 +255,15 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       });
       
     } catch (error: any) {
-      console.error('Registration error:', error);
-      setError(error.message || 'Registration failed. Please try again.');
+      console.error('❌ RegisterModal: Registration failed with error:', error);
+      console.error('❌ RegisterModal: Error message:', error.message);
+      console.error('❌ RegisterModal: Error stack:', error.stack);
+      console.error('❌ RegisterModal: Full error object:', JSON.stringify(error, null, 2));
+      
+      const errorMessage = error.message || 'Registration failed. Please try again.';
+      console.error('❌ RegisterModal: Setting error message:', errorMessage);
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

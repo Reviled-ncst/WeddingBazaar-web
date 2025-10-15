@@ -22,7 +22,7 @@ import { CoupleHeader } from '../landing/CoupleHeader';
 import { SecuritySettings } from '../../../../shared/components/security';
 
 export const ProfileSettings: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isEmailVerified, firebaseUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -218,6 +218,120 @@ export const ProfileSettings: React.FC = () => {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Account Verification Section */}
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-white/50 mb-8">
+          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+            <CheckCircle className="h-6 w-6 text-rose-500 mr-3" />
+            Account Verification
+          </h3>
+          
+          <div className="space-y-4">
+            {/* Email Verification */}
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white rounded-2xl border border-gray-200">
+              <div className="flex items-center space-x-4">
+                <div className={`p-2 rounded-full ${
+                  firebaseUser?.emailVerified || isEmailVerified 
+                    ? 'bg-green-100 text-green-600' 
+                    : 'bg-orange-100 text-orange-600'
+                }`}>
+                  <Mail className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">Email Verification</h4>
+                  <p className="text-sm text-gray-600">
+                    {firebaseUser?.emailVerified || isEmailVerified 
+                      ? 'Your email has been verified ✓' 
+                      : 'Please verify your email to unlock all features'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                {firebaseUser?.emailVerified || isEmailVerified ? (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    Verified
+                  </span>
+                ) : (
+                  <div className="space-x-2">
+                    <button
+                      onClick={async () => {
+                        try {
+                          // Import Firebase auth service
+                          const { firebaseAuthService } = await import('../../../../services/auth/firebaseAuthService');
+                          await firebaseAuthService.resendEmailVerification();
+                          alert('✅ Verification email sent! Please check your inbox.');
+                        } catch (error) {
+                          console.error('Error sending verification email:', error);
+                          alert('❌ Failed to send verification email. Please try again.');
+                        }
+                      }}
+                      className="px-4 py-2 text-sm bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors"
+                    >
+                      Send Email
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const { firebaseAuthService } = await import('../../../../services/auth/firebaseAuthService');
+                          await firebaseAuthService.reloadUser();
+                          window.location.reload(); // Refresh to update verification status
+                        } catch (error) {
+                          window.location.reload(); // Fallback refresh
+                        }
+                      }}
+                      className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Check Status
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Phone Verification (Future) */}
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white rounded-2xl border border-gray-200 opacity-60">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 rounded-full bg-gray-100 text-gray-400">
+                  <Phone className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">Phone Verification</h4>
+                  <p className="text-sm text-gray-600">Coming soon - optional enhanced security</p>
+                </div>
+              </div>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600">
+                Coming Soon
+              </span>
+            </div>
+
+            {/* Document Verification (Future) */}
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white rounded-2xl border border-gray-200 opacity-60">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 rounded-full bg-gray-100 text-gray-400">
+                  <Upload className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">Identity Verification</h4>
+                  <p className="text-sm text-gray-600">Coming soon - upload ID for premium features</p>
+                </div>
+              </div>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600">
+                Coming Soon
+              </span>
+            </div>
+          </div>
+
+          {/* Verification Benefits */}
+          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200">
+            <h4 className="font-semibold text-blue-900 mb-2">Verification Benefits</h4>
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>✓ Access to all platform features</li>
+              <li>✓ Increased trust from vendors</li>
+              <li>✓ Priority customer support</li>
+              <li>✓ Enhanced security for your account</li>
+            </ul>
           </div>
         </div>
 

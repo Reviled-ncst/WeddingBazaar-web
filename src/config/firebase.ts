@@ -15,6 +15,15 @@ const isFirebaseConfigured = firebaseConfig.apiKey &&
                             firebaseConfig.projectId && 
                             firebaseConfig.appId;
 
+// Debug Firebase configuration
+console.log('🔧 Firebase configuration check:', {
+  hasApiKey: !!firebaseConfig.apiKey,
+  hasAuthDomain: !!firebaseConfig.authDomain,
+  hasProjectId: !!firebaseConfig.projectId,
+  hasAppId: !!firebaseConfig.appId,
+  isConfigured: isFirebaseConfigured
+});
+
 // Initialize Firebase only if configured
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;

@@ -26,6 +26,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isEmailVerified: boolean;
+  isRegistering: boolean; // Track registration state
   login: (email: string, password: string) => Promise<User>;
   register: (userData: RegisterData) => Promise<void>;
   loginWithGoogle: () => Promise<User>;
@@ -34,6 +35,7 @@ interface AuthContextType {
   setUser: (user: User | null) => void;
   sendEmailVerification: () => Promise<void>;
   reloadUser: () => Promise<void>;
+  clearRegistrationState: () => void; // Allow manual clearing of registration state
 }
 
 interface RegisterData {
@@ -69,6 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseAuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -204,9 +207,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const unsubscribe = firebaseAuthService.onAuthStateChanged(async (fbUser) => {
       console.log('🔧 Firebase auth state changed:', fbUser ? 'User logged in' : 'User logged out');
       
+      // Skip auth state processing during registration to prevent login flash
+      if (isRegistering) {
+        console.log('⏸️ Skipping auth state change during registration process');
+        return;
+      }
+      
       if (fbUser) {
         setFirebaseUser(fbUser);
+        
+        // Always sync with backend, regardless of email verification status
+        // This allows users to see their profile/dashboard even if email not verified
         await syncWithBackend(fbUser);
+        console.log('✅ User logged in - email verification status:', fbUser.emailVerified);
+        
+        if (!fbUser.emailVerified) {
+          console.log('📧 User email not verified - limited access until verification');
+        }
       } else {
         setFirebaseUser(null);
         setUser(null);
@@ -216,48 +233,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     return unsubscribe;
-  }, []);
+  }, [isRegistering]);
 
-  const register = async (userData: RegisterData): Promise<void> => {
-    try {
-      setIsLoading(true);
-      console.log('🔧 Starting Firebase-first registration with email verification...');
-      
-      // Step 1: Create Firebase user and send email verification
-      const registrationData: any = {
-        email: userData.email,
-        password: userData.password,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        userType: userData.role,
-        phone: userData.phone,
-        ...(userData.role === 'vendor' && {
-          businessName: userData.business_name,
-          businessType: userData.business_type,
-          location: userData.location
-        })
-      };
-
-      console.log('� Creating Firebase user with email verification...');
-      const result = await firebaseAuthService.registerWithEmailVerification(registrationData);
-      
-      if (!result.success) {
-        throw new Error(result.message);
-      }
-
-      console.log('✅ Firebase user created, email verification sent');
-      console.log('📧 User must verify email before they can login');
-      
-      // Note: Backend user creation will happen automatically when user 
-      // verifies email and signs in (handled by syncWithBackend)
-
-    } catch (error: any) {
-      console.error('❌ Registration error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // OLD Firebase method removed - using hybrid approach below
 
   const login = async (email: string, password: string): Promise<User> => {
     try {
@@ -386,12 +364,164 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Firebase + Neon hybrid registration - Firebase handles email, Neon stores data
+  const register = async (userData: RegisterData): Promise<void> => {
+    try {
+      setIsLoading(true);
+      setIsRegistering(true);
+      console.log('🔧 Starting Firebase + Neon hybrid registration - user will be logged in after success');
+      
+      // Step 1: Create Firebase user and send email verification (handles email delivery)
+      const registrationData: any = {
+        email: userData.email,
+        password: userData.password,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        userType: userData.role,
+        phone: userData.phone,
+        ...(userData.role === 'vendor' && {
+          businessName: userData.business_name,
+          businessType: userData.business_type,
+          location: userData.location
+        })
+      };
+
+      console.log('🔥 Creating Firebase user with email verification...');
+      const result = await firebaseAuthService.registerWithEmailVerification(registrationData);
+      
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+
+      console.log('✅ Firebase user created, email verification sent automatically');
+      
+      // Step 2: Create backend user in Neon database (linked to Firebase UID)
+      console.log('🏗️ Creating user in Neon database with Firebase UID...');
+      console.log('📡 API_BASE_URL:', API_BASE_URL);
+      console.log('🔍 Firebase UID:', result.firebaseUid);
+      
+      const backendData = {
+        email: userData.email,
+        password: userData.password,
+        first_name: userData.firstName,
+        last_name: userData.lastName,
+        user_type: userData.role,
+        phone: userData.phone,
+        firebase_uid: result.firebaseUid, // Link to Firebase account
+        ...(userData.role === 'vendor' && {
+          business_name: userData.business_name,
+          business_type: userData.business_type,
+          location: userData.location
+        })
+      };
+
+      console.log('📡 Making backend registration request with data:', JSON.stringify(backendData, null, 2));
+      
+      const backendResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(backendData)
+      });
+      
+      console.log('📨 Backend response received:', {
+        status: backendResponse.status,
+        statusText: backendResponse.statusText
+      });
+
+      if (backendResponse.ok) {
+        const backendResult = await backendResponse.json();
+        console.log('✅ User created in Neon database:', {
+          userId: backendResult.user?.id,
+          userType: backendResult.user?.user_type,
+          profileId: backendResult.profile?.id,
+          firebaseUid: result.firebaseUid
+        });
+        
+        console.log('📧 Firebase email verification sent to:', userData.email);
+        console.log('📧 User must verify email with Firebase before they can login');
+        
+        // Show persistent notification about email verification
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300';
+        toast.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <span>📧</span>
+            <div>
+              <div class="font-semibold">Email Verification Required!</div>
+              <div class="text-sm opacity-90">Check ${userData.email} and click the verification link</div>
+              <div class="text-xs opacity-75 mt-1">You must verify your email before you can login</div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(toast);
+        
+        // Keep toast visible longer (10 seconds instead of 5)
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          setTimeout(() => document.body.removeChild(toast), 300);
+        }, 10000);
+
+      } else {
+        const errorText = await backendResponse.text();
+        console.error('❌ Backend Neon database creation FAILED:', {
+          status: backendResponse.status,
+          statusText: backendResponse.statusText,
+          errorText
+        });
+        
+        throw new Error(`Registration failed - Neon database error: ${backendResponse.status}: ${errorText}`);
+      }
+
+    } catch (error: any) {
+      console.error('❌ Firebase + Neon registration error occurred:', {
+        message: error.message,
+        stack: error.stack,
+        fullError: error
+      });
+      
+      // Log the specific step where the error occurred
+      if (error.message?.includes('Firebase')) {
+        console.error('❌ Error during Firebase registration step');
+      } else if (error.message?.includes('Neon') || error.message?.includes('backend')) {
+        console.error('❌ Error during Neon database creation step');
+      } else {
+        console.error('❌ Unknown error during hybrid registration process');
+      }
+      
+      throw error;
+    } finally {
+      setIsLoading(false);
+      // Clear registration flag to allow normal auth flow and manually process current auth state
+      console.log('✅ Registration completed successfully - processing current auth state');
+      setIsRegistering(false);
+      
+      // Manually process current Firebase auth state after registration
+      const currentUser = firebaseAuthService.getCurrentUser();
+      if (currentUser) {
+        console.log('🔄 Processing current user after registration completion');
+        setFirebaseUser(currentUser);
+        await syncWithBackend(currentUser);
+      }
+    }
+  };
+
+  // Use backend-only registration instead of Firebase (replaces Firebase register function)
+  // const register = registerBackendOnly;
+
+  const clearRegistrationState = () => {
+    console.log('🧹 Manually clearing registration state');
+    setIsRegistering(false);
+  };
+
   const value: AuthContextType = {
     user,
     firebaseUser,
     isAuthenticated: !!user && !!firebaseUser,
     isLoading,
     isEmailVerified: firebaseUser?.emailVerified || false,
+    isRegistering, // Expose registration state
     login,
     register,
     logout,
@@ -399,7 +529,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     sendEmailVerification,
     reloadUser,
     loginWithGoogle,
-    registerWithGoogle
+    registerWithGoogle,
+    clearRegistrationState // Allow manual clearing of registration state
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

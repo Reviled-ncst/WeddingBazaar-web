@@ -1,0 +1,114 @@
+  const register = async (userData: RegisterData): Promise<void> => {
+    try {
+      setIsLoading(true);
+      console.log('🔧 Starting hybrid registration process...');
+      console.log('📧 Registration email:', userData.email);
+      console.log('👤 User type:', userData.role);
+      
+      let firebaseUid: string | null = null;
+      
+      // Step 1: Try Firebase registration first (if configured)
+      if (auth) {
+        try {
+          console.log('🔥 Attempting Firebase registration with email verification...');
+          
+          const registrationData: any = {
+            email: userData.email,
+            password: userData.password,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            userType: userData.role,
+            phone: userData.phone,
+            ...(userData.role === 'vendor' && {
+              businessName: userData.business_name,
+              businessType: userData.business_type,
+              location: userData.location
+            })
+          };
+
+          const result = await firebaseAuthService.registerWithEmailVerification(registrationData);
+          
+          if (result.success) {
+            console.log('✅ Firebase user created, email verification sent');
+            firebaseUid = result.firebaseUid;
+          } else {
+            throw new Error(result.message);
+          }
+        } catch (firebaseError: any) {
+          console.warn('⚠️ Firebase registration failed, proceeding with backend-only registration');
+          console.warn('Firebase error:', firebaseError.message);
+          // Don't throw - continue with backend registration
+        }
+      } else {
+        console.log('🔥 Firebase not configured, using backend-only registration');
+      }
+      
+      // Step 2: Create backend user (always required)
+      console.log('🏗️ Creating backend user profile...');
+      
+      const backendData = {
+        email: userData.email,
+        password: userData.password,
+        first_name: userData.firstName,
+        last_name: userData.lastName,
+        user_type: userData.role,
+        phone: userData.phone,
+        firebase_uid: firebaseUid || `backend-${Date.now()}`, // Use backend UID if no Firebase
+        ...(userData.role === 'vendor' && {
+          business_name: userData.business_name,
+          business_type: userData.business_type,
+          location: userData.location
+        })
+      };
+
+      console.log('📡 Sending backend registration request to:', `${API_BASE_URL}/api/auth/register`);
+      console.log('📦 Request payload:', JSON.stringify(backendData, null, 2));
+
+      const backendResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(backendData)
+      });
+
+      console.log('📨 Backend response status:', backendResponse.status, backendResponse.statusText);
+
+      if (backendResponse.ok) {
+        const backendResult = await backendResponse.json();
+        console.log('✅ Backend profile created successfully!');
+        console.log('👤 User ID:', backendResult.user?.id);
+        console.log('📄 Profile ID:', backendResult.profile?.id);
+        console.log('🔗 Firebase UID linked:', firebaseUid || 'Backend-only');
+        
+        if (firebaseUid) {
+          console.log('📧 User must verify Firebase email before they can login');
+        } else {
+          console.log('📧 User can login immediately (backend-only mode)');
+        }
+      } else {
+        const errorText = await backendResponse.text();
+        console.error('❌ Backend profile creation FAILED:', {
+          status: backendResponse.status,
+          statusText: backendResponse.statusText,
+          errorText,
+          url: `${API_BASE_URL}/api/auth/register`,
+          requestBody: JSON.stringify(backendData, null, 2)
+        });
+        
+        // This is critical - user won't be able to login without backend profile
+        throw new Error(`Registration failed: Unable to create user profile. Server responded with ${backendResponse.status}: ${errorText}`);
+      }
+
+    } catch (error: any) {
+      console.error('❌ Registration process failed:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };

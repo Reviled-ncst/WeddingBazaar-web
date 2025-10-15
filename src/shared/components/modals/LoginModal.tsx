@@ -86,9 +86,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         if (message.includes('invalid email or password') || message.includes('invalid credentials') || message.includes('401')) {
           errorMessage = 'Incorrect email or password. Please try again.';
         } 
-        // Email verification needed
+        // Email verification issues (should be rare now since we allow unverified login)
         else if (message.includes('verify your email') || message.includes('email not verified') || message.includes('account not verified')) {
-          errorMessage = 'Please check your email and click the verification link before signing in.';
+          errorMessage = 'Login successful! Some features may be limited until you verify your email from your profile settings.';
         }
         // Account issues
         else if (message.includes('user not found') || message.includes('account not found')) {
