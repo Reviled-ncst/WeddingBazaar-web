@@ -155,10 +155,30 @@ router.post('/register', async (req, res) => {
     
     // Check if user already exists
     console.log('🔍 Checking if user exists:', email);
-    const existingUsers = await sql`SELECT id FROM users WHERE email = ${email}`;
+    const existingUsers = await sql`SELECT id, firebase_uid FROM users WHERE email = ${email}`;
     
     if (existingUsers.length > 0) {
       console.log('❌ User already exists with email:', email);
+      
+      // If this is a Firebase user trying to link their account, allow it if Firebase UID matches
+      if (firebase_uid && existingUsers[0].firebase_uid === firebase_uid) {
+        console.log('✅ Firebase user linking to existing account - allowing registration');
+        const existingUser = existingUsers[0];
+        
+        // Return existing user data
+        return res.status(200).json({
+          success: true,
+          message: 'User account linked successfully',
+          user: {
+            id: existingUser.id,
+            email: email,
+            firebase_uid: firebase_uid,
+            email_verified: true
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+      
       return res.status(409).json({
         success: false,
         error: 'User with this email already exists',
