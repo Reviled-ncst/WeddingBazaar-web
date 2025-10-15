@@ -72,7 +72,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     receiveUpdates: false,
   });
 
-  const { register, sendEmailVerification, reloadUser, firebaseUser, isEmailVerified, registerWithGoogle } = useAuth();
+  const { register, sendEmailVerification, registerWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   // Essential vendor categories
@@ -188,28 +188,23 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         receiveUpdates: formData.receiveUpdates,
       });
 
-      // Check if Firebase is configured for email verification
+      // Check if Firebase is configured for login after email verification
       const isFirebaseConfigured = import.meta.env.VITE_FIREBASE_API_KEY && 
                                    import.meta.env.VITE_FIREBASE_API_KEY !== "demo-api-key";
       
-      if (isFirebaseConfigured && firebaseUser) {
-        // Show email verification step for Firebase
-        setShowEmailVerification(true);
-        setVerificationSent(true);
-      } else {
-        // Backend registration successful - go directly to success
-        setIsSuccess(true);
-        
-        // Redirect after a delay
-        setTimeout(() => {
-          onClose();
-          if (userType === 'couple') {
-            navigate('/individual');
-          } else {
-            navigate('/vendor');
-          }
-        }, 2000);
-      }
+      console.log('🔥 Firebase configured:', isFirebaseConfigured);
+      console.log('🔑 API Key exists:', !!import.meta.env.VITE_FIREBASE_API_KEY);
+      console.log('🎯 Backend registration completed successfully');
+      
+      // Show success screen since registration is complete and user can login immediately
+      // TODO: Re-enable email verification when schema supports it
+      setIsSuccess(true); 
+      setShowEmailVerification(false);
+      setVerificationSent(false);
+      console.log('✅ Backend registration successful - showing success screen');
+      console.log('📧 showEmailVerification state set to: false');
+      console.log('📧 isSuccess state set to: true');
+      console.log('✅ User can now login immediately');
       
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -220,35 +215,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   };
 
   // Firebase email verification status checking
-  // Add verification status checking with Firebase
-  useEffect(() => {
-    if (showEmailVerification && firebaseUser) {
-      const interval = setInterval(async () => {
-        try {
-          await reloadUser();
-          if (isEmailVerified) {
-            setIsSuccess(true);
-            setShowEmailVerification(false);
-            clearInterval(interval);
-            
-            // Redirect after a delay
-            setTimeout(() => {
-              onClose();
-              if (userType === 'couple') {
-                navigate('/individual');
-              } else {
-                navigate('/vendor');
-              }
-            }, 2000);
-          }
-        } catch (error) {
-          console.error('Error checking verification status:', error);
-        }
-      }, 3000); // Check every 3 seconds
-
-      return () => clearInterval(interval);
-    }
-  }, [showEmailVerification, firebaseUser, isEmailVerified, reloadUser, onClose, navigate, userType]);
+  // Note: We don't auto-check verification status since user is signed out after registration
+  // User must manually verify email then login normally
 
   const handleResendVerification = async () => {
     try {
@@ -258,34 +226,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       setError(null);
     } catch (error: any) {
       setError(error.message || 'Failed to resend verification email');
-    } finally {
-      setCheckingVerification(false);
-    }
-  };
-
-  const handleCheckVerification = async () => {
-    try {
-      setCheckingVerification(true);
-      await reloadUser();
-      
-      if (isEmailVerified) {
-        setIsSuccess(true);
-        setShowEmailVerification(false);
-        
-        // Redirect after a delay
-        setTimeout(() => {
-          onClose();
-          if (userType === 'couple') {
-            navigate('/individual');
-          } else {
-            navigate('/vendor');
-          }
-        }, 2000);
-      } else {
-        setError('Email not verified yet. Please check your inbox and click the verification link.');
-      }
-    } catch (error: any) {
-      setError(error.message || 'Failed to check verification status');
     } finally {
       setCheckingVerification(false);
     }
@@ -302,7 +242,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     setError(null);
 
     try {
-      const user = await registerWithGoogle(userType);
+      await registerWithGoogle(userType);
       setIsSuccess(true);
       
       // Redirect after a delay
@@ -340,7 +280,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
           </div>
 
           {/* Success Overlay with enhanced animations */}
-          {isSuccess && (
+          {isSuccess && !showEmailVerification && (
             <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-green-50/90 to-emerald-50/95 backdrop-blur-xl rounded-2xl z-50 flex items-center justify-center animate-in fade-in duration-700">
               <div className="text-center relative z-10 animate-in slide-in-from-bottom duration-1000">
                 <div className="mb-6 relative">
@@ -390,6 +330,11 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
             <div className="relative max-w-5xl mx-auto space-y-8">
               
               {/* Email Verification View */}
+              {(() => {
+                console.log('🎯 RENDER CHECK - showEmailVerification:', showEmailVerification);
+                console.log('🎯 RENDER CHECK - isSuccess:', isSuccess);
+                return null;
+              })()}
               {showEmailVerification ? (
                 <div className="space-y-6">
                   {/* Email Verification Header */}
@@ -414,29 +359,27 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <h4 className="font-semibold text-blue-900 mb-2">Next Steps:</h4>
                       <ol className="text-sm text-blue-800 space-y-1">
-                        <li>1. Check your email inbox</li>
-                        <li>2. Click the verification link</li>
-                        <li>3. Come back here and click "I've Verified"</li>
+                        <li>1. Check your email inbox for verification link</li>
+                        <li>2. Click the verification link in your email</li>
+                        <li>3. Return to homepage and login with your credentials</li>
                       </ol>
+                      <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <p className="text-xs text-yellow-800">
+                          <strong>Important:</strong> You must verify your email before you can login. After verification, use the Login button to access your dashboard.
+                        </p>
+                      </div>
                     </div>
 
                     <div className="flex flex-col gap-3">
                       <button
-                        onClick={handleCheckVerification}
-                        disabled={checkingVerification}
-                        className="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:from-pink-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        onClick={() => {
+                          onClose();
+                          onSwitchToLogin();
+                        }}
+                        className="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:from-pink-600 hover:to-purple-700 flex items-center justify-center gap-2"
                       >
-                        {checkingVerification ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                            Checking...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-4 h-4" />
-                            I've Verified My Email
-                          </>
-                        )}
+                        <CheckCircle className="w-4 h-4" />
+                        Continue to Login
                       </button>
 
                       <button

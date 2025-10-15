@@ -180,35 +180,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                                    import.meta.env.VITE_FIREBASE_API_KEY !== "demo-api-key";
       
       if (isFirebaseConfigured) {
-        console.log('🔥 Using Firebase + Neon hybrid registration');
+        console.log('🔥 Using Backend-only registration (Firebase only for login after verification)');
         
-        // 1. Register with Firebase
-        const userCredential = await firebaseAuthService.registerWithEmailVerification({
-          email: userData.email,
-          password: userData.password,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          phone: userData.phone,
-          userType: userData.role,
-          businessName: userData.business_name,
-          businessType: userData.business_type,
-          location: userData.location
-        });
+        // NO FIREBASE REGISTRATION - Only backend registration
+        console.log('📧 Registration will be backend-only with email verification');
 
-        console.log('✅ Firebase registration successful');
-
-        // 2. Create user profile in Neon database
+        // Create user profile in Neon database (backend-only registration)
         try {
-          const idToken = await userCredential.user.getIdToken();
-          
           // Map frontend fields to backend expected fields
           const userData_storage = {
             // Backend expects underscore field names
             first_name: userData.firstName,   // Backend expects first_name 
             last_name: userData.lastName,     // Backend expects last_name
             email: userData.email,
-            password: 'firebase_auth_user',   // Backend requires password field
-            role: userData.role,              // Backend expects role (couple/vendor)
+            password: userData.password,      // Use the actual password for backend auth
+            user_type: userData.role,         // Backend expects user_type (couple/vendor)
             phone: userData.phone,
             ...(userData.role === 'vendor' && {
               business_name: userData.business_name,
@@ -217,13 +203,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             })
           };
 
-          console.log('📤 Attempting to store user profile in Neon database...');
+          console.log('📤 Attempting backend-only registration...');
           console.log('📦 Sending data:', JSON.stringify(userData_storage, null, 2));
           
           const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${idToken}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify(userData_storage)
@@ -234,8 +219,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (response.ok) {
             const result = await response.json();
             console.log('✅ User profile created in Neon database:', result);
+            
             // Clear any local storage since we successfully stored in backend
             localStorage.removeItem('weddingbazaar_user_profile');
+            
+            // Store the role temporarily in localStorage for when they verify email
+            localStorage.setItem('registration_pending_role', userData.role);
+            console.log('💾 Stored pending role for email verification:', userData.role);
+            
+            console.log('📧 User must verify email before being logged in');
           } else {
             const errorText = await response.text();
             console.error('❌ Failed to create user profile in Neon:', {
@@ -254,7 +246,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           
           // Store locally as fallback
           const userData_storage = {
-            firebaseUid: userCredential.user.uid,
             email: userData.email,
             first_name: userData.firstName,
             last_name: userData.lastName,
@@ -277,7 +268,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           first_name: userData.firstName,
           last_name: userData.lastName,
           phone: userData.phone,
-          role: userData.role,            ...(userData.role === 'vendor' && {
+          user_type: userData.role,            ...(userData.role === 'vendor' && {
               business_name: userData.business_name,
               business_type: userData.business_type,
               location: typeof userData.location === 'string' ? userData.location : JSON.stringify(userData.location) // Backend accepts string for location
@@ -430,18 +421,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // Map frontend fields to backend expected fields
       const userData_storage = {
-        // Backend expects camelCase field names
-        firstName: userCredential.user.displayName?.split(' ')[0] || '',
-        lastName: userCredential.user.displayName?.split(' ').slice(1).join(' ') || '',
+        // Backend expects underscore field names
+        first_name: userCredential.user.displayName?.split(' ')[0] || '',
+        last_name: userCredential.user.displayName?.split(' ').slice(1).join(' ') || '',
         email: userCredential.user.email || '',
         password: 'google_oauth_user',    // Backend requires password field
-        role: userType || 'couple',       // Backend expects role (couple/vendor)
+        user_type: userType || 'couple',  // Backend expects user_type (couple/vendor)
         phone: ''                         // Google doesn't provide phone by default
       };
 
       try {
         console.log('📤 Attempting to store Google user profile in Neon database...');
-        console.log('🎯 User role being stored:', userData_storage.role);
+        console.log('🎯 User role being stored:', userData_storage.user_type);
         console.log('📦 Sending Google data:', JSON.stringify(userData_storage, null, 2));
         
         const idToken = await userCredential.user.getIdToken();
@@ -485,9 +476,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const newUser: User = {
         id: userCredential.user.uid, // Use Firebase UID as ID
         email: userData_storage.email,
-        firstName: userData_storage.firstName,
-        lastName: userData_storage.lastName,
-        role: userData_storage.role,
+        firstName: userData_storage.first_name,
+        lastName: userData_storage.last_name,
+        role: userData_storage.user_type,
         phone: userData_storage.phone,
         businessName: '', // No business name from Google by default  
         emailVerified: true, // Assume email is verified through Google
