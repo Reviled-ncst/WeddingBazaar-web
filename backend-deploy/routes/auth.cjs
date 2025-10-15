@@ -53,6 +53,17 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // Check if email is verified (block login if not verified)
+    if (!user.email_verified) {
+      console.log('❌ Email not verified for user:', email);
+      return res.status(403).json({
+        success: false,
+        error: 'Email not verified. Please check your email and verify your account before logging in.',
+        verification_required: true,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       { 
@@ -89,14 +100,30 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Register endpoint
+// Enhanced Register endpoint with Profile Creation
 router.post('/register', async (req, res) => {
+  console.log('🎯 [AUTH] POST /api/auth/register called');
+  console.log('🎯 [AUTH] Request body:', req.body);
+  
   try {
-    console.log('🎯 [AUTH] POST /api/auth/register called');
-    console.log('🎯 [AUTH] Request body:', req.body);
+    const { 
+      email, 
+      password, 
+      first_name, 
+      last_name, 
+      user_type = 'couple',
+      phone,
+      // Vendor-specific fields
+      business_name,
+      business_type,
+      location,
+      // Couple-specific fields
+      wedding_date,
+      partner_name,
+      budget_range
+    } = req.body;
     
-    const { email, password, first_name, last_name, user_type = 'couple' } = req.body;
-    
+    // Validate required fields
     if (!email || !password || !first_name) {
       return res.status(400).json({
         success: false,
@@ -111,6 +138,15 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Invalid user_type. Must be one of: couple, vendor, admin',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Vendor-specific validation
+    if (user_type === 'vendor' && (!business_name || !business_type)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Vendor registration requires business_name and business_type',
         timestamp: new Date().toISOString()
       });
     }
@@ -137,57 +173,147 @@ router.post('/register', async (req, res) => {
     const { getNextUserId } = require('../utils/id-generation.cjs');
     const userId = await getNextUserId(sql, user_type === 'vendor' ? 'vendor' : 'individual');
     
-    // Insert user into database
+    // 1. Create user account in users table with verification fields
     console.log('💾 Inserting user into database:', { userId, email, user_type });
-    const result = await sql`
-      INSERT INTO users (id, email, password, first_name, last_name, user_type, created_at)
-      VALUES (${userId}, ${email}, ${hashedPassword}, ${first_name}, ${last_name || ''}, ${user_type}, NOW())
-      RETURNING id, email, first_name, last_name, user_type, created_at
+    const userResult = await sql`
+      INSERT INTO users (
+        id, email, password, first_name, last_name, user_type, phone,
+        email_verified, phone_verified, created_at, updated_at
+      )
+      VALUES (
+        ${userId}, ${email}, ${hashedPassword}, ${first_name}, ${last_name || ''}, 
+        ${user_type}, ${phone || null}, false, false, NOW(), NOW()
+      )
+      RETURNING id, email, first_name, last_name, user_type, phone, email_verified, phone_verified, created_at
     `;
     
-    const newUser = result[0];
+    const newUser = userResult[0];
     console.log('✅ User inserted into database:', newUser);
     
-    // If vendor, also create vendor record
+    // 2. Create appropriate profile based on user_type
+    let profileResult = null;
+    
     if (user_type === 'vendor') {
-      console.log('🏢 Creating vendor record for user:', userId);
-      const vendorResult = await sql`
-        INSERT INTO vendors (
-          id, user_id, business_name, business_type, description, 
-          years_experience, location, created_at, updated_at, 
-          verified, rating, review_count
+      console.log('🏢 Creating vendor profile for user:', userId);
+      
+      // Create vendor profile with verification placeholders
+      profileResult = await sql`
+        INSERT INTO vendor_profiles (
+          user_id, business_name, business_type, business_description,
+          verification_status, verification_documents,
+          service_areas, pricing_range, business_hours,
+          average_rating, total_reviews, total_bookings,
+          response_time_hours, is_featured, is_premium,
+          created_at, updated_at
         )
         VALUES (
-          ${userId}, ${userId}, ${first_name + ' ' + (last_name || '') + ' Services'}, 
-          'general', 'Professional wedding service provider', 
-          5, 'Philippines', NOW(), NOW(),
-          true, 4.5, 0
+          ${userId}, ${business_name}, ${business_type}, null,
+          'unverified',
+          ${JSON.stringify({
+            business_registration: null,
+            tax_documents: null,
+            identity_verification: null,
+            status: 'pending_submission',
+            submitted_at: null,
+            reviewed_at: null,
+            admin_notes: null
+          })},
+          ${JSON.stringify([location || 'Not specified'])},
+          ${JSON.stringify({ min: null, max: null, currency: 'PHP', type: 'per_service' })},
+          ${JSON.stringify({
+            monday: { open: '09:00', close: '17:00', closed: false },
+            tuesday: { open: '09:00', close: '17:00', closed: false },
+            wednesday: { open: '09:00', close: '17:00', closed: false },
+            thursday: { open: '09:00', close: '17:00', closed: false },
+            friday: { open: '09:00', close: '17:00', closed: false },
+            saturday: { open: '09:00', close: '17:00', closed: false },
+            sunday: { closed: true }
+          })},
+          0.00, 0, 0, 24, false, false,
+          NOW(), NOW()
         )
-        RETURNING id
+        RETURNING *
       `;
-      console.log('✅ Vendor record created:', vendorResult[0]);
+      
+      console.log('✅ Vendor profile created:', profileResult[0]?.user_id);
+      
+    } else if (user_type === 'couple') {
+      console.log('💑 Creating couple profile for user:', userId);
+      
+      // Generate unique couple profile ID
+      const coupleCountResult = await sql`SELECT COUNT(*) as count FROM couple_profiles`;
+      const coupleCount = parseInt(coupleCountResult[0].count) + 1;
+      const currentYear = new Date().getFullYear();
+      const coupleId = `CP-${currentYear}-${coupleCount.toString().padStart(3, '0')}`;
+      
+      profileResult = await sql`
+        INSERT INTO couple_profiles (
+          id, user_id, partner_name, wedding_date, wedding_location,
+          budget_range, guest_count, wedding_style,
+          created_at, updated_at
+        )
+        VALUES (
+          ${coupleId}, ${userId}, ${partner_name || null}, ${wedding_date || null},
+          ${location || null}, ${budget_range || null}, 0, null,
+          NOW(), NOW()
+        )
+        RETURNING *
+      `;
+      
+      console.log('✅ Couple profile created:', profileResult[0]?.id);
+      
+    } else if (user_type === 'admin') {
+      console.log('👨‍💼 Creating admin profile for user:', userId);
+      
+      profileResult = await sql`
+        INSERT INTO admin_profiles (
+          user_id, created_at, updated_at
+        )
+        VALUES (
+          ${userId}, NOW(), NOW()
+        )
+        RETURNING *
+      `;
+      
+      console.log('✅ Admin profile created:', profileResult[0]?.user_id);
     }
     
-    // Generate JWT token
+    // Generate JWT token (email verification required before login)
     const token = jwt.sign(
-      { userId: newUser.id, email: newUser.email, userType: newUser.user_type },
+      { 
+        userId: newUser.id, 
+        email: newUser.email, 
+        userType: newUser.user_type,
+        emailVerified: newUser.email_verified
+      },
       process.env.JWT_SECRET || 'wedding-bazaar-secret-key',
       { expiresIn: '24h' }
     );
     
-    console.log('✅ [AUTH] User registered successfully:', newUser.id);
+    console.log('✅ [AUTH] User and profile registered successfully:', newUser.id);
     
+    // Return success response with verification requirements
     res.status(201).json({
       success: true,
+      message: 'User registered successfully. Please verify your email before logging in.',
       user: {
         id: newUser.id,
         email: newUser.email,
         first_name: newUser.first_name,
         last_name: newUser.last_name,
-        user_type: newUser.user_type
+        user_type: newUser.user_type,
+        phone: newUser.phone,
+        email_verified: newUser.email_verified,
+        phone_verified: newUser.phone_verified,
+        created_at: newUser.created_at
       },
-      token,
-      message: 'User registered successfully',
+      profile: profileResult ? profileResult[0] : null,
+      token, // Token provided but email verification required for login
+      verification_required: {
+        email: true,
+        phone: user_type !== 'admin', // Admin doesn't need phone verification
+        documents: user_type === 'vendor' // Only vendors need document verification
+      },
       timestamp: new Date().toISOString()
     });
     
@@ -197,6 +323,229 @@ router.post('/register', async (req, res) => {
       success: false,
       error: 'Registration failed',
       message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Email Verification endpoint
+router.post('/verify-email', async (req, res) => {
+  try {
+    const { email, verification_code } = req.body;
+    console.log('📧 Email verification request:', { email, hasCode: !!verification_code });
+
+    if (!email || !verification_code) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and verification code required',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // TODO: In production, verify the actual code
+    // For now, just mark as verified (placeholder for real email verification)
+    const result = await sql`
+      UPDATE users 
+      SET email_verified = true, updated_at = NOW()
+      WHERE email = ${email}
+      RETURNING id, email, email_verified
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    console.log('✅ Email verified for user:', email);
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully',
+      user: result[0],
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Email verification error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Email verification failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Phone Verification endpoint
+router.post('/verify-phone', async (req, res) => {
+  try {
+    const { phone, verification_code } = req.body;
+    console.log('📱 Phone verification request:', { phone, hasCode: !!verification_code });
+
+    if (!phone || !verification_code) {
+      return res.status(400).json({
+        success: false,
+        error: 'Phone and verification code required',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // TODO: In production, verify the actual SMS code
+    // For now, just mark as verified (placeholder for real SMS verification)
+    const result = await sql`
+      UPDATE users 
+      SET phone_verified = true, updated_at = NOW()
+      WHERE phone = ${phone}
+      RETURNING id, email, phone, phone_verified
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found with this phone number',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    console.log('✅ Phone verified for user:', phone);
+
+    res.json({
+      success: true,
+      message: 'Phone verified successfully',
+      user: result[0],
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Phone verification error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Phone verification failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Vendor Document Submission endpoint
+router.post('/vendor/submit-documents', async (req, res) => {
+  try {
+    const { user_id, document_type, document_url } = req.body;
+    console.log('📄 Vendor document submission:', { user_id, document_type });
+
+    if (!user_id || !document_type || !document_url) {
+      return res.status(400).json({
+        success: false,
+        error: 'user_id, document_type, and document_url required',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Update vendor profile with submitted document
+    const result = await sql`
+      UPDATE vendor_profiles 
+      SET 
+        verification_documents = verification_documents || ${JSON.stringify({
+          [document_type]: {
+            url: document_url,
+            submitted_at: new Date().toISOString(),
+            status: 'pending_review'
+          }
+        })},
+        updated_at = NOW()
+      WHERE user_id = ${user_id}
+      RETURNING user_id, business_name, verification_status, verification_documents
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Vendor profile not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    console.log('✅ Document submitted for vendor:', user_id);
+
+    res.json({
+      success: true,
+      message: 'Document submitted successfully. Awaiting admin review.',
+      vendor: result[0],
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Document submission error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Document submission failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Admin Vendor Verification endpoint
+router.post('/admin/verify-vendor', async (req, res) => {
+  try {
+    const { user_id, verification_status, admin_notes } = req.body;
+    console.log('👨‍💼 Admin vendor verification:', { user_id, verification_status });
+
+    if (!user_id || !verification_status) {
+      return res.status(400).json({
+        success: false,
+        error: 'user_id and verification_status required',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    if (!['verified', 'rejected', 'pending_documents'].includes(verification_status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid verification_status. Must be: verified, rejected, or pending_documents',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Update vendor profile verification status
+    const result = await sql`
+      UPDATE vendor_profiles 
+      SET 
+        verification_status = ${verification_status},
+        verification_documents = verification_documents || ${JSON.stringify({
+          admin_review: {
+            reviewed_at: new Date().toISOString(),
+            status: verification_status,
+            notes: admin_notes || null
+          }
+        })},
+        updated_at = NOW()
+      WHERE user_id = ${user_id}
+      RETURNING user_id, business_name, verification_status, verification_documents
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Vendor profile not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    console.log('✅ Vendor verification updated:', user_id, verification_status);
+
+    res.json({
+      success: true,
+      message: `Vendor ${verification_status} successfully`,
+      vendor: result[0],
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Vendor verification error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Vendor verification failed',
       timestamp: new Date().toISOString()
     });
   }
