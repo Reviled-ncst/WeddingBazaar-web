@@ -775,8 +775,8 @@ router.get('/profile', async (req, res) => {
     let vendorInfo = null;
     if (user.user_type === 'vendor') {
       const vendors = await sql`
-        SELECT id, business_name, category as business_type, location 
-        FROM vendors 
+        SELECT id, business_name, business_type 
+        FROM vendor_profiles 
         WHERE user_id = ${user.id}
       `;
       
