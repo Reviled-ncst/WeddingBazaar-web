@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Debug - Final Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin: 20px 0; }
+        button { padding: 12px 24px; margin: 10px 5px; border: none; border-radius: 6px; background: #4CAF50; color: white; cursor: pointer; font-size: 16px; }
+        button:hover { background: #45a049; }
+        button.danger { background: #f44336; }
+        button.danger:hover { background: #da190b; }
+        .log { background: #000; color: #0f0; padding: 20px; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 14px; white-space: pre-wrap; max-height: 500px; overflow-y: auto; margin: 20px 0; }
+        .status { padding: 15px; margin: 10px 0; border-radius: 5px; font-weight: bold; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+        label { display: block; margin: 15px 0 5px 0; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Final Registration Debug Test</h1>
+        <p><strong>Purpose:</strong> Test the exact registration flow that should work, step by step, with full logging.</p>
+        
+        <h2>📝 Test Registration</h2>
+        <label for="email">Email Address:</label>
+        <input type="email" id="email" value="finaltest@example.com" placeholder="Enter test email">
+        
+        <label for="firstName">First Name:</label>
+        <input type="text" id="firstName" value="Final" placeholder="First name">
+        
+        <label for="lastName">Last Name:</label>
+        <input type="text" id="lastName" value="Test" placeholder="Last name">
+        
+        <label for="phone">Phone:</label>
+        <input type="tel" id="phone" value="1234567890" placeholder="Phone number">
+
+        <div style="margin-top: 20px;">
+            <button onclick="testCompleteFlow()">🚀 Test Complete Registration Flow</button>
+            <button onclick="clearLog()" class="danger">🗑️ Clear Log</button>
+        </div>
+
+        <div id="status" style="display:none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Debug Console</h2>
+        <div id="log" class="log">Ready to test registration...\n</div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+        
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = {
+                'success': '[SUCCESS]',
+                'error': '[ERROR]',
+                'warning': '[WARNING]',
+                'info': '[INFO]'
+            }[type];
+            
+            log.textContent += `${timestamp} ${prefix} ${message}\n`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function setStatus(message, type = 'info') {
+            status.style.display = 'block';
+            status.className = `status ${type}`;
+            status.innerHTML = message;
+        }
+
+        function getFormData() {
+            return {
+                email: document.getElementById('email').value,
+                password: 'test123456', // Fixed password for testing
+                first_name: document.getElementById('firstName').value,
+                last_name: document.getElementById('lastName').value,
+                user_type: 'couple',
+                phone: document.getElementById('phone').value,
+                firebase_uid: `test-uid-${Date.now()}`
+            };
+        }
+
+        async function testCompleteFlow() {
+            addLog('🚀 STARTING COMPLETE REGISTRATION FLOW TEST', 'info');
+            setStatus('🚀 Testing registration flow...', 'warning');
+
+            const testData = getFormData();
+            addLog(`📧 Test email: ${testData.email}`, 'info');
+            addLog(`👤 User data: ${JSON.stringify(testData, null, 2)}`, 'info');
+
+            try {
+                // Step 1: Test backend connectivity
+                addLog('🔍 Step 1: Testing backend connectivity...', 'info');
+                const healthResponse = await fetch('https://weddingbazaar-web.onrender.com/api/health');
+                if (!healthResponse.ok) {
+                    throw new Error(`Backend health check failed: ${healthResponse.status}`);
+                }
+                const healthData = await healthResponse.json();
+                addLog(`✅ Backend is healthy: ${healthData.status} v${healthData.version}`, 'success');
+
+                // Step 2: Test registration endpoint
+                addLog('🔍 Step 2: Testing registration endpoint...', 'info');
+                addLog(`📡 Making POST request to: https://weddingbazaar-web.onrender.com/api/auth/register`, 'info');
+                addLog(`📦 Request body: ${JSON.stringify(testData, null, 2)}`, 'info');
+
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                addLog(`📨 Response status: ${response.status} ${response.statusText}`, 'info');
+                addLog(`📨 Response headers: ${JSON.stringify([...response.headers.entries()])}`, 'info');
+
+                if (response.ok) {
+                    const result = await response.json();
+                    addLog('🎉 REGISTRATION SUCCESSFUL!', 'success');
+                    addLog(`✅ User created: ${result.user?.id}`, 'success');
+                    addLog(`✅ Profile created: ${result.profile?.id}`, 'success');
+                    addLog(`📧 Email: ${result.user?.email}`, 'success');
+                    addLog(`🔗 Firebase UID: ${result.user?.firebase_uid}`, 'success');
+                    addLog(`📄 Full response: ${JSON.stringify(result, null, 2)}`, 'info');
+                    
+                    setStatus('✅ Registration completed successfully! User created in Neon database.', 'success');
+                } else {
+                    const errorText = await response.text();
+                    addLog(`❌ Registration failed with status ${response.status}`, 'error');
+                    addLog(`❌ Error response: ${errorText}`, 'error');
+                    
+                    setStatus(`❌ Registration failed: ${response.status} - ${errorText}`, 'error');
+                }
+
+            } catch (error) {
+                addLog(`💥 Network or JavaScript error: ${error.message}`, 'error');
+                addLog(`💥 Error stack: ${error.stack}`, 'error');
+                setStatus(`💥 Test failed: ${error.message}`, 'error');
+            }
+
+            addLog('🏁 Registration flow test completed.', 'info');
+        }
+
+        function clearLog() {
+            log.textContent = 'Debug log cleared...\n';
+            status.style.display = 'none';
+        }
+
+        // Auto-test on page load
+        setTimeout(() => {
+            addLog('🌐 Page loaded. Ready to test registration.', 'info');
+            addLog('👆 Click "Test Complete Registration Flow" to start.', 'info');
+        }, 1000);
+    </script>
+</body>
+</html>

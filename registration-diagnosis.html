@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Registration Flow Diagnosis - Wedding Bazaar</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #fdf2f8, #f3e8ff);
+            line-height: 1.6;
+        }
+        .diagnosis-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 2px solid #e879f9;
+            margin: 16px 0;
+        }
+        .status-good { 
+            background: #d1fae5; 
+            color: #065f46; 
+            padding: 12px; 
+            border-radius: 8px; 
+            border-left: 4px solid #10b981;
+            margin: 8px 0;
+        }
+        .status-bad { 
+            background: #fee2e2; 
+            color: #991b1b; 
+            padding: 12px; 
+            border-radius: 8px; 
+            border-left: 4px solid #ef4444;
+            margin: 8px 0;
+        }
+        .status-info { 
+            background: #dbeafe; 
+            color: #1e40af; 
+            padding: 12px; 
+            border-radius: 8px; 
+            border-left: 4px solid #3b82f6;
+            margin: 8px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #ec4899, #a855f7);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 8px 4px;
+            transition: all 0.2s;
+        }
+        button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(236, 72, 153, 0.4); }
+        h1 { color: #be185d; text-align: center; margin-bottom: 32px; }
+        h2 { color: #be185d; border-bottom: 2px solid #f9a8d4; padding-bottom: 8px; }
+        .test-section {
+            background: #fdf4ff;
+            border: 2px dashed #d946ef;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 16px 0;
+        }
+        pre {
+            background: #1f2937;
+            color: #10b981;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+        .endpoint { 
+            font-family: monospace; 
+            background: #f3f4f6; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            color: #374151; 
+        }
+    </style>
+</head>
+<body>
+    <div class="diagnosis-card">
+        <h1>🔍 Wedding Bazaar Registration Diagnosis</h1>
+        <p><strong>Purpose:</strong> Diagnose whether the registration flow is properly using Firebase or falling back to backend email.</p>
+    </div>
+
+    <div class="diagnosis-card">
+        <h2>🏗️ Backend Health Check</h2>
+        <button onclick="checkBackendHealth()">Check Backend Status</button>
+        <div id="backend-health"></div>
+    </div>
+
+    <div class="diagnosis-card">
+        <h2>🔥 Firebase Configuration Check</h2>
+        <button onclick="checkFirebaseConfig()">Check Firebase Setup</button>
+        <div id="firebase-config"></div>
+    </div>
+
+    <div class="diagnosis-card">
+        <h2>📧 Email System Diagnosis</h2>
+        <div class="test-section">
+            <p><strong>Test:</strong> Check which email system is being used for registration</p>
+            <button onclick="diagnoseEmailSystem()">Diagnose Email System</button>
+            <div id="email-diagnosis"></div>
+        </div>
+    </div>
+
+    <div class="diagnosis-card">
+        <h2>🧪 Registration Flow Test</h2>
+        <div class="test-section">
+            <p><strong>Test:</strong> Simulate registration to see the actual flow</p>
+            <button onclick="testRegistrationFlow()">Test Registration Flow</button>
+            <div id="registration-flow"></div>
+        </div>
+    </div>
+
+    <div class="diagnosis-card">
+        <h2>📊 Diagnosis Summary</h2>
+        <div id="diagnosis-summary">
+            <div class="status-info">Click the diagnosis buttons above to check the system status.</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBQUqT5d-C6VWwRAjBo8rvqNt4WKfC9jdw",
+            authDomain: "weddingbazaarph.firebaseapp.com",
+            projectId: "weddingbazaarph",
+            storageBucket: "weddingbazaarph.firebasestorage.app", 
+            messagingSenderId: "649210855644",
+            appId: "1:649210855644:web:3b2b914b1c96cd1e99bf0a"
+        };
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            window.firebaseAuth = auth;
+            window.firebaseApp = app;
+            console.log('✅ Firebase initialized successfully');
+        } catch (error) {
+            console.error('❌ Firebase initialization failed:', error);
+        }
+    </script>
+
+    <script>
+        const BACKEND_URL = 'https://weddingbazaar-web.onrender.com';
+        let diagnosisResults = {
+            backend: null,
+            firebase: null, 
+            email: null,
+            registration: null
+        };
+
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const className = type === 'success' ? 'status-good' : 
+                            type === 'error' ? 'status-bad' : 'status-info';
+            element.innerHTML = `<div class="${className}">${message}</div>`;
+        }
+
+        function addStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const className = type === 'success' ? 'status-good' : 
+                            type === 'error' ? 'status-bad' : 'status-info';
+            element.innerHTML += `<div class="${className}">${message}</div>`;
+        }
+
+        async function checkBackendHealth() {
+            updateStatus('backend-health', '🔄 Checking backend health...', 'info');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/health`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    diagnosisResults.backend = 'healthy';
+                    addStatus('backend-health', `✅ Backend is healthy`, 'success');
+                    addStatus('backend-health', `🗄️ Database: ${data.database}`, 'info'); 
+                    addStatus('backend-health', `🏷️ Version: ${data.version}`, 'info');
+                    addStatus('backend-health', `🌍 Environment: ${data.environment}`, 'info');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                diagnosisResults.backend = 'unhealthy';
+                addStatus('backend-health', `❌ Backend health check failed: ${error.message}`, 'error');
+            }
+
+            updateSummary();
+        }
+
+        async function checkFirebaseConfig() {
+            updateStatus('firebase-config', '🔄 Checking Firebase configuration...', 'info');
+
+            try {
+                if (window.firebaseAuth) {
+                    diagnosisResults.firebase = 'configured';
+                    addStatus('firebase-config', '✅ Firebase Auth is initialized', 'success');
+                    addStatus('firebase-config', `🔑 Project: weddingbazaarph`, 'info');
+                    addStatus('firebase-config', `🌐 Auth Domain: weddingbazaarph.firebaseapp.com`, 'info');
+                    
+                    // Test Firebase connection
+                    const user = window.firebaseAuth.currentUser;
+                    if (user) {
+                        addStatus('firebase-config', `👤 Current user: ${user.email}`, 'info');
+                        addStatus('firebase-config', `📧 Email verified: ${user.emailVerified}`, user.emailVerified ? 'success' : 'error');
+                    } else {
+                        addStatus('firebase-config', '👤 No user currently signed in', 'info');
+                    }
+                } else {
+                    throw new Error('Firebase Auth not initialized');
+                }
+            } catch (error) {
+                diagnosisResults.firebase = 'not-configured';
+                addStatus('firebase-config', `❌ Firebase configuration failed: ${error.message}`, 'error');
+            }
+
+            updateSummary();
+        }
+
+        async function diagnoseEmailSystem() {
+            updateStatus('email-diagnosis', '🔄 Diagnosing email system...', 'info');
+
+            try {
+                // Check backend email configuration
+                const backendResponse = await fetch(`${BACKEND_URL}/api/health`);
+                const backendData = await backendResponse.json();
+                
+                addStatus('email-diagnosis', '📧 Checking email system configuration...', 'info');
+
+                // Test backend email endpoint (if it exists)
+                try {
+                    const emailTestResponse = await fetch(`${BACKEND_URL}/api/auth/test-email-config`);
+                    if (emailTestResponse.ok) {
+                        const emailConfig = await emailTestResponse.json();
+                        addStatus('email-diagnosis', '🏗️ Backend email system detected', 'info');
+                        addStatus('email-diagnosis', `📮 Email configured: ${emailConfig.configured}`, emailConfig.configured ? 'success' : 'error');
+                    }
+                } catch {
+                    // No email test endpoint
+                }
+
+                // Check Firebase email capabilities
+                if (window.firebaseAuth) {
+                    addStatus('email-diagnosis', '🔥 Firebase email system available', 'success');
+                    addStatus('email-diagnosis', '📧 Firebase handles: Email verification, password reset', 'info');
+                    diagnosisResults.email = 'firebase';
+                } else {
+                    addStatus('email-diagnosis', '❌ Firebase email system not available', 'error');
+                    diagnosisResults.email = 'backend-only';
+                }
+
+            } catch (error) {
+                addStatus('email-diagnosis', `❌ Email diagnosis failed: ${error.message}`, 'error');
+                diagnosisResults.email = 'error';
+            }
+
+            updateSummary();
+        }
+
+        async function testRegistrationFlow() {
+            updateStatus('registration-flow', '🔄 Testing registration flow...', 'info');
+
+            try {
+                // Test what happens when we call the registration endpoint
+                const testData = {
+                    email: `test.${Date.now()}@example.com`,
+                    password: 'testpass123',
+                    first_name: 'Test',
+                    last_name: 'User',
+                    user_type: 'couple',
+                    phone: '+1234567890'
+                };
+
+                addStatus('registration-flow', '📝 Testing backend registration endpoint...', 'info');
+                
+                const registrationResponse = await fetch(`${BACKEND_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                if (registrationResponse.ok) {
+                    const result = await registrationResponse.json();
+                    
+                    addStatus('registration-flow', '✅ Backend registration endpoint works', 'success');
+                    addStatus('registration-flow', `👤 User created: ${result.user?.id}`, 'info');
+                    addStatus('registration-flow', `📧 Email verification required: ${result.verification_required?.email}`, 'info');
+                    
+                    if (result.verification_required?.email) {
+                        addStatus('registration-flow', '⚠️ Backend is handling email verification', 'error');
+                        addStatus('registration-flow', '💡 Should use Firebase email verification instead', 'info');
+                        diagnosisResults.registration = 'backend-email';
+                    } else {
+                        addStatus('registration-flow', '✅ Registration uses Firebase email verification', 'success');
+                        diagnosisResults.registration = 'firebase-email';
+                    }
+
+                    // Check if Firebase UID is supported
+                    if (result.user?.firebase_uid !== undefined) {
+                        addStatus('registration-flow', '🔥 Firebase UID support detected', 'success');
+                    } else {
+                        addStatus('registration-flow', '⚠️ No Firebase UID support detected', 'error');
+                    }
+
+                } else {
+                    const error = await registrationResponse.json();
+                    throw new Error(error.error || `HTTP ${registrationResponse.status}`);
+                }
+
+            } catch (error) {
+                addStatus('registration-flow', `❌ Registration flow test failed: ${error.message}`, 'error');
+                diagnosisResults.registration = 'error';
+            }
+
+            updateSummary();
+        }
+
+        function updateSummary() {
+            let summaryHTML = '<h3>📊 Diagnosis Results</h3>';
+            
+            const results = [
+                { name: 'Backend Health', result: diagnosisResults.backend },
+                { name: 'Firebase Config', result: diagnosisResults.firebase },
+                { name: 'Email System', result: diagnosisResults.email },
+                { name: 'Registration Flow', result: diagnosisResults.registration }
+            ];
+
+            results.forEach(({ name, result }) => {
+                if (result === null) {
+                    summaryHTML += `<div class="status-info">⏳ ${name}: Not tested yet</div>`;
+                } else if (result === 'healthy' || result === 'configured' || result === 'firebase' || result === 'firebase-email') {
+                    summaryHTML += `<div class="status-good">✅ ${name}: ${result}</div>`;
+                } else {
+                    summaryHTML += `<div class="status-bad">❌ ${name}: ${result}</div>`;
+                }
+            });
+
+            // Overall diagnosis
+            const allTested = Object.values(diagnosisResults).every(r => r !== null);
+            if (allTested) {
+                const allGood = diagnosisResults.backend === 'healthy' && 
+                              diagnosisResults.firebase === 'configured' &&
+                              diagnosisResults.email === 'firebase' &&
+                              diagnosisResults.registration === 'firebase-email';
+
+                if (allGood) {
+                    summaryHTML += '<div class="status-good">🎉 Perfect! System is properly configured for Firebase email verification.</div>';
+                } else {
+                    summaryHTML += '<div class="status-bad">⚠️ Issues detected. System may not be using Firebase email verification properly.</div>';
+                    
+                    if (diagnosisResults.registration === 'backend-email') {
+                        summaryHTML += '<div class="status-info">💡 Fix: Update registration flow to use Firebase email verification instead of backend.</div>';
+                    }
+                }
+            }
+
+            document.getElementById('diagnosis-summary').innerHTML = summaryHTML;
+        }
+
+        // Initialize
+        updateSummary();
+    </script>
+</body>
+</html>

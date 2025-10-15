@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { getVendorIdForUser } from '../../../../utils/vendorIdMapping';
+import { firebaseAuthService } from '../../../../services/auth/firebaseAuthService';
 import {
   Plus,
   Edit,
@@ -85,7 +86,7 @@ const SERVICE_CATEGORIES = [
 
 export const VendorServices: React.FC = () => {
   // Auth context to get the logged-in vendor
-  const { user } = useAuth();
+  const { user, isEmailVerified, firebaseUser } = useAuth();
 
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,9 +98,25 @@ export const VendorServices: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [highlightedServiceId, setHighlightedServiceId] = useState<string | null>(null);
+  const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
 
   // Get API base URL
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+
+  // Verification status check - determines what features user can access
+  const getVerificationStatus = () => {
+    return {
+      emailVerified: firebaseUser?.emailVerified || isEmailVerified || false,
+      phoneVerified: false, // TODO: Add this field to User interface later
+      documentsVerified: false // TODO: Add this field to User interface later
+    };
+  };
+
+  // Check if user can add services (requires email verification minimum)
+  const canAddServices = () => {
+    const verification = getVerificationStatus();
+    return verification.emailVerified; // Minimum requirement: email verified
+  };
 
   // Get current vendor ID from auth context with fallback
   const vendorId = user?.vendorId || user?.id || getVendorIdForUser(user as any) || '';
@@ -387,8 +404,14 @@ export const VendorServices: React.FC = () => {
     }
   };
 
-  // Quick service creation function
+  // Quick service creation function with verification check
   const handleQuickCreateService = () => {
+    // Check if user is verified before allowing service creation
+    if (!canAddServices()) {
+      setShowVerificationPrompt(true);
+      return;
+    }
+    
     setIsCreating(true);
     setEditingService(null);
   };
@@ -507,15 +530,28 @@ export const VendorServices: React.FC = () => {
               </div>
               
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <button
-                  onClick={handleQuickCreateService}
-                  className="group w-full sm:w-auto px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-xl hover:shadow-2xl bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700 hover:scale-105 relative overflow-hidden text-lg"
-                  title="Add New Service"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <Plus size={24} className="group-hover:rotate-90 transition-transform duration-300" />
-                  <span className="relative z-10">Add New Service</span>
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={handleQuickCreateService}
+                    className={`group w-full sm:w-auto px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-xl hover:shadow-2xl relative overflow-hidden text-lg ${
+                      canAddServices()
+                        ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700 hover:scale-105'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed hover:scale-100'
+                    }`}
+                    title={canAddServices() ? "Add New Service" : "Email verification required"}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <Plus size={24} className={canAddServices() ? "group-hover:rotate-90 transition-transform duration-300" : ""} />
+                    <span className="relative z-10">Add New Service</span>
+                  </button>
+                  
+                  {/* Verification indicator badge */}
+                  {!canAddServices() && (
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                      !
+                    </div>
+                  )}
+                </div>
                 
                 {/* Additional Action Buttons */}
                 <div className="flex items-center gap-3">
@@ -678,6 +714,55 @@ export const VendorServices: React.FC = () => {
               </motion.div>
             </div>
 
+            {/* Verification Status Banner */}
+            {!canAddServices() && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-2xl p-6 mb-8"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
+                    <AlertTriangle className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-orange-900 mb-2">
+                      Account Verification Required
+                    </h3>
+                    <p className="text-orange-800 mb-4">
+                      To add services and showcase your business, you need to verify your email address. 
+                      This helps us maintain quality and trust on our platform.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded-full ${
+                          getVerificationStatus().emailVerified ? 'bg-green-500' : 'bg-orange-500'
+                        }`}></div>
+                        <span className="text-sm font-medium text-orange-900">
+                          Email: {getVerificationStatus().emailVerified ? 'Verified ✓' : 'Pending'}
+                        </span>
+                      </div>
+                      {!getVerificationStatus().emailVerified && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await firebaseAuthService.reloadUser();
+                              window.location.reload();
+                            } catch (error) {
+                              window.location.reload();
+                            }
+                          }}
+                          className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+                        >
+                          Check Verification Status
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {/* Search and Filter Controls */}
             <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 border border-white/30 shadow-xl mb-8">
               <div className="flex flex-col lg:flex-row gap-6">
@@ -803,13 +888,26 @@ export const VendorServices: React.FC = () => {
                 transition={{ delay: 0.4 }}
                 className="flex flex-col sm:flex-row gap-4 justify-center items-center"
               >
-                <button
-                  onClick={handleQuickCreateService}
-                  className="group px-8 py-4 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-2xl hover:from-rose-600 hover:to-pink-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-3"
-                >
-                  <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-                  {services.length === 0 ? "Create Your First Service" : "Add New Service"}
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={handleQuickCreateService}
+                    className={`group px-8 py-4 rounded-2xl transition-all duration-300 font-semibold shadow-lg hover:shadow-xl flex items-center gap-3 ${
+                      canAddServices()
+                        ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700 hover:scale-105'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed hover:scale-100'
+                    }`}
+                  >
+                    <Plus className={`w-5 h-5 ${canAddServices() ? "group-hover:rotate-90 transition-transform duration-300" : ""}`} />
+                    {services.length === 0 ? "Create Your First Service" : "Add New Service"}
+                  </button>
+                  
+                  {/* Verification indicator badge */}
+                  {!canAddServices() && (
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                      !
+                    </div>
+                  )}
+                </div>
                 {services.length > 0 && (
                   <button
                     onClick={() => {
@@ -1383,6 +1481,95 @@ export const VendorServices: React.FC = () => {
         isLoading={false}
       />
 
+      {/* Verification Prompt Modal */}
+      {showVerificationPrompt && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 relative"
+          >
+            <button
+              onClick={() => setShowVerificationPrompt(false)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              ✕
+            </button>
+            
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="h-8 w-8 text-orange-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Verification Required</h3>
+              <p className="text-gray-600">
+                You need to verify your account before you can add services to your profile.
+              </p>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                  getVerificationStatus().emailVerified 
+                    ? 'bg-green-100 text-green-600' 
+                    : 'bg-gray-100 text-gray-400'
+                }`}>
+                  {getVerificationStatus().emailVerified ? '✓' : '○'}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">Email Verification</p>
+                  <p className="text-sm text-gray-600">
+                    {getVerificationStatus().emailVerified ? 'Verified' : 'Please check your email and click the verification link'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl opacity-60">
+                <div className="w-6 h-6 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center">○</div>
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">Phone Verification</p>
+                  <p className="text-sm text-gray-600">Coming soon - optional for enhanced trust</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl opacity-60">
+                <div className="w-6 h-6 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center">○</div>
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">Business Documents</p>
+                  <p className="text-sm text-gray-600">Coming soon - optional for professional badge</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowVerificationPrompt(false)}
+                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+              >
+                Close
+              </button>
+              {!getVerificationStatus().emailVerified && (
+                <button
+                  onClick={async () => {
+                    // Refresh Firebase user and check verification status
+                    try {
+                      await firebaseAuthService.reloadUser();
+                      window.location.reload(); // Refresh to update auth context
+                    } catch (error) {
+                      console.error('Error refreshing user:', error);
+                      window.location.reload(); // Fallback refresh
+                    }
+                  }}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-colors font-medium"
+                >
+                  Refresh Status
+                </button>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Floating Add Service Button */}
       <motion.div
         className="fixed bottom-8 right-8 z-50"
@@ -1390,13 +1577,26 @@ export const VendorServices: React.FC = () => {
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.5 }}
       >
-        <button
-          onClick={handleQuickCreateService}
-          className="w-16 h-16 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-full shadow-2xl hover:shadow-3xl hover:from-rose-600 hover:to-pink-700 transition-all duration-300 hover:scale-110 flex items-center justify-center group"
-          title="Add New Service"
-        >
-          <Plus size={24} className="group-hover:rotate-90 transition-transform duration-300" />
-        </button>
+        <div className="relative">
+          <button
+            onClick={handleQuickCreateService}
+            className={`w-16 h-16 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-110 flex items-center justify-center group ${
+              canAddServices()
+                ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+            title={canAddServices() ? "Add New Service" : "Email verification required"}
+          >
+            <Plus size={24} className={canAddServices() ? "group-hover:rotate-90 transition-transform duration-300" : ""} />
+          </button>
+          
+          {/* Verification indicator badge */}
+          {!canAddServices() && (
+            <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs">
+              !
+            </div>
+          )}
+        </div>
       </motion.div>
     </div>
   );

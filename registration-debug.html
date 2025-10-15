@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Debug Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container { 
+            background: rgba(255, 255, 255, 0.1); 
+            padding: 20px; 
+            border-radius: 15px; 
+            backdrop-filter: blur(10px);
+        }
+        button { 
+            padding: 10px 20px; 
+            margin: 10px 5px; 
+            border: none; 
+            border-radius: 5px; 
+            background: #4CAF50; 
+            color: white; 
+            cursor: pointer; 
+        }
+        button:hover { background: #45a049; }
+        .error { color: #ffcdd2; background: rgba(244, 67, 54, 0.1); padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .success { color: #c8e6c9; background: rgba(76, 175, 80, 0.1); padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .info { color: #bbdefb; background: rgba(33, 150, 243, 0.1); padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .log { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 5px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; }
+        input { 
+            width: 100%; 
+            padding: 10px; 
+            margin: 5px 0; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        input::placeholder { color: #ccc; }
+        form { margin: 20px 0; }
+        label { display: block; margin: 10px 0 5px 0; font-weight: bold; }
+        select { 
+            width: 100%; 
+            padding: 10px; 
+            margin: 5px 0; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        option { background: #333; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Registration Debug Test</h1>
+        <div class="info">
+            <strong>Purpose:</strong> Test the frontend registration flow and identify where it's failing
+        </div>
+
+        <h2>📝 Test Registration Form</h2>
+        <form id="registrationForm">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" placeholder="test@example.com" required>
+            
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" placeholder="At least 6 characters" required>
+            
+            <label for="firstName">First Name:</label>
+            <input type="text" id="firstName" name="firstName" placeholder="John" required>
+            
+            <label for="lastName">Last Name:</label>
+            <input type="text" id="lastName" name="lastName" placeholder="Doe" required>
+            
+            <label for="phone">Phone:</label>
+            <input type="tel" id="phone" name="phone" placeholder="+1234567890">
+            
+            <label for="role">User Type:</label>
+            <select id="role" name="role" required>
+                <option value="couple">Couple</option>
+                <option value="vendor">Vendor</option>
+            </select>
+            
+            <div id="vendorFields" style="display: none;">
+                <label for="businessName">Business Name:</label>
+                <input type="text" id="businessName" name="businessName" placeholder="My Wedding Business">
+                
+                <label for="businessType">Business Type:</label>
+                <select id="businessType" name="businessType">
+                    <option value="">Select Type</option>
+                    <option value="Photography">Photography</option>
+                    <option value="Catering">Catering</option>
+                    <option value="Venue">Venue</option>
+                    <option value="Music & Entertainment">Music & Entertainment</option>
+                    <option value="Wedding Planning">Wedding Planning</option>
+                    <option value="Floral Design">Floral Design</option>
+                </select>
+            </div>
+            
+            <button type="submit" style="width: 100%; padding: 15px; font-size: 16px; margin-top: 20px;">
+                🚀 Test Registration
+            </button>
+        </form>
+
+        <div id="testResults">
+            <h2>🧪 Test Results</h2>
+            <div id="log" class="log">Ready to test registration...</div>
+        </div>
+
+        <h2>🛠️ Quick Tests</h2>
+        <button onclick="testBackendConnection()">Test Backend Connection</button>
+        <button onclick="testFirebaseConfig()">Test Firebase Config</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <script type="module">
+        const log = document.getElementById('log');
+        
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            log.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Show/hide vendor fields based on user type
+        document.getElementById('role').addEventListener('change', function() {
+            const vendorFields = document.getElementById('vendorFields');
+            vendorFields.style.display = this.value === 'vendor' ? 'block' : 'none';
+        });
+
+        // Test backend connection
+        window.testBackendConnection = async () => {
+            addLog('Testing backend connection...');
+            try {
+                const API_URL = 'https://weddingbazaar-web.onrender.com';
+                const response = await fetch(`${API_URL}/api/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addLog(`Backend connected! Status: ${data.status}, Version: ${data.version}`, 'success');
+                } else {
+                    addLog(`Backend error: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                addLog(`Backend connection failed: ${error.message}`, 'error');
+            }
+        };
+
+        // Test Firebase config
+        window.testFirebaseConfig = () => {
+            addLog('Testing Firebase configuration...');
+            try {
+                // Check if Firebase config exists in environment
+                const hasFirebaseConfig = window.location.origin.includes('firebase') || 
+                                        localStorage.getItem('firebase') ||
+                                        sessionStorage.getItem('firebase');
+                
+                addLog(`Firebase config check: ${hasFirebaseConfig ? 'Found' : 'Not found'}`, hasFirebaseConfig ? 'success' : 'warning');
+                addLog('Note: This is a basic check. Full Firebase testing requires the actual app context.');
+            } catch (error) {
+                addLog(`Firebase config error: ${error.message}`, 'error');
+            }
+        };
+
+        // Clear logs
+        window.clearLogs = () => {
+            log.textContent = 'Logs cleared...\n';
+        };
+
+        // Handle registration form
+        document.getElementById('registrationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            addLog('🚀 Starting registration test...');
+            
+            const formData = new FormData(e.target);
+            const userData = {
+                email: formData.get('email'),
+                password: formData.get('password'),
+                firstName: formData.get('firstName'),
+                lastName: formData.get('lastName'),
+                role: formData.get('role'),
+                phone: formData.get('phone') || '',
+            };
+
+            if (userData.role === 'vendor') {
+                userData.business_name = formData.get('businessName');
+                userData.business_type = formData.get('businessType');
+            }
+
+            addLog(`Registration data: ${JSON.stringify(userData, null, 2)}`);
+
+            // Test direct backend call first
+            await testDirectBackendRegistration(userData);
+        });
+
+        async function testDirectBackendRegistration(userData) {
+            addLog('📡 Testing direct backend registration...');
+            
+            try {
+                const API_URL = 'https://weddingbazaar-web.onrender.com';
+                
+                const backendData = {
+                    email: userData.email,
+                    password: userData.password,
+                    first_name: userData.firstName,
+                    last_name: userData.lastName,
+                    user_type: userData.role,
+                    phone: userData.phone,
+                    firebase_uid: `test-${Date.now()}`, // Mock Firebase UID
+                    ...(userData.role === 'vendor' && {
+                        business_name: userData.business_name,
+                        business_type: userData.business_type
+                    })
+                };
+
+                addLog(`Backend request payload: ${JSON.stringify(backendData, null, 2)}`);
+
+                const response = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(backendData)
+                });
+
+                addLog(`Backend response status: ${response.status} ${response.statusText}`);
+
+                if (response.ok) {
+                    const result = await response.json();
+                    addLog(`✅ Backend registration successful!`, 'success');
+                    addLog(`User ID: ${result.user?.id}`);
+                    addLog(`Profile ID: ${result.profile?.id}`);
+                    addLog(`Full response: ${JSON.stringify(result, null, 2)}`);
+                } else {
+                    const errorText = await response.text();
+                    addLog(`❌ Backend registration failed: ${errorText}`, 'error');
+                }
+
+            } catch (error) {
+                addLog(`❌ Backend registration error: ${error.message}`, 'error');
+                addLog(`Stack trace: ${error.stack}`, 'error');
+            }
+        }
+
+        // Initial connection test
+        setTimeout(() => {
+            addLog('🌐 Running initial tests...');
+            testBackendConnection();
+        }, 1000);
+    </script>
+</body>
+</html>

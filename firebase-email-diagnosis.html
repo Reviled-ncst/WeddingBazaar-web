@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Email Verification Diagnosis - Wedding Bazaar</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #fdf2f8, #fce7f3);
+            min-height: 100vh;
+        }
+        .test-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 0;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            border: 2px solid #f9a8d4;
+        }
+        .status {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-weight: bold;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+        .success { background: #d1fae5; color: #065f46; border: 2px solid #34d399; }
+        .error { background: #fee2e2; color: #991b1b; border: 2px solid #f87171; }
+        .info { background: #dbeafe; color: #1e40af; border: 2px solid #60a5fa; }
+        .warning { background: #fef3c7; color: #92400e; border: 2px solid #fbbf24; }
+        button {
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(236, 72, 153, 0.3);
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #f9a8d4;
+            border-radius: 10px;
+            margin: 5px 0;
+            font-size: 16px;
+        }
+        .test-section {
+            border: 2px dashed #f9a8d4;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 15px;
+            background: #fdf2f8;
+        }
+        pre {
+            background: #1f2937;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .critical {
+            background: #fecaca;
+            border: 3px solid #ef4444;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .fix-section {
+            background: #d1fae5;
+            border: 3px solid #10b981;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-card">
+        <h1>🔍 Firebase Email Verification Diagnosis</h1>
+        <p>Deep diagnosis of why Firebase email verification emails are not being received.</p>
+        
+        <div class="test-section">
+            <h2>🔥 Firebase Configuration Check</h2>
+            <button onclick="checkFirebaseConfig()">Check Firebase Config</button>
+            <div id="config-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📧 Email Verification Test with Different Providers</h2>
+            <p>Test with different email providers to identify delivery issues:</p>
+            
+            <h3>Gmail Test</h3>
+            <input type="email" id="gmailTest" placeholder="your.gmail@gmail.com" value="">
+            <button onclick="testEmailVerification('gmail')">Test Gmail</button>
+            <div id="gmail-status"></div>
+
+            <h3>Yahoo Test</h3>
+            <input type="email" id="yahooTest" placeholder="your.email@yahoo.com" value="">
+            <button onclick="testEmailVerification('yahoo')">Test Yahoo</button>
+            <div id="yahoo-status"></div>
+
+            <h3>Outlook/Hotmail Test</h3>
+            <input type="email" id="outlookTest" placeholder="your.email@outlook.com" value="">
+            <button onclick="testEmailVerification('outlook')">Test Outlook</button>
+            <div id="outlook-status"></div>
+
+            <h3>Custom Domain Test</h3>
+            <input type="email" id="customTest" placeholder="your.email@yourdomain.com" value="">
+            <button onclick="testEmailVerification('custom')">Test Custom Domain</button>
+            <div id="custom-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🛠️ Firebase Project Settings Check</h2>
+            <button onclick="checkFirebaseSettings()">Check Firebase Settings</button>
+            <div id="settings-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔄 Resend Verification Test</h2>
+            <p>Test resending verification to existing user:</p>
+            <input type="email" id="resendEmail" placeholder="Existing user email">
+            <input type="password" id="resendPassword" placeholder="User password">
+            <button onclick="testResendVerification()">Resend Verification</button>
+            <div id="resend-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 Email Template Customization</h2>
+            <button onclick="checkEmailTemplate()">Check Email Template Settings</button>
+            <div id="template-status"></div>
+        </div>
+
+        <div class="critical">
+            <h2>🚨 Critical Issues Found</h2>
+            <div id="critical-issues">
+                <p>Running diagnostics...</p>
+            </div>
+        </div>
+
+        <div class="fix-section">
+            <h2>🔧 Recommended Fixes</h2>
+            <div id="recommended-fixes">
+                <p>Diagnosis in progress...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword,
+            sendEmailVerification,
+            signOut,
+            deleteUser,
+            updateProfile
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBQUqT5d-C6VWwRAjBo8rvqNt4WKfC9jdw",
+            authDomain: "weddingbazaarph.firebaseapp.com",
+            projectId: "weddingbazaarph",
+            storageBucket: "weddingbazaarph.firebasestorage.app",
+            messagingSenderId: "649210855644",
+            appId: "1:649210855644:web:3b2b914b1c96cd1e99bf0a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Make Firebase available globally
+        window.firebaseAuth = auth;
+        window.firebaseApp = app;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.sendEmailVerification = sendEmailVerification;
+        window.signOut = signOut;
+        window.deleteUser = deleteUser;
+        window.updateProfile = updateProfile;
+
+        console.log('🔥 Firebase initialized for diagnosis');
+    </script>
+
+    <script>
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function addLog(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML += `<div class="status ${type}">${message}</div>`;
+        }
+
+        function checkFirebaseConfig() {
+            updateStatus('config-status', '🔄 Checking Firebase configuration...', 'info');
+            
+            const config = window.firebaseApp.options;
+            let configHTML = '<h4>Firebase Configuration:</h4><pre>';
+            configHTML += JSON.stringify(config, null, 2);
+            configHTML += '</pre>';
+
+            // Check if authDomain is correct
+            if (config.authDomain === 'weddingbazaarph.firebaseapp.com') {
+                addLog('config-status', '✅ Auth domain is correct', 'success');
+            } else {
+                addLog('config-status', '❌ Auth domain might be incorrect', 'error');
+            }
+
+            // Check project ID
+            if (config.projectId === 'weddingbazaarph') {
+                addLog('config-status', '✅ Project ID is correct', 'success');
+            } else {
+                addLog('config-status', '❌ Project ID might be incorrect', 'error');
+            }
+
+            addLog('config-status', configHTML, 'info');
+        }
+
+        async function testEmailVerification(provider) {
+            const emailInputId = `${provider}Test`;
+            const statusId = `${provider}-status`;
+            const email = document.getElementById(emailInputId).value;
+            
+            if (!email) {
+                updateStatus(statusId, '❌ Please enter an email address', 'error');
+                return;
+            }
+
+            updateStatus(statusId, `🔄 Testing email verification for ${provider}...`, 'info');
+            
+            try {
+                // Generate random password
+                const password = 'TempPass123!';
+                
+                addLog(statusId, `📧 Creating temporary user for ${email}`, 'info');
+                
+                // Create user
+                const userCredential = await window.createUserWithEmailAndPassword(
+                    window.firebaseAuth, 
+                    email, 
+                    password
+                );
+                
+                addLog(statusId, `✅ User created with UID: ${userCredential.user.uid}`, 'success');
+
+                // Send verification email
+                addLog(statusId, '📨 Sending verification email...', 'info');
+                
+                await window.sendEmailVerification(userCredential.user, {
+                    url: 'https://weddingbazaar-web.web.app/',
+                    handleCodeInApp: false
+                });
+
+                addLog(statusId, '✅ Verification email sent successfully!', 'success');
+                addLog(statusId, '📬 Check your email (including spam/junk folder)', 'warning');
+
+                // Clean up - delete the test user after a delay
+                setTimeout(async () => {
+                    try {
+                        await window.deleteUser(userCredential.user);
+                        addLog(statusId, '🗑️ Test user cleaned up', 'info');
+                    } catch (error) {
+                        console.log('Cleanup error (expected):', error);
+                    }
+                }, 5000);
+
+                // Sign out
+                await window.signOut(window.firebaseAuth);
+
+            } catch (error) {
+                addLog(statusId, `❌ Test failed: ${error.message}`, 'error');
+                
+                if (error.code === 'auth/email-already-in-use') {
+                    addLog(statusId, '⚠️ Email already exists - trying to resend verification', 'warning');
+                    
+                    try {
+                        const userCredential = await window.signInWithEmailAndPassword(
+                            window.firebaseAuth, 
+                            email, 
+                            'TempPass123!'
+                        );
+                        
+                        await window.sendEmailVerification(userCredential.user);
+                        addLog(statusId, '✅ Verification resent to existing user!', 'success');
+                        await window.signOut(window.firebaseAuth);
+                    } catch (resendError) {
+                        addLog(statusId, `❌ Resend failed: ${resendError.message}`, 'error');
+                    }
+                }
+            }
+        }
+
+        function checkFirebaseSettings() {
+            updateStatus('settings-status', '🔄 Checking Firebase project settings...', 'info');
+            
+            const issues = [];
+            const fixes = [];
+
+            // Check 1: Auth domain
+            const authDomain = window.firebaseApp.options.authDomain;
+            addLog('settings-status', `🔗 Auth Domain: ${authDomain}`, 'info');
+
+            // Check 2: Console access
+            addLog('settings-status', '🌐 Firebase Console URL: https://console.firebase.google.com/project/weddingbazaarph', 'info');
+            addLog('settings-status', '📧 Authentication Settings: https://console.firebase.google.com/project/weddingbazaarph/authentication/settings', 'info');
+            addLog('settings-status', '📋 Email Templates: https://console.firebase.google.com/project/weddingbazaarph/authentication/templates', 'info');
+
+            // Check 3: Common issues
+            addLog('settings-status', '⚠️ Common Issues to Check in Firebase Console:', 'warning');
+            addLog('settings-status', '1. Authentication > Settings > Authorized domains - make sure your domain is listed', 'info');
+            addLog('settings-status', '2. Authentication > Templates - check if email verification template is enabled', 'info');
+            addLog('settings-status', '3. Authentication > Settings > Email verification - make sure it\'s enabled', 'info');
+            addLog('settings-status', '4. Check Firebase project quotas and billing status', 'info');
+
+            updateCriticalIssues();
+        }
+
+        async function testResendVerification() {
+            const email = document.getElementById('resendEmail').value;
+            const password = document.getElementById('resendPassword').value;
+            
+            if (!email || !password) {
+                updateStatus('resend-status', '❌ Please enter both email and password', 'error');
+                return;
+            }
+
+            updateStatus('resend-status', '🔄 Testing resend verification...', 'info');
+            
+            try {
+                // Sign in first
+                const userCredential = await window.signInWithEmailAndPassword(
+                    window.firebaseAuth, 
+                    email, 
+                    password
+                );
+
+                addLog('resend-status', '✅ User signed in successfully', 'success');
+                addLog('resend-status', `📧 Email verified: ${userCredential.user.emailVerified}`, 'info');
+
+                if (userCredential.user.emailVerified) {
+                    addLog('resend-status', '✅ Email already verified!', 'success');
+                } else {
+                    // Resend verification
+                    await window.sendEmailVerification(userCredential.user);
+                    addLog('resend-status', '📨 Verification email resent!', 'success');
+                }
+
+                await window.signOut(window.firebaseAuth);
+
+            } catch (error) {
+                addLog('resend-status', `❌ Resend failed: ${error.message}`, 'error');
+            }
+        }
+
+        function checkEmailTemplate() {
+            updateStatus('template-status', '🔄 Checking email template configuration...', 'info');
+            
+            addLog('template-status', '📋 Email Template Settings in Firebase Console:', 'info');
+            addLog('template-status', '1. Go to: https://console.firebase.google.com/project/weddingbazaarph/authentication/templates', 'info');
+            addLog('template-status', '2. Check "Email address verification" template', 'info');
+            addLog('template-status', '3. Verify sender name and email address', 'info');
+            addLog('template-status', '4. Check if custom action URL is set correctly', 'info');
+            
+            const actionURL = 'https://weddingbazaar-web.web.app/';
+            addLog('template-status', `🔗 Expected Action URL: ${actionURL}`, 'info');
+            
+            addLog('template-status', '⚠️ Common Template Issues:', 'warning');
+            addLog('template-status', '• Sender email not verified', 'info');
+            addLog('template-status', '• Action URL not set or incorrect', 'info');
+            addLog('template-status', '• Template disabled or not customized', 'info');
+            addLog('template-status', '• Missing "noreply" email configuration', 'info');
+        }
+
+        function updateCriticalIssues() {
+            const issues = [
+                '1. Firebase email verification may be disabled in project settings',
+                '2. Sender email domain may not be verified',
+                '3. Email templates may not be properly configured',
+                '4. Authorized domains may not include your domain',
+                '5. Firebase project may have reached email sending limits',
+                '6. Email provider (Gmail/Yahoo/etc.) may be blocking Firebase emails'
+            ];
+
+            const fixes = [
+                '1. Enable email verification in Firebase Console > Authentication > Settings',
+                '2. Verify sender domain in Firebase Console > Authentication > Templates',
+                '3. Customize email templates with proper action URLs',
+                '4. Add your domain to authorized domains list',
+                '5. Check Firebase project billing and quotas',
+                '6. Test with multiple email providers to isolate the issue',
+                '7. Check spam/junk folders thoroughly',
+                '8. Try using a different Firebase project for testing'
+            ];
+
+            document.getElementById('critical-issues').innerHTML = 
+                '<ul>' + issues.map(issue => `<li>${issue}</li>`).join('') + '</ul>';
+
+            document.getElementById('recommended-fixes').innerHTML = 
+                '<ul>' + fixes.map(fix => `<li>${fix}</li>`).join('') + '</ul>';
+        }
+
+        // Initialize
+        setTimeout(() => {
+            checkFirebaseConfig();
+            updateCriticalIssues();
+        }, 1000);
+    </script>
+</body>
+</html>

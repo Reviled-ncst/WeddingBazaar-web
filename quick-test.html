@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Registration Test</title>
+    <style>
+        body { font-family: Arial; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .log { background: #f0f0f0; padding: 15px; margin: 10px 0; border-radius: 5px; font-family: monospace; white-space: pre-wrap; }
+        button { padding: 10px 20px; margin: 10px 0; background: #007cba; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #005a87; }
+    </style>
+</head>
+<body>
+    <h1>Quick Registration Test</h1>
+    <button onclick="testRegistration()">Test Registration Now</button>
+    <div id="log" class="log">Ready to test...</div>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(msg) {
+            log.textContent += new Date().toLocaleTimeString() + ' - ' + msg + '\n';
+        }
+        
+        window.testRegistration = async () => {
+            addLog('🚀 Starting registration test...');
+            
+            const testEmail = `test${Date.now()}@example.com`;
+            const API_URL = 'https://weddingbazaar-web.onrender.com';
+            
+            const userData = {
+                email: testEmail,
+                password: 'test123456',
+                first_name: 'Test',
+                last_name: 'User',
+                user_type: 'couple',
+                phone: '1234567890',
+                firebase_uid: `firebase-${Date.now()}`
+            };
+            
+            addLog(`Testing with email: ${testEmail}`);
+            addLog(`API URL: ${API_URL}`);
+            addLog(`Request data: ${JSON.stringify(userData, null, 2)}`);
+            
+            try {
+                const response = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                });
+                
+                addLog(`Response status: ${response.status} ${response.statusText}`);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    addLog('✅ SUCCESS!');
+                    addLog(`User ID: ${result.user?.id}`);
+                    addLog(`Profile ID: ${result.profile?.id}`);
+                    addLog(`Full response: ${JSON.stringify(result, null, 2)}`);
+                } else {
+                    const errorText = await response.text();
+                    addLog('❌ FAILED!');
+                    addLog(`Error: ${errorText}`);
+                }
+                
+            } catch (error) {
+                addLog('❌ NETWORK ERROR!');
+                addLog(`Error: ${error.message}`);
+            }
+        };
+    </script>
+</body>
+</html>

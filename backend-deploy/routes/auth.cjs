@@ -54,15 +54,11 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Check email verification status - SECURITY: Block login if email not verified
+    // Log email verification status but allow login with restrictions
     if (!user.email_verified) {
-      console.log('❌ Email not verified for user:', email);
-      return res.status(403).json({
-        success: false,
-        error: 'Email not verified. Please check your email and verify your account before logging in.',
-        verification_required: true,
-        timestamp: new Date().toISOString()
-      });
+      console.log('⚠️ User logging in with unverified email - limited access will be enforced by frontend:', email);
+    } else {
+      console.log('✅ User logging in with verified email - full access granted:', email);
     }
 
     // Generate JWT token
@@ -115,6 +111,7 @@ router.post('/register', async (req, res) => {
       user_type = 'couple',
       phone,
       firebase_uid, // New field for Firebase integration
+      send_verification_email = false, // New field for backend email verification
       // Vendor-specific fields
       business_name,
       business_type,
@@ -322,6 +319,32 @@ router.post('/register', async (req, res) => {
     );
     
     console.log('✅ [AUTH] User and profile registered successfully:', newUser.id);
+    
+    // Send verification email if requested (backend-only registration)
+    if (send_verification_email && !isFirebaseVerified) {
+      try {
+        console.log('📧 Sending verification email to:', email);
+        
+        // Generate verification token
+        const crypto = require('crypto');
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        
+        // Store verification token in database
+        await sql`
+          UPDATE users 
+          SET verification_token = ${verificationToken}, verification_sent_at = NOW()
+          WHERE id = ${userId}
+        `;
+        
+        // Send verification email
+        await emailService.sendVerificationEmail(email, verificationToken, first_name);
+        console.log('✅ Verification email sent successfully to:', email);
+        
+      } catch (emailError) {
+        console.error('❌ Failed to send verification email:', emailError);
+        // Don't fail the registration because of email issues
+      }
+    }
     
     // Return success response with verification requirements
     res.status(201).json({

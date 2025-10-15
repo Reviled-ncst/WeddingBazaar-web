@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 Firebase Email Verification Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #fdf2f8, #fce7f3);
+            line-height: 1.6;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            border: 2px solid #f9a8d4;
+            margin: 20px 0;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        .success { background: #d1fae5; color: #065f46; border: 2px solid #34d399; }
+        .error { background: #fee2e2; color: #991b1b; border: 2px solid #f87171; }
+        .info { background: #dbeafe; color: #1e40af; border: 2px solid #60a5fa; }
+        .warning { background: #fef3c7; color: #92400e; border: 2px solid #fbbf24; }
+        button {
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(236, 72, 153, 0.3);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #f9a8d4;
+            border-radius: 10px;
+            margin: 10px 0;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .test-step {
+            background: #fdf2f8;
+            border: 2px dashed #f9a8d4;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        h1 { color: #be185d; text-align: center; }
+        h2 { color: #be185d; border-bottom: 2px solid #f9a8d4; padding-bottom: 10px; }
+        .emoji { font-size: 1.2em; margin-right: 8px; }
+        pre {
+            background: #1f2937;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔥 Firebase Email Verification Test</h1>
+        <p><strong>Goal:</strong> Test that Firebase properly sends email verification emails and handles the verification flow.</p>
+        
+        <div class="test-step">
+            <h2>📧 Step 1: Test Email Registration</h2>
+            <p><strong>Important:</strong> Use a <strong>real email address</strong> that you can access!</p>
+            
+            <input type="email" id="testEmail" placeholder="Enter your real email address" value="">
+            <input type="password" id="testPassword" placeholder="Password (min 6 chars)" value="testpass123">
+            <input type="text" id="testName" placeholder="Your Name" value="Test User">
+            
+            <button onclick="testFirebaseRegistration()" id="registerBtn">
+                🚀 Register with Firebase & Send Email Verification
+            </button>
+            
+            <div id="registrationResult"></div>
+        </div>
+
+        <div class="test-step">
+            <h2>📬 Step 2: Check Your Email</h2>
+            <div class="info">
+                <div class="emoji">ℹ️</div>
+                After clicking register above, check your email inbox (and spam folder) for a verification email from Firebase.
+                The email will be from <strong>noreply@weddingbazaarph.firebaseapp.com</strong>
+            </div>
+            
+            <button onclick="checkEmailSent()" id="checkEmailBtn" disabled>
+                📧 I've Checked My Email
+            </button>
+            
+            <div id="emailCheckResult"></div>
+        </div>
+
+        <div class="test-step">
+            <h2>✅ Step 3: Click Email Verification Link</h2>
+            <div class="info">
+                <div class="emoji">👆</div>
+                Click the verification link in your email. It should redirect you to the Wedding Bazaar homepage with a success message.
+            </div>
+            
+            <button onclick="checkVerificationStatus()" id="verifyBtn" disabled>
+                🔍 Check If Email Is Verified
+            </button>
+            
+            <div id="verificationResult"></div>
+        </div>
+
+        <div class="test-step">
+            <h2>🔐 Step 4: Test Login (After Verification)</h2>
+            <div class="warning">
+                <div class="emoji">⚠️</div>
+                Only works after you've clicked the email verification link!
+            </div>
+            
+            <button onclick="testLogin()" id="loginBtn" disabled>
+                🔑 Test Login with Verified Email
+            </button>
+            
+            <div id="loginResult"></div>
+        </div>
+
+        <div class="test-step">
+            <h2>🎯 Final Results</h2>
+            <div id="finalResults">
+                <div class="info">Complete the steps above to see the final test results.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword,
+            sendEmailVerification,
+            signOut,
+            onAuthStateChanged,
+            reload
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Firebase config for Wedding Bazaar
+        const firebaseConfig = {
+            apiKey: "AIzaSyBQUqT5d-C6VWwRAjBo8rvqNt4WKfC9jdw",
+            authDomain: "weddingbazaarph.firebaseapp.com", 
+            projectId: "weddingbazaarph",
+            storageBucket: "weddingbazaarph.firebasestorage.app",
+            messagingSenderId: "649210855644",
+            appId: "1:649210855644:web:3b2b914b1c96cd1e99bf0a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Make Firebase available globally
+        window.firebaseAuth = auth;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.sendEmailVerification = sendEmailVerification;
+        window.signOut = signOut;
+        window.reload = reload;
+
+        // Listen for auth state changes
+        onAuthStateChanged(auth, (user) => {
+            console.log('🔥 Firebase Auth State Changed:', user ? `User: ${user.email}` : 'No user');
+            if (user) {
+                console.log('📧 Email Verified:', user.emailVerified);
+            }
+        });
+
+        console.log('🔥 Firebase initialized successfully for Wedding Bazaar');
+    </script>
+
+    <script>
+        let testState = {
+            registered: false,
+            emailSent: false,
+            verified: false,
+            loginSuccess: false
+        };
+
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function addStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML += `<div class="status ${type}">${message}</div>`;
+        }
+
+        async function testFirebaseRegistration() {
+            const email = document.getElementById('testEmail').value.trim();
+            const password = document.getElementById('testPassword').value.trim();
+            const name = document.getElementById('testName').value.trim();
+
+            if (!email || !email.includes('@')) {
+                updateStatus('registrationResult', '❌ Please enter a valid email address', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                updateStatus('registrationResult', '❌ Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            if (!name) {
+                updateStatus('registrationResult', '❌ Please enter your name', 'error');
+                return;
+            }
+
+            document.getElementById('registerBtn').disabled = true;
+            updateStatus('registrationResult', '🔄 Creating Firebase user account...', 'info');
+
+            try {
+                // Create Firebase user
+                const userCredential = await window.createUserWithEmailAndPassword(
+                    window.firebaseAuth, 
+                    email, 
+                    password
+                );
+
+                addStatus('registrationResult', `✅ Firebase user created: ${userCredential.user.uid}`, 'success');
+
+                // Send email verification
+                await window.sendEmailVerification(userCredential.user);
+                
+                addStatus('registrationResult', '📧 Email verification sent to: ' + email, 'success');
+                addStatus('registrationResult', '🚪 User signed out - must verify email first', 'info');
+
+                // Sign out user (they must verify email first)
+                await window.signOut(window.firebaseAuth);
+
+                testState.registered = true;
+                testState.emailSent = true;
+                document.getElementById('checkEmailBtn').disabled = false;
+
+                addStatus('registrationResult', '🎉 Registration complete! Now check your email.', 'success');
+
+            } catch (error) {
+                addStatus('registrationResult', `❌ Registration failed: ${error.message}`, 'error');
+                console.error('Registration error:', error);
+            }
+
+            document.getElementById('registerBtn').disabled = false;
+        }
+
+        function checkEmailSent() {
+            const email = document.getElementById('testEmail').value;
+            
+            updateStatus('emailCheckResult', 
+                `📬 Email sent to: <strong>${email}</strong><br>
+                 📁 Check your inbox and <strong>spam folder</strong><br>
+                 👀 Look for email from: <strong>noreply@weddingbazaarph.firebaseapp.com</strong><br>
+                 ⏰ It may take 1-2 minutes to arrive`, 'info');
+            
+            document.getElementById('verifyBtn').disabled = false;
+            
+            // Auto-check verification status every 10 seconds
+            setTimeout(() => {
+                checkVerificationStatus();
+            }, 10000);
+        }
+
+        async function checkVerificationStatus() {
+            updateStatus('verificationResult', '🔄 Checking verification status...', 'info');
+            
+            try {
+                const email = document.getElementById('testEmail').value;
+                const password = document.getElementById('testPassword').value;
+
+                // Try to sign in temporarily to check verification status
+                const userCredential = await window.signInWithEmailAndPassword(
+                    window.firebaseAuth, 
+                    email, 
+                    password
+                );
+
+                // Reload user to get latest email verification status
+                await window.reload(userCredential.user);
+
+                if (userCredential.user.emailVerified) {
+                    addStatus('verificationResult', '✅ Email verified successfully!', 'success');
+                    addStatus('verificationResult', '🎉 You can now login with your verified account', 'success');
+                    
+                    testState.verified = true;
+                    document.getElementById('loginBtn').disabled = false;
+                    
+                    // Sign out again
+                    await window.signOut(window.firebaseAuth);
+                } else {
+                    addStatus('verificationResult', '⏳ Email not yet verified', 'warning');
+                    addStatus('verificationResult', '📧 Please click the link in your email first', 'info');
+                    
+                    // Sign out the unverified user
+                    await window.signOut(window.firebaseAuth);
+                }
+
+            } catch (error) {
+                if (error.code === 'auth/too-many-requests') {
+                    addStatus('verificationResult', '⚠️ Too many attempts. Wait a moment and try again.', 'warning');
+                } else {
+                    addStatus('verificationResult', `❌ Error checking verification: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+
+            updateStatus('loginResult', '🔄 Testing login with verified email...', 'info');
+
+            try {
+                const userCredential = await window.signInWithEmailAndPassword(
+                    window.firebaseAuth, 
+                    email, 
+                    password
+                );
+
+                if (!userCredential.user.emailVerified) {
+                    await window.signOut(window.firebaseAuth);
+                    addStatus('loginResult', '❌ Email still not verified', 'error');
+                    return;
+                }
+
+                addStatus('loginResult', '✅ Login successful with verified email!', 'success');
+                addStatus('loginResult', `👤 Logged in as: ${userCredential.user.email}`, 'info');
+                addStatus('loginResult', `🆔 User ID: ${userCredential.user.uid}`, 'info');
+                addStatus('loginResult', `✉️ Email verified: ${userCredential.user.emailVerified}`, 'success');
+
+                testState.loginSuccess = true;
+                updateFinalResults();
+
+                // Sign out after successful test
+                setTimeout(async () => {
+                    await window.signOut(window.firebaseAuth);
+                    addStatus('loginResult', '🚪 Signed out (test complete)', 'info');
+                }, 3000);
+
+            } catch (error) {
+                addStatus('loginResult', `❌ Login failed: ${error.message}`, 'error');
+            }
+        }
+
+        function updateFinalResults() {
+            const totalTests = 4;
+            const passedTests = Object.values(testState).filter(Boolean).length;
+            
+            let resultHTML = `<h3>📊 Test Results: ${passedTests}/${totalTests} Passed</h3>`;
+            
+            const tests = [
+                { name: 'Registration', passed: testState.registered },
+                { name: 'Email Sent', passed: testState.emailSent },
+                { name: 'Email Verified', passed: testState.verified },
+                { name: 'Login Success', passed: testState.loginSuccess }
+            ];
+
+            tests.forEach(test => {
+                const emoji = test.passed ? '✅' : '❌';
+                const status = test.passed ? 'success' : 'error';
+                resultHTML += `<div class="status ${status}">${emoji} ${test.name}</div>`;
+            });
+
+            if (passedTests === totalTests) {
+                resultHTML += '<div class="status success">🎉 All tests passed! Firebase email verification is working perfectly!</div>';
+                resultHTML += '<div class="info">🚀 You can now use the Wedding Bazaar registration with confidence!</div>';
+            } else {
+                resultHTML += `<div class="status warning">⚠️ ${totalTests - passedTests} tests still need to pass</div>`;
+            }
+
+            document.getElementById('finalResults').innerHTML = resultHTML;
+        }
+
+        // Initialize with a random email for testing
+        document.getElementById('testEmail').value = '';
+        
+        // Update final results on load
+        updateFinalResults();
+    </script>
+</body>
+</html>

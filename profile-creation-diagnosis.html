@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Creation Diagnosis - Wedding Bazaar</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #fdf2f8, #fce7f3);
+            min-height: 100vh;
+        }
+        .diagnostic-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 0;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            border: 2px solid #f9a8d4;
+        }
+        .status {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-weight: bold;
+            margin: 12px 0;
+            font-size: 14px;
+        }
+        .success { background: #d1fae5; color: #065f46; border: 2px solid #34d399; }
+        .error { background: #fee2e2; color: #991b1b; border: 2px solid #f87171; }
+        .info { background: #dbeafe; color: #1e40af; border: 2px solid #60a5fa; }
+        .warning { background: #fef3c7; color: #92400e; border: 2px solid #fbbf24; }
+        button {
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 8px 5px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(236, 72, 153, 0.3);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        pre {
+            background: #1f2937;
+            color: #10b981;
+            padding: 16px;
+            border-radius: 12px;
+            overflow-x: auto;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .step {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 12px;
+            border-left: 4px solid #ec4899;
+            margin: 10px 0;
+        }
+        .step h4 {
+            margin: 0 0 8px 0;
+            color: #ec4899;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #f9a8d4;
+            border-radius: 8px;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .log-container {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="diagnostic-card">
+        <h1>🔍 Profile Creation Diagnosis</h1>
+        <p>Debug tool to identify issues with Firebase authentication and Neon database profile creation.</p>
+
+        <div class="step">
+            <h4>Step 1: Check Current Authentication State</h4>
+            <button onclick="checkAuthState()">🔍 Check Firebase Auth State</button>
+            <div id="auth-status"></div>
+        </div>
+
+        <div class="step">
+            <h4>Step 2: Test Backend Registration Endpoint</h4>
+            <div class="test-grid">
+                <div>
+                    <input type="email" id="testEmail" placeholder="Test Email" value="">
+                    <input type="text" id="testFirstName" placeholder="First Name" value="TestUser">
+                    <input type="text" id="testLastName" placeholder="Last Name" value="Profile">
+                    <input type="password" id="testPassword" placeholder="Password" value="test123456">
+                </div>
+                <div>
+                    <label>
+                        <input type="radio" name="testUserType" value="couple" checked> Couple
+                    </label><br>
+                    <label>
+                        <input type="radio" name="testUserType" value="vendor"> Vendor
+                    </label><br>
+                    <input type="text" id="testFirebaseUid" placeholder="Firebase UID (optional)" value="">
+                </div>
+            </div>
+            <button onclick="testBackendRegistration()">🏗️ Test Backend Registration</button>
+            <div id="backend-test"></div>
+        </div>
+
+        <div class="step">
+            <h4>Step 3: Check Existing Users in Database</h4>
+            <input type="email" id="checkEmail" placeholder="Email to check" value="">
+            <button onclick="checkExistingUser()">👤 Check If User Exists</button>
+            <div id="user-check"></div>
+        </div>
+
+        <div class="step">
+            <h4>Step 4: Test Firebase + Backend Sync</h4>
+            <button onclick="testFullFlow()">🔄 Test Complete Registration Flow</button>
+            <div id="sync-test"></div>
+        </div>
+
+        <div class="step">
+            <h4>Step 5: Check Database Schema</h4>
+            <button onclick="checkDatabaseSchema()">🗃️ Verify Database Tables</button>
+            <div id="schema-check"></div>
+        </div>
+
+        <div class="diagnostic-card">
+            <h2>📋 Diagnostic Logs</h2>
+            <div class="log-container" id="diagnostic-logs">
+                <div class="status info">Ready to run diagnostics...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBQUqT5d-C6VWwRAjBo8rvqNt4WKfC9jdw",
+            authDomain: "weddingbazaarph.firebaseapp.com",
+            projectId: "weddingbazaarph",
+            storageBucket: "weddingbazaarph.firebasestorage.app",
+            messagingSenderId: "649210855644",
+            appId: "1:649210855644:web:3b2b914b1c96cd1e99bf0a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        
+        window.firebaseAuth = auth;
+        
+        // Monitor auth state
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                log(`🔥 Firebase user authenticated: ${user.email} (${user.uid})`, 'success');
+                log(`✉️ Email verified: ${user.emailVerified}`, user.emailVerified ? 'success' : 'warning');
+            } else {
+                log('🔒 No Firebase user authenticated', 'info');
+            }
+        });
+        
+        log('🔥 Firebase initialized', 'success');
+    </script>
+
+    <script>
+        const API_BASE_URL = 'https://weddingbazaar-web.onrender.com';
+        
+        // Generate random email
+        document.getElementById('testEmail').value = `test.${Date.now()}@example.com`;
+        document.getElementById('checkEmail').value = document.getElementById('testEmail').value;
+
+        function log(message, type = 'info') {
+            const logsContainer = document.getElementById('diagnostic-logs');
+            const logElement = document.createElement('div');
+            logElement.className = `status ${type}`;
+            logElement.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logsContainer.appendChild(logElement);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function addStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML += `<div class="status ${type}">${message}</div>`;
+        }
+
+        async function checkAuthState() {
+            log('🔍 Checking Firebase authentication state...', 'info');
+            
+            const user = window.firebaseAuth.currentUser;
+            
+            if (user) {
+                updateStatus('auth-status', `✅ Firebase User: ${user.email}`, 'success');
+                addStatus('auth-status', `🆔 UID: ${user.uid}`, 'info');
+                addStatus('auth-status', `✉️ Email Verified: ${user.emailVerified}`, user.emailVerified ? 'success' : 'warning');
+                addStatus('auth-status', `📅 Created: ${user.metadata.creationTime}`, 'info');
+                
+                log(`✅ Firebase user found: ${user.email}`, 'success');
+                
+                // Check for pending profile data
+                const pendingProfile = localStorage.getItem('pending_user_profile');
+                if (pendingProfile) {
+                    try {
+                        const profileData = JSON.parse(pendingProfile);
+                        addStatus('auth-status', `📋 Pending Profile Found: ${profileData.user_type}`, 'warning');
+                        log('📋 Found pending user profile in localStorage', 'warning');
+                    } catch (e) {
+                        log('❌ Error parsing pending profile data', 'error');
+                    }
+                } else {
+                    addStatus('auth-status', '📋 No Pending Profile Data', 'info');
+                }
+            } else {
+                updateStatus('auth-status', '❌ No Firebase user authenticated', 'error');
+                log('❌ No Firebase user found', 'error');
+            }
+        }
+
+        async function testBackendRegistration() {
+            log('🏗️ Testing backend registration endpoint...', 'info');
+            
+            const formData = {
+                email: document.getElementById('testEmail').value,
+                first_name: document.getElementById('testFirstName').value,
+                last_name: document.getElementById('testLastName').value,
+                password: document.getElementById('testPassword').value,
+                user_type: document.querySelector('input[name="testUserType"]:checked').value,
+                firebase_uid: document.getElementById('testFirebaseUid').value || null
+            };
+
+            updateStatus('backend-test', '🔄 Sending registration request...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+                
+                log(`📡 Backend response: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                if (response.ok) {
+                    addStatus('backend-test', `✅ Registration successful!`, 'success');
+                    addStatus('backend-test', `👤 User ID: ${result.user?.id}`, 'info');
+                    addStatus('backend-test', `📧 Email Verified: ${result.user?.email_verified}`, 'info');
+                    addStatus('backend-test', `🔥 Firebase UID: ${result.user?.firebase_uid || 'None'}`, 'info');
+                    
+                    log(`✅ User created with ID: ${result.user?.id}`, 'success');
+                } else {
+                    addStatus('backend-test', `❌ Registration failed: ${result.error}`, 'error');
+                    log(`❌ Registration failed: ${result.error}`, 'error');
+                }
+                
+                addStatus('backend-test', `<pre>${JSON.stringify(result, null, 2)}</pre>`, 'info');
+                
+            } catch (error) {
+                addStatus('backend-test', `❌ Network error: ${error.message}`, 'error');
+                log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkExistingUser() {
+            const email = document.getElementById('checkEmail').value;
+            
+            if (!email) {
+                updateStatus('user-check', '❌ Please enter an email address', 'error');
+                return;
+            }
+            
+            log(`🔍 Checking if user exists: ${email}`, 'info');
+            updateStatus('user-check', '🔄 Checking user existence...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/profile?email=${encodeURIComponent(email)}`);
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    addStatus('user-check', '✅ User found in database!', 'success');
+                    addStatus('user-check', `👤 ID: ${userData.id}`, 'info');
+                    addStatus('user-check', `🎭 Type: ${userData.user_type}`, 'info');
+                    addStatus('user-check', `🔥 Firebase UID: ${userData.firebase_uid || 'None'}`, 'info');
+                    addStatus('user-check', `<pre>${JSON.stringify(userData, null, 2)}</pre>`, 'info');
+                    
+                    log(`✅ User found: ${userData.user_type}`, 'success');
+                } else if (response.status === 404) {
+                    addStatus('user-check', '❌ User not found in database', 'warning');
+                    log(`⚠️ User not found: ${email}`, 'warning');
+                } else {
+                    const error = await response.text();
+                    addStatus('user-check', `❌ Error: ${error}`, 'error');
+                    log(`❌ Profile check failed: ${error}`, 'error');
+                }
+            } catch (error) {
+                addStatus('user-check', `❌ Network error: ${error.message}`, 'error');
+                log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testFullFlow() {
+            log('🔄 Testing complete Firebase + Backend sync flow...', 'info');
+            updateStatus('sync-test', '🔄 Running complete flow test...', 'info');
+            
+            // Check current Firebase user
+            const user = window.firebaseAuth.currentUser;
+            
+            if (!user) {
+                addStatus('sync-test', '❌ No Firebase user - please login first', 'error');
+                return;
+            }
+            
+            addStatus('sync-test', `👤 Firebase User: ${user.email}`, 'success');
+            
+            // Check if user exists in backend
+            try {
+                const profileResponse = await fetch(`${API_BASE_URL}/api/auth/profile?email=${encodeURIComponent(user.email)}`);
+                
+                if (profileResponse.ok) {
+                    const profile = await profileResponse.json();
+                    addStatus('sync-test', '✅ Backend profile found!', 'success');
+                    addStatus('sync-test', `🎭 Role: ${profile.user_type}`, 'info');
+                    addStatus('sync-test', `🔥 Firebase UID Match: ${profile.firebase_uid === user.uid}`, profile.firebase_uid === user.uid ? 'success' : 'warning');
+                    
+                    log(`✅ Complete profile sync working`, 'success');
+                } else {
+                    addStatus('sync-test', '❌ Backend profile not found', 'warning');
+                    addStatus('sync-test', 'This explains why profile creation is failing', 'info');
+                    
+                    log(`⚠️ Backend profile missing for Firebase user`, 'warning');
+                    
+                    // Check for pending profile data
+                    const pendingProfile = localStorage.getItem('pending_user_profile');
+                    if (pendingProfile) {
+                        addStatus('sync-test', '📋 Found pending profile - attempting creation...', 'info');
+                        
+                        try {
+                            const profileData = JSON.parse(pendingProfile);
+                            
+                            const createResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    ...profileData,
+                                    firebase_uid: user.uid
+                                })
+                            });
+                            
+                            if (createResponse.ok) {
+                                const result = await createResponse.json();
+                                addStatus('sync-test', '✅ Backend profile created successfully!', 'success');
+                                localStorage.removeItem('pending_user_profile');
+                                log(`✅ Profile creation successful`, 'success');
+                            } else {
+                                const error = await createResponse.text();
+                                addStatus('sync-test', `❌ Profile creation failed: ${error}`, 'error');
+                                log(`❌ Profile creation failed`, 'error');
+                            }
+                        } catch (e) {
+                            addStatus('sync-test', `❌ Error creating profile: ${e.message}`, 'error');
+                        }
+                    } else {
+                        addStatus('sync-test', '❌ No pending profile data found', 'error');
+                    }
+                }
+            } catch (error) {
+                addStatus('sync-test', `❌ Sync test failed: ${error.message}`, 'error');
+                log(`❌ Sync test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkDatabaseSchema() {
+            log('🗃️ Checking database schema and health...', 'info');
+            updateStatus('schema-check', '🔄 Checking database schema...', 'info');
+            
+            try {
+                const healthResponse = await fetch(`${API_BASE_URL}/api/health`);
+                const healthData = await healthResponse.json();
+                
+                if (healthResponse.ok) {
+                    addStatus('schema-check', '✅ Database connection healthy', 'success');
+                    addStatus('schema-check', `🗄️ Database: ${healthData.database}`, 'info');
+                    addStatus('schema-check', `📊 Stats: ${JSON.stringify(healthData.databaseStats)}`, 'info');
+                    
+                    log(`✅ Database healthy: ${healthData.database}`, 'success');
+                } else {
+                    addStatus('schema-check', '❌ Database health check failed', 'error');
+                    log(`❌ Database health check failed`, 'error');
+                }
+                
+                // Test vendor data
+                const vendorsResponse = await fetch(`${API_BASE_URL}/api/vendors/featured`);
+                if (vendorsResponse.ok) {
+                    const vendors = await vendorsResponse.json();
+                    addStatus('schema-check', `🏪 Featured vendors: ${vendors.length}`, 'success');
+                    log(`✅ Vendors table accessible: ${vendors.length} records`, 'success');
+                } else {
+                    addStatus('schema-check', '❌ Vendors table inaccessible', 'error');
+                }
+                
+            } catch (error) {
+                addStatus('schema-check', `❌ Schema check failed: ${error.message}`, 'error');
+                log(`❌ Schema check failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize
+        log('🔧 Profile Creation Diagnostic Tool initialized', 'info');
+        log('👆 Click "Check Firebase Auth State" to begin diagnosis', 'info');
+    </script>
+</body>
+</html>
