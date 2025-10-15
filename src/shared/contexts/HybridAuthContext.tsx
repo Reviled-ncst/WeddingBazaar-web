@@ -111,10 +111,58 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      // If user not found in backend, check localStorage for stored profile
-      console.log('📝 User not found in Neon, checking localStorage...');
-      const storedProfile = localStorage.getItem('weddingbazaar_user_profile');
+      // If user not found in backend, check for pending user data (from registration)
+      console.log('📝 User not found in Neon, checking for pending registration data...');
+      const pendingProfile = localStorage.getItem('pending_user_profile');
       
+      if (pendingProfile && fbUser.emailVerified) {
+        try {
+          const profileData = JSON.parse(pendingProfile);
+          console.log('� Found pending user profile, creating backend profile:', profileData);
+          
+          // User has verified email, now create the backend profile
+          const backendResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              ...profileData,
+              firebase_uid: fbUser.uid // Link to Firebase account
+            })
+          });
+
+          if (backendResponse.ok) {
+            const backendResult = await backendResponse.json();
+            console.log('✅ Backend profile created after email verification:', backendResult);
+            
+            // Remove pending data
+            localStorage.removeItem('pending_user_profile');
+            
+            // Create complete user object
+            const newUser: User = {
+              id: backendResult.user?.id || backendResult.id,
+              email: fbUser.email || '',
+              firstName: profileData.first_name || '',
+              lastName: profileData.last_name || '',
+              role: profileData.user_type || 'couple',
+              phone: profileData.phone || '',
+              businessName: profileData.business_name || '',
+              emailVerified: fbUser.emailVerified,
+              firebaseUid: fbUser.uid
+            };
+
+            setUser(newUser);
+            console.log('✅ Complete user profile created and set');
+            return;
+          }
+        } catch (e) {
+          console.warn('⚠️ Failed to create backend profile from pending data:', e);
+        }
+      }
+
+      // Fallback: check localStorage for stored profile (legacy)
+      const storedProfile = localStorage.getItem('weddingbazaar_user_profile');
       if (storedProfile) {
         try {
           const profileData = JSON.parse(storedProfile);
@@ -173,146 +221,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const register = async (userData: RegisterData): Promise<void> => {
     try {
       setIsLoading(true);
-      console.log('🔧 Starting hybrid registration...');
+      console.log('🔧 Starting Firebase-first registration with email verification...');
       
-      // Check if Firebase is properly configured
-      const isFirebaseConfigured = import.meta.env.VITE_FIREBASE_API_KEY && 
-                                   import.meta.env.VITE_FIREBASE_API_KEY !== "demo-api-key";
-      
-      if (isFirebaseConfigured) {
-        console.log('🔥 Using Backend-only registration (Firebase only for login after verification)');
-        
-        // NO FIREBASE REGISTRATION - Only backend registration
-        console.log('📧 Registration will be backend-only with email verification');
-
-        // Create user profile in Neon database (backend-only registration)
-        try {
-          // Map frontend fields to backend expected fields
-          const userData_storage = {
-            // Backend expects underscore field names
-            first_name: userData.firstName,   // Backend expects first_name 
-            last_name: userData.lastName,     // Backend expects last_name
-            email: userData.email,
-            password: userData.password,      // Use the actual password for backend auth
-            user_type: userData.role,         // Backend expects user_type (couple/vendor)
-            phone: userData.phone,
-            ...(userData.role === 'vendor' && {
-              business_name: userData.business_name,
-              business_type: userData.business_type,
-              location: typeof userData.location === 'string' ? userData.location : JSON.stringify(userData.location)
-            })
-          };
-
-          console.log('📤 Attempting backend-only registration...');
-          console.log('📦 Sending data:', JSON.stringify(userData_storage, null, 2));
-          
-          const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(userData_storage)
-          });
-
-          console.log('📊 Registration response status:', response.status);
-
-          if (response.ok) {
-            const result = await response.json();
-            console.log('✅ User profile created in Neon database:', result);
-            
-            // Clear any local storage since we successfully stored in backend
-            localStorage.removeItem('weddingbazaar_user_profile');
-            
-            // Store the role temporarily in localStorage for when they verify email
-            localStorage.setItem('registration_pending_role', userData.role);
-            console.log('💾 Stored pending role for email verification:', userData.role);
-            
-            console.log('📧 User must verify email before being logged in');
-          } else {
-            const errorText = await response.text();
-            console.error('❌ Failed to create user profile in Neon:', {
-              status: response.status,
-              statusText: response.statusText,
-              error: errorText,
-              sentData: userData_storage
-            });
-            
-            // Store locally as fallback
-            localStorage.setItem('weddingbazaar_user_profile', JSON.stringify(userData_storage));
-            console.log('💾 User profile stored locally as fallback');
-          }
-        } catch (backendError) {
-          console.warn('⚠️ Backend registration failed, storing locally:', backendError);
-          
-          // Store locally as fallback
-          const userData_storage = {
-            email: userData.email,
-            first_name: userData.firstName,
-            last_name: userData.lastName,
-            phone: userData.phone,
-            role: userData.role,
-            user_type: userData.role
-          };
-          localStorage.setItem('weddingbazaar_user_profile', JSON.stringify(userData_storage));
-          console.log('💾 User profile stored locally due to error');
-        }
-
-        console.log('✅ Hybrid registration completed');
-      } else {
-        console.log('🐘 Firebase not configured, using backend-only registration');
-        
-        // Fallback to backend registration
-        const backendUserData = {
-          email: userData.email,
-          password: userData.password,
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-          phone: userData.phone,
-          user_type: userData.role,            ...(userData.role === 'vendor' && {
-              business_name: userData.business_name,
-              business_type: userData.business_type,
-              location: typeof userData.location === 'string' ? userData.location : JSON.stringify(userData.location) // Backend accepts string for location
-          })
-        };
-
-        const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(backendUserData)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Registration failed');
-        }
-
-        const result = await response.json();
-        console.log('✅ Backend registration successful:', result);
-
-        // Create a basic user object
-        const newUser: User = {
-          id: result.id || result.user?.id || 'temp-id',
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          role: userData.role,
-          phone: userData.phone,
+      // Step 1: Create Firebase user and send email verification
+      const registrationData: any = {
+        email: userData.email,
+        password: userData.password,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        userType: userData.role,
+        phone: userData.phone,
+        ...(userData.role === 'vendor' && {
           businessName: userData.business_name,
-          emailVerified: false, // Backend doesn't have email verification
-        };
+          businessType: userData.business_type,
+          location: userData.location
+        })
+      };
 
-        setUser(newUser);
-        localStorage.setItem('cached_user_data', JSON.stringify(newUser));
-        
-        console.log('✅ Backend-only registration completed');
+      console.log('� Creating Firebase user with email verification...');
+      const result = await firebaseAuthService.registerWithEmailVerification(registrationData);
+      
+      if (!result.success) {
+        throw new Error(result.message);
       }
+
+      console.log('✅ Firebase user created, email verification sent');
+      console.log('📧 User must verify email before they can login');
+      
+      // Note: Backend user creation will happen automatically when user 
+      // verifies email and signs in (handled by syncWithBackend)
 
     } catch (error: any) {
       console.error('❌ Registration error:', error);
-      setIsLoading(false);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -361,7 +304,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     
     try {
-      await firebaseAuthService.sendEmailVerification();
+      const result = await firebaseAuthService.resendEmailVerification();
+      if (!result.success) {
+        throw new Error(result.message);
+      }
       console.log('✅ Email verification sent');
     } catch (error) {
       console.error('❌ Error sending email verification:', error);
@@ -415,80 +361,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       console.log('🔧 Starting Google registration...');
       
-      // Sign up with Firebase using Google
-      const userCredential = await firebaseAuthService.registerWithGoogle();
+      // Sign up with Firebase using Google (this handles profile storage)
+      const userCredential = await firebaseAuthService.registerWithGoogle(userType);
       console.log('✅ Google registration successful');
 
-      // Map frontend fields to backend expected fields
-      const userData_storage = {
-        // Backend expects underscore field names
-        first_name: userCredential.user.displayName?.split(' ')[0] || '',
-        last_name: userCredential.user.displayName?.split(' ').slice(1).join(' ') || '',
-        email: userCredential.user.email || '',
-        password: 'google_oauth_user',    // Backend requires password field
-        user_type: userType || 'couple',  // Backend expects user_type (couple/vendor)
-        phone: ''                         // Google doesn't provide phone by default
-      };
+      // The Firebase service already stored the pending profile
+      // Backend creation will happen automatically via syncWithBackend when auth state changes
 
-      try {
-        console.log('📤 Attempting to store Google user profile in Neon database...');
-        console.log('🎯 User role being stored:', userData_storage.user_type);
-        console.log('📦 Sending Google data:', JSON.stringify(userData_storage, null, 2));
-        
-        const idToken = await userCredential.user.getIdToken();
-        const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${idToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(userData_storage)
-        });
+      // Return temporary user object
+      const tempUser = convertFirebaseUser({
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        emailVerified: userCredential.user.emailVerified,
+        displayName: userCredential.user.displayName,
+        photoURL: userCredential.user.photoURL
+      });
 
-        console.log('📊 Google registration response status:', response.status);
-
-        if (response.ok) {
-          const result = await response.json();
-          console.log('✅ Google user profile created in Neon database:', result);
-          // Clear any local storage since we successfully stored in backend
-          localStorage.removeItem('weddingbazaar_user_profile');
-        } else {
-          const errorText = await response.text();
-          console.error('❌ Failed to create Google user profile in Neon:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorText,
-            sentData: userData_storage
-          });
-          
-          // Store locally as fallback
-          localStorage.setItem('weddingbazaar_user_profile', JSON.stringify(userData_storage));
-          console.log('💾 Google user profile stored locally as fallback');
-        }
-      } catch (backendError) {
-        console.warn('⚠️ Google backend registration failed, storing locally:', backendError);
-        
-        // Store locally as fallback
-        localStorage.setItem('weddingbazaar_user_profile', JSON.stringify(userData_storage));
-        console.log('💾 Google user profile stored locally due to error');
-      }
-
-      const newUser: User = {
-        id: userCredential.user.uid, // Use Firebase UID as ID
-        email: userData_storage.email,
-        firstName: userData_storage.first_name,
-        lastName: userData_storage.last_name,
-        role: userData_storage.user_type,
-        phone: userData_storage.phone,
-        businessName: '', // No business name from Google by default  
-        emailVerified: true, // Assume email is verified through Google
-      };
-
-      setUser(newUser);
-      localStorage.setItem('cached_user_data', JSON.stringify(newUser));
-      
-      console.log('✅ Google registration completed');
-      return newUser;
+      return tempUser;
       
     } catch (error: any) {
       console.error('❌ Google registration error:', error);

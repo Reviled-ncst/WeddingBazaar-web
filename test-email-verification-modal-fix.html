@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification Modal Fix Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 5px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .warning { background: #fff3cd; color: #856404; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .test-step {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .code {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .highlight {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .log-section {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Email Verification Modal Fix Test</h1>
+            <p>Testing the fixed RegisterModal to ensure email verification screen displays properly</p>
+            <div class="badge success">✅ MODAL FIXES DEPLOYED</div>
+            <div class="badge info">🎯 TESTING PHASE</div>
+        </div>
+
+        <div class="test-step">
+            <h3>🎯 What Was Fixed</h3>
+            <ul>
+                <li><strong>preventBackdropClose</strong>: Added <code>showEmailVerification</code> to prevent modal from closing during email verification</li>
+                <li><strong>Custom Close Handler</strong>: Created <code>handleModalClose()</code> to properly reset verification state</li>
+                <li><strong>Debug Logging</strong>: Added comprehensive console logs to track modal state</li>
+                <li><strong>Button Fix</strong>: Updated "Continue to Login" button to use custom close handler</li>
+            </ul>
+        </div>
+
+        <div class="test-step">
+            <h3>🧪 Test Instructions</h3>
+            <ol>
+                <li>Open the Wedding Bazaar website: <a href="https://weddingbazaarph.web.app" target="_blank">https://weddingbazaarph.web.app</a></li>
+                <li>Click the <strong>"Sign Up"</strong> button in the header</li>
+                <li>Fill out the registration form with a test email</li>
+                <li>Click <strong>"Create Account"</strong></li>
+                <li><span class="highlight">VERIFY: Email verification screen should now display and stay visible</span></li>
+                <li>Check browser console for debug logs</li>
+            </ol>
+        </div>
+
+        <div class="test-step">
+            <h3>📊 Expected Console Logs</h3>
+            <div class="code">
+🔧 Starting secure registration with email verification...
+📤 Creating user in backend database (unverified)...
+✅ User created in backend database: {user data}
+📧 Sending email verification...
+✅ Registration completed - user must verify email before login
+📧 Firebase registration completed successfully - showing email verification screen
+📧 showEmailVerification state set to: true
+📧 verificationSent state set to: true
+🎯 Email verification screen should be showing!
+🚀 MODAL IS OPEN AND SHOULD SHOW EMAIL VERIFICATION SCREEN
+            </div>
+        </div>
+
+        <div class="test-step">
+            <h3>✅ Success Criteria</h3>
+            <ul>
+                <li>✅ Modal stays open after registration</li>
+                <li>✅ Email verification screen displays with proper UI</li>
+                <li>✅ "Continue to Login" button works properly</li>
+                <li>✅ Console shows all expected debug logs</li>
+                <li>✅ No page refresh or unexpected modal closing</li>
+            </ul>
+        </div>
+
+        <div class="test-step">
+            <h3>🔍 Debug Information</h3>
+            <p><strong>Backend URL:</strong> https://weddingbazaar-web.onrender.com</p>
+            <p><strong>Frontend URL:</strong> https://weddingbazaarph.web.app</p>
+            <p><strong>Registration Endpoint:</strong> /api/auth/register</p>
+            <p><strong>Verification Endpoint:</strong> /api/auth/send-verification</p>
+            <p><strong>Modal Component:</strong> RegisterModal.tsx</p>
+            <p><strong>Auth Context:</strong> HybridAuthContext.tsx</p>
+        </div>
+
+        <button onclick="window.open('https://weddingbazaarph.web.app', '_blank')">
+            🚀 Test Registration Now
+        </button>
+
+        <button onclick="location.reload()">
+            🔄 Refresh Test Page
+        </button>
+    </div>
+
+    <div class="container">
+        <h2>📋 Test Results Log</h2>
+        <div class="log-section" id="testLog">
+            Ready to test email verification modal fix...
+            Open the website and test registration to see results here.
+        </div>
+    </div>
+
+    <script>
+        // Add some interactive functionality
+        function logMessage(message) {
+            const logSection = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            logSection.innerHTML += `\n[${timestamp}] ${message}`;
+            logSection.scrollTop = logSection.scrollHeight;
+        }
+
+        // Log when page loads
+        logMessage('🎯 Test page loaded - ready to test registration modal fix');
+        logMessage('✅ Expected fix: Modal should stay open and show email verification screen');
+        logMessage('🔧 Changes deployed: preventBackdropClose, custom close handler, debug logging');
+    </script>
+</body>
+</html>

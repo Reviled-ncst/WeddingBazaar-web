@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase + Neon Registration Test - Wedding Bazaar</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #fdf2f8, #fce7f3);
+            min-height: 100vh;
+        }
+        .test-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 0;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            border: 2px solid #f9a8d4;
+        }
+        .status {
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .success { background: #d1fae5; color: #065f46; border: 2px solid #34d399; }
+        .error { background: #fee2e2; color: #991b1b; border: 2px solid #f87171; }
+        .info { background: #dbeafe; color: #1e40af; border: 2px solid #60a5fa; }
+        .warning { background: #fef3c7; color: #92400e; border: 2px solid #fbbf24; }
+        button {
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(236, 72, 153, 0.3);
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #f9a8d4;
+            border-radius: 10px;
+            margin: 5px 0;
+            font-size: 16px;
+        }
+        .test-section {
+            border: 2px dashed #f9a8d4;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 15px;
+            background: #fdf2f8;
+        }
+        pre {
+            background: #1f2937;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .endpoint-test {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .emoji { font-size: 24px; margin-right: 10px; }
+    </style>
+</head>
+<body>
+    <div class="test-card">
+        <h1>🎉 Firebase + Neon Integration Test</h1>
+        <p>Complete end-to-end test of Firebase Authentication with Neon Database integration for Wedding Bazaar.</p>
+        
+        <div class="test-section">
+            <h2>📡 Backend API Health Check</h2>
+            <button onclick="testBackendHealth()">Test Backend Connection</button>
+            <div id="backend-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔥 Firebase Registration Test</h2>
+            <p>Test the complete Firebase + Neon registration flow:</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <input type="text" id="firstName" placeholder="First Name" value="John">
+                <input type="text" id="lastName" placeholder="Last Name" value="Doe">
+            </div>
+            <input type="email" id="email" placeholder="Email Address" value="">
+            <input type="password" id="password" placeholder="Password" value="test123456">
+            <input type="tel" id="phone" placeholder="Phone Number" value="+1234567890">
+            
+            <div style="margin: 15px 0;">
+                <label>
+                    <input type="radio" name="userType" value="couple" checked> Couple/Individual
+                </label>
+                <label style="margin-left: 20px;">
+                    <input type="radio" name="userType" value="vendor"> Vendor
+                </label>
+            </div>
+            
+            <!-- Vendor fields (hidden by default) -->
+            <div id="vendor-fields" style="display: none;">
+                <input type="text" id="businessName" placeholder="Business Name" value="Test Wedding Services">
+                <input type="text" id="businessType" placeholder="Business Type" value="photography">
+            </div>
+            
+            <button onclick="testFirebaseRegistration()">🚀 Test Firebase Registration</button>
+            <div id="registration-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔐 Login Test</h2>
+            <p>Test Firebase login after email verification:</p>
+            <input type="email" id="loginEmail" placeholder="Login Email">
+            <input type="password" id="loginPassword" placeholder="Login Password">
+            <button onclick="testFirebaseLogin()">🔑 Test Firebase Login</button>
+            <div id="login-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 Database Integration Test</h2>
+            <button onclick="testDatabaseIntegration()">🏗️ Test Neon Database</button>
+            <div id="database-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📋 Test Results Summary</h2>
+            <div id="summary"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword,
+            sendEmailVerification,
+            signOut 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBQUqT5d-C6VWwRAjBo8rvqNt4WKfC9jdw",
+            authDomain: "weddingbazaarph.firebaseapp.com",
+            projectId: "weddingbazaarph",
+            storageBucket: "weddingbazaarph.firebasestorage.app",
+            messagingSenderId: "649210855644",
+            appId: "1:649210855644:web:3b2b914b1c96cd1e99bf0a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Make Firebase available globally
+        window.firebaseAuth = auth;
+        window.firebaseApp = app;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.sendEmailVerification = sendEmailVerification;
+        window.signOut = signOut;
+
+        console.log('🔥 Firebase initialized successfully');
+    </script>
+
+    <script>
+        const API_BASE_URL = 'https://weddingbazaar-web.onrender.com';
+        let testResults = {
+            backend: false,
+            firebase: false,
+            database: false,
+            login: false
+        };
+
+        // Generate random email for testing
+        document.getElementById('email').value = `test.${Date.now()}@example.com`;
+        document.getElementById('loginEmail').value = document.getElementById('email').value;
+        document.getElementById('loginPassword').value = document.getElementById('password').value;
+
+        // Show/hide vendor fields
+        document.querySelectorAll('input[name="userType"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const vendorFields = document.getElementById('vendor-fields');
+                vendorFields.style.display = e.target.value === 'vendor' ? 'block' : 'none';
+            });
+        });
+
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function addLog(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML += `<div class="status ${type}">${message}</div>`;
+        }
+
+        async function testBackendHealth() {
+            updateStatus('backend-status', '🔄 Testing backend connection...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    testResults.backend = true;
+                    updateStatus('backend-status', `✅ Backend healthy! Database: ${data.database}, Version: ${data.version}`, 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                updateStatus('backend-status', `❌ Backend connection failed: ${error.message}`, 'error');
+            }
+            
+            updateSummary();
+        }
+
+        async function testFirebaseRegistration() {
+            updateStatus('registration-status', '🔄 Starting Firebase registration test...', 'info');
+            
+            try {
+                // Get form data
+                const formData = {
+                    firstName: document.getElementById('firstName').value,
+                    lastName: document.getElementById('lastName').value,
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value,
+                    phone: document.getElementById('phone').value,
+                    userType: document.querySelector('input[name="userType"]:checked').value,
+                    businessName: document.getElementById('businessName').value,
+                    businessType: document.getElementById('businessType').value
+                };
+
+                addLog('registration-status', '📧 Creating Firebase user...', 'info');
+
+                // Step 1: Create Firebase user
+                const userCredential = await window.createUserWithEmailAndPassword(
+                    window.firebaseAuth, 
+                    formData.email, 
+                    formData.password
+                );
+                
+                addLog('registration-status', `✅ Firebase user created: ${userCredential.user.uid}`, 'success');
+
+                // Step 2: Send email verification
+                await window.sendEmailVerification(userCredential.user);
+                addLog('registration-status', '📧 Email verification sent!', 'success');
+
+                // Step 3: Sign out user (they must verify email first)
+                await window.signOut(window.firebaseAuth);
+                addLog('registration-status', '🚪 User signed out - must verify email first', 'info');
+
+                // Step 4: Create Neon database profile
+                addLog('registration-status', '🏗️ Creating Neon database profile...', 'info');
+                
+                const backendData = {
+                    email: formData.email,
+                    password: formData.password,
+                    first_name: formData.firstName,
+                    last_name: formData.lastName,
+                    user_type: formData.userType,
+                    phone: formData.phone,
+                    firebase_uid: userCredential.user.uid,
+                    ...(formData.userType === 'vendor' && {
+                        business_name: formData.businessName,
+                        business_type: formData.businessType
+                    })
+                };
+
+                const backendResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(backendData)
+                });
+
+                const backendResult = await backendResponse.json();
+
+                if (backendResponse.ok) {
+                    testResults.firebase = true;
+                    addLog('registration-status', '✅ Neon database profile created!', 'success');
+                    addLog('registration-status', `👤 User ID: ${backendResult.user.id}`, 'info');
+                    addLog('registration-status', `📧 Email verified: ${backendResult.user.email_verified}`, 'info');
+                    addLog('registration-status', '🎉 Registration complete! Check email for verification.', 'success');
+                } else {
+                    throw new Error(backendResult.error || 'Backend registration failed');
+                }
+
+            } catch (error) {
+                addLog('registration-status', `❌ Registration failed: ${error.message}`, 'error');
+                console.error('Registration error:', error);
+            }
+            
+            updateSummary();
+        }
+
+        async function testFirebaseLogin() {
+            updateStatus('login-status', '🔄 Testing Firebase login...', 'info');
+            
+            try {
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+
+                const userCredential = await window.signInWithEmailAndPassword(
+                    window.firebaseAuth, 
+                    email, 
+                    password
+                );
+
+                if (!userCredential.user.emailVerified) {
+                    await window.signOut(window.firebaseAuth);
+                    throw new Error('Email not verified. Please verify your email first.');
+                }
+
+                testResults.login = true;
+                addLog('login-status', '✅ Firebase login successful!', 'success');
+                addLog('login-status', `👤 User: ${userCredential.user.email}`, 'info');
+                addLog('login-status', `✉️ Email verified: ${userCredential.user.emailVerified}`, 'info');
+
+                // Test backend profile sync
+                addLog('login-status', '🔄 Testing backend profile sync...', 'info');
+                
+                const profileResponse = await fetch(`${API_BASE_URL}/api/auth/profile?email=${encodeURIComponent(email)}`, {
+                    headers: {
+                        'x-user-email': email
+                    }
+                });
+
+                if (profileResponse.ok) {
+                    const profile = await profileResponse.json();
+                    addLog('login-status', '✅ Backend profile found and synced!', 'success');
+                    addLog('login-status', `🎭 Role: ${profile.user_type}`, 'info');
+                } else {
+                    addLog('login-status', '⚠️ Backend profile sync issue', 'warning');
+                }
+
+            } catch (error) {
+                addLog('login-status', `❌ Login failed: ${error.message}`, 'error');
+            }
+            
+            updateSummary();
+        }
+
+        async function testDatabaseIntegration() {
+            updateStatus('database-status', '🔄 Testing database integration...', 'info');
+            
+            try {
+                // Test vendors endpoint
+                const vendorsResponse = await fetch(`${API_BASE_URL}/api/vendors/featured`);
+                const vendorsData = await vendorsResponse.json();
+                
+                if (vendorsResponse.ok) {
+                    testResults.database = true;
+                    addLog('database-status', `✅ Vendors API: ${vendorsData.length} featured vendors`, 'success');
+                } else {
+                    throw new Error('Vendors API failed');
+                }
+
+                // Test auth profile endpoint
+                const profileResponse = await fetch(`${API_BASE_URL}/api/auth/profile?email=test@example.com`);
+                addLog('database-status', `✅ Profile API: ${profileResponse.status} response`, 'success');
+
+                addLog('database-status', '🎉 Database integration working!', 'success');
+
+            } catch (error) {
+                addLog('database-status', `❌ Database test failed: ${error.message}`, 'error');
+            }
+            
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const passed = Object.values(testResults).filter(r => r).length;
+            const total = Object.keys(testResults).length;
+            
+            let summaryHTML = `<h3>📊 Test Results: ${passed}/${total} Passed</h3>`;
+            
+            Object.entries(testResults).forEach(([test, passed]) => {
+                const emoji = passed ? '✅' : '❌';
+                const status = passed ? 'success' : 'error';
+                summaryHTML += `<div class="status ${status}">${emoji} ${test.charAt(0).toUpperCase() + test.slice(1)} Test</div>`;
+            });
+
+            if (passed === total) {
+                summaryHTML += '<div class="status success">🎉 All tests passed! Firebase + Neon integration is working perfectly!</div>';
+            }
+
+            document.getElementById('summary').innerHTML = summaryHTML;
+        }
+
+        // Initialize
+        updateSummary();
+    </script>
+</body>
+</html>

@@ -79,6 +79,53 @@ const FloatingActions: React.FC = () => (
 );
 
 export const Homepage: React.FC = () => {
+  // Check for email verification success from Firebase
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const verified = urlParams.get('verified');
+    
+    if (verified === 'true') {
+      console.log('✅ Email verification confirmed by Firebase');
+      
+      // Show success notification
+      const showVerificationSuccess = () => {
+        // Create a temporary notification
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300';
+        notification.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span>Email verified successfully! You can now login.</span>
+          </div>
+        `;
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+          notification.classList.remove('translate-x-full');
+        }, 100);
+        
+        // Animate out after 5 seconds
+        setTimeout(() => {
+          notification.classList.add('translate-x-full');
+          setTimeout(() => {
+            document.body.removeChild(notification);
+          }, 300);
+        }, 5000);
+      };
+      
+      showVerificationSuccess();
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Clear any pending verification state
+      localStorage.removeItem('emailVerificationPending');
+    }
+  }, []);
+
   // Preload critical resources
   useEffect(() => {
     // Preload hero image

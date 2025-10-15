@@ -19,6 +19,20 @@ export const Modal: React.FC<ModalProps> = ({
   maxWidth = 'md',
   preventBackdropClose = false
 }) => {
+  // Handle ESC key
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !preventBackdropClose) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [isOpen, onClose, preventBackdropClose]);
+
   if (!isOpen) return null;
 
   const maxWidthClasses = {
@@ -48,26 +62,28 @@ export const Modal: React.FC<ModalProps> = ({
               <h3 className="text-lg font-semibold text-gray-900">
                 {title}
               </h3>
-              <button
-                onClick={onClose}
-                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                aria-label="Close modal"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              {!preventBackdropClose && (
+                <button
+                  onClick={onClose}
+                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label="Close modal"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
             </div>
           )}
           
           {/* Content */}
           <div className={title ? "p-6" : "p-6"}>
-            {!title && (
+            {!title && !preventBackdropClose && (
               <button
                 onClick={onClose}
                 className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 transition-colors"
                 aria-label="Close modal"
               >
                 <X className="h-5 w-5" />
-              </button>
+              </button>  
             )}
             {children}
           </div>
