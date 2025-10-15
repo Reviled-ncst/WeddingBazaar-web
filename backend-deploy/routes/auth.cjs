@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { sql } = require('../config/database.cjs');
+const emailService = require('../utils/emailService.cjs');
 
 const router = express.Router();
 
@@ -53,17 +54,16 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // TODO: Add email verification check when schema is updated
-    // For now, allow login without email verification
-    // if (!user.email_verified) {
-    //   console.log('❌ Email not verified for user:', email);
-    //   return res.status(403).json({
-    //     success: false,
-    //     error: 'Email not verified. Please check your email and verify your account before logging in.',
-    //     verification_required: true,
-    //     timestamp: new Date().toISOString()
-    //   });
-    // }
+    // Check email verification status - SECURITY: Block login if email not verified
+    if (!user.email_verified) {
+      console.log('❌ Email not verified for user:', email);
+      return res.status(403).json({
+        success: false,
+        error: 'Email not verified. Please check your email and verify your account before logging in.',
+        verification_required: true,
+        timestamp: new Date().toISOString()
+      });
+    }
 
     // Generate JWT token
     const token = jwt.sign(
@@ -114,6 +114,7 @@ router.post('/register', async (req, res) => {
       last_name, 
       user_type = 'couple',
       phone,
+      firebase_uid, // New field for Firebase integration
       // Vendor-specific fields
       business_name,
       business_type,
@@ -174,17 +175,27 @@ router.post('/register', async (req, res) => {
     const { getNextUserId } = require('../utils/id-generation.cjs');
     const userId = await getNextUserId(sql, user_type === 'vendor' ? 'vendor' : 'individual');
     
-    // 1. Create user account in users table (using existing schema)
-    console.log('💾 Inserting user into database:', { userId, email, user_type });
+    // 1. Create user account in users table (with Firebase UID support)
+    // If firebase_uid is provided, user has already verified their email with Firebase
+    const isFirebaseVerified = !!firebase_uid;
+    
+    console.log('💾 Inserting user into database:', { 
+      userId, 
+      email, 
+      user_type, 
+      firebase_uid, 
+      email_verified: isFirebaseVerified 
+    });
+    
     const userResult = await sql`
       INSERT INTO users (
-        id, email, password, first_name, last_name, user_type, phone, created_at
+        id, email, password, first_name, last_name, user_type, phone, firebase_uid, email_verified, created_at
       )
       VALUES (
         ${userId}, ${email}, ${hashedPassword}, ${first_name}, ${last_name || ''}, 
-        ${user_type}, ${phone || null}, NOW()
+        ${user_type}, ${phone || null}, ${firebase_uid || null}, ${isFirebaseVerified}, NOW()
       )
-      RETURNING id, email, first_name, last_name, user_type, phone, created_at
+      RETURNING id, email, first_name, last_name, user_type, phone, firebase_uid, email_verified, created_at
     `;
     
     const newUser = userResult[0];
@@ -303,14 +314,14 @@ router.post('/register', async (req, res) => {
         last_name: newUser.last_name,
         user_type: newUser.user_type,
         phone: newUser.phone,
-        email_verified: false, // Default until schema is updated
-        phone_verified: false, // Default until schema is updated
+        email_verified: newUser.email_verified, // From Firebase verification status
+        firebase_uid: newUser.firebase_uid,
         created_at: newUser.created_at
       },
       profile: profileResult ? profileResult[0] : null,
       token, // Token provided but email verification required for login
       verification_required: {
-        email: true,
+        email: !isFirebaseVerified, // Only if not already verified by Firebase
         phone: user_type !== 'admin', // Admin doesn't need phone verification
         documents: user_type === 'vendor' // Only vendors need document verification
       },
@@ -328,30 +339,159 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Email Verification endpoint (temporarily disabled until schema supports email_verified column)
+// Verify Email endpoint
 router.post('/verify-email', async (req, res) => {
   try {
-    const { email, verification_code } = req.body;
-    console.log('📧 Email verification request (PLACEHOLDER):', { email, hasCode: !!verification_code });
+    const { email, verification_token } = req.body;
+    console.log('🔍 Email verification request:', { email, token: verification_token?.substring(0, 10) + '...' });
 
-    if (!email || !verification_code) {
+    if (!email || !verification_token) {
       return res.status(400).json({
         success: false,
-        error: 'Email and verification code required',
+        error: 'Email and verification_token are required',
         timestamp: new Date().toISOString()
       });
     }
 
-    // TODO: Update schema to include email_verified column, then implement real verification
-    // For now, just return success without updating database
-    console.log('✅ Email verification placeholder - user can now login:', email);
+    // Check token in database first
+    const tokenRecords = await sql`
+      SELECT user_id, email, expires_at, used_at 
+      FROM email_verification_tokens 
+      WHERE token = ${verification_token} AND email = ${email}
+    `;
+
+    if (tokenRecords.length === 0) {
+      // Fallback to old token format for backward compatibility
+      try {
+        const decoded = Buffer.from(verification_token, 'base64').toString();
+        const [token_user_id, token_email, timestamp] = decoded.split(':');
+        
+        if (token_email !== email) {
+          throw new Error('Token email mismatch');
+        }
+        
+        const tokenTime = parseInt(timestamp);
+        const now = Date.now();
+        const hoursDiff = (now - tokenTime) / (1000 * 60 * 60);
+        
+        if (hoursDiff > 24) {
+          return res.status(400).json({
+            success: false,
+            error: 'Verification token has expired. Please request a new verification email.',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Use old format verification
+        const result = await sql`
+          UPDATE users 
+          SET email_verified = true, updated_at = NOW()
+          WHERE email = ${email} AND id = ${token_user_id}
+          RETURNING id, email, first_name, last_name, user_type, email_verified
+        `;
+
+        if (result.length === 0) {
+          return res.status(404).json({
+            success: false,
+            error: 'User not found or invalid verification token',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const user = result[0];
+        console.log('✅ Email verified successfully (old format) for user:', user.id);
+
+        return res.json({
+          success: true,
+          message: 'Email verified successfully. You can now login.',
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            userType: user.user_type,
+            emailVerified: user.email_verified
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (decodeError) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid verification token format',
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+
+    const tokenRecord = tokenRecords[0];
+
+    // Check if token has already been used
+    if (tokenRecord.used_at) {
+      return res.status(400).json({
+        success: false,
+        error: 'Verification token has already been used',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Check if token has expired
+    if (new Date() > new Date(tokenRecord.expires_at)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Verification token has expired. Please request a new verification email.',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Mark token as used and update user
+    const result = await sql`
+      UPDATE users 
+      SET email_verified = true, updated_at = NOW()
+      WHERE email = ${email} AND id = ${tokenRecord.user_id}
+      RETURNING id, email, first_name, last_name, user_type, email_verified
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Mark token as used
+    await sql`
+      UPDATE email_verification_tokens 
+      SET used_at = NOW() 
+      WHERE token = ${verification_token}
+    `;
+
+    const user = result[0];
+    console.log('✅ Email verified successfully for user:', user.id);
 
     res.json({
       success: true,
-      message: 'Email verification completed (placeholder). You can now login.',
-      user: { email: email, email_verified: true },
+      message: 'Email verified successfully. You can now login.',
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        userType: user.user_type,
+        emailVerified: user.email_verified
+      },
       timestamp: new Date().toISOString()
     });
+
+    } catch (tokenError) {
+      console.error('❌ Invalid verification token:', tokenError.message);
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid verification token',
+        timestamp: new Date().toISOString()
+      });
+    }
 
   } catch (error) {
     console.error('❌ Email verification error:', error);
@@ -628,6 +768,94 @@ router.get('/profile', async (req, res) => {
       success: false,
       error: 'Failed to fetch profile',
       message: error instanceof Error ? error.message : 'Unknown error occurred'
+    });
+  }
+});
+
+// Send Email Verification endpoint
+router.post('/send-verification', async (req, res) => {
+  try {
+    const { email, user_id } = req.body;
+    console.log('📧 Send verification request:', { email, user_id });
+
+    if (!email || !user_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and user_id are required',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Get user details for personalized email
+    const users = await sql`SELECT first_name, last_name FROM users WHERE id = ${user_id} AND email = ${email}`;
+    
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const user = users[0];
+    
+    // Generate a secure verification token
+    const tokenData = {
+      userId: user_id,
+      email: email,
+      timestamp: Date.now(),
+      random: Math.random().toString(36)
+    };
+    
+    const verificationToken = Buffer.from(JSON.stringify(tokenData)).toString('base64url');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    
+    // Store token in database for security
+    try {
+      await sql`
+        INSERT INTO email_verification_tokens (user_id, email, token, expires_at)
+        VALUES (${user_id}, ${email}, ${verificationToken}, ${expiresAt})
+        ON CONFLICT (user_id) DO UPDATE SET
+        token = ${verificationToken},
+        expires_at = ${expiresAt},
+        created_at = NOW(),
+        used_at = NULL
+      `;
+    } catch (dbError) {
+      console.log('⚠️ Database token storage failed, using fallback method');
+      // Continue with email sending even if DB storage fails
+    }
+    
+    console.log('📧 Sending verification email to:', email);
+    console.log('🔑 Verification token generated for user:', user_id);
+    
+    // Send actual verification email
+    const emailResult = await emailService.sendVerificationEmail(
+      email, 
+      verificationToken, 
+      user.first_name
+    );
+    
+    if (emailResult.success) {
+      res.json({
+        success: true,
+        message: 'Verification email sent successfully',
+        email: email,
+        messageId: emailResult.messageId,
+        // Include verification URL for development/testing
+        ...(emailResult.devMode && { dev_verification_url: emailResult.verificationUrl }),
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      throw new Error('Email service failed');
+    }
+
+  } catch (error) {
+    console.error('❌ Send verification error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send verification email: ' + error.message,
+      timestamp: new Date().toISOString()
     });
   }
 });
