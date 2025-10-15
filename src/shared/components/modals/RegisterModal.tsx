@@ -205,6 +205,14 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       console.log('📧 showEmailVerification state set to: false');
       console.log('📧 isSuccess state set to: true');
       console.log('✅ User can now login immediately');
+
+      // Auto-redirect to dashboard after showing success message
+      setTimeout(() => {
+        const dashboardPath = userType === 'vendor' ? '/vendor' : '/individual';
+        console.log(`🚀 Redirecting to ${userType} dashboard: ${dashboardPath}`);
+        navigate(dashboardPath);
+        onClose(); // Close the modal
+      }, 3000); // Show success for 3 seconds
       
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -281,7 +289,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
 
           {/* Success Overlay with enhanced animations */}
           {isSuccess && !showEmailVerification && (
-            <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-green-50/90 to-emerald-50/95 backdrop-blur-xl rounded-2xl z-50 flex items-center justify-center animate-in fade-in duration-700">
+            <div className="fixed inset-0 bg-gradient-to-br from-white/98 via-green-50/95 to-emerald-50/98 backdrop-blur-xl z-[9999] flex items-center justify-center animate-in fade-in duration-700">
               <div className="text-center relative z-10 animate-in slide-in-from-bottom duration-1000">
                 <div className="mb-6 relative">
                   <div className="relative w-20 h-20 bg-gradient-to-br from-green-400 via-emerald-500 to-green-600 rounded-full flex items-center justify-center mx-auto shadow-2xl animate-bounce">
@@ -298,9 +306,22 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     Your {userType} account has been created successfully! Get ready to make your wedding dreams come true.
                   </p>
                   
-                  <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 text-white rounded-2xl font-semibold text-sm shadow-xl animate-pulse">
-                    <Zap className="h-5 w-5 mr-2 animate-spin" />
-                    Taking you to your dashboard...
+                  <div className="space-y-4">
+                    <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 text-white rounded-2xl font-semibold text-sm shadow-xl animate-pulse">
+                      <Zap className="h-5 w-5 mr-2 animate-spin" />
+                      Taking you to your dashboard...
+                    </div>
+                    
+                    <button 
+                      onClick={() => {
+                        const dashboardPath = userType === 'vendor' ? '/vendor' : '/individual';
+                        navigate(dashboardPath);
+                        onClose();
+                      }}
+                      className="block mx-auto px-8 py-3 bg-white text-green-600 border-2 border-green-500 rounded-2xl font-semibold text-sm hover:bg-green-50 transition-colors shadow-lg"
+                    >
+                      Continue to Dashboard →
+                    </button>
                   </div>
                 </div>
               </div>
@@ -330,11 +351,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
             <div className="relative max-w-5xl mx-auto space-y-8">
               
               {/* Email Verification View */}
-              {(() => {
-                console.log('🎯 RENDER CHECK - showEmailVerification:', showEmailVerification);
-                console.log('🎯 RENDER CHECK - isSuccess:', isSuccess);
-                return null;
-              })()}
               {showEmailVerification ? (
                 <div className="space-y-6">
                   {/* Email Verification Header */}
