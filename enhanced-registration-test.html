@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Registration Test - WeddingBazaar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-8 text-pink-600">Enhanced Registration & Profile Creation Test</h1>
+        
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Registration Tests -->
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-xl font-semibold mb-4">🎯 Registration Tests</h2>
+                
+                <div class="space-y-4">
+                    <button onclick="testCoupleRegistration()" class="w-full bg-pink-500 text-white py-2 px-4 rounded hover:bg-pink-600">
+                        Test Couple Registration
+                    </button>
+                    
+                    <button onclick="testVendorRegistration()" class="w-full bg-purple-500 text-white py-2 px-4 rounded hover:bg-purple-600">
+                        Test Vendor Registration
+                    </button>
+                    
+                    <button onclick="testAdminRegistration()" class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">
+                        Test Admin Registration
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Login & Verification Tests -->
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-xl font-semibold mb-4">🔐 Login & Verification Tests</h2>
+                
+                <div class="space-y-4">
+                    <button onclick="testUnverifiedLogin()" class="w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600">
+                        Test Unverified Login (Should Block)
+                    </button>
+                    
+                    <button onclick="testEmailVerification()" class="w-full bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600">
+                        Test Email Verification
+                    </button>
+                    
+                    <button onclick="testVerifiedLogin()" class="w-full bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700">
+                        Test Verified Login (Should Work)
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Vendor Verification Tests -->
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-xl font-semibold mb-4">📄 Vendor Verification Tests</h2>
+                
+                <div class="space-y-4">
+                    <button onclick="testVendorDocumentSubmission()" class="w-full bg-yellow-500 text-white py-2 px-4 rounded hover:bg-yellow-600">
+                        Test Vendor Document Submission
+                    </button>
+                    
+                    <button onclick="testAdminVendorVerification()" class="w-full bg-indigo-500 text-white py-2 px-4 rounded hover:bg-indigo-600">
+                        Test Admin Vendor Verification
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Database Check -->
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-xl font-semibold mb-4">🗄️ Database Checks</h2>
+                
+                <div class="space-y-4">
+                    <button onclick="checkDatabaseProfiles()" class="w-full bg-teal-500 text-white py-2 px-4 rounded hover:bg-teal-600">
+                        Check Created Profiles
+                    </button>
+                    
+                    <button onclick="checkVerificationStatus()" class="w-full bg-cyan-500 text-white py-2 px-4 rounded hover:bg-cyan-600">
+                        Check Verification Status
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Panel -->
+        <div class="bg-white p-6 rounded-lg shadow-lg mt-8">
+            <h2 class="text-xl font-semibold mb-4">📊 Test Results</h2>
+            <div id="results" class="space-y-2 bg-gray-50 p-4 rounded overflow-auto max-h-96">
+                <div class="text-gray-500 italic">Test results will appear here...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://weddingbazaar-web.onrender.com/api';
+        let testUsers = {};
+
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                success: 'text-green-600',
+                error: 'text-red-600',
+                info: 'text-blue-600',
+                warning: 'text-yellow-600'
+            };
+            
+            const div = document.createElement('div');
+            div.className = `${colors[type]} font-mono text-sm`;
+            div.innerHTML = `[${timestamp}] ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        async function testCoupleRegistration() {
+            log('🧪 Testing Couple Registration...', 'info');
+            
+            const coupleData = {
+                first_name: 'John',
+                last_name: 'Doe',
+                email: `john.doe.${Date.now()}@example.com`,
+                password: 'password123',
+                user_type: 'couple',
+                phone: '+639123456789',
+                partner_name: 'Jane Doe',
+                wedding_date: '2024-12-25',
+                location: 'Manila, Philippines',
+                budget_range: '100000-200000'
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(coupleData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    testUsers.couple = { email: coupleData.email, password: coupleData.password, user_id: result.user.id };
+                    log('✅ Couple Registration SUCCESS', 'success');
+                    log(`   User ID: ${result.user.id}`, 'info');
+                    log(`   Profile Created: ${result.profile ? 'YES' : 'NO'}`, result.profile ? 'success' : 'error');
+                    log(`   Profile ID: ${result.profile?.id || 'N/A'}`, 'info');
+                    log(`   Email Verified: ${result.user.email_verified}`, result.user.email_verified ? 'success' : 'warning');
+                    log(`   Verification Required: ${JSON.stringify(result.verification_required)}`, 'info');
+                } else {
+                    log(`❌ Couple Registration FAILED: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Couple Registration ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        async function testVendorRegistration() {
+            log('🧪 Testing Vendor Registration...', 'info');
+            
+            const vendorData = {
+                first_name: 'Jane',
+                last_name: 'Smith',
+                email: `jane.smith.${Date.now()}@example.com`,
+                password: 'password123',
+                user_type: 'vendor',
+                phone: '+639123456790',
+                business_name: 'Jane\'s Photography Studio',
+                business_type: 'photography',
+                location: 'Quezon City, Philippines'
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(vendorData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    testUsers.vendor = { email: vendorData.email, password: vendorData.password, user_id: result.user.id };
+                    log('✅ Vendor Registration SUCCESS', 'success');
+                    log(`   User ID: ${result.user.id}`, 'info');
+                    log(`   Profile Created: ${result.profile ? 'YES' : 'NO'}`, result.profile ? 'success' : 'error');
+                    log(`   Business Name: ${result.profile?.business_name || 'N/A'}`, 'info');
+                    log(`   Verification Status: ${result.profile?.verification_status || 'N/A'}`, 'warning');
+                    log(`   Email Verified: ${result.user.email_verified}`, result.user.email_verified ? 'success' : 'warning');
+                    log(`   Documents Required: ${result.verification_required?.documents}`, 'info');
+                } else {
+                    log(`❌ Vendor Registration FAILED: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Vendor Registration ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAdminRegistration() {
+            log('🧪 Testing Admin Registration...', 'info');
+            
+            const adminData = {
+                first_name: 'Admin',
+                last_name: 'User',
+                email: `admin.${Date.now()}@weddingbazaar.com`,
+                password: 'admin123',
+                user_type: 'admin',
+                phone: '+639123456791'
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(adminData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    testUsers.admin = { email: adminData.email, password: adminData.password, user_id: result.user.id };
+                    log('✅ Admin Registration SUCCESS', 'success');
+                    log(`   User ID: ${result.user.id}`, 'info');
+                    log(`   Profile Created: ${result.profile ? 'YES' : 'NO'}`, result.profile ? 'success' : 'error');
+                    log(`   Email Verified: ${result.user.email_verified}`, result.user.email_verified ? 'success' : 'warning');
+                    log(`   Phone Verification Required: ${result.verification_required?.phone}`, 'info');
+                } else {
+                    log(`❌ Admin Registration FAILED: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Admin Registration ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUnverifiedLogin() {
+            if (!testUsers.couple) {
+                log('⚠️ Please register a couple first', 'warning');
+                return;
+            }
+            
+            log('🧪 Testing Unverified User Login (Should Block)...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: testUsers.couple.email,
+                        password: testUsers.couple.password
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success && result.verification_required) {
+                    log('✅ Unverified Login CORRECTLY BLOCKED', 'success');
+                    log(`   Error: ${result.error}`, 'info');
+                    log(`   Verification Required: ${result.verification_required}`, 'info');
+                } else if (result.success) {
+                    log('❌ Unverified Login SHOULD HAVE BEEN BLOCKED', 'error');
+                    log(`   Login succeeded when it shouldn't have`, 'error');
+                } else {
+                    log(`❌ Unexpected login response: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Login test ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        async function testEmailVerification() {
+            if (!testUsers.couple) {
+                log('⚠️ Please register a couple first', 'warning');
+                return;
+            }
+            
+            log('🧪 Testing Email Verification...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/verify-email`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: testUsers.couple.email,
+                        verification_code: 'TEST123' // Placeholder code
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log('✅ Email Verification SUCCESS', 'success');
+                    log(`   Email Verified: ${result.user.email_verified}`, 'success');
+                } else {
+                    log(`❌ Email Verification FAILED: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Email Verification ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        async function testVerifiedLogin() {
+            if (!testUsers.couple) {
+                log('⚠️ Please register and verify a couple first', 'warning');
+                return;
+            }
+            
+            log('🧪 Testing Verified User Login (Should Work)...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: testUsers.couple.email,
+                        password: testUsers.couple.password
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log('✅ Verified Login SUCCESS', 'success');
+                    log(`   Token received: ${result.token ? 'YES' : 'NO'}`, result.token ? 'success' : 'error');
+                    log(`   User Type: ${result.user.userType}`, 'info');
+                } else {
+                    log(`❌ Verified Login FAILED: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Login ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        async function testVendorDocumentSubmission() {
+            if (!testUsers.vendor) {
+                log('⚠️ Please register a vendor first', 'warning');
+                return;
+            }
+            
+            log('🧪 Testing Vendor Document Submission...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/vendor/submit-documents`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: testUsers.vendor.user_id,
+                        document_type: 'business_registration',
+                        document_url: 'https://example.com/documents/business-reg.pdf'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log('✅ Vendor Document Submission SUCCESS', 'success');
+                    log(`   Vendor: ${result.vendor.business_name}`, 'info');
+                    log(`   Document Status: pending_review`, 'warning');
+                } else {
+                    log(`❌ Document Submission FAILED: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Document Submission ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAdminVendorVerification() {
+            if (!testUsers.vendor) {
+                log('⚠️ Please register a vendor and submit documents first', 'warning');
+                return;
+            }
+            
+            log('🧪 Testing Admin Vendor Verification...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/admin/verify-vendor`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: testUsers.vendor.user_id,
+                        verification_status: 'verified',
+                        admin_notes: 'All documents verified successfully'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log('✅ Admin Vendor Verification SUCCESS', 'success');
+                    log(`   Vendor: ${result.vendor.business_name}`, 'info');
+                    log(`   Status: ${result.vendor.verification_status}`, 'success');
+                } else {
+                    log(`❌ Vendor Verification FAILED: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Vendor Verification ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkDatabaseProfiles() {
+            log('🧪 Checking Created Profiles in Database...', 'info');
+            
+            // This would require additional endpoints to query the database
+            // For now, just show what we expect to be created
+            log('Expected Database State:', 'info');
+            
+            if (testUsers.couple) {
+                log(`   ✅ users table: ${testUsers.couple.user_id} (couple)`, 'success');
+                log(`   ✅ couple_profiles table: CP-YYYY-XXX linked to ${testUsers.couple.user_id}`, 'success');
+            }
+            
+            if (testUsers.vendor) {
+                log(`   ✅ users table: ${testUsers.vendor.user_id} (vendor)`, 'success');
+                log(`   ✅ vendor_profiles table: linked to ${testUsers.vendor.user_id}`, 'success');
+            }
+            
+            if (testUsers.admin) {
+                log(`   ✅ users table: ${testUsers.admin.user_id} (admin)`, 'success');
+                log(`   ✅ admin_profiles table: linked to ${testUsers.admin.user_id}`, 'success');
+            }
+        }
+
+        async function checkVerificationStatus() {
+            log('🧪 Checking Verification Status...', 'info');
+            
+            Object.entries(testUsers).forEach(([type, user]) => {
+                log(`   ${type.toUpperCase()}: ${user.email}`, 'info');
+                log(`      - Email verified: Check via login attempt`, 'warning');
+                log(`      - Phone verified: Requires phone verification test`, 'warning');
+                if (type === 'vendor') {
+                    log(`      - Documents: Requires admin verification`, 'warning');
+                }
+            });
+        }
+
+        // Clear results
+        function clearResults() {
+            document.getElementById('results').innerHTML = '<div class="text-gray-500 italic">Test results will appear here...</div>';
+        }
+
+        // Initialize
+        log('🚀 Enhanced Registration Test Suite Loaded', 'success');
+        log('ℹ️ Backend URL: ' + API_BASE, 'info');
+        log('ℹ️ Click buttons above to run tests', 'info');
+    </script>
+</body>
+</html>

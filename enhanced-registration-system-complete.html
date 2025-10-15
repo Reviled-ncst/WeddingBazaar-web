@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✅ Enhanced Registration System - Complete Profile Creation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 3px solid #6366f1;
+            margin-bottom: 30px;
+        }
+        .endpoint-section {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .vendor-section {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .couple-section {
+            background: #fce7f3;
+            border: 2px solid #ec4899;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .admin-section {
+            background: #dcfce7;
+            border: 2px solid #22c55e;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .code {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        .success-badge {
+            background: #dcfce7;
+            color: #166534;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .feature {
+            background: #f1f5f9;
+            border-left: 5px solid #6366f1;
+            padding: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Enhanced Registration System</h1>
+            <p>Complete user account + profile creation with verification workflows</p>
+            <div class="success-badge">🎯 Real Database Schema Integration</div>
+        </div>
+
+        <div class="endpoint-section">
+            <h2>🚀 Registration Endpoint Enhancement</h2>
+            <p><strong>POST /api/auth/register</strong> - Now creates complete user profile based on user type</p>
+            
+            <h3>📋 What It Creates:</h3>
+            <div class="feature-list">
+                <div class="feature">
+                    <strong>1. User Account (users table)</strong>
+                    <ul>
+                        <li>Basic authentication data</li>
+                        <li>Email & phone verification flags</li>
+                        <li>User type classification</li>
+                    </ul>
+                </div>
+                <div class="feature">
+                    <strong>2. Type-Specific Profile</strong>
+                    <ul>
+                        <li>Vendor → vendor_profiles table</li>
+                        <li>Couple → couple_profiles table</li>
+                        <li>Admin → admin_profiles table</li>
+                    </ul>
+                </div>
+                <div class="feature">
+                    <strong>3. Verification Structure</strong>
+                    <ul>
+                        <li>Email verification placeholders</li>
+                        <li>Phone verification placeholders</li>
+                        <li>Document verification (vendors)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="vendor-section">
+            <h2>🏢 Vendor Profile Creation</h2>
+            <p>Complete business profile with verification workflow</p>
+            
+            <div class="code">
+// Vendor Profile Fields Created:
+{
+  "user_id": "V-2025-001",
+  "business_name": "User Input",
+  "business_type": "User Input", 
+  "business_description": null, // To be filled later
+  "verification_status": "unverified",
+  "verification_documents": {
+    "business_registration": null,
+    "tax_documents": null,
+    "identity_verification": null,
+    "status": "pending_submission",
+    "admin_notes": null
+  },
+  "service_areas": ["User Location"],
+  "pricing_range": { "min": null, "max": null, "currency": "PHP" },
+  "business_hours": { /* Default 9-5 schedule */ },
+  "average_rating": 0.00,
+  "total_reviews": 0,
+  "total_bookings": 0,
+  "is_featured": false,
+  "is_premium": false
+}
+            </div>
+
+            <h3>📋 Vendor Verification Process:</h3>
+            <ol>
+                <li><strong>Registration:</strong> Basic business info collected</li>
+                <li><strong>Document Submission:</strong> Business registration, tax docs, ID</li>
+                <li><strong>Manual Admin Review:</strong> Documents verified by admin</li>
+                <li><strong>Status Update:</strong> Approved/Rejected with feedback</li>
+                <li><strong>Profile Activation:</strong> Full vendor features unlocked</li>
+            </ol>
+        </div>
+
+        <div class="couple-section">
+            <h2>💕 Couple Profile Creation</h2>
+            <p>Wedding planning profile with email/phone verification</p>
+            
+            <div class="code">
+// Couple Profile Fields Created:
+{
+  "id": "CP-2025-001",
+  "user_id": "C-2025-001", 
+  "partner_name": "User Input or null",
+  "wedding_date": "User Input or null",
+  "wedding_location": "User Input or null",
+  "budget_range": "User Input or null",
+  "guest_count": 0,
+  "wedding_style": null // To be selected later
+}
+            </div>
+
+            <h3>📋 Couple Verification Process:</h3>
+            <ol>
+                <li><strong>Registration:</strong> Basic wedding info collected</li>
+                <li><strong>Email Verification:</strong> Verify email address</li>
+                <li><strong>Phone Verification:</strong> SMS verification code</li>
+                <li><strong>Profile Completion:</strong> Wedding details, preferences</li>
+                <li><strong>Vendor Discovery:</strong> Access to full vendor listings</li>
+            </ol>
+        </div>
+
+        <div class="admin-section">
+            <h2>👨‍💼 Admin Profile Creation</h2>
+            <p>Administrative account with vendor verification capabilities</p>
+            
+            <div class="code">
+// Admin Profile Created:
+{
+  "user_id": "A-2025-001",
+  "created_at": "timestamp",
+  "updated_at": "timestamp"
+  // Additional admin-specific fields as per your schema
+}
+            </div>
+        </div>
+
+        <div class="endpoint-section">
+            <h2>🔧 New API Endpoints</h2>
+            
+            <div class="feature-list">
+                <div class="feature">
+                    <strong>POST /api/auth/register</strong>
+                    <p>Enhanced registration with profile creation</p>
+                </div>
+                <div class="feature">
+                    <strong>POST /api/auth/verify-email</strong>
+                    <p>Email verification endpoint</p>
+                </div>
+                <div class="feature">
+                    <strong>POST /api/auth/verify-phone</strong>
+                    <p>Phone/SMS verification endpoint</p>
+                </div>
+                <div class="feature">
+                    <strong>POST /api/auth/submit-vendor-documents</strong>
+                    <p>Vendor document submission for review</p>
+                </div>
+                <div class="feature">
+                    <strong>POST /api/admin/verify-vendor</strong>
+                    <p>Admin manual vendor verification</p>
+                </div>
+                <div class="feature">
+                    <strong>GET /api/auth/profile</strong>
+                    <p>Get complete user + profile data</p>
+                </div>
+                <div class="feature">
+                    <strong>PUT /api/auth/vendor-profile</strong>
+                    <p>Update vendor business details</p>
+                </div>
+                <div class="feature">
+                    <strong>PUT /api/auth/couple-profile</strong>
+                    <p>Update wedding planning details</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="endpoint-section">
+            <h2>🔄 Complete Registration Flow</h2>
+            
+            <h3>Frontend → Backend Integration:</h3>
+            <div class="code">
+// Frontend sends registration data:
+POST /api/auth/register
+{
+  "first_name": "John",
+  "last_name": "Doe", 
+  "email": "john@example.com",
+  "password": "secure123",
+  "user_type": "vendor",
+  "phone": "+63912345678",
+  "business_name": "John's Photography",
+  "business_type": "Photography",
+  "location": "Manila, Philippines"
+}
+
+// Backend responds with:
+{
+  "success": true,
+  "message": "User registered successfully. Please verify your email before logging in.",
+  "user": { /* user data */ },
+  "profile": { /* vendor profile data */ },
+  "token": "jwt_token_here",
+  "verification_required": {
+    "email": true,
+    "phone": true, 
+    "documents": true // Only for vendors
+  }
+}
+            </div>
+        </div>
+
+        <div class="success-badge" style="display: block; text-align: center; font-size: 18px; margin: 30px 0;">
+            🎯 Ready for Implementation - Database Schema Matched!
+        </div>
+    </div>
+
+    <script>
+        console.log('✅ Enhanced registration system with complete profile creation');
+        console.log('🎯 Database schema: vendor_profiles, couple_profiles, admin_profiles');
+        console.log('📧 Verification workflows: email, phone, documents');
+        console.log('👨‍💼 Admin manual verification for vendors');
+        console.log('🔄 Complete user journey from registration to profile completion');
+    </script>
+</body>
+</html>

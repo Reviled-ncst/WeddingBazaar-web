@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✅ Registration Modal Fix - Email Verification Screen Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 30px;
+        }
+        .fix-info {
+            background: #f0fdf4;
+            border: 2px solid #22c55e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .test-steps {
+            background: #eff6ff;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .code {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .button {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .success {
+            background: #dcfce7;
+            border: 2px solid #16a34a;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .important {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Registration Modal Fixed!</h1>
+            <p>Email verification screen should now display properly after registration</p>
+        </div>
+
+        <div class="fix-info">
+            <h3>🔧 What was Fixed:</h3>
+            <ul>
+                <li><strong>State Conflict:</strong> The success overlay was blocking the email verification screen</li>
+                <li><strong>Z-Index Issue:</strong> Success overlay had z-50 and covered the entire modal</li>
+                <li><strong>Conditional Logic:</strong> Both screens were trying to render simultaneously</li>
+            </ul>
+        </div>
+
+        <div class="success">
+            <h3>✅ Applied Fixes:</h3>
+            <ol>
+                <li><strong>Explicit State Management:</strong> When showing email verification, set <code>setIsSuccess(false)</code></li>
+                <li><strong>Conditional Rendering:</strong> Success overlay now checks <code>isSuccess && !showEmailVerification</code></li>
+                <li><strong>Debug Logging:</strong> Added console logs to track state changes</li>
+                <li><strong>Clear State Separation:</strong> Firebase path vs backend-only path now properly managed</li>
+            </ol>
+        </div>
+
+        <div class="test-steps">
+            <h3>🧪 Test the Fix:</h3>
+            <ol>
+                <li><strong>Open WeddingBazaar:</strong> Click the button below</li>
+                <li><strong>Click "Register" button</strong> in the top right</li>
+                <li><strong>Select "Vendor" user type</strong></li>
+                <li><strong>Fill out the registration form</strong> with test data</li>
+                <li><strong>Submit the form</strong></li>
+                <li><strong>Expected Result:</strong> Email verification screen should appear</li>
+            </ol>
+        </div>
+
+        <div class="important">
+            <h3>📧 Expected Email Verification Screen:</h3>
+            <ul>
+                <li>Should show "Verify Your Email" header</li>
+                <li>Should display the email address you registered with</li>
+                <li>Should show step-by-step instructions</li>
+                <li>Should have "Continue to Login" button</li>
+                <li>Should have "Resend Verification Email" button</li>
+                <li>Should NOT show the success overlay</li>
+            </ul>
+        </div>
+
+        <div class="test-steps">
+            <h3>🎯 Debug Console Logs to Look For:</h3>
+            <div class="code">
+🔥 Firebase configured: true
+🔑 API Key exists: true
+🎯 Setting showEmailVerification to: true
+📧 Registration successful - showing email verification screen
+📧 showEmailVerification state set to: true
+📧 isSuccess state set to: false
+🎯 RENDER CHECK - showEmailVerification: true
+🎯 RENDER CHECK - isSuccess: false
+            </div>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="https://weddingbazaarph.web.app/" target="_blank" rel="noopener" class="button">
+                🚀 Test Registration Flow
+            </a>
+        </div>
+
+        <div class="success">
+            <h3>✨ Complete Registration & Login Flow:</h3>
+            <ol>
+                <li><strong>Register:</strong> Fill out form → Email verification screen appears</li>
+                <li><strong>Check Email:</strong> Find verification email in inbox</li>
+                <li><strong>Verify:</strong> Click verification link in email</li>
+                <li><strong>Login:</strong> Return to site and use Login button</li>
+                <li><strong>Access:</strong> Successfully login to vendor/couple dashboard</li>
+            </ol>
+        </div>
+
+        <div class="important">
+            <h3>⚠️ Key Testing Points:</h3>
+            <ul>
+                <li>Email verification screen must appear immediately after registration</li>
+                <li>No success overlay should block the email verification screen</li>
+                <li>User should be able to see clear instructions</li>
+                <li>Login should be blocked until email is verified</li>
+                <li>After verification, login should work normally</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        console.log('✅ Registration modal fix deployed and ready for testing');
+        console.log('🕒 Test started at:', new Date().toLocaleTimeString());
+        
+        // Auto-focus on the test button after a delay
+        setTimeout(() => {
+            console.log('🎯 Ready to test - click "Test Registration Flow" button');
+        }, 1000);
+    </script>
+</body>
+</html>

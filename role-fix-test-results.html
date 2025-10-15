@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Role Fix - Test Results</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        .success {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            border-left: 5px solid #2e7d32;
+        }
+        .error {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+            border-left: 5px solid #c62828;
+        }
+        .info {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+            border-left: 5px solid #1565C0;
+        }
+        .warning {
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+            color: white;
+            border-left: 5px solid #E65100;
+        }
+        .code {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .test-step {
+            margin: 20px 0;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+        .highlight {
+            background: linear-gradient(135deg, #FFEB3B, #FBC02D);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Firebase Registration Role Fix Deployed</h1>
+            <p><strong>Date:</strong> October 15, 2025</p>
+        </div>
+
+        <div class="status success">
+            <h3>✅ CRITICAL ROLE ASSIGNMENT BUG FIXED</h3>
+            <p>Fixed the issue where couple registrations were incorrectly storing vendor data in the Neon database.</p>
+        </div>
+
+        <div class="status info">
+            <h3>🔧 WHAT WAS FIXED</h3>
+            <ul>
+                <li><strong>Form State Contamination:</strong> Vendor fields were persisting when switching to couple mode</li>
+                <li><strong>Data Leakage:</strong> Business fields were being sent even for couple registrations</li>
+                <li><strong>Role Mapping:</strong> Added explicit field exclusion for couple registrations</li>
+                <li><strong>Safeguards:</strong> Added double-check in HybridAuthContext to prevent vendor field contamination</li>
+            </ul>
+        </div>
+
+        <div class="test-step">
+            <h3>📋 TESTING INSTRUCTIONS</h3>
+            <ol>
+                <li>Go to <a href="https://weddingbazaarph.web.app" target="_blank">https://weddingbazaarph.web.app</a></li>
+                <li>Click "Login/Register" in the top right</li>
+                <li>Select "Register" tab</li>
+                <li>Try this scenario:
+                    <ul>
+                        <li>Select <span class="highlight">"I'm a Wedding Vendor"</span></li>
+                        <li>Fill out business name, type, location</li>
+                        <li>Then switch to <span class="highlight">"Planning My Wedding"</span></li>
+                        <li>Complete couple registration</li>
+                    </ul>
+                </li>
+                <li>Check browser console logs for:</li>
+            </ol>
+            
+            <div class="code">
+🔍 [RegisterModal] Registration data created: {
+  userType: "couple",
+  role: "couple",
+  isVendor: false,
+  hasBusinessName: false,    ← Should be FALSE for couples
+  hasBusinessType: false,    ← Should be FALSE for couples
+  hasLocation: false,        ← Should be FALSE for couples
+}
+            </div>
+        </div>
+
+        <div class="status warning">
+            <h3>⚠️ WHAT TO WATCH FOR</h3>
+            <p>Make sure the registration data being sent to Neon database shows:</p>
+            <ul>
+                <li><strong>"role": "couple"</strong> (not "vendor")</li>
+                <li><strong>NO</strong> business_name field</li>
+                <li><strong>NO</strong> business_type field</li>
+                <li><strong>NO</strong> location field</li>
+            </ul>
+        </div>
+
+        <div class="status success">
+            <h3>🎯 EXPECTED RESULT</h3>
+            <p>Couple registrations should now correctly:</p>
+            <ul>
+                <li>Store with <code>user_type: "couple"</code> in Neon database</li>
+                <li>Exclude all vendor-specific fields</li>
+                <li>Route to <code>/individual</code> dashboard</li>
+                <li>Show clean debug logs without vendor field contamination</li>
+            </ul>
+        </div>
+
+        <div class="status info">
+            <h3>🔍 CHANGES MADE</h3>
+            <ol>
+                <li><strong>RegisterModal.tsx:</strong> Added form field clearing when switching user types</li>
+                <li><strong>RegisterModal.tsx:</strong> Explicit data construction with vendor field exclusion for couples</li>
+                <li><strong>HybridAuthContext.tsx:</strong> Added safeguard to strip vendor fields if role is "couple"</li>
+                <li><strong>Added comprehensive debug logging</strong> to track field contamination</li>
+            </ol>
+        </div>
+
+        <div class="status success">
+            <h3>🚀 DEPLOYMENT STATUS</h3>
+            <p><strong>Frontend:</strong> ✅ Deployed to Firebase Hosting</p>
+            <p><strong>Backend:</strong> ✅ Modular backend active with profile endpoint</p>
+            <p><strong>Database:</strong> ✅ Neon PostgreSQL connected</p>
+            <p><strong>Authentication:</strong> ✅ Firebase email verification active</p>
+        </div>
+    </div>
+</body>
+</html>

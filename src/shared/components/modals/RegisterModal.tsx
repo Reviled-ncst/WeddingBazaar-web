@@ -16,12 +16,14 @@ interface RegisterModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSwitchToLogin: () => void;
+  onEmailVerificationModeChange?: (isInVerificationMode: boolean) => void;
 }
 
 export const RegisterModal: React.FC<RegisterModalProps> = ({ 
   isOpen, 
   onClose, 
-  onSwitchToLogin 
+  onSwitchToLogin,
+  onEmailVerificationModeChange
 }) => {
   // Core state
   const [showPassword, setShowPassword] = useState(false);
@@ -36,6 +38,26 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
   const [checkingVerification, setCheckingVerification] = useState(false);
+  
+  // Persistent email verification state using localStorage
+  const [verificationEmail, setVerificationEmail] = useState<string>('');
+
+  // Check for persistent verification state on mount
+  useEffect(() => {
+    const savedVerificationState = localStorage.getItem('emailVerificationPending');
+    if (savedVerificationState) {
+      const { email, timestamp } = JSON.parse(savedVerificationState);
+      // Only restore if less than 10 minutes old
+      if (Date.now() - timestamp < 10 * 60 * 1000) {
+        setVerificationEmail(email);
+        setShowEmailVerification(true);
+        setVerificationSent(true);
+        console.log('🔄 Restored email verification state from localStorage');
+      } else {
+        localStorage.removeItem('emailVerificationPending');
+      }
+    }
+  }, []);
   
   // Modal states
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -72,7 +94,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     receiveUpdates: false,
   });
 
-  const { register, sendEmailVerification, registerWithGoogle } = useAuth();
+  const { register, registerWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   // Essential vendor categories
@@ -89,33 +111,32 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     { value: 'Other', label: 'Other Services' }
   ];
 
-  // Reset form when modal opens
+  // Reset form when modal opens (but preserve email verification state if it exists)
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        password: '',
-        confirmPassword: '',
-        business_name: '',
-        business_type: '',
-        location: '',
-        agreeToTerms: false,
-        receiveUpdates: false,
-      });
-      setValidationErrors({});
-      setError(null);
-      setIsSuccess(false);
-      setUserType('couple');
-      
-      // Reset email verification state
-      setShowEmailVerification(false);
-      setVerificationSent(false);
-      setCheckingVerification(false);
+      // Only reset if we're not in email verification mode
+      if (!showEmailVerification) {
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          password: '',
+          confirmPassword: '',
+          business_name: '',
+          business_type: '',
+          location: '',
+          agreeToTerms: false,
+          receiveUpdates: false,
+        });
+        setValidationErrors({});
+        setError(null);
+        setIsSuccess(false);
+        setUserType('couple');
+        setCheckingVerification(false);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, showEmailVerification]);
 
   // Validation function
   const validateForm = () => {
@@ -188,31 +209,36 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         receiveUpdates: formData.receiveUpdates,
       });
 
-      // Check if Firebase is configured for login after email verification
-      const isFirebaseConfigured = import.meta.env.VITE_FIREBASE_API_KEY && 
-                                   import.meta.env.VITE_FIREBASE_API_KEY !== "demo-api-key";
+      console.log('✅ Backend registration completed successfully - showing email verification screen');
       
-      console.log('🔥 Firebase configured:', isFirebaseConfigured);
-      console.log('🔑 API Key exists:', !!import.meta.env.VITE_FIREBASE_API_KEY);
-      console.log('🎯 Backend registration completed successfully');
+      // Always show email verification screen after backend registration
+      setShowEmailVerification(true);
+      setVerificationSent(true);
+      setIsSuccess(false);
+      setVerificationEmail(formData.email);
       
-      // Show success screen since registration is complete and user can login immediately
-      // TODO: Re-enable email verification when schema supports it
-      setIsSuccess(true); 
-      setShowEmailVerification(false);
-      setVerificationSent(false);
-      console.log('✅ Backend registration successful - showing success screen');
-      console.log('📧 showEmailVerification state set to: false');
-      console.log('📧 isSuccess state set to: true');
-      console.log('✅ User can now login immediately');
-
-      // Auto-redirect to dashboard after showing success message
-      setTimeout(() => {
-        const dashboardPath = userType === 'vendor' ? '/vendor' : '/individual';
-        console.log(`🚀 Redirecting to ${userType} dashboard: ${dashboardPath}`);
-        navigate(dashboardPath);
-        onClose(); // Close the modal
-      }, 3000); // Show success for 3 seconds
+      // Notify parent component that we're in email verification mode
+      onEmailVerificationModeChange?.(true);
+      
+      // Save verification state to localStorage for persistence
+      localStorage.setItem('emailVerificationPending', JSON.stringify({
+        email: formData.email,
+        timestamp: Date.now()
+      }));
+      
+      console.log('📧 showEmailVerification state set to: true');
+      console.log('📧 verificationSent state set to: true');
+      console.log('💾 Verification state saved to localStorage');
+      console.log('✅ User must verify email before login');
+      
+      // Add debugging to check modal state
+      console.log('🔍 Modal state after registration:', {
+        isOpen,
+        showEmailVerification: true,
+        verificationSent: true,
+        isSuccess: false,
+        error
+      });
       
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -229,9 +255,10 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   const handleResendVerification = async () => {
     try {
       setCheckingVerification(true);
-      await sendEmailVerification();
-      setVerificationSent(true);
-      setError(null);
+      
+      // Since user is signed out after registration, we need to show a helpful message
+      setError('To resend verification email, please try registering again or contact support if you continue to have issues.');
+      
     } catch (error: any) {
       setError(error.message || 'Failed to resend verification email');
     } finally {
@@ -275,9 +302,112 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     }
   };
 
+  // Debug effect to track email verification state
+  useEffect(() => {
+    if (showEmailVerification) {
+      console.log('🎯 Email verification screen should be showing!', {
+        showEmailVerification,
+        verificationSent,
+        isSuccess,
+        isOpen,
+        error
+      });
+    }
+  }, [showEmailVerification, verificationSent, isSuccess, isOpen, error]);
+
+  // Additional debug effect to track rendering
+  useEffect(() => {
+    if (showEmailVerification && isOpen) {
+      console.log('🚀 MODAL IS OPEN AND SHOULD SHOW EMAIL VERIFICATION SCREEN');
+    }
+  }, [showEmailVerification, isOpen]);
+
+  // Monitor page reload/navigation attempts
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      console.log('⚠️ BEFOREUNLOAD detected - something is trying to reload the page');
+      console.log('📊 Modal state:', { isOpen, showEmailVerification, verificationSent });
+      if (showEmailVerification) {
+        console.log('🛑 Preventing page reload during email verification');
+        e.preventDefault();
+        e.returnValue = 'You are in the middle of email verification. Are you sure you want to leave?';
+        return 'You are in the middle of email verification. Are you sure you want to leave?';
+      }
+    };
+
+    const handleUnload = (e: Event) => {
+      console.log('⚠️ UNLOAD detected - page is actually reloading');
+      console.log('📊 Modal state:', { isOpen, showEmailVerification, verificationSent });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('unload', handleUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('unload', handleUnload);
+    };
+  }, [isOpen, showEmailVerification, verificationSent]);
+
+  // Track modal lifecycle and rendering
+  useEffect(() => {
+    console.log('🔄 RegisterModal useEffect - Modal state changed:', {
+      isOpen,
+      showEmailVerification,
+      verificationSent,
+      isSuccess,
+      verificationEmail,
+      formData: { email: formData.email }
+    });
+    
+    // If we have a verification email and modal is open, ensure verification screen shows
+    if (isOpen && verificationEmail && !showEmailVerification) {
+      console.log('🔧 Restoring email verification screen for:', verificationEmail);
+      setShowEmailVerification(true);
+      setVerificationSent(true);
+      onEmailVerificationModeChange?.(true);
+    }
+  }, [isOpen, showEmailVerification, verificationSent, isSuccess, verificationEmail, formData.email]);
+
+  // Custom close handler that resets email verification state
+  const handleModalClose = () => {
+    console.log('🚪 RegisterModal handleModalClose called');
+    console.log('📊 Current state:', { showEmailVerification, verificationSent, verificationEmail });
+    console.trace('📍 Modal close call stack');
+    
+    // Reset email verification state when modal is closed
+    setShowEmailVerification(false);
+    setVerificationSent(false);
+    setVerificationEmail('');
+    
+    // Notify parent component that we're no longer in email verification mode
+    onEmailVerificationModeChange?.(false);
+    
+    // Clear localStorage
+    localStorage.removeItem('emailVerificationPending');
+    console.log('🧹 Cleared email verification state');
+    
+    // Call the original onClose
+    onClose();
+  };
+
+  // FORCE THE MODAL TO STAY OPEN DURING EMAIL VERIFICATION
+  const debugModalClose = () => {
+    console.log('🚨 MODAL CLOSE ATTEMPT');
+    
+    // ABSOLUTELY DO NOT CLOSE IF WE'RE IN EMAIL VERIFICATION MODE
+    if (showEmailVerification || verificationSent) {
+      console.log('� BLOCKING MODAL CLOSE - EMAIL VERIFICATION IN PROGRESS');
+      return; // HARD STOP - DO NOT CLOSE
+    }
+    
+    // Only allow close if we're not in verification mode
+    handleModalClose();
+  };
+
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} maxWidth="xl" preventBackdropClose={!!error || Object.keys(validationErrors).length > 0}>
+      <Modal isOpen={isOpen} onClose={debugModalClose} maxWidth="xl" preventBackdropClose={!!error || Object.keys(validationErrors).length > 0 || showEmailVerification}>
         <div className={cn("relative overflow-hidden px-6 py-6", fadeIn && "animate-in fade-in duration-500")}>
           
           {/* Enhanced Background decoration */}
@@ -360,7 +490,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">Verify Your Email</h2>
                     <p className="text-gray-600">
-                      We've sent a verification link to <strong>{formData.email}</strong>
+                      We've sent a verification link to <strong>{verificationEmail || formData.email}</strong>
                     </p>
                   </div>
 
@@ -389,7 +519,12 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     <div className="flex flex-col gap-3">
                       <button
                         onClick={() => {
-                          onClose();
+                          // Clear verification state and then switch
+                          setShowEmailVerification(false);
+                          setVerificationSent(false);
+                          setVerificationEmail('');
+                          onEmailVerificationModeChange?.(false);
+                          localStorage.removeItem('emailVerificationPending');
                           onSwitchToLogin();
                         }}
                         className="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:from-pink-600 hover:to-purple-700 flex items-center justify-center gap-2"
@@ -413,13 +548,34 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     </p>
                   </div>
 
-                  {/* Back to Registration */}
-                  <div className="text-center">
+                  {/* Navigation Options */}
+                  <div className="flex flex-col gap-3 text-center">
                     <button
-                      onClick={() => setShowEmailVerification(false)}
+                      onClick={() => {
+                        setShowEmailVerification(false);
+                        setVerificationSent(false);
+                        setVerificationEmail('');
+                        onEmailVerificationModeChange?.(false);
+                        localStorage.removeItem('emailVerificationPending');
+                      }}
                       className="text-gray-500 hover:text-gray-700 text-sm font-medium"
                     >
                       ← Back to registration form
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        // Clear verification state and close modal
+                        setShowEmailVerification(false);
+                        setVerificationSent(false);
+                        setVerificationEmail('');
+                        onEmailVerificationModeChange?.(false);
+                        localStorage.removeItem('emailVerificationPending');
+                        handleModalClose();
+                      }}
+                      className="text-red-500 hover:text-red-700 text-sm font-medium"
+                    >
+                      ✕ Close and cancel verification
                     </button>
                   </div>
                 </div>
@@ -822,6 +978,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
               {/* Enhanced Submit Button */}
               <div className="flex flex-col items-center space-y-6 pt-4">
                 <button
+                  type="button"
                   onClick={handleSubmit}
                   disabled={isLoading || !formData.agreeToTerms}
                   className={cn(

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Modal Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 30px;
+        }
+        .test-info {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .step {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-left: 4px solid #10b981;
+            background: #f0fdf4;
+        }
+        .expected {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .actual {
+            background: #fef2f2;
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #f0fdf4;
+            border: 1px solid #22c55e;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .code {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .debug-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #1f2937;
+            color: #f9fafb;
+            border-radius: 8px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .log-info { background: #1e40af; }
+        .log-success { background: #166534; }
+        .log-warning { background: #d97706; }
+        .log-error { background: #dc2626; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Registration Modal Debug Test</h1>
+            <p>Testing why the email verification screen is not showing after registration</p>
+        </div>
+
+        <div class="test-info">
+            <h3>🎯 Debug Objectives</h3>
+            <ul>
+                <li>Test registration with vendor account</li>
+                <li>Check Firebase configuration detection</li>
+                <li>Verify showEmailVerification state changes</li>
+                <li>Confirm email verification screen renders</li>
+                <li>Test console log output for debugging</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>Step 1: Access Registration Modal</h3>
+            <p>Click "Register" button on the WeddingBazaar homepage</p>
+            <a href="https://weddingbazaarph.web.app/" target="_blank" class="button">🌐 Open WeddingBazaar</a>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Fill Registration Form</h3>
+            <div class="expected">
+                <strong>Expected Behavior:</strong>
+                <ul>
+                    <li>Select "Vendor" user type</li>
+                    <li>Fill in business information</li>
+                    <li>Complete all required fields</li>
+                    <li>Check "I agree to terms" checkbox</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Submit Registration</h3>
+            <div class="expected">
+                <strong>Expected Debug Logs (Check Browser Console):</strong>
+                <div class="code">
+🔥 Firebase configured: true
+🔑 API Key exists: true  
+🎯 Setting showEmailVerification to: true
+📧 Registration successful - showing email verification screen
+📧 showEmailVerification state set to: true
+🎯 RENDER CHECK - showEmailVerification: true
+🎯 RENDER CHECK - isSuccess: false
+🎯 RENDERING EMAIL VERIFICATION VIEW - showEmailVerification: true
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>Step 4: Verify Email Verification Screen</h3>
+            <div class="expected">
+                <strong>Expected UI Changes:</strong>
+                <ul>
+                    <li>Registration form should disappear</li>
+                    <li>Email verification screen should appear</li>
+                    <li>Should show "Verify Your Email" header</li>
+                    <li>Should show email address and instructions</li>
+                    <li>"Continue to Login" button should be visible</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h3>🔍 Debug Instructions</h3>
+            <ol>
+                <li><strong>Open Browser DevTools:</strong> F12 or Right-click → Inspect</li>
+                <li><strong>Navigate to Console tab</strong></li>
+                <li><strong>Clear console:</strong> Right-click → Clear console</li>
+                <li><strong>Try registering</strong> with these test credentials:</li>
+            </ol>
+            
+            <div class="code">
+Email: test-vendor-debug@example.com
+Password: test123456
+First Name: Debug
+Last Name: Vendor
+Business Name: Debug Business Services
+Business Type: Photography
+Location: Debug City, Test State
+Phone: (555) 123-4567
+            </div>
+
+            <h4>Debug Points to Check:</h4>
+            <ul>
+                <li>Does "🔥 Firebase configured: true" appear in console?</li>
+                <li>Does "📧 showEmailVerification state set to: true" appear?</li>
+                <li>Does "🎯 RENDER CHECK - showEmailVerification: true" appear?</li>
+                <li>Does the UI actually switch to email verification screen?</li>
+                <li>Are there any React errors preventing the render?</li>
+            </ul>
+        </div>
+
+        <div class="test-info">
+            <h3>⚠️ Known Issues We're Debugging</h3>
+            <div class="actual">
+                <strong>Current Problem:</strong>
+                <ul>
+                    <li>Registration succeeds in backend (status 201)</li>
+                    <li>showEmailVerification state is set to true</li>
+                    <li>But email verification screen doesn't render</li>
+                    <li>Modal stays on the registration form</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>🚀 Quick Links for Testing</h3>
+            <a href="https://weddingbazaarph.web.app/" target="_blank" class="button">🏠 Homepage</a>
+            <a href="https://console.firebase.google.com/project/weddingbazaarph/overview" target="_blank" class="button">🔥 Firebase Console</a>
+            <a href="https://weddingbazaar-web.onrender.com/api/health" target="_blank" class="button">🔧 Backend Health</a>
+        </div>
+
+        <div class="debug-section">
+            <h3>🎯 Debugging Checklist</h3>
+            <label><input type="checkbox"> Registration form submits successfully</label><br>
+            <label><input type="checkbox"> Backend responds with 201 status</label><br>
+            <label><input type="checkbox"> Firebase configuration is detected</label><br>
+            <label><input type="checkbox"> showEmailVerification state changes to true</label><br>
+            <label><input type="checkbox"> Email verification screen renders</label><br>
+            <label><input type="checkbox"> No React render errors in console</label><br>
+        </div>
+    </div>
+
+    <script>
+        // Auto-open the WeddingBazaar site in a new tab for convenience
+        setTimeout(() => {
+            console.log('🔧 Debug test page loaded. Click the links above to start testing.');
+        }, 1000);
+
+        // Log current time for reference
+        console.log('🕒 Debug test started at:', new Date().toLocaleTimeString());
+    </script>
+</body>
+</html>

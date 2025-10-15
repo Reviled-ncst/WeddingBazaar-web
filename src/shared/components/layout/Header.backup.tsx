@@ -67,9 +67,9 @@ export const Header: React.FC = () => {
 
   // Removed aggressive monitoring - allow normal modal behavior
 
-  // Allow modal close and clear verification state
+  // ABSOLUTELY PREVENT MODAL CLOSE DURING EMAIL VERIFICATION
   const handleRegisterModalClose = () => {
-    console.log('� Modal close requested');
+    console.log('🚨 MODAL CLOSE ATTEMPT DETECTED');
     console.trace('📍 Modal close call stack:');
     
     // Check both the state and localStorage for verification status

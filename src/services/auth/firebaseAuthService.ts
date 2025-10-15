@@ -1,16 +1,12 @@
 import {
-  createUserWithEmailAndPassword,
   sendEmailVerification,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
-  updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
   reload
 } from 'firebase/auth';
 import type { User, UserCredential } from 'firebase/auth';
@@ -42,65 +38,66 @@ export interface RegistrationData {
 
 class FirebaseAuthService {
   /**
-   * Register a new user with email verification
+   * Register a new user with Firebase and send email verification
+   * This creates the Firebase user and stores profile data for later backend creation
    */
-  async registerWithEmailVerification(data: RegistrationData): Promise<UserCredential> {
+  async registerWithEmailVerification(data: RegistrationData): Promise<{ success: boolean; message: string; firebaseUid?: string; user?: User }> {
     if (!auth) {
       throw new Error('Firebase Auth is not configured');
     }
 
     try {
-      // Create user account
-      const userCredential = await createUserWithEmailAndPassword(
-        auth, 
-        data.email, 
-        data.password
-      );
-
-      // Update display name
-      await updateProfile(userCredential.user, {
-        displayName: `${data.firstName} ${data.lastName}`
+      console.log('🔧 Creating Firebase user with email verification...');
+      
+      // Step 1: Create Firebase user account
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const firebaseUser = userCredential.user;
+      
+      console.log('✅ Firebase user created:', firebaseUser.uid);
+      
+      // Step 2: Send email verification
+      await sendEmailVerification(firebaseUser, {
+        url: `${window.location.origin}/?verified=true`, // Redirect URL after verification
+        handleCodeInApp: false
       });
-
-      // Send email verification
-      await sendEmailVerification(userCredential.user);
-
-      console.log('✅ Firebase Auth: User created and verification email sent');
-      return userCredential;
+      
+      console.log('📧 Firebase email verification sent to:', data.email);
+      
+      // Step 3: Store registration data for later backend creation
+      const pendingProfile = {
+        firebase_uid: firebaseUser.uid,
+        email: data.email,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        user_type: data.userType,
+        phone: data.phone,
+        business_name: data.businessName,
+        business_type: data.businessType,
+        location: data.location
+      };
+      
+      localStorage.setItem('pending_user_profile', JSON.stringify(pendingProfile));
+      console.log('💾 Stored pending user profile for post-verification creation');
+      
+      // Step 4: Sign out user until they verify email
+      await signOut(auth);
+      console.log('🚪 User signed out - must verify email before login');
+      
+      return {
+        success: true,
+        message: 'Registration successful! Please check your email to verify your account before logging in.',
+        firebaseUid: firebaseUser.uid,
+        user: firebaseUser
+      };
+      
     } catch (error: any) {
-      console.error('❌ Firebase Auth Registration Error:', error);
+      console.error('❌ Firebase registration error:', error);
       throw this.handleFirebaseError(error);
     }
   }
 
   /**
-   * Send email verification to current user
-   */
-  async sendEmailVerification(): Promise<void> {
-    if (!auth) {
-      throw new Error('Firebase Auth is not configured');
-    }
-
-    const user = auth.currentUser;
-    if (!user) {
-      throw new Error('No user is currently signed in');
-    }
-
-    if (user.emailVerified) {
-      throw new Error('Email is already verified');
-    }
-
-    try {
-      await sendEmailVerification(user);
-      console.log('✅ Firebase Auth: Verification email sent');
-    } catch (error: any) {
-      console.error('❌ Firebase Auth: Error sending verification email:', error);
-      throw this.handleFirebaseError(error);
-    }
-  }
-
-  /**
-   * Sign in with email and password
+   * Sign in user (only if email is verified)
    */
   async signIn(email: string, password: string): Promise<UserCredential> {
     if (!auth) {
@@ -108,20 +105,91 @@ class FirebaseAuthService {
     }
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log('🔐 Firebase sign in attempt...');
       
-      // Check if email is verified (only for email/password users, not Google OAuth)
-      if (!userCredential.user.emailVerified) {
-        // Sign out the user since email is not verified
-        await signOut(auth);
-        throw new Error('Please verify your email before signing in. Check your inbox for the verification link.');
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Check if email is verified
+      if (!user.emailVerified) {
+        console.log('❌ Email not verified for user:', email);
+        await signOut(auth); // Sign out immediately
+        throw new Error('Please verify your email before logging in. Check your inbox for the verification link.');
       }
       
-      console.log('✅ Firebase Auth: User signed in with verified email');
+      console.log('✅ Firebase sign in successful for verified user:', email);
       return userCredential;
+      
     } catch (error: any) {
-      console.error('❌ Firebase Auth Sign In Error:', error);
+      console.error('❌ Firebase sign in error:', error);
       throw this.handleFirebaseError(error);
+    }
+  }
+
+  /**
+   * Resend email verification for current user
+   */
+  async resendEmailVerification(): Promise<{ success: boolean; message: string }> {
+    if (!auth) {
+      throw new Error('Firebase Auth is not configured');
+    }
+
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('No user logged in');
+      }
+      
+      if (user.emailVerified) {
+        return {
+          success: false,
+          message: 'Email is already verified'
+        };
+      }
+      
+      await sendEmailVerification(user, {
+        url: `${window.location.origin}/?verified=true`,
+        handleCodeInApp: false
+      });
+      
+      console.log('📧 Email verification resent to:', user.email);
+      
+      return {
+        success: true,
+        message: 'Verification email sent! Please check your inbox.'
+      };
+      
+    } catch (error: any) {
+      console.error('❌ Resend verification error:', error);
+      throw this.handleFirebaseError(error);
+    }
+  }
+
+  /**
+   * Check email verification status and reload user
+   */
+  async checkEmailVerification(): Promise<{ isVerified: boolean; user?: User }> {
+    if (!auth) {
+      return { isVerified: false };
+    }
+
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        return { isVerified: false };
+      }
+      
+      // Reload user data from Firebase
+      await reload(user);
+      
+      return {
+        isVerified: user.emailVerified,
+        user: user.emailVerified ? user : undefined
+      };
+      
+    } catch (error: any) {
+      console.error('❌ Check verification error:', error);
+      return { isVerified: false };
     }
   }
 
@@ -188,6 +256,8 @@ class FirebaseAuthService {
    * Get current user
    */
   getCurrentUser(): FirebaseAuthUser | null {
+    if (!auth) return null;
+    
     const user = auth.currentUser;
     if (!user) return null;
 
@@ -204,6 +274,10 @@ class FirebaseAuthService {
    * Get current user's ID token
    */
   async getCurrentUserToken(): Promise<string> {
+    if (!auth) {
+      throw new Error('Firebase Auth is not configured');
+    }
+
     const user = auth.currentUser;
     if (!user) {
       throw new Error('No user is currently signed in');
@@ -222,6 +296,8 @@ class FirebaseAuthService {
    * Check if current user's email is verified
    */
   isEmailVerified(): boolean {
+    if (!auth) return false;
+    
     const user = auth.currentUser;
     return user ? user.emailVerified : false;
   }
@@ -230,13 +306,15 @@ class FirebaseAuthService {
    * Reload current user to get updated info
    */
   async reloadUser(): Promise<FirebaseAuthUser | null> {
+    if (!auth) return null;
+    
     const user = auth.currentUser;
     if (!user) {
       return null;
     }
 
     try {
-      await user.reload();
+      await reload(user);
       return {
         uid: user.uid,
         email: user.email,
@@ -254,6 +332,10 @@ class FirebaseAuthService {
    * Sign in with Google OAuth
    */
   async signInWithGoogle(): Promise<UserCredential> {
+    if (!auth) {
+      throw new Error('Firebase Auth is not configured');
+    }
+
     try {
       const provider = new GoogleAuthProvider();
       // Add additional scopes if needed
@@ -273,6 +355,10 @@ class FirebaseAuthService {
    * Register/Sign in with Google OAuth (handles both new and existing users)
    */
   async registerWithGoogle(userType: 'couple' | 'vendor' = 'couple'): Promise<UserCredential> {
+    if (!auth) {
+      throw new Error('Firebase Auth is not configured');
+    }
+
     try {
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
@@ -282,64 +368,27 @@ class FirebaseAuthService {
       
       // Google users are automatically verified
       console.log('✅ Firebase Auth: User registered/signed in with Google');
+      
+      // Store user type for backend profile creation
+      const pendingProfile = {
+        firebase_uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        first_name: userCredential.user.displayName?.split(' ')[0] || '',
+        last_name: userCredential.user.displayName?.split(' ').slice(1).join(' ') || '',
+        user_type: userType,
+        phone: '',
+        business_name: userType === 'vendor' ? 'Google Vendor' : undefined,
+        business_type: userType === 'vendor' ? 'other' : undefined
+      };
+      
+      localStorage.setItem('pending_user_profile', JSON.stringify(pendingProfile));
+      console.log('💾 Stored Google user profile for backend creation');
+      
       return userCredential;
     } catch (error: any) {
       console.error('❌ Firebase Auth Google Registration Error:', error);
       throw this.handleFirebaseError(error);
     }
-  }
-
-  /**
-   * Send sign-in link to email (passwordless authentication)
-   */
-  async sendSignInLinkToEmail(email: string): Promise<void> {
-    try {
-      const actionCodeSettings = {
-        // URL you want to redirect back to - make sure this domain is authorized in Firebase Console
-        url: `${window.location.origin}/complete-signin`,
-        handleCodeInApp: true,
-      };
-
-      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-      
-      // Save the email locally so you don't need to ask the user for it again
-      // if they open the link on the same device
-      window.localStorage.setItem('emailForSignIn', email);
-      
-      console.log('✅ Firebase Auth: Sign-in link sent to email');
-    } catch (error: any) {
-      console.error('❌ Firebase Auth: Error sending sign-in link:', error);
-      throw this.handleFirebaseError(error);
-    }
-  }
-
-  /**
-   * Complete sign-in with email link
-   */
-  async signInWithEmailLink(email: string, emailLink: string): Promise<UserCredential> {
-    try {
-      if (!isSignInWithEmailLink(auth, emailLink)) {
-        throw new Error('Invalid sign-in link');
-      }
-
-      const userCredential = await signInWithEmailLink(auth, email, emailLink);
-      
-      // Clear email from storage
-      window.localStorage.removeItem('emailForSignIn');
-      
-      console.log('✅ Firebase Auth: Signed in with email link');
-      return userCredential;
-    } catch (error: any) {
-      console.error('❌ Firebase Auth: Error signing in with email link:', error);
-      throw this.handleFirebaseError(error);
-    }
-  }
-
-  /**
-   * Check if current URL is a sign-in with email link
-   */
-  isSignInWithEmailLink(url: string = window.location.href): boolean {
-    return isSignInWithEmailLink(auth, url);
   }
 
   /**
