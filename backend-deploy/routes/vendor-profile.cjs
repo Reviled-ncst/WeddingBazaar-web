@@ -103,7 +103,7 @@ router.get('/:vendorId', async (req, res) => {
       businessName: vendor.business_name,
       businessType: vendor.business_type,
       description: vendor.business_description,
-      location: vendor.service_area,
+      location: vendor.service_areas ? (Array.isArray(vendor.service_areas) ? vendor.service_areas.join(', ') : vendor.service_areas) : null,
       
       // Contact Information
       email: vendor.email,
@@ -115,8 +115,15 @@ router.get('/:vendorId', async (req, res) => {
       // Business Details
       yearsInBusiness: vendor.years_in_business || 0,
       teamSize: vendor.team_size || 0,
-      serviceArea: vendor.service_area,
+      serviceArea: vendor.service_areas ? (Array.isArray(vendor.service_areas) ? vendor.service_areas.join(', ') : vendor.service_areas) : null,
       priceRange: vendor.price_range,
+      
+      // Additional Business Info from Registration
+      businessHours: vendor.business_hours,
+      pricingRange: vendor.pricing_range,
+      averageRating: parseFloat(vendor.average_rating || 0),
+      totalReviews: vendor.total_reviews || 0,
+      responseTime: vendor.response_time_hours || 24,
       
       // Verification Status (with safe defaults)
       emailVerified: vendor.email_verified || false,
@@ -126,7 +133,7 @@ router.get('/:vendorId', async (req, res) => {
       overallVerificationStatus: vendor.verification_status || 'pending',
       
       // Business Information Verification
-      businessInfoComplete: !!(vendor.business_name && vendor.business_type && vendor.location),
+      businessInfoComplete: !!(vendor.business_name && vendor.business_type && vendor.service_areas),
       
       // Verification Documents
       documents: docsResult.map(doc => ({
