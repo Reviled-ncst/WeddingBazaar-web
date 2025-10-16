@@ -4,7 +4,7 @@ class EmailService {
   constructor() {
     // Configure email transporter
     // Using Gmail SMTP (you can change this to other providers)
-    this.transporter = nodemailer.createTransporter({
+    this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER, // Your Gmail address
