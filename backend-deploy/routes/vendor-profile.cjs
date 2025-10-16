@@ -335,4 +335,113 @@ router.post('/:vendorId/documents', async (req, res) => {
   }
 });
 
+// Update vendor profile
+router.put('/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const updateData = req.body;
+    
+    console.log('📝 Updating vendor profile:', vendorId, updateData);
+    
+    // If database is not available, return mock success
+    if (!process.env.DATABASE_URL) {
+      console.log('📋 Database unavailable, returning mock update success');
+      return res.json({
+        success: true,
+        message: 'Profile updated successfully (mock)',
+        data: { id: vendorId, ...updateData }
+      });
+    }
+    
+    // Build the update fields dynamically
+    const updateFields = [];
+    const updateValues = [];
+    
+    // Map frontend fields to database columns
+    const fieldMapping = {
+      business_name: 'business_name',
+      business_type: 'business_type', 
+      business_description: 'business_description',
+      years_in_business: 'years_in_business',
+      website_url: 'website',
+      contact_phone: 'phone',
+      contact_email: 'email',
+      location: 'service_area',
+      service_areas: 'service_areas',
+      social_media: 'social_media',
+      specialties: 'portfolio_images',
+      equipment: 'portfolio_images',
+      featured_image_url: 'featured_image_url'
+    };
+    
+    // Build SET clause for SQL update
+    Object.keys(updateData).forEach((key, index) => {
+      const dbField = fieldMapping[key] || key;
+      updateFields.push(`${dbField} = $${index + 2}`); // $1 is reserved for vendorId
+      updateValues.push(updateData[key]);
+    });
+    
+    if (updateFields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No valid fields to update'
+      });
+    }
+    
+    // Add updated_at timestamp
+    updateFields.push(`updated_at = NOW()`);
+    
+    // Execute the update
+    const updateQuery = `
+      UPDATE vendor_profiles 
+      SET ${updateFields.join(', ')}
+      WHERE id = $1
+      RETURNING *;
+    `;
+    
+    const result = await sql.unsafe(updateQuery, [vendorId, ...updateValues]);
+    
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Vendor not found'
+      });
+    }
+    
+    const updatedVendor = result[0];
+    
+    // Format response to match frontend expectations
+    const formattedResponse = {
+      id: updatedVendor.id,
+      userId: updatedVendor.user_id,
+      businessName: updatedVendor.business_name,
+      businessType: updatedVendor.business_type,
+      description: updatedVendor.business_description,
+      yearsInBusiness: updatedVendor.years_in_business,
+      website: updatedVendor.website,
+      location: updatedVendor.service_area,
+      serviceAreas: updatedVendor.service_areas,
+      socialMedia: updatedVendor.social_media,
+      portfolioImages: updatedVendor.portfolio_images,
+      featuredImageUrl: updatedVendor.featured_image_url,
+      updatedAt: updatedVendor.updated_at
+    };
+    
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: formattedResponse
+    });
+    
+  } catch (error) {
+    console.error('❌ Error updating vendor profile:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: 'Failed to update vendor profile',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;
