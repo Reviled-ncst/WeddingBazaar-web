@@ -527,15 +527,6 @@ router.post('/verify-email', async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    } catch (tokenError) {
-      console.error('❌ Invalid verification token:', tokenError.message);
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid verification token',
-        timestamp: new Date().toISOString()
-      });
-    }
-
   } catch (error) {
     console.error('❌ Email verification error:', error);
     res.status(500).json({
