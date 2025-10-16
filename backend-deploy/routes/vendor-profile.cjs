@@ -306,42 +306,6 @@ router.post('/:vendorId/verify-phone', async (req, res) => {
   }
 });
 
-// Upload verification documents - simplified
-router.post('/:vendorId/documents', async (req, res) => {
-  try {
-    const { vendorId } = req.params;
-    const { documentType } = req.body;
-    
-    console.log('📄 Uploading documents for vendor:', vendorId, 'type:', documentType);
-    
-    // Simulate document upload
-    const documentUrl = `https://documents.weddingbazaar.com/${vendorId}/${documentType}/${Date.now()}.pdf`;
-    const fileName = `${documentType}_${Date.now()}.pdf`;
-    
-    res.json({
-      success: true,
-      message: 'Documents uploaded successfully for admin review',
-      document: {
-        id: `doc_${Date.now()}`,
-        vendor_id: vendorId,
-        document_type: documentType,
-        document_url: documentUrl,
-        file_name: fileName,
-        verification_status: 'pending',
-        uploaded_at: new Date().toISOString()
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Error uploading documents:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to upload documents'
-    });
-  }
-});
-
 // Upload vendor document
 router.post('/:vendorId/documents', async (req, res) => {
   try {
