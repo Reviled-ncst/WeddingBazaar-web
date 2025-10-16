@@ -107,7 +107,7 @@ router.get('/:vendorId', async (req, res) => {
     // Get verification documents (with fallback if table doesn't exist)
     let docsResult = [];
     try {
-      // Try both vendor ID formats since documents might be stored under either
+      // Try multiple approaches to find documents for this vendor
       console.log('🔍 Looking for documents with vendor_id:', queryVendorId);
       console.log('🔍 Also trying original vendor_id:', vendorId);
       
@@ -119,11 +119,21 @@ router.get('/:vendorId', async (req, res) => {
       `;
       console.log('📊 All vendor IDs in documents table:', allVendorDocs);
       
+      // Try to find documents by multiple methods:
+      // 1. Direct vendor_id match (UUID or string)
+      // 2. User email match (in case documents were stored by email)
+      // 3. Any recent documents for this user
       docsResult = await sql`
-        SELECT id, document_type, document_url, verification_status, uploaded_at, verified_at, rejection_reason, vendor_id
-        FROM vendor_documents 
-        WHERE vendor_id = ${queryVendorId} OR vendor_id = ${vendorId}
-        ORDER BY uploaded_at DESC
+        SELECT DISTINCT vd.id, vd.document_type, vd.document_url, vd.verification_status, 
+               vd.uploaded_at, vd.verified_at, vd.rejection_reason, vd.vendor_id
+        FROM vendor_documents vd
+        LEFT JOIN vendor_profiles vp ON vd.vendor_id = vp.id
+        LEFT JOIN users u ON vp.user_id = u.id
+        WHERE vd.vendor_id = ${queryVendorId} 
+           OR vd.vendor_id = ${vendorId}
+           OR u.id = ${vendorId}
+           OR u.email = ${vendor.email}
+        ORDER BY vd.uploaded_at DESC
       `;
       
       console.log('📄 Found documents:', docsResult.length);
