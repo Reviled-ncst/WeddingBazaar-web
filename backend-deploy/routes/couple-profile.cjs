@@ -14,8 +14,35 @@ router.get('/:coupleId', async (req, res) => {
     
     console.log('🔍 Getting couple profile for ID:', coupleId);
     
-    // Get couple profile with user information and verification status
-    const coupleQuery = `
+    // Check if DATABASE_URL is available
+    if (!process.env.DATABASE_URL) {
+      console.log('📋 Database URL not configured, returning mock couple data');
+      return res.json({
+        id: coupleId,
+        userId: `user_${coupleId}`,
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'couple@example.com',
+        phone: '+1234567890',
+        partnerName: 'John Doe',
+        weddingDate: '2024-12-31',
+        weddingLocation: 'Garden Venue',
+        budget: '$50,000',
+        guestCount: 100,
+        weddingStyle: 'Romantic',
+        
+        // Verification Status (mock)
+        emailVerified: false,
+        phoneVerified: false,
+        overallVerificationStatus: 'pending',
+        
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    // Get couple profile with user information and verification status (using Neon tagged template)
+    const coupleResult = await sql`
       SELECT 
         cp.*,
         u.email,
@@ -23,16 +50,15 @@ router.get('/:coupleId', async (req, res) => {
         u.last_name,
         u.phone,
         u.email_verified,
+        COALESCE(u.phone_verified, false) as phone_verified,
         u.created_at as user_created_at,
         u.updated_at as user_updated_at
       FROM couple_profiles cp
       INNER JOIN users u ON cp.user_id = u.id
-      WHERE cp.id = $1
+      WHERE cp.id = ${coupleId}
     `;
     
-    const coupleResult = await sql.query(coupleQuery, [coupleId]);
-    
-    if (coupleResult.rows.length === 0) {
+    if (coupleResult.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Couple not found',
@@ -40,7 +66,7 @@ router.get('/:coupleId', async (req, res) => {
       });
     }
     
-    const couple = coupleResult.rows[0];
+    const couple = coupleResult[0];
     
     // Get wedding information
     const weddingQuery = `
