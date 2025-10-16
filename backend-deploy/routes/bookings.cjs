@@ -103,19 +103,58 @@ router.get('/vendor/:vendorId', async (req, res) => {
 function isMalformedUserId(userId) {
   if (!userId || typeof userId !== 'string') return true;
   
-  // Check for the problematic pattern: "2-2025-001"
-  const problematicPatterns = [
-    /^\d+-\d{4}-\d{3}$/,  // Pattern: number-year-sequence (couple ID format)
-    /^[12]-2025-\d+$/     // Specific pattern causing the issue  
+  // Check for truly malformed patterns - allow legitimate user IDs but block obvious attacks
+  const malformedPatterns = [
+    /[<>"/]/, // SQL injection attempts
+    /['"]/, // Quote injection attempts
+    /\s/, // Spaces (not allowed in IDs)
+    /[;,]/, // Command separators
+    /^\s*$/, // Empty or whitespace only
+    /\.\./,  // Path traversal attempts
+    /\$\{/,  // Template injection attempts
+    /\bOR\b/i, // SQL OR injection
+    /\bAND\b/i, // SQL AND injection
+    /\bUNION\b/i, // SQL UNION injection
+    /\bSELECT\b/i, // SQL SELECT injection
+    /\bDROP\b/i, // SQL DROP injection
+    /\bDELETE\b/i, // SQL DELETE injection
+    /\bUPDATE\b/i, // SQL UPDATE injection
+    /\bINSERT\b/i, // SQL INSERT injection
   ];
   
-  const isProblematic = problematicPatterns.some(pattern => pattern.test(userId));
+  const ismalformed = malformedPatterns.some(pattern => pattern.test(userId));
   
-  if (isProblematic) {
-    console.log(`🚨 DETECTED MALFORMED ID: ${userId} matches problematic pattern`);
+  if (ismalformed) {
+    console.log(`🚨 DETECTED MALFORMED ID: ${userId} contains dangerous characters`);
   }
   
-  return isProblematic;
+  // Allow legitimate user ID patterns:
+  // - 1-YYYY-XXX (couples)
+  // - 2-YYYY-XXX (vendors) 
+  // - 3-YYYY-XXX (admins)
+  // - UUID patterns
+  // - Simple numeric IDs
+  const legitimatePatterns = [
+    /^[123]-\d{4}-\d{3}$/, // User ID pattern (1=couple, 2=vendor, 3=admin)
+    /^[a-f0-9-]{36}$/, // UUID pattern
+    /^\d+$/, // Simple numeric ID
+  ];
+  
+  const isLegitimate = legitimatePatterns.some(pattern => pattern.test(userId));
+  
+  if (isLegitimate && !ismalformed) {
+    console.log(`✅ LEGITIMATE ID: ${userId} passed security validation`);
+    return false; // Not malformed
+  }
+  
+  if (ismalformed) {
+    console.log(`🚨 BLOCKED MALFORMED ID: ${userId}`);
+    return true; // Is malformed
+  }
+  
+  // For any other pattern, be conservative but log it
+  console.log(`⚠️ UNKNOWN ID PATTERN: ${userId} - allowing but monitoring`);
+  return false; // Allow unknown patterns for now
 }
 
 // Get booking statistics
