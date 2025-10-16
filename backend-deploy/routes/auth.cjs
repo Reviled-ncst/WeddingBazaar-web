@@ -747,7 +747,7 @@ router.get('/profile', async (req, res) => {
     
     // Get user from database using the modular sql connection
     const users = await sql`
-      SELECT id, first_name, last_name, email, user_type, phone, created_at, updated_at 
+      SELECT id, first_name, last_name, email, user_type, phone, email_verified, created_at, updated_at 
       FROM users 
       WHERE email = ${email}
     `;
@@ -783,6 +783,7 @@ router.get('/profile', async (req, res) => {
       email: user.email,
       role: user.user_type,  // Map user_type to role for frontend compatibility
       phone: user.phone,
+      emailVerified: user.email_verified || false,  // Add email verification status
       businessName: vendorInfo?.business_name || '',
       vendorId: vendorInfo?.id || null,
       createdAt: user.created_at,
