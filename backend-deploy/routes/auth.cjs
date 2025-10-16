@@ -386,7 +386,7 @@ router.post('/register', async (req, res) => {
 router.post('/verify-email', async (req, res) => {
   try {
     const { email, verification_token } = req.body;
-    console.log('🔍 Email verification request:', { email, token: verification_token?.substring(0, 10) + '...' });
+    console.log('🔍 Email verification request received:', { email, token: verification_token?.substring(0, 10) + '...' });
 
     if (!email || !verification_token) {
       return res.status(400).json({
