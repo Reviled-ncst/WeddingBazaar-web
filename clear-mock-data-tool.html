@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Mock Data - Wedding Bazaar</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 50px auto; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);
+            color: white;
+        }
+        .container { 
+            background: rgba(255,255,255,0.1); 
+            backdrop-filter: blur(10px);
+            padding: 30px; 
+            border-radius: 20px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3); 
+        }
+        .status { 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin: 15px 0; 
+            font-weight: bold;
+        }
+        .success { background: rgba(34, 197, 94, 0.3); border-left: 4px solid #22c55e; }
+        .warning { background: rgba(251, 191, 36, 0.3); border-left: 4px solid #fbbf24; }
+        .info { background: rgba(59, 130, 246, 0.3); border-left: 4px solid #3b82f6; }
+        .error { background: rgba(239, 68, 68, 0.3); border-left: 4px solid #ef4444; }
+        button { 
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin: 8px; 
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        button:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .data-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #fbbf24;
+        }
+        h1, h2 { text-align: center; }
+        .emoji { font-size: 1.2em; margin-right: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Clear Mock Data Tool</h1>
+        
+        <div class="status warning">
+            <span class="emoji">⚠️</span><strong>Current Status:</strong> Mock data is being used for messaging and other features
+        </div>
+
+        <div class="status info">
+            <span class="emoji">📊</span><strong>Mock Data Sources:</strong> localStorage contains demo conversations and messages
+        </div>
+
+        <h2>🔍 Mock Data Detected</h2>
+        <div id="mockDataStatus"></div>
+
+        <h2>🚀 Clear Mock Data</h2>
+        <p><strong>This will clear all mock data and show the real (empty) state:</strong></p>
+        
+        <button onclick="clearAllMockData()">🧹 Clear All Mock Data</button>
+        <button onclick="clearMessagingMockData()">💬 Clear Messaging Mock Data Only</button>
+        <button onclick="clearProfileMockData()">👤 Clear Profile Mock Data Only</button>
+        <button onclick="checkMockData()">🔍 Check Current Mock Data</button>
+        
+        <h2>📝 Manual Clear (Browser Console)</h2>
+        <div class="status info">
+            <span class="emoji">💻</span>Open DevTools (F12) and run:
+            <br><br>
+            <code style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; display: block; margin: 10px 0;">
+// Clear all mock data
+localStorage.removeItem('wedding_bazaar_mock_conversations');
+localStorage.removeItem('wedding_bazaar_mock_messages');
+localStorage.removeItem('weddingbazaar_user_profile');
+localStorage.removeItem('pending_user_profile');
+location.reload();
+            </code>
+        </div>
+
+        <div id="results" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        function clearAllMockData() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="status info">🔄 Clearing all mock data...</div>';
+            
+            try {
+                // Clear messaging mock data
+                localStorage.removeItem('wedding_bazaar_mock_conversations');
+                localStorage.removeItem('wedding_bazaar_mock_messages');
+                
+                // Clear profile mock data
+                localStorage.removeItem('weddingbazaar_user_profile');
+                localStorage.removeItem('pending_user_profile');
+                localStorage.removeItem('emailVerificationPending');
+                localStorage.removeItem('cached_user_data');
+                
+                results.innerHTML = '<div class="status success">✅ All mock data cleared! Page will reload...</div>';
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+                
+            } catch (error) {
+                results.innerHTML = '<div class="status error">❌ Error clearing mock data: ' + error.message + '</div>';
+            }
+        }
+
+        function clearMessagingMockData() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="status info">🔄 Clearing messaging mock data...</div>';
+            
+            try {
+                localStorage.removeItem('wedding_bazaar_mock_conversations');
+                localStorage.removeItem('wedding_bazaar_mock_messages');
+                
+                results.innerHTML = '<div class="status success">✅ Messaging mock data cleared!</div>';
+                
+            } catch (error) {
+                results.innerHTML = '<div class="status error">❌ Error clearing messaging data: ' + error.message + '</div>';
+            }
+        }
+
+        function clearProfileMockData() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="status info">🔄 Clearing profile mock data...</div>';
+            
+            try {
+                localStorage.removeItem('weddingbazaar_user_profile');
+                localStorage.removeItem('pending_user_profile');
+                localStorage.removeItem('emailVerificationPending');
+                localStorage.removeItem('cached_user_data');
+                
+                results.innerHTML = '<div class="status success">✅ Profile mock data cleared!</div>';
+                
+            } catch (error) {
+                results.innerHTML = '<div class="status error">❌ Error clearing profile data: ' + error.message + '</div>';
+            }
+        }
+
+        function checkMockData() {
+            const results = document.getElementById('results');
+            const mockDataStatus = document.getElementById('mockDataStatus');
+            
+            const mockKeys = [
+                'wedding_bazaar_mock_conversations',
+                'wedding_bazaar_mock_messages',
+                'weddingbazaar_user_profile',
+                'pending_user_profile',
+                'emailVerificationPending',
+                'cached_user_data'
+            ];
+            
+            let foundData = [];
+            let statusHtml = '';
+            
+            mockKeys.forEach(key => {
+                const data = localStorage.getItem(key);
+                if (data) {
+                    foundData.push(key);
+                    statusHtml += `<div class="data-item">
+                        <strong>🗃️ ${key}:</strong> ${data.length} characters
+                        <br><small>${data.substring(0, 100)}${data.length > 100 ? '...' : ''}</small>
+                    </div>`;
+                }
+            });
+            
+            if (foundData.length === 0) {
+                mockDataStatus.innerHTML = '<div class="status success">✅ No mock data found in localStorage</div>';
+                results.innerHTML = '<div class="status success">✅ localStorage is clean - no mock data detected</div>';
+            } else {
+                mockDataStatus.innerHTML = statusHtml;
+                results.innerHTML = `<div class="status warning">⚠️ Found ${foundData.length} mock data items in localStorage</div>`;
+            }
+        }
+
+        // Auto-check on load
+        window.onload = function() {
+            checkMockData();
+        };
+    </script>
+</body>
+</html>

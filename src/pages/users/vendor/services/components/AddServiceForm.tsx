@@ -86,23 +86,23 @@ interface AddServiceFormProps {
   isLoading?: boolean;
 }
 
-// Service categories based on the actual database data
+// Service categories with display names and database-compatible values
 const SERVICE_CATEGORIES = [
-  'Photographer & Videographer',
-  'Wedding Planner',
-  'Florist',
-  'Hair & Makeup Artists',
-  'Caterer',
-  'DJ/Band',
-  'Officiant',
-  'Venue Coordinator',
-  'Event Rentals',
-  'Cake Designer',
-  'Dress Designer/Tailor',
-  'Security & Guest Management',
-  'Sounds & Lights',
-  'Stationery Designer',
-  'Transportation Services'
+  { display: 'Photographer & Videographer', value: 'Photography' },
+  { display: 'Wedding Planner', value: 'Planning' },
+  { display: 'Florist', value: 'Florist' },
+  { display: 'Hair & Makeup Artists', value: 'Beauty' },
+  { display: 'Caterer', value: 'Catering' },
+  { display: 'DJ/Band', value: 'Music' },
+  { display: 'Officiant', value: 'Officiant' },
+  { display: 'Venue Coordinator', value: 'Venue' },
+  { display: 'Event Rentals', value: 'Rentals' },
+  { display: 'Cake Designer', value: 'Cake' },
+  { display: 'Dress Designer/Tailor', value: 'Fashion' },
+  { display: 'Security & Guest Management', value: 'Security' },
+  { display: 'Sounds & Lights', value: 'AV_Equipment' },
+  { display: 'Stationery Designer', value: 'Stationery' },
+  { display: 'Transportation Services', value: 'Transport' }
 ];
 
 const PRICE_RANGES = [
@@ -133,7 +133,7 @@ const PRICE_RANGES = [
 // Item/Equipment examples for different service categories to help vendors
 const getCategoryExamples = (category: string): string[] => {
   const examples: Record<string, string[]> = {
-    'Photographer & Videographer': [
+    'Photography': [
       'DSLR Camera with 24-70mm lens',
       'Prime lens 50mm f/1.4',
       'Professional flash with diffuser',
@@ -143,7 +143,7 @@ const getCategoryExamples = (category: string): string[] => {
       'Reflectors and light modifiers',
       'Drone with 4K camera (if permitted)'
     ],
-    'Wedding Planner': [
+    'Planning': [
       'Wedding timeline and checklist',
       'Emergency bridal kit',
       'Vendor contact coordination',
@@ -153,7 +153,7 @@ const getCategoryExamples = (category: string): string[] => {
       'Guest seating chart',
       'Wedding rehearsal coordination'
     ],
-    'Caterer': [
+    'Catering': [
       'Chafing dishes and food warmers',
       'Serving utensils and platters',
       'Table linens and napkins',
@@ -173,7 +173,7 @@ const getCategoryExamples = (category: string): string[] => {
       'Corsages for mothers',
       'Delivery and setup service'
     ],
-    'Hair & Makeup Artists': [
+    'Beauty': [
       'Professional makeup brushes and tools',
       'High-end cosmetic products',
       'Hair styling tools and equipment',
@@ -183,7 +183,7 @@ const getCategoryExamples = (category: string): string[] => {
       'Hair styling and updo',
       'Trial session (2 hours)'
     ],
-    'DJ/Band': [
+    'Music': [
       'Professional DJ mixing console',
       'Speakers and amplification system',
       'Wireless microphones (2 units)',
@@ -193,7 +193,7 @@ const getCategoryExamples = (category: string): string[] => {
       'Music library and playlist',
       'MC services throughout event'
     ],
-    'Venue Coordinator': [
+    'Venue': [
       'Round tables for 150 guests',
       'Chiavari chairs with cushions',
       'Table linens and chair covers',
@@ -203,7 +203,7 @@ const getCategoryExamples = (category: string): string[] => {
       'Parking coordination',
       'Security and staff supervision'
     ],
-    'Event Rentals': [
+    'Rentals': [
       'White wedding tent (40x60 ft)',
       'Round tables (60" diameter)',
       'White folding chairs',
@@ -223,6 +223,12 @@ const getCategoryExamples = (category: string): string[] => {
     'Backup equipment available',
     'Professional consultation'
   ];
+};
+
+// Helper function to get display name from database value
+const getCategoryDisplayName = (value: string): string => {
+  const category = SERVICE_CATEGORIES.find(cat => cat.value === value);
+  return category ? category.display : value;
 };
 
 export const AddServiceForm: React.FC<AddServiceFormProps> = ({
@@ -671,7 +677,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                         >
                           <option value="">Select a category</option>
                           {SERVICE_CATEGORIES.map(category => (
-                            <option key={category} value={category}>{category}</option>
+                            <option key={category.value} value={category.value}>{category.display}</option>
                           ))}
                         </select>
                         {errors.category && (
@@ -1120,7 +1126,7 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                         <div className="mt-4 p-4 bg-gradient-to-r from-rose-50 to-pink-50 rounded-lg border border-rose-200">
                           <h5 className="font-medium text-rose-900 mb-2 flex items-center gap-2">
                             <Sparkles className="h-4 w-4" />
-                            Example items for {formData.category}:
+                            Example items for {getCategoryDisplayName(formData.category)}:
                           </h5>
                           <div className="text-sm text-rose-700 space-y-1">
                             {getCategoryExamples(formData.category).map((example, index) => (

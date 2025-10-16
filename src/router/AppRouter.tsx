@@ -49,7 +49,7 @@ import { ForYouPage } from '../pages/users/individual/foryou/ForYouPage';
 // Vendor Pages
 import { VendorDashboard } from '../pages/users/vendor/dashboard';
 import { VendorDashboardEnhanced } from '../pages/users/vendor/dashboard/VendorDashboardEnhanced';
-import { VendorBookings } from '../pages/users/vendor/bookings';
+import { VendorBookingsSecure } from '../pages/users/vendor/bookings/VendorBookingsSecure';
 import { VendorProfile } from '../pages/users/vendor/profile';
 import { VendorServices } from '../pages/users/vendor/services';
 import { VendorAnalytics } from '../pages/users/vendor/analytics';
@@ -235,89 +235,89 @@ export const AppRouter: React.FC = () => {
               </RoleProtectedRoute>
             } />
             <Route path="/vendor/bookings" element={
-              <ProtectedRoute requireAuth={true}>
-                <VendorBookings />
-              </ProtectedRoute>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
+                <VendorBookingsSecure />
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/availability" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorAvailability />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/analytics" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorAnalytics />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/finances" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorFinances />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/messages" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorMessages />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/market-insights" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorMarketInsights />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/featured" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorFeaturedListings />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/seo" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorSEO />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/team" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorTeamManagement />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/reviews" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorReviews />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/settings" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorAccountSettings />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/security" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorSecurity />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/contact" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorContact />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/help" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorHelp />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/billing" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorBilling />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/promotions" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorPromotions />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             <Route path="/vendor/subscription" element={
-              <ProtectedRoute requireAuth={true}>
+              <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorSubscriptionPage />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } />
             
             {/* Admin specific pages */}
