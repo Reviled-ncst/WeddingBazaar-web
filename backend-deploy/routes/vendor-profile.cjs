@@ -342,6 +342,231 @@ router.post('/:vendorId/documents', async (req, res) => {
   }
 });
 
+// Upload vendor document
+router.post('/:vendorId/documents', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const { 
+      documentType, 
+      documentName, 
+      documentUrl, 
+      fileSize, 
+      mimeType 
+    } = req.body;
+
+    console.log('📄 Uploading document for vendor:', vendorId, {
+      documentType,
+      documentName,
+      documentUrl,
+      fileSize,
+      mimeType
+    });
+
+    // Validate required fields
+    if (!documentType || !documentName || !documentUrl) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        message: 'documentType, documentName, and documentUrl are required'
+      });
+    }
+
+    // Insert document record
+    const result = await sql`
+      INSERT INTO vendor_documents (
+        vendor_id, 
+        document_type, 
+        document_name, 
+        document_url, 
+        file_size, 
+        mime_type
+      ) VALUES (
+        ${vendorId}, 
+        ${documentType}, 
+        ${documentName}, 
+        ${documentUrl}, 
+        ${fileSize || null}, 
+        ${mimeType || null}
+      )
+      RETURNING *
+    `;
+
+    console.log('✅ Document uploaded successfully:', result[0]);
+
+    res.json({
+      success: true,
+      message: 'Document uploaded successfully',
+      document: {
+        id: result[0].id,
+        documentType: result[0].document_type,
+        documentName: result[0].document_name,
+        documentUrl: result[0].document_url,
+        fileSize: result[0].file_size,
+        mimeType: result[0].mime_type,
+        verificationStatus: result[0].verification_status,
+        uploadedAt: result[0].uploaded_at
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Document upload error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Document upload failed',
+      message: error.message
+    });
+  }
+});
+
+// Get vendor documents
+router.get('/:vendorId/documents', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+
+    console.log('📄 Getting documents for vendor:', vendorId);
+
+    const documents = await sql`
+      SELECT 
+        id,
+        document_type,
+        document_name,
+        document_url,
+        file_size,
+        mime_type,
+        verification_status,
+        uploaded_at,
+        verified_at,
+        rejection_reason
+      FROM vendor_documents 
+      WHERE vendor_id = ${vendorId}
+      ORDER BY uploaded_at DESC
+    `;
+
+    const formattedDocs = documents.map(doc => ({
+      id: doc.id,
+      documentType: doc.document_type,
+      documentName: doc.document_name,
+      documentUrl: doc.document_url,
+      fileSize: doc.file_size,
+      mimeType: doc.mime_type,
+      verificationStatus: doc.verification_status,
+      uploadedAt: doc.uploaded_at,
+      verifiedAt: doc.verified_at,
+      rejectionReason: doc.rejection_reason
+    }));
+
+    console.log(`✅ Found ${formattedDocs.length} documents for vendor`);
+
+    res.json({
+      success: true,
+      documents: formattedDocs
+    });
+
+  } catch (error) {
+    console.error('❌ Get documents error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get documents',
+      message: error.message
+    });
+  }
+});
+
+// Delete vendor document
+router.delete('/:vendorId/documents/:documentId', async (req, res) => {
+  try {
+    const { vendorId, documentId } = req.params;
+
+    console.log('🗑️ Deleting document:', documentId, 'for vendor:', vendorId);
+
+    const result = await sql`
+      DELETE FROM vendor_documents 
+      WHERE id = ${documentId} AND vendor_id = ${vendorId}
+      RETURNING *
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Document not found',
+        message: 'Document not found or not owned by this vendor'
+      });
+    }
+
+    console.log('✅ Document deleted successfully:', result[0].document_name);
+
+    res.json({
+      success: true,
+      message: 'Document deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Delete document error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete document',
+      message: error.message
+    });
+  }
+});
+
+// Update document verification status (admin only)
+router.patch('/:vendorId/documents/:documentId/verify', async (req, res) => {
+  try {
+    const { vendorId, documentId } = req.params;
+    const { status, rejectionReason } = req.body;
+
+    console.log('✅ Updating document verification:', documentId, 'status:', status);
+
+    if (!['approved', 'rejected', 'pending'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid status',
+        message: 'Status must be approved, rejected, or pending'
+      });
+    }
+
+    const result = await sql`
+      UPDATE vendor_documents 
+      SET 
+        verification_status = ${status},
+        verified_at = ${status === 'approved' ? new Date().toISOString() : null},
+        rejection_reason = ${status === 'rejected' ? rejectionReason : null},
+        updated_at = NOW()
+      WHERE id = ${documentId} AND vendor_id = ${vendorId}
+      RETURNING *
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Document not found'
+      });
+    }
+
+    console.log('✅ Document verification updated:', result[0].verification_status);
+
+    res.json({
+      success: true,
+      message: 'Document verification status updated',
+      document: {
+        id: result[0].id,
+        verificationStatus: result[0].verification_status,
+        verifiedAt: result[0].verified_at,
+        rejectionReason: result[0].rejection_reason
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Update verification error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update verification status',
+      message: error.message
+    });
+  }
+});
+
 // Update vendor profile
 router.put('/:vendorId', async (req, res) => {
   try {
