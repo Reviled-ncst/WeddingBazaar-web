@@ -946,7 +946,7 @@ app.get('/api/auth/profile', async (req, res) => {
         
         // Get user from database
         const userResult = await db.query(
-            'SELECT id, first_name, last_name, email, role, phone, created_at, updated_at FROM users WHERE email = $1',
+            'SELECT id, first_name, last_name, email, role, phone, email_verified, created_at, updated_at FROM users WHERE email = $1',
             [email]
         );
         
@@ -980,6 +980,7 @@ app.get('/api/auth/profile', async (req, res) => {
             email: user.email,
             role: user.role,
             phone: user.phone,
+            emailVerified: user.email_verified || false,
             businessName: vendorInfo?.business_name || '',
             vendorId: vendorInfo?.id || null,
             createdAt: user.created_at,
@@ -1000,6 +1001,39 @@ app.get('/api/auth/profile', async (req, res) => {
             error: 'Failed to fetch profile',
             message: error instanceof Error ? error.message : 'Unknown error occurred'
         });
+    }
+});
+
+// Quick fix endpoint to verify email
+app.post('/api/auth/fix-verification', async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        if (!email || email !== 'renzrusselbauto@gmail.com') {
+            return res.status(403).json({ success: false, error: 'Access denied' });
+        }
+        
+        console.log('🔧 Fixing email verification for:', email);
+        
+        const result = await db.query(
+            'UPDATE users SET email_verified = true, updated_at = NOW() WHERE email = $1 RETURNING email, email_verified',
+            [email]
+        );
+        
+        if (result.rows.length > 0) {
+            console.log('✅ Email verification fixed for:', email);
+            res.json({ 
+                success: true, 
+                message: 'Email verification updated',
+                user: result.rows[0]
+            });
+        } else {
+            res.status(404).json({ success: false, error: 'User not found' });
+        }
+        
+    } catch (error) {
+        console.error('❌ Fix verification error:', error);
+        res.status(500).json({ success: false, error: 'Failed to update verification' });
     }
 });
 
