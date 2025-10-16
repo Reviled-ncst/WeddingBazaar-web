@@ -376,7 +376,7 @@ router.post('/:vendorId/documents', async (req, res) => {
       INSERT INTO vendor_documents (
         vendor_id, 
         document_type, 
-        document_name, 
+        file_name, 
         document_url, 
         file_size, 
         mime_type
@@ -399,7 +399,7 @@ router.post('/:vendorId/documents', async (req, res) => {
       document: {
         id: result[0].id,
         documentType: result[0].document_type,
-        documentName: result[0].document_name,
+        documentName: result[0].file_name,
         documentUrl: result[0].document_url,
         fileSize: result[0].file_size,
         mimeType: result[0].mime_type,
