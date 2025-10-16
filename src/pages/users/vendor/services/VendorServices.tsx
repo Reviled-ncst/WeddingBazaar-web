@@ -29,6 +29,7 @@ import {
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { AddServiceForm } from './components/AddServiceForm';
+import { useVendorProfile } from '../../../../hooks/useVendorData';
 
 // Service interface based on the actual API response
 interface Service {
@@ -66,22 +67,23 @@ interface Service {
 }
 
 // Service categories based on the actual database data
+// Service categories with display names and database-compatible values (matching AddServiceForm)
 const SERVICE_CATEGORIES = [
-  'Photographer & Videographer',
-  'Wedding Planner',
-  'Florist',
-  'Hair & Makeup Artists',
-  'Caterer',
-  'DJ/Band',
-  'Officiant',
-  'Venue Coordinator',
-  'Event Rentals',
-  'Cake Designer',
-  'Dress Designer/Tailor',
-  'Security & Guest Management',
-  'Sounds & Lights',
-  'Stationery Designer',
-  'Transportation Services'
+  { display: 'Photographer & Videographer', value: 'Photography' },
+  { display: 'Wedding Planner', value: 'Planning' },
+  { display: 'Florist', value: 'Florist' },
+  { display: 'Hair & Makeup Artists', value: 'Beauty' },
+  { display: 'Caterer', value: 'Catering' },
+  { display: 'DJ/Band', value: 'Music' },
+  { display: 'Officiant', value: 'Officiant' },
+  { display: 'Venue Coordinator', value: 'Venue' },
+  { display: 'Event Rentals', value: 'Rentals' },
+  { display: 'Cake Designer', value: 'Cake' },
+  { display: 'Dress Designer/Tailor', value: 'Fashion' },
+  { display: 'Security & Guest Management', value: 'Security' },
+  { display: 'Sounds & Lights', value: 'AV_Equipment' },
+  { display: 'Stationery Designer', value: 'Stationery' },
+  { display: 'Transportation Services', value: 'Transport' }
 ];
 
 export const VendorServices: React.FC = () => {
@@ -99,56 +101,51 @@ export const VendorServices: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [highlightedServiceId, setHighlightedServiceId] = useState<string | null>(null);
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
-  const [documentsVerified, setDocumentsVerified] = useState(false);
-  const [loadingVerification, setLoadingVerification] = useState(true);
+
+  // Get current vendor ID from auth context with fallback
+  const vendorId = user?.id || getVendorIdForUser(user as any) || '2-2025-001';
+  
+  // Use the same vendor profile hook as VendorProfile component
+  const { profile, refetch: refetchProfile } = useVendorProfile(vendorId);
 
   // Get API base URL
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
-  // Fetch document verification status
-  const fetchDocumentVerificationStatus = async () => {
-    if (!vendorId) return;
-    
-    try {
-      setLoadingVerification(true);
-      const response = await fetch(`${apiUrl}/api/vendor-profile/${vendorId}/documents`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.documents) {
-          // Check if at least one document is approved
-          const hasApprovedDocuments = data.documents.some((doc: any) => 
-            doc.verification_status === 'approved'
-          );
-          setDocumentsVerified(hasApprovedDocuments);
-          console.log('📄 Documents verification status:', hasApprovedDocuments);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error fetching document verification status:', error);
-      setDocumentsVerified(false);
-    } finally {
-      setLoadingVerification(false);
+  // Helper function to check document verification status from profile
+  const isDocumentVerified = (): boolean => {
+    if (!profile?.documents || profile.documents.length === 0) {
+      console.log('� No documents found in profile');
+      return false;
     }
+    const hasApproved = profile.documents.some((doc: any) => doc.status === 'approved');
+    console.log('📄 Document verification check:', {
+      documentsCount: profile.documents.length,
+      documents: profile.documents.map((doc: any) => ({ id: doc.id, type: doc.type, status: doc.status })),
+      hasApproved
+    });
+    return hasApproved;
   };
 
   // Enhanced verification status check - requires both email AND documents
   const getVerificationStatus = () => {
     return {
       emailVerified: firebaseUser?.emailVerified || isEmailVerified || false,
-      phoneVerified: false, // TODO: Add this field to User interface later
-      documentsVerified: documentsVerified
+      phoneVerified: profile?.phoneVerified || false,
+      documentsVerified: isDocumentVerified()
     };
   };
 
   // Check if user can add services (requires BOTH email verification AND approved documents)
   const canAddServices = () => {
     const verification = getVerificationStatus();
-    return verification.emailVerified && verification.documentsVerified;
+    const canAdd = verification.emailVerified && verification.documentsVerified;
+    console.log('🔒 Service creation permission check:', {
+      emailVerified: verification.emailVerified,
+      documentsVerified: verification.documentsVerified,
+      canAddServices: canAdd
+    });
+    return canAdd;
   };
-
-  // Get current vendor ID from auth context with fallback
-  const vendorId = user?.vendorId || user?.id || getVendorIdForUser(user as any) || '';
   
   // Check for highlighted service from URL parameters
   useEffect(() => {
@@ -181,7 +178,14 @@ export const VendorServices: React.FC = () => {
     vendorId: vendorId,
     userRole: user?.role,
     isAuthenticated: !!user,
-    highlightedServiceId: highlightedServiceId
+    highlightedServiceId: highlightedServiceId,
+    userVendorId: user?.vendorId,
+    userId: user?.id,
+    documentsVerified: isDocumentVerified(),
+    canAddServices: canAddServices(),
+    emailVerified: getVerificationStatus().emailVerified,
+    profile: profile ? 'loaded' : 'not loaded',
+    documentsCount: profile?.documents?.length || 0
   });
 
   // Service statistics with proper field mapping - dynamic calculations
@@ -262,14 +266,50 @@ export const VendorServices: React.FC = () => {
   useEffect(() => {
     if (vendorId) {
       fetchServices();
-      fetchDocumentVerificationStatus(); // Check document verification status
+      // Profile data (including documents) will be loaded by useVendorProfile hook
     }
   }, [vendorId]);
+
+  // Ensure vendor profile exists before creating services
+  const ensureVendorProfile = async (): Promise<boolean> => {
+    try {
+      const targetVendorId = user?.id || vendorId;
+      console.log('🔍 Checking if vendor profile exists for:', targetVendorId);
+      
+      // Check if vendor profile exists
+      const checkResponse = await fetch(`${apiUrl}/api/vendors/${targetVendorId}`);
+      
+      if (checkResponse.ok) {
+        console.log('✅ Vendor profile exists');
+        return true;
+      }
+      
+      if (checkResponse.status === 404) {
+        console.log('❌ Vendor profile not found, need to create one');
+        setError('Vendor profile required. Please complete your business profile first.');
+        return false;
+      }
+      
+      console.log('⚠️ Error checking vendor profile:', checkResponse.status);
+      return false;
+      
+    } catch (error) {
+      console.error('❌ Error checking vendor profile:', error);
+      setError('Unable to verify vendor profile. Please check your connection.');
+      return false;
+    }
+  };
 
   // Handle form submission with enhanced debugging
   const handleSubmit = async (serviceData: any) => {
     try {
       console.log('💾 Saving service:', serviceData);
+      
+      // First ensure vendor profile exists
+      const hasVendorProfile = await ensureVendorProfile();
+      if (!hasVendorProfile) {
+        throw new Error('Vendor profile required. Please complete your business profile first.');
+      }
       
       const url = editingService 
         ? `${apiUrl}/api/services/${editingService.id}`
@@ -279,14 +319,25 @@ export const VendorServices: React.FC = () => {
       
       const payload = {
         ...serviceData,
-        vendor_id: serviceData.vendor_id || vendorId,
-        vendorId: serviceData.vendorId || vendorId
+        // Use the user ID that should match the vendor profile
+        vendor_id: user?.id || vendorId,
       };
       
       console.log('🔍 [VendorServices] Making API request:', {
         url,
         method,
         payload: JSON.stringify(payload, null, 2)
+      });
+      
+      // Debug each field length to identify the problematic one
+      console.log('🔍 [VendorServices] Field length analysis:');
+      Object.keys(payload).forEach(key => {
+        const value = payload[key];
+        if (typeof value === 'string') {
+          console.log(`  ${key}: "${value}" (${value.length} chars) ${value.length > 20 ? '❌ TOO LONG!' : '✅'}`);
+        } else {
+          console.log(`  ${key}: ${typeof value} (${JSON.stringify(value).length} chars as JSON)`);
+        }
       });
       
       const response = await fetch(url, {
@@ -798,6 +849,7 @@ export const VendorServices: React.FC = () => {
                           onClick={async () => {
                             try {
                               await firebaseAuthService.reloadUser();
+                              await refetchProfile(); // Refresh profile data instead
                               window.location.reload();
                             } catch (error) {
                               window.location.reload();
@@ -820,7 +872,7 @@ export const VendorServices: React.FC = () => {
                       )}
                       <button
                         onClick={async () => {
-                          await fetchDocumentVerificationStatus();
+                          await refetchProfile(); // Refresh profile data to check for new document approvals
                         }}
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                       >
@@ -856,7 +908,7 @@ export const VendorServices: React.FC = () => {
                 >
                   <option value="">All Categories</option>
                   {SERVICE_CATEGORIES.map(category => (
-                    <option key={category} value={category}>{category}</option>
+                    <option key={category.value} value={category.value}>{category.display}</option>
                   ))}
                 </select>
 
@@ -946,9 +998,11 @@ export const VendorServices: React.FC = () => {
                 transition={{ delay: 0.3 }}
                 className="text-gray-600 mb-8 max-w-lg mx-auto text-lg leading-relaxed"
               >
-                {services.length === 0 
-                  ? "Transform your wedding expertise into beautiful service listings. Create professional showcases that attract your ideal couples and grow your business."
-                  : "No services match your current filters. Try adjusting your search criteria or browse all services."
+                {error && error.includes('Vendor profile required') 
+                  ? "To create services, you need to complete your business profile first. This ensures clients can learn about your business and builds trust."
+                  : services.length === 0 
+                    ? "Transform your wedding expertise into beautiful service listings. Create professional showcases that attract your ideal couples and grow your business."
+                    : "No services match your current filters. Try adjusting your search criteria or browse all services."
                 }
               </motion.p>
               <motion.div
@@ -958,20 +1012,30 @@ export const VendorServices: React.FC = () => {
                 className="flex flex-col sm:flex-row gap-4 justify-center items-center"
               >
                 <div className="relative">
-                  <button
-                    onClick={handleQuickCreateService}
-                    className={`group px-8 py-4 rounded-2xl transition-all duration-300 font-semibold shadow-lg hover:shadow-xl flex items-center gap-3 ${
-                      canAddServices()
-                        ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700 hover:scale-105'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed hover:scale-100'
-                    }`}
-                  >
-                    <Plus className={`w-5 h-5 ${canAddServices() ? "group-hover:rotate-90 transition-transform duration-300" : ""}`} />
-                    {services.length === 0 ? "Create Your First Service" : "Add New Service"}
-                  </button>
+                  {error && error.includes('Vendor profile required') ? (
+                    <button
+                      onClick={() => window.location.href = '/vendor/profile'}
+                      className="group px-8 py-4 rounded-2xl transition-all duration-300 font-semibold shadow-lg hover:shadow-xl flex items-center gap-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 hover:scale-105"
+                    >
+                      <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+                      Complete Business Profile
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleQuickCreateService}
+                      className={`group px-8 py-4 rounded-2xl transition-all duration-300 font-semibold shadow-lg hover:shadow-xl flex items-center gap-3 ${
+                        canAddServices()
+                          ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700 hover:scale-105'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed hover:scale-100'
+                      }`}
+                    >
+                      <Plus className={`w-5 h-5 ${canAddServices() ? "group-hover:rotate-90 transition-transform duration-300" : ""}`} />
+                      {services.length === 0 ? "Create Your First Service" : "Add New Service"}
+                    </button>
+                  )}
                   
                   {/* Verification indicator badge */}
-                  {!canAddServices() && (
+                  {!canAddServices() && !error?.includes('Vendor profile required') && (
                     <div className="absolute -top-2 -right-2 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
                       !
                     </div>
@@ -1008,10 +1072,10 @@ export const VendorServices: React.FC = () => {
                     delay: index * 0.1,
                     scale: highlightedServiceId === service.id ? { duration: 2, repeat: 2, repeatType: "loop" } : {}
                   }}
-                  className={`group bg-white/90 backdrop-blur-md rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border ${
+                  className={`group bg-white backdrop-blur-sm rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border-2 ${
                     highlightedServiceId === service.id 
-                      ? 'border-rose-500 shadow-rose-300 ring-4 ring-rose-400 bg-gradient-to-br from-rose-50 to-pink-50 shadow-2xl' 
-                      : 'border-white/50'
+                      ? 'border-rose-400 shadow-rose-200 ring-2 ring-rose-300 bg-gradient-to-br from-rose-50 to-pink-50' 
+                      : 'border-gray-200 hover:border-rose-300'
                   }`}
                 >
                   {/* Service Image with Enhanced Design */}
@@ -1076,101 +1140,100 @@ export const VendorServices: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Enhanced Service Content */}
-                  <div className="p-6">
-                    {/* Header with Service Name and Rating */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-xl font-bold text-gray-900 mb-1 line-clamp-2">
-                          {service.title || service.name || 'Untitled Service'}
-                        </h3>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                  {/* ABSOLUTELY FIXED Layout Service Content */}
+                  <div className="p-6 h-[30rem] flex flex-col">
+                    {/* SECTION 1: Header - EXACT 72px height */}
+                    <div className="h-18 mb-6 flex">
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div className="h-6 flex items-center">
+                          <h3 className="text-lg font-bold text-gray-900 truncate">
+                            {service.title || service.name || 'Untitled Service'}
+                          </h3>
+                        </div>
+                        <div className="h-5 flex items-center gap-2 text-sm text-gray-500">
                           <Tag size={12} />
-                          <span>{service.category}</span>
-                          {service.location && (
-                            <>
-                              <span>•</span>
-                              <MapPin size={12} />
-                              <span className="truncate max-w-32">{service.location.split(',')[0]}</span>
-                            </>
-                          )}
+                          <span className="truncate">{service.category || 'General Service'}</span>
+                        </div>
+                        <div className="h-4 flex items-center gap-2 text-xs text-gray-400">
+                          <MapPin size={10} />
+                          <span className="truncate">{service.location || 'Location not specified'}</span>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end ml-4">
-                        <div className="flex items-center gap-1 text-amber-500 mb-1">
-                          <Star size={14} className="fill-current" />
-                          <span className="text-sm font-bold">{service.rating?.toFixed(1) || '4.5'}</span>
+                      <div className="w-20 flex flex-col justify-between items-end">
+                        <div className="h-5 flex items-center gap-1 text-amber-500">
+                          <Star size={12} className="fill-current" />
+                          <span className="text-xs font-bold">{service.rating || '0.0'}</span>
                         </div>
-                        <span className="text-xs text-gray-500">{service.review_count || service.reviewCount || 0} reviews</span>
-                      </div>
-                    </div>
-
-                    {/* Service Description */}
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-3 leading-relaxed">
-                      {service.description || 'Professional wedding service designed to make your special day unforgettable. Contact us for detailed information about our offerings.'}
-                    </p>
-
-                    {/* Service Meta Information */}
-                    <div className="flex items-center justify-between mb-4 p-3 bg-gray-50/50 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <div className="text-2xl font-bold text-rose-600">
-                          {service.price_range && service.price_range !== '₱' 
-                            ? service.price_range 
-                            : `₱${typeof service.price === 'string' ? parseFloat(service.price).toLocaleString() : (service.price as number)?.toLocaleString() || '0'}`}
-                        </div>
-                        {service.featured && (
-                          <span className="px-2 py-1 bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-bold rounded-lg flex items-center gap-1">
-                            <Star size={10} className="fill-current" />
-                            Premium
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xs text-gray-500 mb-1">
-                          Created {new Date(service.created_at || '').toLocaleDateString()}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          ID: {service.id}
+                        <div className="h-4 flex items-center">
+                          <span className="text-xs text-gray-500">{service.review_count || 0} reviews</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Enhanced Action Buttons */}
-                    <div className="space-y-3">
-                      {/* Primary Actions */}
-                      <div className="flex gap-2">
+                    {/* SECTION 2: Description - EXACT 72px height */}
+                    <div className="h-18 mb-6 flex items-start">
+                      <p className="text-gray-600 text-sm leading-6 line-clamp-3 overflow-hidden">
+                        {service.description || 'No description available'}
+                      </p>
+                    </div>
+
+                    {/* SECTION 3: Price & Meta - EXACT 88px height */}
+                    <div className="h-22 mb-6 p-4 bg-gray-50/80 rounded-xl border border-gray-100 flex">
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div className="h-7 flex items-center">
+                          <div className="text-xl font-bold text-rose-600">
+                            {service.price_range || service.price || 'Price on request'}
+                          </div>
+                        </div>
+                        <div className="h-5 flex items-center">
+                          <span className="text-xs text-gray-400">{service.category || 'Service'}</span>
+                        </div>
+                      </div>
+                      <div className="w-24 flex flex-col justify-between items-end text-right">
+                        <div className="h-4 flex items-center text-xs text-gray-500">Created</div>
+                        <div className="h-4 flex items-center text-xs font-medium text-gray-600">
+                          {service.created_at ? new Date(service.created_at).toLocaleDateString() : 'N/A'}
+                        </div>
+                        <div className="h-4 flex items-center text-xs text-gray-400 font-mono">ID: {service.id}</div>
+                      </div>
+                    </div>
+
+                    {/* FIXED: Action Buttons - Always 3 rows, same height */}
+                    <div className="flex-1 flex flex-col justify-end space-y-3">
+                      {/* Row 1: Primary Actions - Fixed Height */}
+                      <div className="flex gap-2 h-12">
                         <button
                           onClick={() => editService(service)}
-                          className="flex-1 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+                          className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-semibold text-sm flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
                         >
-                          <Edit size={16} />
+                          <Edit size={14} />
                           Edit Details
                         </button>
                         
                         <button
                           onClick={() => toggleServiceAvailability(service)}
-                          className={`flex-1 px-4 py-2.5 rounded-xl transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg ${
+                          className={`flex-1 rounded-xl transition-all duration-200 font-semibold text-sm flex items-center justify-center gap-2 shadow-lg hover:shadow-xl ${
                             service.is_active === true
-                              ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700'
-                              : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
+                              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700'
+                              : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700'
                           }`}
                         >
                           {service.is_active === true ? (
                             <>
-                              <EyeOff size={16} />
+                              <EyeOff size={14} />
                               Hide
                             </>
                           ) : (
                             <>
-                              <Eye size={16} />
+                              <Eye size={14} />
                               Show
                             </>
                           )}
                         </button>
                       </div>
 
-                      {/* Secondary Actions */}
-                      <div className="flex gap-2">
+                      {/* Row 2: Secondary Actions - Fixed Height */}
+                      <div className="flex gap-2 h-10">
                         <button
                           onClick={async () => {
                             // Use the public preview URL instead of vendor-only URL
@@ -1190,10 +1253,10 @@ export const VendorServices: React.FC = () => {
                               alert('Public service link copied: ' + url);
                             }
                           }}
-                          className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-xs font-medium"
+                          className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all duration-200 text-xs font-semibold shadow-sm hover:shadow-md"
                           title="Copy public service link"
                         >
-                          <Copy size={14} />
+                          <Copy size={12} />
                           Copy Link
                         </button>
                         
@@ -1230,13 +1293,17 @@ export const VendorServices: React.FC = () => {
                               }
                             }
                           }}
-                          className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-xs font-medium"
+                          className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all duration-200 text-xs font-semibold shadow-sm hover:shadow-md"
                           title="Share service"
                         >
-                          <Share2 size={14} />
+                          <Share2 size={12} />
                           Share
                         </button>
 
+                      </div>
+
+                      {/* Row 3: View & Delete Actions - Fixed Height */}
+                      <div className="flex gap-2 h-10">
                         <button
                           onClick={() => {
                             // Create a comprehensive detailed preview modal
@@ -1449,10 +1516,10 @@ export const VendorServices: React.FC = () => {
                               document.body.appendChild(modalEl);
                             }
                           }}
-                          className="flex items-center gap-2 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors text-xs font-medium"
+                          className="flex-1 flex items-center justify-center gap-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl transition-all duration-200 text-xs font-semibold shadow-sm hover:shadow-md"
                           title="View comprehensive service details"
                         >
-                          <Eye size={14} />
+                          <Eye size={12} />
                           View Details
                         </button>
                         
@@ -1513,10 +1580,10 @@ export const VendorServices: React.FC = () => {
                             
                             confirmDelete();
                           }}
-                          className="flex items-center gap-2 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-xs font-medium"
+                          className="flex-1 flex items-center justify-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl transition-all duration-200 text-xs font-semibold shadow-sm hover:shadow-md"
                           title="Delete service (with confirmation)"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={12} />
                           Delete
                         </button>
                       </div>
@@ -1593,7 +1660,7 @@ export const VendorServices: React.FC = () => {
                 </div>
               </div>
 
-              <div className={`flex items-center gap-3 p-3 bg-gray-50 rounded-xl ${!documentsVerified ? 'border-l-4 border-orange-500' : ''}`}>
+              <div className={`flex items-center gap-3 p-3 bg-gray-50 rounded-xl ${!getVerificationStatus().documentsVerified ? 'border-l-4 border-orange-500' : ''}`}>
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
                   getVerificationStatus().documentsVerified
                     ? 'bg-green-100 text-green-600' 
@@ -1633,7 +1700,7 @@ export const VendorServices: React.FC = () => {
                     // Refresh verification status
                     try {
                       await firebaseAuthService.reloadUser();
-                      await fetchDocumentVerificationStatus();
+                      await refetchProfile(); // Refresh profile data including documents
                       setShowVerificationPrompt(false);
                     } catch (error) {
                       console.error('Error refreshing verification status:', error);

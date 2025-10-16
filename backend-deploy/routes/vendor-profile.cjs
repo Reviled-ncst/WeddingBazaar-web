@@ -111,8 +111,16 @@ router.get('/:vendorId', async (req, res) => {
       console.log('🔍 Looking for documents with vendor_id:', queryVendorId);
       console.log('🔍 Also trying original vendor_id:', vendorId);
       
+      // First, let's see what vendor IDs actually exist in the documents table
+      const allVendorDocs = await sql`
+        SELECT DISTINCT vendor_id, COUNT(*) as doc_count
+        FROM vendor_documents 
+        GROUP BY vendor_id
+      `;
+      console.log('📊 All vendor IDs in documents table:', allVendorDocs);
+      
       docsResult = await sql`
-        SELECT id, document_type, document_url, verification_status, uploaded_at, verified_at, rejection_reason
+        SELECT id, document_type, document_url, verification_status, uploaded_at, verified_at, rejection_reason, vendor_id
         FROM vendor_documents 
         WHERE vendor_id = ${queryVendorId} OR vendor_id = ${vendorId}
         ORDER BY uploaded_at DESC

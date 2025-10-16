@@ -4,31 +4,66 @@ const sql = neon(process.env.DATABASE_URL);
 
 async function checkConstraints() {
   try {
-    const cols = await sql`
-      SELECT column_name, data_type, character_maximum_length
-      FROM information_schema.columns
-      WHERE table_name = 'users' AND character_maximum_length IS NOT NULL
-      ORDER BY character_maximum_length;
-    `;
+    console.log('🔍 CHECKING VENDOR FOREIGN KEY ISSUE');
+    console.log('=====================================\n');
     
-    console.log('📏 Column length constraints in users table:');
-    cols.forEach(col => {
-      console.log(`  ${col.column_name}: ${col.data_type}(${col.character_maximum_length})`);
-    });
+    // Check if vendors table exists and has data
+    const vendorCount = await sql`SELECT COUNT(*) as count FROM vendors`;
+    console.log(`📊 Vendors in database: ${vendorCount[0].count}`);
     
-    // Check which field might be causing the issue
-    const testData = {
-      'email': 'admin@weddingbazaar.com', // 24 chars
-      'first_name': 'Wedding Bazaar', // 14 chars  
-      'last_name': 'Administrator', // 13 chars
-      'phone': '+639625067209', // 13 chars
-      'user_type': 'admin' // 5 chars
-    };
-    
-    console.log('\n📋 Test data lengths:');
-    Object.entries(testData).forEach(([field, value]) => {
-      console.log(`  ${field}: "${value}" (${value.length} chars)`);
-    });
+    if (vendorCount[0].count === 0) {
+      console.log('❌ No vendors found! This explains the foreign key constraint error.');
+      
+      // Check for vendor users who need vendor profiles
+      const vendorUsers = await sql`
+        SELECT id, email, first_name, last_name 
+        FROM users 
+        WHERE user_type = 'vendor'
+        LIMIT 5
+      `;
+      
+      console.log(`\n� Found ${vendorUsers.length} vendor users without profiles:`);
+      vendorUsers.forEach(user => {
+        console.log(`  - ${user.id}: ${user.first_name} ${user.last_name} (${user.email})`);
+      });
+      
+      if (vendorUsers.length > 0) {
+        const firstVendorUser = vendorUsers[0];
+        console.log(`\n🚀 Creating vendor profile for user: ${firstVendorUser.id}`);
+        
+        try {
+          const [newVendor] = await sql`
+            INSERT INTO vendors (id, user_id, business_name, business_type, description, created_at)
+            VALUES (
+              ${firstVendorUser.id},
+              ${firstVendorUser.id},
+              ${firstVendorUser.first_name + ' Wedding Services'},
+              'Photography',
+              'Test vendor profile for service creation',
+              NOW()
+            )
+            RETURNING id, business_name
+          `;
+          
+          console.log(`✅ Created vendor profile: ${newVendor.id} - ${newVendor.business_name}`);
+          console.log(`\n🎯 NOW USE THIS VENDOR ID: "${newVendor.id}"`);
+          
+        } catch (createError) {
+          console.log('❌ Failed to create vendor profile:', createError.message);
+        }
+      }
+    } else {
+      // Show existing vendors
+      const vendors = await sql`SELECT id, business_name, user_id FROM vendors LIMIT 5`;
+      console.log('\n📋 Existing vendors:');
+      vendors.forEach(vendor => {
+        console.log(`  - ${vendor.id}: ${vendor.business_name}`);
+      });
+      
+      if (vendors.length > 0) {
+        console.log(`\n🎯 USE ANY OF THESE VENDOR IDS: "${vendors[0].id}"`);
+      }
+    }
     
   } catch (error) {
     console.error('❌ Error:', error.message);

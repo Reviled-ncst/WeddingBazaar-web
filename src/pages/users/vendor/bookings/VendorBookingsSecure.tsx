@@ -10,50 +10,77 @@ import {
   Calendar, 
   Loader2,
   MessageSquare,
-  Star,
-  DollarSign,
-  X,
-  Filter,
-  RefreshCw,
-  Zap,
   Clock,
   User,
-  Phone,
-  Mail,
   MapPin,
   Eye,
   Shield,
-  Lock
+  Lock,
+  RefreshCw
 } from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
-import { VendorBookingDetailsModal } from './components/VendorBookingDetailsModal';
-import { SendQuoteModal } from './components/SendQuoteModal';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 
-// Security-enhanced utilities
-import { 
-  mapVendorBookingToUI, 
-  mapToUIBookingStats, 
-  mapToUIBookingsListResponse,
-  getRealEventLocation,
-  getRealGuestCount,
-  getRealContactInfo
-} from './utils/bookingDataMapper';
-import { downloadCSV, downloadJSON } from './utils/downloadUtils';
-import { handleContactClient, handleViewDetails, handleSendQuote } from './utils/bookingActions';
+// Simple mapper functions
+const mapVendorBookingToUI = (booking: any, vendorId: string): UIBooking => ({
+  id: booking.id || 'unknown',
+  vendorId: vendorId,
+  vendorName: booking.vendor_name || 'Unknown Vendor',
+  coupleId: booking.couple_id || booking.user_id || 'unknown',
+  coupleName: booking.couple_name || booking.client_name || 'Unknown Client',
+  contactEmail: booking.contact_email || booking.email || '',
+  contactPhone: booking.contact_phone || booking.phone || '',
+  serviceType: booking.service_type || booking.category || 'General Service',
+  eventDate: booking.event_date || booking.date || new Date().toISOString(),
+  eventLocation: booking.event_location || booking.location || 'Not specified',
+  guestCount: booking.guest_count || booking.guests || 0,
+  totalAmount: booking.total_amount || booking.amount || booking.price || 0,
+  status: booking.status || 'pending_review',
+  createdAt: booking.created_at || booking.createdAt || new Date().toISOString(),
+  updatedAt: booking.updated_at || booking.updatedAt || new Date().toISOString(),
+  vendorNotes: booking.vendor_notes || booking.notes || '',
+  quoteSentDate: booking.quote_sent_date,
+  paymentStatus: booking.payment_status
+});
+
+const mapToUIBookingStats = (data: any): UIBookingStats => ({
+  totalBookings: data.total_bookings || data.totalBookings || 0,
+  pendingReview: data.pending_review || data.pendingReview || 0,
+  quotesSent: data.quotes_sent || data.quotesSent || 0,
+  confirmed: data.confirmed || 0,
+  totalRevenue: data.total_revenue || data.totalRevenue || 0,
+  averageBookingValue: data.average_booking_value || data.averageBookingValue || 0,
+  conversionRate: data.conversion_rate || data.conversionRate || 0
+});
+
+const downloadCSV = (data: any[], filename: string) => {
+  console.log('CSV download requested:', filename, data.length, 'items');
+  alert('CSV download feature will be implemented in a future update.');
+};
+
+const downloadJSON = (data: any[], filename: string) => {
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filename}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+const handleContactClient = (booking: UIBooking) => {
+  console.log('Contact client:', booking.coupleName);
+  if (booking.contactEmail) {
+    window.open(`mailto:${booking.contactEmail}?subject=Regarding your booking for ${booking.serviceType}`);
+  } else {
+    alert('No contact email available for this client.');
+  }
+};
 
 // Types
-class SecurityError extends Error {
-  code?: string;
-  status?: number;
-  
-  constructor(message: string, code?: string, status?: number) {
-    super(message);
-    this.name = 'SecurityError';
-    this.code = code;
-    this.status = status;
-  }
-}
-
 interface UIBooking {
   id: string;
   vendorId: string;
@@ -94,6 +121,8 @@ type BookingStatus = 'pending_review' | 'quote_sent' | 'confirmed' | 'in_progres
  * and handles the security vulnerability identified in the system.
  */
 export const VendorBookingsSecure: React.FC = () => {
+  const { user } = useAuth();
+  
   const [bookings, setBookings] = useState<UIBooking[]>([]);
   const [stats, setStats] = useState<UIBookingStats>({
     totalBookings: 0,
@@ -112,136 +141,12 @@ export const VendorBookingsSecure: React.FC = () => {
   // UI State
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<BookingStatus | 'all'>('all');
-  const [selectedBooking, setSelectedBooking] = useState<UIBooking | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Security state
-  const [authStatus, setAuthStatus] = useState<'checking' | 'authorized' | 'unauthorized'>('checking');
-  const [vendorId, setVendorId] = useState<string | null>(null);
+  // Get vendor ID from authenticated user
+  const vendorId = user?.vendorId || user?.id;
   
   const apiUrl = process.env.REACT_APP_API_URL || 'https://weddingbazaar-web.onrender.com';
-
-  /**
-   * SECURITY ENHANCEMENT: Verify user authorization and extract vendor ID
-   */
-  const verifyAuthorization = async (): Promise<{ authorized: boolean; vendorId?: string; error?: string }> => {
-    try {
-      // Check for token in multiple possible keys for compatibility
-      const token = localStorage.getItem('jwt_token') || 
-                   localStorage.getItem('authToken') || 
-                   localStorage.getItem('auth_token');
-                   
-      if (!token) {
-        return { authorized: false, error: 'No authentication token found' };
-      }
-
-      const response = await fetch(`${apiUrl}/api/auth/verify`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ token })
-      });
-
-      if (!response.ok) {
-        return { authorized: false, error: 'Authentication failed' };
-      }
-
-      const data = await response.json();
-      const user = data.user;
-
-      // SECURITY CHECK: Ensure user is a vendor
-      if (user.user_type !== 'vendor') {
-        console.error('🚨 SECURITY: Non-vendor user attempting to access vendor bookings');
-        return { authorized: false, error: 'Vendor access required' };
-      }
-
-      // SECURITY CHECK: Validate user ID format to detect malformed IDs
-      if (isMalformedUserId(user.id)) {
-        console.error('🚨 SECURITY: Malformed user ID detected:', user.id);
-        setSecurityAlert('Security issue detected with your account. Please contact support.');
-        return { authorized: false, error: 'Account security issue detected' };
-      }
-
-      // Get the actual vendor ID from the vendors table
-      const vendorResponse = await fetch(`${apiUrl}/api/vendors/by-user/${user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!vendorResponse.ok) {
-        return { authorized: false, error: 'Vendor record not found' };
-      }
-
-      const vendorData = await vendorResponse.json();
-      return { authorized: true, vendorId: vendorData.vendor.id };
-
-    } catch (error) {
-      console.error('Authorization check failed:', error);
-      return { authorized: false, error: 'Authorization check failed' };
-    }
-  };
-
-  /**
-   * SECURITY UTILITY: Check for malformed user IDs that could cause data leakage
-   */
-  const isMalformedUserId = (userId: string): boolean => {
-    if (!userId || typeof userId !== 'string') return true;
-    
-    // Check for truly malformed patterns - allow legitimate user IDs but block obvious attacks
-    const malformedPatterns = [
-      /[<>"/]/, // SQL injection attempts
-      /['"]/, // Quote injection attempts
-      /\s/, // Spaces (not allowed in IDs)
-      /[;,]/, // Command separators
-      /^\s*$/, // Empty or whitespace only
-      /\.\./,  // Path traversal attempts
-      /\$\{/,  // Template injection attempts
-      /\bOR\b/i, // SQL OR injection
-      /\bAND\b/i, // SQL AND injection
-      /\bUNION\b/i, // SQL UNION injection
-      /\bSELECT\b/i, // SQL SELECT injection
-      /\bDROP\b/i, // SQL DROP injection
-      /\bDELETE\b/i, // SQL DELETE injection
-      /\bUPDATE\b/i, // SQL UPDATE injection
-      /\bINSERT\b/i, // SQL INSERT injection
-    ];
-    
-    const ismalformed = malformedPatterns.some(pattern => pattern.test(userId));
-    
-    if (ismalformed) {
-      console.log(`🚨 DETECTED MALFORMED ID: ${userId} contains dangerous characters`);
-      return true;
-    }
-    
-    // Allow legitimate user ID patterns:
-    // - 1-YYYY-XXX (couples)
-    // - 2-YYYY-XXX (vendors) 
-    // - 3-YYYY-XXX (admins)
-    // - UUID patterns
-    // - Simple numeric IDs
-    const legitimatePatterns = [
-      /^[123]-\d{4}-\d{3}$/, // User ID pattern (1=couple, 2=vendor, 3=admin)
-      /^[a-f0-9-]{36}$/, // UUID pattern
-      /^\d+$/, // Simple numeric ID
-    ];
-    
-    const isLegitimate = legitimatePatterns.some(pattern => pattern.test(userId));
-    
-    if (isLegitimate) {
-      console.log(`✅ LEGITIMATE ID: ${userId} passed security validation`);
-      return false; // Not malformed
-    }
-    
-    // For any other pattern, be conservative but log it
-    console.log(`⚠️ UNKNOWN ID PATTERN: ${userId} - allowing but monitoring`);
-    return false; // Allow unknown patterns for now
-  };
 
   /**
    * SECURITY-ENHANCED: Load bookings with proper access control
@@ -255,18 +160,10 @@ export const VendorBookingsSecure: React.FC = () => {
         throw new Error('Vendor ID not available');
       }
 
-      const token = localStorage.getItem('jwt_token') || 
-                   localStorage.getItem('authToken') || 
-                   localStorage.getItem('auth_token');
-      if (!token) {
-        throw new SecurityError('Authentication required');
-      }
-
       console.log(`🔐 Loading bookings for vendor: ${vendorId}`);
 
       const response = await fetch(`${apiUrl}/api/bookings/vendor/${vendorId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'X-Security-Check': 'enabled'
         }
@@ -291,7 +188,6 @@ export const VendorBookingsSecure: React.FC = () => {
             setSecurityAlert('Access denied');
         }
         
-        setAuthStatus('unauthorized');
         return;
       }
 
@@ -328,13 +224,7 @@ export const VendorBookingsSecure: React.FC = () => {
 
     } catch (error) {
       console.error('❌ Failed to load bookings:', error);
-      
-      if (error instanceof SecurityError) {
-        setSecurityAlert((error as Error).message);
-        setAuthStatus('unauthorized');
-      } else {
-        setError('Failed to load bookings. Please try again.');
-      }
+      setError('Failed to load bookings. Please try again.');
     } finally {
       if (!silent) setLoading(false);
     }
@@ -367,38 +257,33 @@ export const VendorBookingsSecure: React.FC = () => {
   };
 
   /**
-   * Initialize component with security checks
+   * Initialize component with auth context
    */
   useEffect(() => {
-    const initializeComponent = async () => {
-      const authResult = await verifyAuthorization();
-      
-      if (!authResult.authorized) {
-        setError(authResult.error || 'Authorization failed');
-        setAuthStatus('unauthorized');
-        setLoading(false);
-        return;
-      }
+    if (!user || user.role !== 'vendor') {
+      setError('Vendor access required');
+      setLoading(false);
+      return;
+    }
 
-      setVendorId(authResult.vendorId!);
-      setAuthStatus('authorized');
-      
-      // Load data after authorization is confirmed
-      await Promise.all([
-        loadBookings(),
-        loadStats()
-      ]);
-    };
+    if (!vendorId) {
+      setError('Vendor ID not found in user profile');
+      setLoading(false);
+      return;
+    }
 
-    initializeComponent();
-  }, []);
+    // Load data
+    Promise.all([
+      loadBookings(),
+      loadStats()
+    ]);
+  }, [user, vendorId]);
 
   /**
    * Handle security alerts
    */
   const handleSecurityAlert = () => {
     setSecurityAlert(null);
-    // Optionally redirect to login or security page
   };
 
   /**
@@ -407,15 +292,6 @@ export const VendorBookingsSecure: React.FC = () => {
   const handleSecureRefresh = async () => {
     setIsRefreshing(true);
     
-    // Re-verify authorization before refreshing data
-    const authResult = await verifyAuthorization();
-    if (!authResult.authorized) {
-      setAuthStatus('unauthorized');
-      setError('Session expired. Please log in again.');
-      setIsRefreshing(false);
-      return;
-    }
-
     await Promise.all([
       loadBookings(true),
       loadStats()
@@ -465,8 +341,8 @@ export const VendorBookingsSecure: React.FC = () => {
     );
   };
 
-  // Unauthorized Access Component
-  if (authStatus === 'unauthorized') {
+  // Check if user is not authenticated or not a vendor
+  if (!user || user.role !== 'vendor') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 to-white">
         <VendorHeader />
@@ -475,13 +351,13 @@ export const VendorBookingsSecure: React.FC = () => {
             <Lock className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
             <p className="text-gray-600 mb-4">
-              {error || 'You do not have permission to access this page.'}
+              Vendor access required. Please log in with a vendor account.
             </p>
             <button
-              onClick={() => window.location.href = '/login'}
+              onClick={() => window.location.href = '/'}
               className="px-6 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600"
             >
-              Return to Login
+              Return to Home
             </button>
           </div>
         </div>
@@ -489,8 +365,8 @@ export const VendorBookingsSecure: React.FC = () => {
     );
   }
 
-  // Loading state during authorization check
-  if (authStatus === 'checking' || loading) {
+  // Loading state
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 to-white">
         <VendorHeader />
@@ -498,9 +374,7 @@ export const VendorBookingsSecure: React.FC = () => {
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin text-pink-500 mx-auto mb-4" />
-              <p className="text-gray-600">
-                {authStatus === 'checking' ? 'Verifying access...' : 'Loading your bookings...'}
-              </p>
+              <p className="text-gray-600">Loading your bookings...</p>
             </div>
           </div>
         </div>

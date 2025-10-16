@@ -58,6 +58,26 @@ export const VendorProfile: React.FC = () => {
   // Local state for editing
   const [editForm, setEditForm] = useState<Partial<VendorProfileType>>({});
 
+  // Helper function to check document verification status
+  const isDocumentVerified = (): boolean => {
+    if (!profile?.documents || profile.documents.length === 0) return false;
+    return profile.documents.some((doc: any) => doc.status === 'approved');
+  };
+
+  // Helper function to get verification status with document check
+  const getBusinessVerificationStatus = () => {
+    const documentsVerified = isDocumentVerified();
+    const businessVerified = profile?.businessVerified || profile?.business_verified || documentsVerified;
+    
+    if (businessVerified || documentsVerified) {
+      return { status: 'verified', color: 'text-green-600', icon: CheckCircle, label: 'Verified' };
+    } else if (profile?.verification_status === 'pending') {
+      return { status: 'pending', color: 'text-amber-600', icon: Clock, label: 'Under Review' };
+    } else {
+      return { status: 'not_verified', color: 'text-amber-600', icon: XCircle, label: 'Not Verified' };
+    }
+  };
+
   // Update form when profile loads - FIXED FIELD MAPPING
   React.useEffect(() => {
     if (profile) {
@@ -1073,22 +1093,16 @@ export const VendorProfile: React.FC = () => {
                           <FileText className="w-6 h-6 text-purple-600" />
                           <h3 className="text-xl font-semibold text-gray-900">Business Document Verification</h3>
                         </div>
-                        {profile?.business_verified ? (
-                          <div className="flex items-center space-x-2 text-green-600">
-                            <CheckCircle className="w-5 h-5" />
-                            <span className="font-medium">Verified</span>
-                          </div>
-                        ) : profile?.verification_status === 'pending' ? (
-                          <div className="flex items-center space-x-2 text-amber-600">
-                            <Clock className="w-5 h-5" />
-                            <span className="font-medium">Under Review</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center space-x-2 text-amber-600">
-                            <XCircle className="w-5 h-5" />
-                            <span className="font-medium">Not Verified</span>
-                          </div>
-                        )}
+                        {(() => {
+                          const verificationStatus = getBusinessVerificationStatus();
+                          const IconComponent = verificationStatus.icon;
+                          return (
+                            <div className={`flex items-center space-x-2 ${verificationStatus.color}`}>
+                              <IconComponent className="w-5 h-5" />
+                              <span className="font-medium">{verificationStatus.label}</span>
+                            </div>
+                          );
+                        })()}
                       </div>
                       
                       <div className="space-y-6">
@@ -1175,15 +1189,23 @@ export const VendorProfile: React.FC = () => {
                           </p>
                         </div>
                         <div className="text-center">
-                          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${
-                            profile?.business_verified ? 'bg-green-100' : 'bg-gray-100'
-                          }`}>
-                            <FileText className={`w-8 h-8 ${profile?.business_verified ? 'text-green-600' : 'text-gray-400'}`} />
-                          </div>
-                          <h4 className="font-medium text-gray-900">Business</h4>
-                          <p className={`text-sm ${profile?.business_verified ? 'text-green-600' : 'text-gray-500'}`}>
-                            {profile?.business_verified ? 'Verified' : profile?.verification_status === 'pending' ? 'Under Review' : 'Pending'}
-                          </p>
+                          {(() => {
+                            const verificationStatus = getBusinessVerificationStatus();
+                            const isVerified = verificationStatus.status === 'verified';
+                            return (
+                              <>
+                                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${
+                                  isVerified ? 'bg-green-100' : 'bg-gray-100'
+                                }`}>
+                                  <FileText className={`w-8 h-8 ${isVerified ? 'text-green-600' : 'text-gray-400'}`} />
+                                </div>
+                                <h4 className="font-medium text-gray-900">Business</h4>
+                                <p className={`text-sm ${isVerified ? 'text-green-600' : 'text-gray-500'}`}>
+                                  {verificationStatus.label}
+                                </p>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>

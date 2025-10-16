@@ -46,6 +46,7 @@ export const ModernMessagesPage: React.FC<ModernMessagesPageProps> = ({ userType
 
   // Load conversations on mount
   useEffect(() => {
+    console.log('🎯 [ModernMessagesPage] Component mounted, loading conversations...');
     loadConversations();
   }, [loadConversations]);
 
