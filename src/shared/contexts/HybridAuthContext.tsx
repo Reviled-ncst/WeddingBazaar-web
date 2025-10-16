@@ -275,7 +275,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             headers: {
               'Authorization': `Bearer ${storedToken}`,
               'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({ token: storedToken })
           })
           .then(response => response.json())
           .then(data => {

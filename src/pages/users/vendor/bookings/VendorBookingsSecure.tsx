@@ -42,9 +42,16 @@ import { downloadCSV, downloadJSON } from './utils/downloadUtils';
 import { handleContactClient, handleViewDetails, handleSendQuote } from './utils/bookingActions';
 
 // Types
-interface SecurityError extends Error {
+class SecurityError extends Error {
   code?: string;
   status?: number;
+  
+  constructor(message: string, code?: string, status?: number) {
+    super(message);
+    this.name = 'SecurityError';
+    this.code = code;
+    this.status = status;
+  }
 }
 
 interface UIBooking {
@@ -127,10 +134,12 @@ export const VendorBookingsSecure: React.FC = () => {
       }
 
       const response = await fetch(`${apiUrl}/api/auth/verify`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ token })
       });
 
       if (!response.ok) {
