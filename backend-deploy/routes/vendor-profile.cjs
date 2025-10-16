@@ -107,14 +107,29 @@ router.get('/:vendorId', async (req, res) => {
     // Get verification documents (with fallback if table doesn't exist)
     let docsResult = [];
     try {
+      // Try both vendor ID formats since documents might be stored under either
+      console.log('🔍 Looking for documents with vendor_id:', queryVendorId);
+      console.log('🔍 Also trying original vendor_id:', vendorId);
+      
       docsResult = await sql`
         SELECT id, document_type, document_url, verification_status, uploaded_at, verified_at, rejection_reason
         FROM vendor_documents 
-        WHERE vendor_id = ${vendorId}
+        WHERE vendor_id = ${queryVendorId} OR vendor_id = ${vendorId}
         ORDER BY uploaded_at DESC
       `;
+      
+      console.log('📄 Found documents:', docsResult.length);
+      docsResult.forEach(doc => {
+        console.log('📄 Document:', { 
+          id: doc.id,
+          type: doc.document_type,
+          status: doc.verification_status,
+          vendor_id_used: doc.vendor_id
+        });
+      });
+      
     } catch (docError) {
-      console.log('⚠️ vendor_documents table not found, using empty docs array');
+      console.log('⚠️ vendor_documents table error:', docError.message);
     }
     
     // Format the response with safe defaults
