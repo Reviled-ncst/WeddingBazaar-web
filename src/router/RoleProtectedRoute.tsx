@@ -34,6 +34,11 @@ export const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
 
   // If user is authenticated, check role permissions
   if (isAuthenticated && user) {
+    // DEBUG: Log the complete user object structure
+    console.log('🔧 [RoleProtectedRoute] Complete user object:', JSON.stringify(user, null, 2));
+    console.log('🔧 [RoleProtectedRoute] User keys:', Object.keys(user || {}));
+    console.log('🔧 [RoleProtectedRoute] User.role specifically:', user.role, 'type:', typeof user.role);
+    
     // Enhanced vendor detection with detailed logging
     const hasBusinessName = !!user?.businessName;
     const hasVendorId = !!user?.vendorId;
@@ -45,10 +50,25 @@ export const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
     );
     const isVendorByProperties = hasBusinessName || hasVendorId || hasVendorIdPattern || hasVendorEmailPattern;
     
-    // Determine actual user role
+    // Determine actual user role with fallback logic
     let actualRole = user.role;
-    if (isVendorByProperties) {
+    
+    // SAFETY: If role is missing but user has vendor properties, set as vendor
+    if (!actualRole && isVendorByProperties) {
       actualRole = 'vendor';
+      console.log('🔧 [RoleProtectedRoute] Role missing, detected vendor by properties');
+    }
+    
+    // SAFETY: If role is still missing, check for user_type field (backend inconsistency)
+    if (!actualRole && (user as any).user_type) {
+      actualRole = (user as any).user_type;
+      console.log('🔧 [RoleProtectedRoute] Using user_type field:', actualRole);
+    }
+    
+    // Apply vendor detection override
+    if (isVendorByProperties && actualRole !== 'vendor') {
+      actualRole = 'vendor';
+      console.log('🔧 [RoleProtectedRoute] Override role to vendor based on properties');
     }
     
     console.log('🔒 [RoleProtectedRoute] Role check:', {
