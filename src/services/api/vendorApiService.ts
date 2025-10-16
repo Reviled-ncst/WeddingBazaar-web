@@ -61,6 +61,13 @@ export interface VendorProfile {
   created_at: string;
   awards?: string[];
   certifications?: string[];
+  // New verification fields
+  phone_verified?: boolean;
+  business_verified?: boolean;
+  documents_verified?: boolean;
+  verification_status?: 'pending' | 'approved' | 'rejected' | 'under_review';
+  verification_notes?: string;
+  verified_at?: string;
   // Legacy fields for compatibility
   years_in_business?: number;
   portfolio_url?: string;
@@ -154,24 +161,39 @@ class VendorApiService {
   // Fetch vendor profile
   async getProfile(vendorId: string): Promise<VendorProfile> {
     try {
-      console.log('Attempting to fetch profile from API for vendor:', vendorId);
+      console.log('Attempting to fetch profile from new modular API for vendor:', vendorId);
       
-      // Use the new user_id based endpoint
-      const response = await fetch(`${this.baseUrl}/api/vendors/user/${vendorId}/profile`);
+      // Use the new modular vendor profile endpoint
+      const response = await fetch(`${this.baseUrl}/api/vendor-profile/${vendorId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // If modular endpoint fails, try the old endpoint as fallback
+        console.log('Modular endpoint failed, trying legacy endpoint...');
+        const legacyResponse = await fetch(`${this.baseUrl}/api/vendors/user/${vendorId}/profile`);
+        
+        if (!legacyResponse.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const legacyResult = await legacyResponse.json();
+        console.log('Legacy API response:', legacyResult);
+        
+        if (legacyResult.success && legacyResult.profile) {
+          return legacyResult.profile;
+        } else {
+          throw new Error('Invalid legacy API response format');
+        }
       }
       
       const result = await response.json();
-      console.log('API response:', result);
+      console.log('Modular API response:', result);
       
-      // Backend returns { success: true, profile: profileData }
-      if (result.success && result.profile) {
-        return result.profile;
-      } else {
-        throw new Error('Invalid API response format');
-      }
+      // New modular endpoint returns the profile directly
+      return result;
     } catch (error) {
       console.error('Error fetching vendor profile:', error);
       console.log('Falling back to mock data');
@@ -186,27 +208,49 @@ class VendorApiService {
   // Update vendor profile
   async updateProfile(vendorId: string, profileData: Partial<VendorProfile>): Promise<VendorProfile> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/vendors/${vendorId}/profile`, {
+      console.log('Updating profile with new modular API for vendor:', vendorId);
+      console.log('Profile data:', profileData);
+      
+      // Use the new modular vendor profile endpoint
+      const response = await fetch(`${this.baseUrl}/api/vendor-profile/${vendorId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(profileData),
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // If modular endpoint fails, try the old endpoint as fallback
+        console.log('Modular update endpoint failed, trying legacy endpoint...');
+        const legacyResponse = await fetch(`${this.baseUrl}/api/vendors/${vendorId}/profile`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(profileData),
+        });
+        
+        if (!legacyResponse.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const legacyResult = await legacyResponse.json();
+        console.log('Legacy update API response:', legacyResult);
+        
+        if (legacyResult.success && legacyResult.profile) {
+          return legacyResult.profile;
+        } else {
+          throw new Error('Invalid legacy API response format');
+        }
       }
       
       const result = await response.json();
-      console.log('Update API response:', result);
+      console.log('Modular update API response:', result);
       
-      // Backend returns { success: true, profile: profileData }
-      if (result.success && result.profile) {
-        return result.profile;
-      } else {
-        throw new Error('Invalid API response format');
-      }
+      // New modular endpoint returns the updated profile directly
+      return result;
     } catch (error) {
       console.error('Error updating vendor profile:', error);
       throw error;
@@ -358,6 +402,132 @@ class VendorApiService {
       console.error('Error deleting profile image:', error);
       // For development, don't throw error - just log it
       console.log('Mock deletion successful in development mode');
+    }
+  }
+
+  // Get verification status
+  async getVerificationStatus(vendorId: string): Promise<{
+    emailVerified: boolean;
+    phoneVerified: boolean;
+    businessVerified: boolean;
+    documentsVerified: boolean;
+    verificationProgress: number;
+  }> {
+    try {
+      console.log('Fetching verification status for vendor:', vendorId);
+      
+      const response = await fetch(`${this.baseUrl}/api/vendor-profile/${vendorId}/verification-status`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Verification status response:', result);
+      
+      return result;
+    } catch (error) {
+      console.error('Error fetching verification status:', error);
+      throw error;
+    }
+  }
+
+  // Request email verification
+  async requestEmailVerification(vendorId: string): Promise<{ message: string }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/vendor-profile/${vendorId}/verify-email`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error requesting email verification:', error);
+      throw error;
+    }
+  }
+
+  // Request phone verification
+  async requestPhoneVerification(vendorId: string, phone: string): Promise<{ message: string }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/vendor-profile/${vendorId}/verify-phone`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ phone })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error requesting phone verification:', error);
+      throw error;
+    }
+  }
+
+  // Confirm phone verification
+  async confirmPhoneVerification(vendorId: string, code: string): Promise<{ success: boolean }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/vendor-profile/${vendorId}/confirm-phone`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ code })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error confirming phone verification:', error);
+      throw error;
+    }
+  }
+
+  // Upload documents
+  async uploadDocuments(vendorId: string, files: File[], documentType: string): Promise<{ message: string }> {
+    try {
+      const formData = new FormData();
+      files.forEach((file, index) => {
+        formData.append(`document_${index}`, file);
+      });
+      formData.append('documentType', documentType);
+
+      const response = await fetch(`${this.baseUrl}/api/vendor-profile/${vendorId}/documents`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error uploading documents:', error);
+      throw error;
     }
   }
 

@@ -17,10 +17,18 @@ import {
   DollarSign,
   Shield,
   AlertCircle,
-  Trash2
+  Trash2,
+  CheckCircle,
+  XCircle,
+  FileText,
+  Send,
+  Eye,
+  Download,
+  RefreshCw
 } from 'lucide-react';
 import { useVendorProfile } from '../../../../hooks/useVendorData';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { cn } from '../../../../utils/cn';
 import type { VendorProfile as VendorProfileType } from '../../../../services/api/vendorApiService';
 
@@ -28,11 +36,18 @@ export const VendorProfile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('business');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
+  const [showPhoneVerification, setShowPhoneVerification] = useState(false);
+  const [uploadedDocuments, setUploadedDocuments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
   
-  // Use real API data with the authenticated vendor's ID
-  // Using an existing vendor profile ID that matches the database structure
-  const vendorId = 'vendor-user-1'; // Elegant Moments Photography Studio profile (real data with string user ID)
+  // Get real authenticated user data
+  const { user } = useAuth();
+  const vendorId = user?.vendorId || user?.id || 'vendor-user-1'; // Fallback to existing data
+  
   const { 
     profile, 
     loading, 
@@ -64,12 +79,108 @@ export const VendorProfile: React.FC = () => {
     }
   }, [profile]);
 
+  // Verification functions - Updated to use new modular endpoints
+  const handleEmailVerification = async () => {
+    setIsVerifyingEmail(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+      const response = await fetch(`${apiUrl}/api/vendor-profile/${vendorId}/verify-email`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        alert('✅ Verification email sent! Please check your inbox.');
+        console.log('Email verification result:', result);
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Failed to send verification email: ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Email verification error:', error);
+      alert('❌ Failed to send verification email. Please try again.');
+    } finally {
+      setIsVerifyingEmail(false);
+    }
+  };
+
+  const handlePhoneVerification = async () => {
+    setIsVerifyingPhone(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+      const response = await fetch(`${apiUrl}/api/vendor-profile/${vendorId}/verify-phone`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ 
+          phone: editForm.contact_phone || profile?.contact_phone 
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setShowPhoneVerification(true);
+        alert('📱 Verification code sent to your phone!');
+        console.log('Phone verification result:', result);
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Failed to send phone verification: ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Phone verification error:', error);
+      alert('❌ Failed to send phone verification. Please try again.');
+    } finally {
+      setIsVerifyingPhone(false);
+    }
+  };
+
+  const handleDocumentUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    
+    const formData = new FormData();
+    Array.from(files).forEach((file, index) => {
+      formData.append(`document_${index}`, file);
+    });
+    formData.append('documentType', 'business_verification');
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+      const response = await fetch(`${apiUrl}/api/vendor-profile/${vendorId}/documents`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert('✅ Documents uploaded successfully! They will be reviewed by our admin team.');
+        console.log('Document upload result:', result);
+        await refetch(); // Refresh profile data
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Failed to upload documents: ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Document upload error:', error);
+      alert('❌ Failed to upload documents. Please try again.');
+    }
+  };
+
   // Define constants and functions before early returns to avoid hook order issues
   const tabs = [
     { id: 'business', name: 'Business Info', icon: Users },
+    { id: 'verification', name: 'Verification', icon: Shield },
     { id: 'portfolio', name: 'Portfolio Settings', icon: Camera },
     { id: 'pricing', name: 'Pricing & Services', icon: DollarSign },
-    { id: 'settings', name: 'Account Settings', icon: Shield }
+    { id: 'settings', name: 'Account Settings', icon: FileText }
   ];
 
   const categories = [
@@ -553,7 +664,17 @@ export const VendorProfile: React.FC = () => {
                             <Phone className="w-4 h-4 inline mr-1" />
                             Phone
                           </label>
-                          <p className="text-gray-900">(555) 123-4567</p>
+                          {isEditing ? (
+                            <input
+                              type="tel"
+                              value={editForm.contact_phone || ''}
+                              onChange={(e) => setEditForm({...editForm, contact_phone: e.target.value})}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
+                              placeholder="Contact phone number"
+                            />
+                          ) : (
+                            <p className="text-gray-900">{profile.contact_phone || user?.phone || 'No phone number'}</p>
+                          )}
                         </div>
 
                         <div>
@@ -561,7 +682,17 @@ export const VendorProfile: React.FC = () => {
                             <Mail className="w-4 h-4 inline mr-1" />
                             Email
                           </label>
-                          <p className="text-gray-900">{profile.email}</p>
+                          {isEditing ? (
+                            <input
+                              type="email"
+                              value={editForm.contact_email || ''}
+                              onChange={(e) => setEditForm({...editForm, contact_email: e.target.value})}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
+                              placeholder="Contact email"
+                            />
+                          ) : (
+                            <p className="text-gray-900">{profile.contact_email || user?.email || 'No email'}</p>
+                          )}
                         </div>
 
                         <div>
@@ -716,6 +847,278 @@ export const VendorProfile: React.FC = () => {
                               {profile.social_media?.facebook || 'Not provided'}
                             </a>
                           )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'verification' && (
+                  <div className="space-y-8">
+                    {/* Email Verification */}
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-8">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center space-x-3">
+                          <Mail className="w-6 h-6 text-blue-600" />
+                          <h3 className="text-xl font-semibold text-gray-900">Email Verification</h3>
+                        </div>
+                        {user?.emailVerified ? (
+                          <div className="flex items-center space-x-2 text-green-600">
+                            <CheckCircle className="w-5 h-5" />
+                            <span className="font-medium">Verified</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2 text-amber-600">
+                            <XCircle className="w-5 h-5" />
+                            <span className="font-medium">Not Verified</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <p className="text-gray-600 mb-4">
+                            Verify your email address to enable full access to vendor features and build customer trust.
+                          </p>
+                          <div className="space-y-2">
+                            <p className="text-sm text-gray-500"><strong>Email:</strong> {user?.email}</p>
+                            <p className="text-sm text-gray-500"><strong>Status:</strong> {user?.emailVerified ? 'Verified' : 'Pending verification'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-center">
+                          {!user?.emailVerified && (
+                            <button
+                              onClick={handleEmailVerification}
+                              disabled={isVerifyingEmail}
+                              className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                            >
+                              {isVerifyingEmail ? (
+                                <RefreshCw className="w-5 h-5 animate-spin" />
+                              ) : (
+                                <Send className="w-5 h-5" />
+                              )}
+                              <span>{isVerifyingEmail ? 'Sending...' : 'Send Verification Email'}</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Phone Verification */}
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-8">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center space-x-3">
+                          <Phone className="w-6 h-6 text-green-600" />
+                          <h3 className="text-xl font-semibold text-gray-900">Phone Verification</h3>
+                        </div>
+                        {profile?.phone_verified ? (
+                          <div className="flex items-center space-x-2 text-green-600">
+                            <CheckCircle className="w-5 h-5" />
+                            <span className="font-medium">Verified</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2 text-amber-600">
+                            <XCircle className="w-5 h-5" />
+                            <span className="font-medium">Not Verified</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <p className="text-gray-600 mb-4">
+                            Verify your phone number to allow customers to contact you directly and improve your profile credibility.
+                          </p>
+                          <div className="space-y-2">
+                            <p className="text-sm text-gray-500"><strong>Phone:</strong> {profile?.contact_phone || user?.phone || 'Not provided'}</p>
+                            <p className="text-sm text-gray-500"><strong>Status:</strong> {profile?.phone_verified ? 'Verified' : 'Pending verification'}</p>
+                          </div>
+                          
+                          {showPhoneVerification && (
+                            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Enter verification code:
+                              </label>
+                              <div className="flex space-x-2">
+                                <input
+                                  type="text"
+                                  value={phoneVerificationCode}
+                                  onChange={(e) => setPhoneVerificationCode(e.target.value)}
+                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Enter 6-digit code"
+                                  maxLength={6}
+                                />
+                                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                  Verify
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-center">
+                          {!profile?.phone_verified && (profile?.contact_phone || user?.phone) && (
+                            <button
+                              onClick={handlePhoneVerification}
+                              disabled={isVerifyingPhone}
+                              className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                            >
+                              {isVerifyingPhone ? (
+                                <RefreshCw className="w-5 h-5 animate-spin" />
+                              ) : (
+                                <Send className="w-5 h-5" />
+                              )}
+                              <span>{isVerifyingPhone ? 'Sending...' : 'Send Verification Code'}</span>
+                            </button>
+                          )}
+                          {!profile?.contact_phone && !user?.phone && (
+                            <p className="text-sm text-gray-500 text-center">
+                              Please add a phone number in your business info to verify it.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Business Document Verification */}
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-8">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center space-x-3">
+                          <FileText className="w-6 h-6 text-purple-600" />
+                          <h3 className="text-xl font-semibold text-gray-900">Business Document Verification</h3>
+                        </div>
+                        {profile?.business_verified ? (
+                          <div className="flex items-center space-x-2 text-green-600">
+                            <CheckCircle className="w-5 h-5" />
+                            <span className="font-medium">Verified</span>
+                          </div>
+                        ) : profile?.verification_status === 'pending' ? (
+                          <div className="flex items-center space-x-2 text-amber-600">
+                            <Clock className="w-5 h-5" />
+                            <span className="font-medium">Under Review</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2 text-amber-600">
+                            <XCircle className="w-5 h-5" />
+                            <span className="font-medium">Not Verified</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-6">
+                        <div>
+                          <p className="text-gray-600 mb-4">
+                            Upload your business registration documents for manual verification by our admin team. 
+                            This helps build trust with customers and unlocks premium features.
+                          </p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div className="p-4 bg-gray-50 rounded-lg">
+                              <h4 className="font-medium text-gray-900 mb-2">Required Documents:</h4>
+                              <ul className="text-sm text-gray-600 space-y-1">
+                                <li>• Business Registration Certificate</li>
+                                <li>• Tax ID/EIN Documentation</li>
+                                <li>• Professional License (if applicable)</li>
+                                <li>• Insurance Certificate</li>
+                              </ul>
+                            </div>
+                            <div className="p-4 bg-blue-50 rounded-lg">
+                              <h4 className="font-medium text-gray-900 mb-2">Verification Benefits:</h4>
+                              <ul className="text-sm text-gray-600 space-y-1">
+                                <li>• Verified badge on profile</li>
+                                <li>• Higher search ranking</li>
+                                <li>• Access to premium features</li>
+                                <li>• Increased customer trust</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Document Upload Section */}
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                          <input
+                            ref={documentInputRef}
+                            type="file"
+                            multiple
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                            onChange={(e) => handleDocumentUpload(e.target.files)}
+                            className="hidden"
+                          />
+                          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                          <h4 className="text-lg font-medium text-gray-900 mb-2">Upload Business Documents</h4>
+                          <p className="text-gray-600 mb-4">
+                            Drag and drop files here or click to browse
+                          </p>
+                          <button
+                            onClick={() => documentInputRef.current?.click()}
+                            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                          >
+                            Choose Files
+                          </button>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Supported formats: PDF, JPG, PNG, DOC, DOCX (Max 10MB per file)
+                          </p>
+                        </div>
+
+                        {/* Verification Status */}
+                        {profile?.verification_status && (
+                          <div className="p-4 bg-gray-50 rounded-lg">
+                            <h4 className="font-medium text-gray-900 mb-2">Verification Status</h4>
+                            <div className="space-y-2">
+                              <p className="text-sm text-gray-600">
+                                <strong>Status:</strong> {profile.verification_status}
+                              </p>
+                              {profile.verification_notes && (
+                                <p className="text-sm text-gray-600">
+                                  <strong>Admin Notes:</strong> {profile.verification_notes}
+                                </p>
+                              )}
+                              {profile.verified_at && (
+                                <p className="text-sm text-gray-600">
+                                  <strong>Verified On:</strong> {new Date(profile.verified_at).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Overall Verification Status */}
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-100 p-8">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-6">Verification Summary</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="text-center">
+                          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${
+                            user?.emailVerified ? 'bg-green-100' : 'bg-gray-100'
+                          }`}>
+                            <Mail className={`w-8 h-8 ${user?.emailVerified ? 'text-green-600' : 'text-gray-400'}`} />
+                          </div>
+                          <h4 className="font-medium text-gray-900">Email</h4>
+                          <p className={`text-sm ${user?.emailVerified ? 'text-green-600' : 'text-gray-500'}`}>
+                            {user?.emailVerified ? 'Verified' : 'Pending'}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${
+                            profile?.phone_verified ? 'bg-green-100' : 'bg-gray-100'
+                          }`}>
+                            <Phone className={`w-8 h-8 ${profile?.phone_verified ? 'text-green-600' : 'text-gray-400'}`} />
+                          </div>
+                          <h4 className="font-medium text-gray-900">Phone</h4>
+                          <p className={`text-sm ${profile?.phone_verified ? 'text-green-600' : 'text-gray-500'}`}>
+                            {profile?.phone_verified ? 'Verified' : 'Pending'}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${
+                            profile?.business_verified ? 'bg-green-100' : 'bg-gray-100'
+                          }`}>
+                            <FileText className={`w-8 h-8 ${profile?.business_verified ? 'text-green-600' : 'text-gray-400'}`} />
+                          </div>
+                          <h4 className="font-medium text-gray-900">Business</h4>
+                          <p className={`text-sm ${profile?.business_verified ? 'text-green-600' : 'text-gray-500'}`}>
+                            {profile?.business_verified ? 'Verified' : profile?.verification_status === 'pending' ? 'Under Review' : 'Pending'}
+                          </p>
                         </div>
                       </div>
                     </div>
