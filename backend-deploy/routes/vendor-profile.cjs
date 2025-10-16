@@ -119,20 +119,13 @@ router.get('/:vendorId', async (req, res) => {
       `;
       console.log('📊 All vendor IDs in documents table:', allVendorDocs);
       
-      // Try to find documents by multiple methods:
-      // 1. Direct vendor_id match (UUID or string)
-      // 2. User email match (in case documents were stored by email)
-      // 3. Any recent documents for this user
+      // Try to find documents for this vendor profile
+      // Use the correct UUID vendor profile ID to find documents
       docsResult = await sql`
         SELECT DISTINCT vd.id, vd.document_type, vd.document_url, vd.verification_status, 
                vd.uploaded_at, vd.verified_at, vd.rejection_reason, vd.vendor_id
         FROM vendor_documents vd
-        LEFT JOIN vendor_profiles vp ON vd.vendor_id = vp.id
-        LEFT JOIN users u ON vp.user_id = u.id
-        WHERE vd.vendor_id = ${queryVendorId} 
-           OR vd.vendor_id = ${vendorId}
-           OR u.id = ${vendorId}
-           OR u.email = ${vendor.email}
+        WHERE vd.vendor_id = ${queryVendorId}
         ORDER BY vd.uploaded_at DESC
       `;
       
