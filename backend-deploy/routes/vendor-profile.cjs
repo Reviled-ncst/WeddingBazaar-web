@@ -102,8 +102,8 @@ router.get('/:vendorId', async (req, res) => {
       userId: vendor.user_id,
       businessName: vendor.business_name,
       businessType: vendor.business_type,
-      description: vendor.description,
-      location: vendor.location,
+      description: vendor.business_description,
+      location: vendor.service_area,
       
       // Contact Information
       email: vendor.email,
@@ -409,28 +409,26 @@ router.put('/:vendorId', async (req, res) => {
     const updates = {
       businessName: updateData.businessName || updateData.business_name,
       businessType: updateData.businessType || updateData.business_type,
-      description: updateData.description || updateData.business_description,
-      location: updateData.location,
+      businessDescription: updateData.description || updateData.business_description,
+      serviceArea: updateData.location || updateData.serviceArea || updateData.service_areas,
       yearsInBusiness: updateData.yearsInBusiness || updateData.years_in_business,
       website: updateData.website || updateData.website_url,
       phone: updateData.phone || updateData.contact_phone,
       email: updateData.email || updateData.contact_email,
-      serviceArea: updateData.serviceArea || updateData.service_areas,
       socialMedia: updateData.socialMedia || updateData.social_media,
       profileImage: updateData.profileImage || updateData.featured_image_url
     };
     
-    // Build dynamic SQL update
+    // Build dynamic SQL update using actual database column names
     result = await sql`
       UPDATE vendor_profiles 
       SET 
         business_name = COALESCE(${updates.businessName}, business_name),
         business_type = COALESCE(${updates.businessType}, business_type),
-        description = COALESCE(${updates.description}, description),
-        location = COALESCE(${updates.location}, location),
+        business_description = COALESCE(${updates.businessDescription}, business_description),
+        service_area = COALESCE(${updates.serviceArea}, service_area),
         years_in_business = COALESCE(${updates.yearsInBusiness}, years_in_business),
         website = COALESCE(${updates.website}, website),
-        service_area = COALESCE(${updates.serviceArea}, service_area),
         profile_image = COALESCE(${updates.profileImage}, profile_image),
         updated_at = NOW()
       WHERE id = ${vendorId}
@@ -478,8 +476,8 @@ router.put('/:vendorId', async (req, res) => {
       userId: updatedVendor.user_id,
       businessName: updatedVendor.business_name,
       businessType: updatedVendor.business_type,
-      description: updatedVendor.description,
-      location: updatedVendor.location,
+      description: updatedVendor.business_description,
+      location: updatedVendor.service_area,
       yearsInBusiness: updatedVendor.years_in_business,
       website: updatedVendor.website,
       serviceArea: updatedVendor.service_area,
