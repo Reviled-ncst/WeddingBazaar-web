@@ -128,7 +128,11 @@ export const VendorBookingsSecure: React.FC = () => {
    */
   const verifyAuthorization = async (): Promise<{ authorized: boolean; vendorId?: string; error?: string }> => {
     try {
-      const token = localStorage.getItem('authToken');
+      // Check for token in multiple possible keys for compatibility
+      const token = localStorage.getItem('jwt_token') || 
+                   localStorage.getItem('authToken') || 
+                   localStorage.getItem('auth_token');
+                   
       if (!token) {
         return { authorized: false, error: 'No authentication token found' };
       }
@@ -208,7 +212,9 @@ export const VendorBookingsSecure: React.FC = () => {
         throw new Error('Vendor ID not available');
       }
 
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('jwt_token') || 
+                   localStorage.getItem('authToken') || 
+                   localStorage.getItem('auth_token');
       if (!token) {
         throw new SecurityError('Authentication required');
       }
@@ -281,7 +287,7 @@ export const VendorBookingsSecure: React.FC = () => {
       console.error('❌ Failed to load bookings:', error);
       
       if (error instanceof SecurityError) {
-        setSecurityAlert(error.message);
+        setSecurityAlert((error as Error).message);
         setAuthStatus('unauthorized');
       } else {
         setError('Failed to load bookings. Please try again.');
@@ -298,7 +304,9 @@ export const VendorBookingsSecure: React.FC = () => {
     try {
       if (!vendorId) return;
 
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('jwt_token') || 
+                   localStorage.getItem('authToken') || 
+                   localStorage.getItem('auth_token');
       const response = await fetch(`${apiUrl}/api/bookings/stats?vendorId=${vendorId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
