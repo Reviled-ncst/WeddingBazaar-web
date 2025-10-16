@@ -168,4 +168,90 @@ router.post('/:conversationId/messages', async (req, res) => {
   }
 });
 
+// Create a new conversation
+router.post('/', async (req, res) => {
+  console.log('🆕 Creating new conversation');
+  
+  try {
+    const { conversationId, vendorId, vendorName, serviceName, userId, userName, userType } = req.body;
+    
+    if (!conversationId || !vendorId || !vendorName || !userId || !userName) {
+      return res.status(400).json({
+        success: false,
+        error: 'conversationId, vendorId, vendorName, userId, and userName are required',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    console.log('📝 Creating conversation with data:', { conversationId, vendorId, vendorName, serviceName, userId, userName, userType });
+    
+    const now = new Date();
+    
+    // Insert conversation with correct schema fields matching the database structure
+    const conversation = await sql`
+      INSERT INTO conversations (
+        id, participant_id, participant_name, participant_type, participant_avatar,
+        creator_id, creator_type, conversation_type, last_message, last_message_time,
+        unread_count, is_online, status, service_name, created_at, updated_at
+      ) VALUES (
+        ${conversationId}, ${vendorId}, ${vendorName}, 'vendor', null,
+        ${userId}, ${userType}, 'individual', null, ${now.toISOString()},
+        0, false, 'active', ${serviceName || 'General Inquiry'}, ${now.toISOString()}, ${now.toISOString()}
+      ) RETURNING *
+    `;
+    
+    console.log(`✅ Conversation created: ${conversationId}`);
+    
+    // Return the conversation in the format expected by frontend
+    const createdConversation = {
+      id: conversationId,
+      participant_id: vendorId,
+      participant_name: vendorName,
+      participant_type: 'vendor',
+      participant_avatar: null,
+      creator_id: userId,
+      creator_name: userName,
+      creator_type: userType,
+      conversation_type: 'individual',
+      last_message: null,
+      last_message_time: now.toISOString(),
+      unread_count: 0,
+      is_online: false,
+      status: 'active',
+      service_name: serviceName || 'General Inquiry',
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
+      // Add participants array for proper filtering
+      participants: [userId, vendorId],
+      // Service-based conversation title
+      conversation_title: `${serviceName || 'General Inquiry'} - ${vendorName}`
+    };
+    
+    res.json({
+      success: true,
+      conversation: createdConversation,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Create conversation error:', error);
+    console.error('❌ Full error details:', error.message);
+    
+    // Check for unique constraint violation (conversation already exists)
+    if (error.message && error.message.includes('duplicate key')) {
+      return res.status(409).json({
+        success: false,
+        error: 'Conversation with this ID already exists',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 module.exports = router;
