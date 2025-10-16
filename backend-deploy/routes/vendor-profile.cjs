@@ -813,4 +813,40 @@ router.post('/:vendorId/phone-verified', async (req, res) => {
   }
 });
 
+// DEBUG: Check what vendor IDs exist in documents table
+router.get('/debug/all-document-vendors', async (req, res) => {
+  try {
+    console.log('🔍 DEBUG: Checking all vendor IDs in documents table');
+    
+    const allVendorDocs = await sql`
+      SELECT DISTINCT vendor_id, COUNT(*) as doc_count
+      FROM vendor_documents 
+      GROUP BY vendor_id
+    `;
+    
+    const allDocs = await sql`
+      SELECT vendor_id, document_type, verification_status, uploaded_at
+      FROM vendor_documents 
+      ORDER BY uploaded_at DESC
+    `;
+    
+    console.log('📊 All vendor IDs with documents:', allVendorDocs);
+    console.log('📄 All documents:', allDocs);
+    
+    res.json({
+      success: true,
+      vendorIdsWithDocs: allVendorDocs,
+      allDocuments: allDocs,
+      searchedIds: ['2-2025-001', 'eb5c47b9-6442-4ded-8a9a-cd98bfb7bca1']
+    });
+    
+  } catch (error) {
+    console.error('❌ Debug endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
