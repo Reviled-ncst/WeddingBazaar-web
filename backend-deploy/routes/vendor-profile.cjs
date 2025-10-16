@@ -429,7 +429,7 @@ router.get('/:vendorId/documents', async (req, res) => {
       SELECT 
         id,
         document_type,
-        document_name,
+        file_name,
         document_url,
         file_size,
         mime_type,
@@ -445,7 +445,7 @@ router.get('/:vendorId/documents', async (req, res) => {
     const formattedDocs = documents.map(doc => ({
       id: doc.id,
       documentType: doc.document_type,
-      documentName: doc.document_name,
+      documentName: doc.file_name,
       documentUrl: doc.document_url,
       fileSize: doc.file_size,
       mimeType: doc.mime_type,
