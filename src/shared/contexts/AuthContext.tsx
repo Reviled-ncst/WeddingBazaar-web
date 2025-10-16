@@ -315,13 +315,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (data.success && data.user && data.token) {
         // Fix backend user data mapping - userType -> role
         const userRole = data.user.userType || data.user.user_type || data.user.role || 'couple';
+        console.log('🔍 DEBUG - Role mapping:');
+        console.log('  data.user.userType:', data.user.userType);
+        console.log('  data.user.user_type:', data.user.user_type);  
+        console.log('  data.user.role:', data.user.role);
+        console.log('  Final userRole:', userRole);
+        
         const mappedUser = {
           ...data.user,
           role: userRole, // Map userType to role
           firstName: data.user.firstName || data.user.first_name || '',
           lastName: data.user.lastName || data.user.last_name || '',
-          // For vendor users, set vendorId to user id (they match in our system)
-          vendorId: userRole === 'vendor' ? data.user.id : null
+          // Use vendorId from backend response, or user id as fallback for vendor users
+          vendorId: data.user.vendorId || (userRole === 'vendor' ? data.user.id : null)
         };
         
         // Store in both localStorage and sessionStorage for better persistence
@@ -476,13 +482,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (data.success && data.user && data.token) {
         // Fix backend user data mapping - userType -> role
         const userRole = data.user.userType || data.user.user_type || data.user.role || 'couple';
+        console.log('🔍 DEBUG - Registration role mapping:');
+        console.log('  data.user.userType:', data.user.userType);
+        console.log('  data.user.user_type:', data.user.user_type);  
+        console.log('  data.user.role:', data.user.role);
+        console.log('  Final userRole:', userRole);
+        
         const mappedUser = {
           ...data.user,
           role: userRole,
           firstName: data.user.firstName || data.user.first_name || '',
           lastName: data.user.lastName || data.user.last_name || '',
-          // For vendor users, set vendorId to user id (they match in our system)
-          vendorId: userRole === 'vendor' ? data.user.id : null
+          // Use vendorId from backend response, or user id as fallback for vendor users
+          vendorId: data.user.vendorId || (userRole === 'vendor' ? data.user.id : null)
         };
         
         // Store in both localStorage and sessionStorage for better persistence

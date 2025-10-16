@@ -20,9 +20,32 @@ export interface PhoneVerificationConfirmResult {
   user?: User;
 }
 
+// Test phone numbers for development (no SMS required)
+const TEST_PHONE_NUMBERS = {
+  '+16505553434': '123456',
+  '+15555555555': '654321',
+  '+14155552671': '111111',
+  '+12345678901': '999999',
+  '+639625067209': '888888'  // Your Philippine number for testing
+};
+
 class FirebasePhoneService {
   private recaptchaVerifier: RecaptchaVerifier | null = null;
   private confirmationResult: ConfirmationResult | null = null;
+
+  /**
+   * Check if phone number is a test number for development
+   */
+  private isTestPhoneNumber(phoneNumber: string): boolean {
+    return Object.keys(TEST_PHONE_NUMBERS).includes(phoneNumber);
+  }
+
+  /**
+   * Get test verification code for test phone numbers
+   */
+  private getTestVerificationCode(phoneNumber: string): string | null {
+    return TEST_PHONE_NUMBERS[phoneNumber as keyof typeof TEST_PHONE_NUMBERS] || null;
+  }
 
   /**
    * Initialize reCAPTCHA verifier for phone verification
@@ -84,6 +107,19 @@ class FirebasePhoneService {
     try {
       console.log('📱 Sending SMS verification to:', phoneNumber);
 
+      // Check if phone number is a test number
+      if (this.isTestPhoneNumber(phoneNumber)) {
+        console.log('✅ Test phone number detected. Bypassing SMS sending.');
+        console.log(`💡 Use verification code: ${this.getTestVerificationCode(phoneNumber)} for testing`);
+
+        return {
+          success: true,
+          message: `Test mode: Use verification code ${this.getTestVerificationCode(phoneNumber)} to complete verification.`,
+          confirmationResult: undefined,
+          verificationId: undefined
+        };
+      }
+
       // Ensure phone number is in international format
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
       
@@ -118,7 +154,31 @@ class FirebasePhoneService {
   /**
    * Verify the SMS code entered by the user
    */
-  async verifyCode(code: string): Promise<PhoneVerificationConfirmResult> {
+  async verifyCode(code: string, phoneNumber?: string): Promise<PhoneVerificationConfirmResult> {
+    // Handle test phone numbers
+    if (phoneNumber && this.isTestPhoneNumber(phoneNumber)) {
+      const expectedCode = this.getTestVerificationCode(phoneNumber);
+      
+      if (code === expectedCode) {
+        console.log('✅ Test phone number verified successfully');
+        
+        // Clean up
+        this.confirmationResult = null;
+        if (this.recaptchaVerifier) {
+          this.recaptchaVerifier.clear();
+          this.recaptchaVerifier = null;
+        }
+
+        return {
+          success: true,
+          message: 'Phone number verified successfully! (Test Mode)',
+          user: auth?.currentUser || undefined
+        };
+      } else {
+        throw new Error(`Invalid verification code. Expected: ${expectedCode} for test number.`);
+      }
+    }
+
     if (!this.confirmationResult) {
       throw new Error('No verification in progress. Please send a code first.');
     }

@@ -99,23 +99,52 @@ export const VendorServices: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [highlightedServiceId, setHighlightedServiceId] = useState<string | null>(null);
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
+  const [documentsVerified, setDocumentsVerified] = useState(false);
+  const [loadingVerification, setLoadingVerification] = useState(true);
 
   // Get API base URL
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
-  // Verification status check - determines what features user can access
+  // Fetch document verification status
+  const fetchDocumentVerificationStatus = async () => {
+    if (!vendorId) return;
+    
+    try {
+      setLoadingVerification(true);
+      const response = await fetch(`${apiUrl}/api/vendor-profile/${vendorId}/documents`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.documents) {
+          // Check if at least one document is approved
+          const hasApprovedDocuments = data.documents.some((doc: any) => 
+            doc.verification_status === 'approved'
+          );
+          setDocumentsVerified(hasApprovedDocuments);
+          console.log('📄 Documents verification status:', hasApprovedDocuments);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error fetching document verification status:', error);
+      setDocumentsVerified(false);
+    } finally {
+      setLoadingVerification(false);
+    }
+  };
+
+  // Enhanced verification status check - requires both email AND documents
   const getVerificationStatus = () => {
     return {
       emailVerified: firebaseUser?.emailVerified || isEmailVerified || false,
       phoneVerified: false, // TODO: Add this field to User interface later
-      documentsVerified: false // TODO: Add this field to User interface later
+      documentsVerified: documentsVerified
     };
   };
 
-  // Check if user can add services (requires email verification minimum)
+  // Check if user can add services (requires BOTH email verification AND approved documents)
   const canAddServices = () => {
     const verification = getVerificationStatus();
-    return verification.emailVerified; // Minimum requirement: email verified
+    return verification.emailVerified && verification.documentsVerified;
   };
 
   // Get current vendor ID from auth context with fallback
@@ -233,6 +262,7 @@ export const VendorServices: React.FC = () => {
   useEffect(() => {
     if (vendorId) {
       fetchServices();
+      fetchDocumentVerificationStatus(); // Check document verification status
     }
   }, [vendorId]);
 
@@ -538,7 +568,7 @@ export const VendorServices: React.FC = () => {
                         ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700 hover:scale-105'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed hover:scale-100'
                     }`}
-                    title={canAddServices() ? "Add New Service" : "Email verification required"}
+                    title={canAddServices() ? "Add New Service" : "Email verification and document approval required"}
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <Plus size={24} className={canAddServices() ? "group-hover:rotate-90 transition-transform duration-300" : ""} />
@@ -727,21 +757,42 @@ export const VendorServices: React.FC = () => {
                   </div>
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-orange-900 mb-2">
-                      Account Verification Required
+                      Complete Verification Required
                     </h3>
                     <p className="text-orange-800 mb-4">
-                      To add services and showcase your business, you need to verify your email address. 
+                      To add services and showcase your business, you need to complete both email verification and business document approval. 
                       This helps us maintain quality and trust on our platform.
                     </p>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-4 h-4 rounded-full ${
-                          getVerificationStatus().emailVerified ? 'bg-green-500' : 'bg-orange-500'
-                        }`}></div>
-                        <span className="text-sm font-medium text-orange-900">
-                          Email: {getVerificationStatus().emailVerified ? 'Verified ✓' : 'Pending'}
-                        </span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                          getVerificationStatus().emailVerified ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                        }`}>
+                          {getVerificationStatus().emailVerified ? '✓' : '✕'}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-orange-900">Email Verification</p>
+                          <p className="text-sm text-orange-800">
+                            {getVerificationStatus().emailVerified ? 'Completed' : 'Required'}
+                          </p>
+                        </div>
                       </div>
+                      
+                      <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                          getVerificationStatus().documentsVerified ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                        }`}>
+                          {getVerificationStatus().documentsVerified ? '✓' : '✕'}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-orange-900">Business Documents</p>
+                          <p className="text-sm text-orange-800">
+                            {getVerificationStatus().documentsVerified ? 'Approved' : 'Required'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
                       {!getVerificationStatus().emailVerified && (
                         <button
                           onClick={async () => {
@@ -754,9 +805,27 @@ export const VendorServices: React.FC = () => {
                           }}
                           className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
                         >
-                          Check Verification Status
+                          Check Email Status
                         </button>
                       )}
+                      {!getVerificationStatus().documentsVerified && (
+                        <button
+                          onClick={() => {
+                            window.location.href = '/vendor/profile?tab=verification';
+                          }}
+                          className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors text-sm font-medium"
+                        >
+                          Upload Documents
+                        </button>
+                      )}
+                      <button
+                        onClick={async () => {
+                          await fetchDocumentVerificationStatus();
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                      >
+                        Refresh Status
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1501,9 +1570,9 @@ export const VendorServices: React.FC = () => {
               <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="h-8 w-8 text-orange-600" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Verification Required</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Complete Verification Required</h3>
               <p className="text-gray-600">
-                You need to verify your account before you can add services to your profile.
+                You need to complete both email verification and business document approval before you can add services.
               </p>
             </div>
 
@@ -1512,14 +1581,32 @@ export const VendorServices: React.FC = () => {
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
                   getVerificationStatus().emailVerified 
                     ? 'bg-green-100 text-green-600' 
-                    : 'bg-gray-100 text-gray-400'
+                    : 'bg-red-100 text-red-600'
                 }`}>
-                  {getVerificationStatus().emailVerified ? '✓' : '○'}
+                  {getVerificationStatus().emailVerified ? '✓' : '✕'}
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-gray-900">Email Verification</p>
                   <p className="text-sm text-gray-600">
-                    {getVerificationStatus().emailVerified ? 'Verified' : 'Please check your email and click the verification link'}
+                    {getVerificationStatus().emailVerified ? 'Verified ✓' : 'Required - Please check your email and click the verification link'}
+                  </p>
+                </div>
+              </div>
+
+              <div className={`flex items-center gap-3 p-3 bg-gray-50 rounded-xl ${!documentsVerified ? 'border-l-4 border-orange-500' : ''}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                  getVerificationStatus().documentsVerified
+                    ? 'bg-green-100 text-green-600' 
+                    : 'bg-red-100 text-red-600'
+                }`}>
+                  {getVerificationStatus().documentsVerified ? '✓' : '✕'}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">Business Documents</p>
+                  <p className="text-sm text-gray-600">
+                    {getVerificationStatus().documentsVerified 
+                      ? 'Approved ✓' 
+                      : 'Required - Upload and get admin approval for business documents'}
                   </p>
                 </div>
               </div>
@@ -1528,43 +1615,63 @@ export const VendorServices: React.FC = () => {
                 <div className="w-6 h-6 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center">○</div>
                 <div className="flex-1">
                   <p className="font-medium text-gray-900">Phone Verification</p>
-                  <p className="text-sm text-gray-600">Coming soon - optional for enhanced trust</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl opacity-60">
-                <div className="w-6 h-6 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center">○</div>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">Business Documents</p>
-                  <p className="text-sm text-gray-600">Coming soon - optional for professional badge</p>
+                  <p className="text-sm text-gray-600">Optional - Enhances customer trust</p>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowVerificationPrompt(false)}
-                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
-              >
-                Close
-              </button>
-              {!getVerificationStatus().emailVerified && (
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowVerificationPrompt(false)}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Close
+                </button>
                 <button
                   onClick={async () => {
-                    // Refresh Firebase user and check verification status
+                    // Refresh verification status
                     try {
                       await firebaseAuthService.reloadUser();
-                      window.location.reload(); // Refresh to update auth context
+                      await fetchDocumentVerificationStatus();
+                      setShowVerificationPrompt(false);
                     } catch (error) {
-                      console.error('Error refreshing user:', error);
+                      console.error('Error refreshing verification status:', error);
                       window.location.reload(); // Fallback refresh
                     }
                   }}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-colors font-medium"
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
                 >
                   Refresh Status
                 </button>
-              )}
+              </div>
+              
+              {/* Navigation buttons */}
+              <div className="flex gap-3">
+                {!getVerificationStatus().emailVerified && (
+                  <button
+                    onClick={() => {
+                      // Navigate to email verification or resend email
+                      window.open('mailto:', '_blank'); // Opens default email client
+                    }}
+                    className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-colors font-medium text-sm"
+                  >
+                    Check Email
+                  </button>
+                )}
+                
+                {!getVerificationStatus().documentsVerified && (
+                  <button
+                    onClick={() => {
+                      // Navigate to profile verification tab
+                      window.location.href = '/vendor/profile?tab=verification';
+                    }}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-colors font-medium text-sm"
+                  >
+                    Upload Documents
+                  </button>
+                )}
+              </div>
             </div>
           </motion.div>
         </div>
@@ -1585,7 +1692,7 @@ export const VendorServices: React.FC = () => {
                 ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
-            title={canAddServices() ? "Add New Service" : "Email verification required"}
+            title={canAddServices() ? "Add New Service" : "Email verification and document approval required"}
           >
             <Plus size={24} className={canAddServices() ? "group-hover:rotate-90 transition-transform duration-300" : ""} />
           </button>

@@ -57,7 +57,7 @@ class ServicesApiService {
 
   async createConversationWithVendor(vendorName: string, serviceName: string): Promise<boolean> {
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const response = await fetch(`${apiBaseUrl}/conversations`, {
         method: 'POST',
         headers: {

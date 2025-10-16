@@ -27,6 +27,8 @@ import { AdminContentModeration } from '../pages/users/admin/content';
 import { AdminSettings } from '../pages/users/admin/settings';
 import { AdminSystemStatus } from '../pages/users/admin/system-status';
 import { AdminEmergency } from '../pages/users/admin/emergency';
+import { VendorManagement } from '../pages/users/admin/vendors';
+import { DocumentApproval } from '../pages/users/admin/documents';
 
 // Individual Pages
 import { Services } from '../pages/users/individual/services';
@@ -382,6 +384,18 @@ export const AppRouter: React.FC = () => {
             <Route path="/admin/emergency" element={
               <ProtectedRoute requireAuth={true}>
                 <AdminEmergency />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/vendors" element={
+              <ProtectedRoute requireAuth={true}>
+                <VendorManagement />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/documents" element={
+              <ProtectedRoute requireAuth={true}>
+                <DocumentApproval />
               </ProtectedRoute>
             } />
             

@@ -28,6 +28,7 @@ interface AuthContextType {
   isEmailVerified: boolean;
   isRegistering: boolean; // Track registration state
   login: (email: string, password: string) => Promise<User>;
+  loginBackendOnly: (email: string, password: string) => Promise<User>;
   register: (userData: RegisterData) => Promise<void>;
   loginWithGoogle: () => Promise<User>;
   registerWithGoogle: (userType?: 'couple' | 'vendor') => Promise<User>;
@@ -257,6 +258,59 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return unsubscribe;
   }, [isRegistering]);
 
+  // Check for stored backend session on app load
+  useEffect(() => {
+    const initializeBackendSession = () => {
+      const storedToken = localStorage.getItem('jwt_token');
+      const storedUser = localStorage.getItem('backend_user');
+      
+      if (storedToken && storedUser && !user && !firebaseUser) {
+        try {
+          const backendUser = JSON.parse(storedUser);
+          console.log('🔍 Found stored admin session:', backendUser);
+          
+          // Verify the token is still valid by checking with backend
+          fetch(`${API_BASE_URL}/api/auth/verify`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${storedToken}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success && data.authenticated) {
+              console.log('✅ Stored admin session is valid');
+              setUser(backendUser);
+              setIsLoading(false);
+            } else {
+              console.log('❌ Stored admin session expired, clearing...');
+              localStorage.removeItem('jwt_token');
+              localStorage.removeItem('backend_user');
+              setIsLoading(false);
+            }
+          })
+          .catch(error => {
+            console.log('❌ Error verifying stored session:', error);
+            localStorage.removeItem('jwt_token');
+            localStorage.removeItem('backend_user');
+            setIsLoading(false);
+          });
+        } catch (error) {
+          console.log('❌ Error parsing stored user data:', error);
+          localStorage.removeItem('jwt_token');
+          localStorage.removeItem('backend_user');
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    // Only run if we don't have Firebase auth state yet
+    if (!firebaseUser && !user) {
+      initializeBackendSession();
+    }
+  }, [user, firebaseUser, API_BASE_URL]);
+
   // OLD Firebase method removed - using hybrid approach below
 
   const login = async (email: string, password: string): Promise<User> => {
@@ -264,32 +318,57 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       console.log('🔧 Starting hybrid login...');
       
-      // Sign in with Firebase
-      const userCredential = await firebaseAuthService.signIn(email, password);
-      console.log('✅ Firebase login successful');
-      
-      // Sync with backend will happen automatically via auth state listener
-      // Return a user object (will be updated by the listener)
-      const tempUser = convertFirebaseUser({
-        uid: userCredential.user.uid,
-        email: userCredential.user.email,
-        emailVerified: userCredential.user.emailVerified,
-        displayName: userCredential.user.displayName,
-        photoURL: userCredential.user.photoURL
-      });
+      try {
+        // Try Firebase login first
+        console.log('🔐 Firebase sign in attempt...');
+        const userCredential = await firebaseAuthService.signIn(email, password);
+        console.log('✅ Firebase login successful');
+        
+        // Sync with backend will happen automatically via auth state listener
+        // Return a user object (will be updated by the listener)
+        const tempUser = convertFirebaseUser({
+          uid: userCredential.user.uid,
+          email: userCredential.user.email,
+          emailVerified: userCredential.user.emailVerified,
+          displayName: userCredential.user.displayName,
+          photoURL: userCredential.user.photoURL
+        });
 
-      return tempUser;
+        return tempUser;
+        
+      } catch (firebaseError: any) {
+        console.log('⚠️ Firebase login failed, trying backend-only login...');
+        console.log('🔧 Firebase error:', firebaseError.message);
+        
+        // Try backend-only login for admin users
+        try {
+          const adminUser = await loginBackendOnly(email, password);
+          console.log('✅ Backend-only login successful for admin');
+          return adminUser;
+        } catch (backendError: any) {
+          console.error('❌ Both Firebase and backend login failed');
+          throw firebaseError; // Throw original Firebase error
+        }
+      }
       
     } catch (error: any) {
       console.error('❌ Login error:', error);
-      setIsLoading(false);
+      setIsLoading(false);  
       throw error;
     }
   };
 
   const logout = async () => {
     try {
-      await firebaseAuthService.signOut();
+      // Clear Firebase auth if user has Firebase session
+      if (firebaseUser) {
+        await firebaseAuthService.signOut();
+      }
+      
+      // Clear backend-only session data
+      localStorage.removeItem('jwt_token');
+      localStorage.removeItem('backend_user');
+      
       setUser(null);
       setFirebaseUser(null);
       console.log('✅ Logout successful');
@@ -537,12 +616,69 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsRegistering(false);
   };
 
+  const loginBackendOnly = async (email: string, password: string): Promise<User> => {
+    try {
+      setIsLoading(true);
+      console.log('🔧 Starting backend-only login for admin...');
+      
+      // Call backend login API directly
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || data.error || 'Login failed');
+      }
+      
+      console.log('✅ Backend login successful:', data.user);
+      
+      // Map backend user data to our User interface
+      const backendUser: User = {
+        id: data.user.id,
+        email: data.user.email,
+        firstName: data.user.firstName || data.user.first_name || '',
+        lastName: data.user.lastName || data.user.last_name || '',
+        role: data.user.userType === 'admin' ? 'admin' : 
+              data.user.userType === 'vendor' ? 'vendor' : 'couple',
+        emailVerified: data.user.emailVerified || false,
+        vendorId: data.user.vendorId || null,
+        phone: data.user.phone || '',
+        // Store JWT token for API calls
+        firebaseUid: data.token // Temporarily store JWT in firebaseUid field
+      };
+      
+      // Store JWT token in localStorage for API authentication
+      if (data.token) {
+        localStorage.setItem('jwt_token', data.token);
+        localStorage.setItem('backend_user', JSON.stringify(backendUser));
+        console.log('💾 JWT token stored for API authentication');
+      }
+      
+      setUser(backendUser);
+      setIsLoading(false);
+      
+      console.log('👑 Admin user logged in successfully:', backendUser);
+      return backendUser;
+      
+    } catch (error: any) {
+      console.error('❌ Backend login error:', error);
+      setIsLoading(false);
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     firebaseUser,
-    isAuthenticated: !!user && !!firebaseUser,
+    isAuthenticated: !!user, // Admin users can be authenticated without Firebase
     isLoading,
-    isEmailVerified: firebaseUser?.emailVerified || false,
+    isEmailVerified: user?.emailVerified || firebaseUser?.emailVerified || false,
     isRegistering, // Expose registration state
     login,
     register,
@@ -552,7 +688,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     reloadUser,
     loginWithGoogle,
     registerWithGoogle,
-    clearRegistrationState // Allow manual clearing of registration state
+    clearRegistrationState, // Allow manual clearing of registration state
+    loginBackendOnly // Expose backend-only login method
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

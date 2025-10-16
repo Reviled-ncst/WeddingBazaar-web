@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Header Navigation Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #fff 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border-left: 4px solid #3b82f6;
+        }
+        .section h2 {
+            color: #1f2937;
+            margin-top: 0;
+            font-size: 1.5rem;
+        }
+        .link-button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            margin: 8px 12px 8px 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        .link-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        .nav-item:hover {
+            background: #f3f4f6;
+            border-color: #3b82f6;
+        }
+        .nav-item.new {
+            background: #fef3c7;
+            border-color: #f59e0b;
+        }
+        .nav-item .icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            color: #6b7280;
+        }
+        .nav-item.new .icon {
+            color: #f59e0b;
+        }
+        .nav-item .name {
+            font-weight: 500;
+            color: #1f2937;
+        }
+        .nav-item .path {
+            margin-left: auto;
+            font-size: 0.8rem;
+            color: #6b7280;
+            font-family: monospace;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .status-badge.new { background: #fef3c7; color: #92400e; }
+        .status-badge.updated { background: #dcfce7; color: #166534; }
+        .success {
+            background: #dcfce7;
+            border-left-color: #16a34a;
+            color: #166534;
+        }
+        .code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏛️ Admin Header Navigation Update</h1>
+        <p class="subtitle">Verification that the Document Approval link has been added to the AdminHeader navigation</p>
+
+        <div class="section success">
+            <h2>✅ AdminHeader Navigation Updated Successfully</h2>
+            <p>The AdminHeader component now includes the Document Approval navigation item.</p>
+        </div>
+
+        <div class="section">
+            <h2>📋 Current Admin Navigation Items</h2>
+            <p>The following navigation items are now available in the AdminHeader:</p>
+            
+            <div class="nav-item">
+                <div class="icon">📊</div>
+                <div class="name">Dashboard</div>
+                <div class="path">/admin/dashboard</div>
+            </div>
+            
+            <div class="nav-item">
+                <div class="icon">👥</div>
+                <div class="name">Users</div>
+                <div class="path">/admin/users</div>
+            </div>
+            
+            <div class="nav-item">
+                <div class="icon">🏪</div>
+                <div class="name">Vendors</div>
+                <div class="path">/admin/vendors</div>
+            </div>
+            
+            <div class="nav-item new">
+                <div class="icon">🛡️</div>
+                <div class="name">Documents</div>
+                <div class="path">/admin/documents</div>
+                <span class="status-badge new">NEW</span>
+            </div>
+            
+            <div class="nav-item">
+                <div class="icon">📅</div>
+                <div class="name">Bookings</div>
+                <div class="path">/admin/bookings</div>
+            </div>
+            
+            <div class="nav-item">
+                <div class="icon">📊</div>
+                <div class="name">Analytics</div>
+                <div class="path">/admin/analytics</div>
+            </div>
+            
+            <div class="nav-item">
+                <div class="icon">💰</div>
+                <div class="name">Finances</div>
+                <div class="path">/admin/finances</div>
+            </div>
+            
+            <div class="nav-item">
+                <div class="icon">🗄️</div>
+                <div class="name">Database</div>
+                <div class="path">/admin/database</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🚀 Test the Updated Navigation</h2>
+            <p>Click the button below to open the admin dashboard and verify the Documents link appears in the header navigation:</p>
+            <a href="http://localhost:5176/admin/dashboard" class="link-button" target="_blank" rel="noopener">
+                🏛️ Open Admin Dashboard
+            </a>
+            <a href="http://localhost:5176/admin/documents" class="link-button" target="_blank" rel="noopener">
+                📄 Open Document Approval
+            </a>
+        </div>
+
+        <div class="section">
+            <h2>🔧 Technical Details</h2>
+            <p><strong>File Updated:</strong> <span class="code">src/shared/components/layout/AdminHeader.tsx</span></p>
+            <p><strong>Changes Made:</strong></p>
+            <ul>
+                <li>Added <span class="code">{ name: 'Documents', href: '/admin/documents', icon: Shield }</span> to navigationItems array</li>
+                <li>Used existing Shield icon from lucide-react imports</li>
+                <li>Positioned between Vendors and Bookings for logical grouping</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>📍 How to Access Document Approval</h2>
+            <ol>
+                <li><strong>Via Header Navigation:</strong> Click "Documents" in the admin header (now available)</li>
+                <li><strong>Via Dashboard Quick Actions:</strong> Click "Document Approval" in the Quick Actions section</li>
+                <li><strong>Direct URL:</strong> Navigate to <span class="code">/admin/documents</span></li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; padding: 20px; background: #f0f9ff; border-radius: 12px;">
+            <p style="margin: 0; color: #1e40af;">
+                🎉 <strong>AdminHeader Navigation Updated!</strong><br>
+                The Documents link is now available in the admin header navigation bar.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactive functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Highlight the new navigation item
+            const newNavItem = document.querySelector('.nav-item.new');
+            if (newNavItem) {
+                let pulseCount = 0;
+                const pulseInterval = setInterval(() => {
+                    newNavItem.style.transform = pulseCount % 2 === 0 ? 'scale(1.02)' : 'scale(1)';
+                    pulseCount++;
+                    if (pulseCount > 6) {
+                        clearInterval(pulseInterval);
+                        newNavItem.style.transform = 'scale(1)';
+                    }
+                }, 500);
+            }
+
+            // Add click tracking for links
+            const links = document.querySelectorAll('.link-button');
+            links.forEach(link => {
+                link.addEventListener('click', function() {
+                    console.log('🔗 Navigating to:', this.href);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

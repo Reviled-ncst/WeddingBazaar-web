@@ -78,7 +78,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
       
       console.log('🔔 [SubscriptionContext] Fetching subscription for vendor:', user.id);
       
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const response = await fetch(`${apiUrl}/subscriptions/vendor/${user.id}`);
       
       if (!response.ok) {

@@ -122,7 +122,7 @@ export const usePhoneVerification = (): UsePhoneVerificationState => {
 
       console.log('🔐 Verifying code:', code);
 
-      const result: PhoneVerificationConfirmResult = await firebasePhoneService.verifyCode(code);
+      const result: PhoneVerificationConfirmResult = await firebasePhoneService.verifyCode(code, phoneNumber);
 
       if (result.success) {
         setStep('verified');

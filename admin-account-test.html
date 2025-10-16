@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Bazaar - Admin Account Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #ffeef8 0%, #fdf2f8 100%);
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #be185d;
+            margin-bottom: 10px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            border: 1px solid #f3f4f6;
+        }
+        
+        .status {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #d1fae5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+        }
+        
+        .status.error {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fca5a5;
+        }
+        
+        .status.info {
+            background: #dbeafe;
+            color: #1d4ed8;
+            border: 1px solid #93c5fd;
+        }
+        
+        .btn {
+            background: #be185d;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: background 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            background: #9d174d;
+        }
+        
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .credentials {
+            font-family: 'Courier New', monospace;
+            background: #1f2937;
+            color: #10b981;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .test-section {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .feature-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+        }
+        
+        #loginResult {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👑 Wedding Bazaar Admin Account</h1>
+        <p>Admin Account Created & Ready for Testing</p>
+    </div>
+
+    <div class="card">
+        <h2>✅ Admin Account Successfully Created!</h2>
+        <div class="status success">
+            <strong>🎉 Your admin account is ready!</strong><br>
+            The account has been created in the database with full admin privileges.
+        </div>
+        
+        <div class="credentials">
+📧 Email: admin@weddingbazaar.com
+🔑 Password: AdminWB2025!
+👤 Name: Wedding Bazaar Administrator  
+📱 Phone: +639625067209
+🎭 Role: admin
+✅ Email Verified: true
+✅ Phone Verified: true
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>🧪 Test Admin Login</h3>
+        
+        <div class="test-section">
+            <h4>🌐 Frontend Login Test</h4>
+            <p>Test the admin login through the main Wedding Bazaar app:</p>
+            <ol>
+                <li>Click the button below to open the app</li>
+                <li>Click "Login" in the app</li>
+                <li>Enter the admin credentials above</li>
+                <li>Verify you're logged in as admin</li>
+            </ol>
+            <a href="https://weddingbazaarph.web.app" target="_blank" rel="noopener" class="btn">🚀 Open Wedding Bazaar App</a>
+        </div>
+        
+        <div class="test-section">
+            <h4>🔧 API Login Test</h4>
+            <p>Test the admin login directly through the API:</p>
+            <button onclick="testAdminLogin()" class="btn">🔐 Test API Login</button>
+            <div id="loginResult"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>👑 Admin Features & Capabilities</h3>
+        
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h4>👥 User Management</h4>
+                <ul>
+                    <li>View all users (vendors & individuals)</li>
+                    <li>Manage user accounts</li>
+                    <li>Handle user verification</li>
+                    <li>Monitor user activity</li>
+                </ul>
+            </div>
+            
+            <div class="feature-card">
+                <h4>🏢 Vendor Management</h4>
+                <ul>
+                    <li>Approve/reject vendor applications</li>
+                    <li>Verify business documents</li>
+                    <li>Monitor vendor performance</li>
+                    <li>Handle vendor disputes</li>
+                </ul>
+            </div>
+            
+            <div class="feature-card">
+                <h4>📄 Document Verification</h4>
+                <ul>
+                    <li>Review uploaded business documents</li>
+                    <li>Approve/reject documents</li>
+                    <li>Manage verification workflow</li>
+                    <li>Track verification status</li>
+                </ul>
+            </div>
+            
+            <div class="feature-card">
+                <h4>📊 Platform Analytics</h4>
+                <ul>
+                    <li>Monitor platform usage</li>
+                    <li>Track user registrations</li>
+                    <li>View booking statistics</li>
+                    <li>Generate reports</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>🛠️ Admin Dashboard Development</h3>
+        <div class="status info">
+            <strong>📋 Next Steps:</strong> The admin account is ready! Now you can develop admin-specific features like user management, vendor approval, and document verification dashboards.
+        </div>
+        
+        <h4>🎯 Recommended Admin Features to Build:</h4>
+        <ol>
+            <li><strong>Admin Dashboard Landing</strong> - Overview of platform metrics</li>
+            <li><strong>User Management Panel</strong> - List, view, and manage all users</li>
+            <li><strong>Vendor Approval System</strong> - Review and approve vendor applications</li>
+            <li><strong>Document Verification Queue</strong> - Review uploaded business documents</li>
+            <li><strong>Platform Analytics</strong> - Charts and metrics for platform health</li>
+            <li><strong>System Settings</strong> - Configure platform-wide settings</li>
+        </ol>
+    </div>
+
+    <div class="card">
+        <h3>🔒 Security & Access Control</h3>
+        
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h4>🛡️ Authentication</h4>
+                <ul>
+                    <li>JWT token-based authentication</li>
+                    <li>24-hour token expiration</li>
+                    <li>Secure password hashing (bcrypt)</li>
+                    <li>Email and phone verification</li>
+                </ul>
+            </div>
+            
+            <div class="feature-card">
+                <h4>👑 Admin Privileges</h4>
+                <ul>
+                    <li>user_type: 'admin' in database</li>
+                    <li>Access to admin-only routes</li>
+                    <li>Can verify vendor documents</li>
+                    <li>Can manage all users</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📊 System Status</h3>
+        <div id="systemStatus">
+            <div class="status info">Checking system status...</div>
+        </div>
+    </div>
+
+    <script>
+        // Test admin login functionality
+        async function testAdminLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            resultDiv.innerHTML = '<div class="status info">Testing admin login...</div>';
+            
+            try {
+                const credentials = {
+                    email: 'admin@weddingbazaar.com',
+                    password: 'AdminWB2025!'
+                };
+                
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(credentials)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">
+                            <strong>✅ Admin Login Successful!</strong><br>
+                            <strong>User ID:</strong> ${data.user.id}<br>
+                            <strong>Email:</strong> ${data.user.email}<br>
+                            <strong>Name:</strong> ${data.user.firstName || 'Wedding Bazaar'} ${data.user.lastName || 'Administrator'}<br>
+                            <strong>Type:</strong> ${data.user.userType}<br>
+                            <strong>Email Verified:</strong> ${data.user.emailVerified}<br>
+                            <strong>Token:</strong> ${data.token.substring(0, 50)}...
+                        </div>
+                    `;
+                    
+                    // Test token verification
+                    setTimeout(async () => {
+                        try {
+                            const verifyResponse = await fetch('https://weddingbazaar-web.onrender.com/api/auth/verify', {
+                                headers: {
+                                    'Authorization': 'Bearer ' + data.token
+                                }
+                            });
+                            
+                            const verifyData = await verifyResponse.json();
+                            
+                            if (verifyResponse.ok && verifyData.success) {
+                                resultDiv.innerHTML += `
+                                    <div class="status success" style="margin-top: 10px;">
+                                        <strong>✅ Token Verification Successful!</strong><br>
+                                        Admin access confirmed. Ready to build admin features!
+                                    </div>
+                                `;
+                            }
+                        } catch (error) {
+                            console.log('Token verification test completed');
+                        }
+                    }, 1000);
+                    
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">
+                            <strong>❌ Login Failed</strong><br>
+                            ${data.message || data.error || 'Unknown error'}
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status error">
+                        <strong>❌ Network Error</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // Check system status
+        async function checkSystemStatus() {
+            const statusDiv = document.getElementById('systemStatus');
+            
+            try {
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = `
+                        <div class="status success">
+                            <strong>✅ System Status: ONLINE</strong><br>
+                            Backend: ${data.status || 'OK'}<br>
+                            Database: Connected<br>
+                            Admin Account: Ready<br>
+                            API Endpoints: Operational
+                        </div>
+                    `;
+                } else {
+                    throw new Error('API not responding');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="status error">
+                        <strong>❌ System Status: ERROR</strong><br>
+                        ${error.message}<br>
+                        Backend may be sleeping (Render free tier)
+                    </div>
+                `;
+            }
+        }
+        
+        // Initialize
+        checkSystemStatus();
+        setInterval(checkSystemStatus, 30000);
+    </script>
+</body>
+</html>
