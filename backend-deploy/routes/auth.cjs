@@ -74,6 +74,22 @@ router.post('/login', async (req, res) => {
 
     console.log('✅ Login successful for:', email);
 
+    // For vendor users, get their vendor profile ID
+    let vendorProfileId = null;
+    if (user.user_type === 'vendor') {
+      try {
+        const vendorProfiles = await sql`
+          SELECT id FROM vendor_profiles WHERE user_id = ${user.id}
+        `;
+        if (vendorProfiles.length > 0) {
+          vendorProfileId = vendorProfiles[0].id;
+          console.log('📋 Found vendor profile ID:', vendorProfileId);
+        }
+      } catch (error) {
+        console.log('⚠️ Could not fetch vendor profile ID:', error.message);
+      }
+    }
+
     res.json({
       success: true,
       token,
@@ -82,7 +98,10 @@ router.post('/login', async (req, res) => {
         email: user.email,
         userType: user.user_type,
         firstName: user.first_name,
-        lastName: user.last_name
+        lastName: user.last_name,
+        emailVerified: user.email_verified || false,
+        phoneVerified: user.phone_verified || false,
+        vendorId: vendorProfileId // Add vendor profile ID for vendor users
       },
       timestamp: new Date().toISOString()
     });

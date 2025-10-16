@@ -391,15 +391,31 @@ router.put('/:vendorId', async (req, res) => {
     // Add updated_at timestamp
     updateFields.push(`updated_at = NOW()`);
     
-    // Execute the update
-    const updateQuery = `
-      UPDATE vendor_profiles 
-      SET ${updateFields.join(', ')}
-      WHERE id = $1
-      RETURNING *;
-    `;
+    // Execute the update using Neon tagged template
+    // For now, let's use a simpler approach with individual field updates
+    let result;
     
-    const result = await sql.unsafe(updateQuery, [vendorId, ...updateValues]);
+    if (updateData.business_name || updateData.business_description || updateData.years_in_business || updateData.website_url) {
+      result = await sql`
+        UPDATE vendor_profiles 
+        SET 
+          business_name = COALESCE(${updateData.business_name || null}, business_name),
+          business_description = COALESCE(${updateData.business_description || null}, business_description),
+          years_in_business = COALESCE(${updateData.years_in_business || null}, years_in_business),
+          website = COALESCE(${updateData.website_url || null}, website),
+          updated_at = NOW()
+        WHERE id = ${vendorId}
+        RETURNING *;
+      `;
+    } else {
+      // If no recognized fields, just update timestamp
+      result = await sql`
+        UPDATE vendor_profiles 
+        SET updated_at = NOW()
+        WHERE id = ${vendorId}
+        RETURNING *;
+      `;
+    }
     
     if (result.length === 0) {
       return res.status(404).json({
