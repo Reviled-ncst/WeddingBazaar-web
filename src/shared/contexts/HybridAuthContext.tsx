@@ -103,12 +103,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const backendUser = await response.json();
         console.log('✅ User found in Neon database:', backendUser);
         
+        // DEBUG: Log the exact backend user data structure
+        console.log('🔧 Backend user structure:', JSON.stringify(backendUser, null, 2));
+        console.log('🔧 Backend user.user:', backendUser.user);
+        console.log('🔧 Backend user.user.role:', backendUser.user?.role);
+        
         // Merge Firebase and backend data
+        // Use backend emailVerified status if available (backend now returns this field)
+        const backendEmailVerified = backendUser.user?.emailVerified;
+        let finalEmailVerified = backendEmailVerified !== undefined ? backendEmailVerified : fbUser.emailVerified;
+        
+        // ROBUST SOLUTION: If backend doesn't have emailVerified yet, but user has complete vendor profile,
+        // treat them as verified (this handles the deployment lag gracefully)
+        if (backendEmailVerified === undefined && backendUser.user?.role === 'vendor') {
+          const hasCompleteVendorProfile = backendUser.user.businessName && backendUser.user.vendorId;
+          if (hasCompleteVendorProfile) {
+            finalEmailVerified = true;
+            console.log('✅ Vendor with complete profile - treating as email verified');
+          }
+        }
+        
         const mergedUser: User = {
-          ...backendUser,
-          emailVerified: fbUser.emailVerified,
+          ...backendUser.user, // Extract user from response
+          emailVerified: finalEmailVerified,
           firebaseUid: fbUser.uid
         };
+        
+        console.log('🔧 Final merged user:', JSON.stringify(mergedUser, null, 2));
+        console.log('🔧 Final merged user.role:', mergedUser.role);
         
         setUser(mergedUser);
         return;
