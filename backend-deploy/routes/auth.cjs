@@ -717,12 +717,21 @@ router.post('/admin/verify-vendor', async (req, res) => {
 // Token verification endpoint
 router.post('/verify', async (req, res) => {
   try {
-    const { token } = req.body;
+    // Support both Authorization header and request body token formats
+    let token = req.body.token;
+    
+    // If no token in body, check Authorization header
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
     
     if (!token) {
       return res.status(400).json({
         success: false,
-        error: 'Token is required',
+        error: 'Token is required (in body or Authorization header)',
         timestamp: new Date().toISOString()
       });
     }
