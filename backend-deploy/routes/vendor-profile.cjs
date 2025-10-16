@@ -516,4 +516,67 @@ router.put('/:vendorId', async (req, res) => {
   }
 });
 
+// Update phone verification status after Firebase verification
+router.post('/:vendorId/phone-verified', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const { phone, verified } = req.body;
+    
+    console.log('📱 Updating phone verification status:', { vendorId, phone, verified });
+    
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        error: 'Phone number is required'
+      });
+    }
+    
+    // Update vendor profile phone verification
+    const vendorResult = await sql`
+      UPDATE vendor_profiles 
+      SET 
+        phone_verified = ${verified || true},
+        updated_at = NOW()
+      WHERE id = ${vendorId}
+      RETURNING *;
+    `;
+    
+    if (vendorResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Vendor not found'
+      });
+    }
+    
+    // Also update user table phone and verification status
+    const vendor = vendorResult[0];
+    await sql`
+      UPDATE users 
+      SET 
+        phone = ${phone},
+        phone_verified = ${verified || true},
+        updated_at = NOW()
+      WHERE id = ${vendor.user_id}
+    `;
+    
+    console.log('✅ Phone verification status updated successfully');
+    
+    res.json({
+      success: true,
+      message: 'Phone verification status updated successfully',
+      phone: phone,
+      verified: verified || true
+    });
+    
+  } catch (error) {
+    console.error('❌ Error updating phone verification:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: 'Failed to update phone verification status',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;
