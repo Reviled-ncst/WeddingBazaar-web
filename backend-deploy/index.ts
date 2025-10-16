@@ -1452,27 +1452,279 @@ app.post('/api/dss/recommendations', async (req, res) => {
   }
 });
 
+// ============================================================================
+// VENDOR PROFILE ENDPOINTS - Document Upload Fix
+// ============================================================================
+
+// Get vendor profile (modular endpoint)
+app.get('/api/vendor-profile/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    console.log('👤 Getting vendor profile:', vendorId);
+
+    const result = await db.query(`
+      SELECT 
+        vp.id,
+        vp.business_name as "businessName",
+        vp.business_type as "businessType", 
+        vp.description,
+        vp.location,
+        vp.years_in_business as "yearsInBusiness",
+        vp.website,
+        vp.service_area as "serviceArea",
+        vp.phone,
+        vp.email,
+        vp.profile_image as "profileImage",
+        vp.phone_verified as "phoneVerified",
+        vp.business_verified as "businessVerified",
+        vp.verification_status as "verificationStatus",
+        vp.facebook_url,
+        vp.instagram_url,
+        vp.twitter_url,
+        vp.linkedin_url
+      FROM vendor_profiles vp 
+      WHERE vp.id = $1
+    `, [vendorId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Vendor not found'
+      });
+    }
+
+    const profile = result.rows[0];
+    
+    // Map social media fields properly
+    profile.socialMedia = {
+      facebook: profile.facebook_url || '',
+      instagram: profile.instagram_url || '',
+      twitter: profile.twitter_url || '',
+      linkedin: profile.linkedin_url || ''
+    };
+
+    res.json({
+      success: true,
+      profile
+    });
+  } catch (error) {
+    console.error('❌ Vendor profile error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get vendor profile',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Upload vendor documents
+app.post('/api/vendor-profile/:vendorId/documents', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const { 
+      documentType, 
+      documentName, 
+      documentUrl, 
+      fileSize, 
+      mimeType 
+    } = req.body;
+
+    console.log('📄 Uploading document for vendor:', vendorId, {
+      documentType,
+      documentName,
+      documentUrl,
+      fileSize,
+      mimeType
+    });
+
+    // Validate required fields
+    if (!documentType || !documentName || !documentUrl) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        message: 'documentType, documentName, and documentUrl are required'
+      });
+    }
+
+    // Insert document record - FIXED: use file_name instead of document_name
+    const result = await db.query(`
+      INSERT INTO vendor_documents (
+        vendor_id, 
+        document_type, 
+        file_name, 
+        document_url, 
+        file_size, 
+        mime_type
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [vendorId, documentType, documentName, documentUrl, fileSize || null, mimeType || null]);
+
+    console.log('✅ Document uploaded successfully:', result.rows[0]);
+
+    res.json({
+      success: true,
+      message: 'Document uploaded successfully',
+      document: {
+        id: result.rows[0].id,
+        documentType: result.rows[0].document_type,
+        documentName: result.rows[0].file_name,
+        documentUrl: result.rows[0].document_url,
+        fileSize: result.rows[0].file_size,
+        mimeType: result.rows[0].mime_type,
+        verificationStatus: result.rows[0].verification_status,
+        uploadedAt: result.rows[0].uploaded_at
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Document upload error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Document upload failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get vendor documents
+app.get('/api/vendor-profile/:vendorId/documents', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    console.log('📋 Getting documents for vendor:', vendorId);
+
+    const result = await db.query(`
+      SELECT 
+        id, 
+        document_type, 
+        document_url, 
+        file_name,
+        verification_status, 
+        uploaded_at, 
+        verified_at, 
+        rejection_reason,
+        file_size,
+        mime_type
+      FROM vendor_documents 
+      WHERE vendor_id = $1 
+      ORDER BY uploaded_at DESC
+    `, [vendorId]);
+
+    const documents = result.rows.map(doc => ({
+      id: doc.id,
+      documentType: doc.document_type,
+      documentUrl: doc.document_url,
+      fileName: doc.file_name,
+      verificationStatus: doc.verification_status,
+      uploadedAt: doc.uploaded_at,
+      verifiedAt: doc.verified_at,
+      rejectionReason: doc.rejection_reason,
+      fileSize: doc.file_size,
+      mimeType: doc.mime_type
+    }));
+
+    res.json({
+      success: true,
+      documents,
+      total: documents.length
+    });
+
+  } catch (error) {
+    console.error('❌ Get documents error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get documents',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Admin: Get pending documents
+app.get('/api/admin/documents/pending', async (req, res) => {
+  try {
+    console.log('👨‍💼 Getting pending documents for admin review');
+
+    const result = await db.query(`
+      SELECT 
+        vd.id,
+        vd.vendor_id,
+        vd.document_type,
+        vd.document_url,
+        vd.file_name,
+        vd.verification_status,
+        vd.uploaded_at,
+        vd.verified_at,
+        vd.rejection_reason,
+        vd.file_size,
+        vd.mime_type,
+        u.first_name || ' ' || u.last_name as vendor_name,
+        vp.business_name
+      FROM vendor_documents vd
+      LEFT JOIN vendor_profiles vp ON vd.vendor_id = vp.id
+      LEFT JOIN users u ON vp.user_id = u.id
+      ORDER BY vd.uploaded_at DESC
+    `);
+
+    const documents = result.rows.map(doc => ({
+      id: doc.id,
+      vendorId: doc.vendor_id,
+      vendorName: doc.vendor_name || 'Unknown Vendor',
+      businessName: doc.business_name || 'Unknown Business',
+      documentType: doc.document_type,
+      documentUrl: doc.document_url,
+      fileName: doc.file_name,
+      uploadedAt: doc.uploaded_at,
+      verificationStatus: doc.verification_status,
+      verifiedAt: doc.verified_at,
+      rejectionReason: doc.rejection_reason,
+      fileSize: doc.file_size || 0,
+      mimeType: doc.mime_type || 'application/octet-stream'
+    }));
+
+    const stats = {
+      total: documents.length,
+      pending: documents.filter(d => d.verificationStatus === 'pending').length,
+      approved: documents.filter(d => d.verificationStatus === 'approved').length,
+      rejected: documents.filter(d => d.verificationStatus === 'rejected').length
+    };
+
+    res.json({
+      success: true,
+      documents,
+      stats
+    });
+
+  } catch (error) {
+    console.error('❌ Admin documents error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get documents',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Error handling middleware
 app.use('*', (req, res) => {
   res.status(404).json({
-    error: 'Endpoint not found',
-    message: `The endpoint ${req.method} ${req.originalUrl} does not exist`,
-    availableEndpoints: [
-      'GET /api/health',
-      'GET /api/ping',
-      'GET /api/vendors',
-      'GET /api/vendors/featured',
-      'POST /api/auth/login',
-      'POST /api/auth/verify',
-      'POST /api/bookings/request',
-      'GET /api/bookings/couple/:coupleId',
-      'POST /api/admin/fix-vendor-mappings',
-      'POST /api/availability/check',
-      'GET /api/availability/calendar/:vendorId',
-      'POST /api/availability/off-days',
-      'GET /api/availability/off-days/:vendorId',
-      'DELETE /api/availability/off-days/:offDayId'
-    ]
+    success: false,
+    error: 'API endpoint not found: ' + req.method + ' ' + req.originalUrl,
+    timestamp: new Date().toISOString(),
+    availableEndpoints: {
+      health: 'GET /api/health',
+      ping: 'GET /api/ping',
+      auth: 'POST /api/auth/login, POST /api/auth/verify',
+      conversations: 'GET /api/conversations/:userId, GET /api/conversations/:id/messages, POST /api/conversations/:id/messages',
+      services: 'GET /api/services, GET /api/services/:serviceId, GET /api/services/vendor/:vendorId, POST /api/services, PUT /api/services/:id, DELETE /api/services/:id',
+      vendors: 'GET /api/vendors, GET /api/vendors/featured, GET /api/vendors/:id, GET /api/vendors/:id/services',
+      vendorProfile: 'GET /api/vendor-profile/:vendorId, POST /api/vendor-profile/:vendorId/documents, GET /api/vendor-profile/:vendorId/documents',
+      vendorOffDays: 'GET /api/vendors/:vendorId/off-days, POST /api/vendors/:vendorId/off-days, POST /api/vendors/:vendorId/off-days/bulk, DELETE /api/vendors/:vendorId/off-days/:offDayId, GET /api/vendors/:vendorId/off-days/count',
+      bookings: 'GET /api/bookings/vendor/:vendorId, GET /api/bookings/user/:userId, GET /api/bookings/couple/:userId, GET /api/bookings/enhanced, GET /api/bookings/stats, POST /api/bookings, PATCH /api/bookings/:id/status, PUT /api/bookings/:id/update-status, PUT /api/bookings/:id/accept-quote, PUT /api/bookings/:id/process-payment, GET /api/bookings/:id/payment-status',
+      payments: 'POST /api/payments/create-source, GET /api/payments/source/:sourceId, POST /api/payments/create-payment-intent, GET /api/payments/payment-intent/:intentId, POST /api/payments/webhook, GET /api/payments/health',
+      receipts: 'GET /api/receipts/couple/:coupleId, GET /api/receipts/vendor/:vendorId, GET /api/receipts/:receiptId, POST /api/receipts/create, GET /api/receipts/stats/couple/:coupleId',
+      notifications: 'GET /api/notifications/vendor/:vendorId, GET /api/notifications/user/:userId, POST /api/notifications, PATCH /api/notifications/:id/read',
+      admin: 'GET /api/admin/documents/pending',
+      debug: 'GET /api/debug/users, GET /api/debug/tables, GET /api/debug/schema/:tableName, GET /api/debug/sample/:tableName'
+    }
   });
 });
 
