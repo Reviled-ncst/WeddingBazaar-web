@@ -1,8 +1,16 @@
 const { neon } = require('@neondatabase/serverless');
 require('dotenv').config();
 
-// Initialize Neon serverless client
-const sql = neon(process.env.DATABASE_URL);
+// Get database URL with fallback
+const databaseUrl = process.env.DATABASE_URL || 'postgresql://weddingbazaar_owner:BMh24TyCwVNb@ep-green-cherry-a5mjx3ka.us-east-2.aws.neon.tech/weddingbazaar?sslmode=require';
+
+// Initialize Neon serverless client only when URL is available
+let sql;
+if (databaseUrl && databaseUrl !== 'undefined') {
+  sql = neon(databaseUrl);
+} else {
+  console.warn('⚠️ No database URL available, database operations will be mocked');
+}
 
 // Test database connection on startup
 async function testConnection() {
@@ -49,5 +57,6 @@ async function testConnection() {
 
 module.exports = {
   sql,
+  databaseUrl,
   testConnection
 };
