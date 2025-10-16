@@ -1,11 +1,16 @@
 const express = require('express');
-const { neon } = require('@neondatabase/serverless');
-require('dotenv').config();
-
 const router = express.Router();
 
-// Use the same database connection pattern as other routes
-const sql = neon(process.env.DATABASE_URL);
+// Graceful database connection handling
+let sql;
+try {
+  const { neon } = require('@neondatabase/serverless');
+  const config = require('../config/database.cjs');
+  sql = neon(config.databaseUrl);
+} catch (error) {
+  console.error('⚠️ Database connection failed, using fallback mode:', error.message);
+  sql = null;
+}
 
 // Get vendor profile with verification status
 router.get('/:vendorId', async (req, res) => {
@@ -14,9 +19,9 @@ router.get('/:vendorId', async (req, res) => {
     
     console.log('🔍 Getting vendor profile for ID:', vendorId);
     
-    // Check if DATABASE_URL is available
-    if (!process.env.DATABASE_URL) {
-      console.log('📋 Database URL not configured, returning mock verification data');
+    // If database is not available, return mock data
+    if (!sql) {
+      console.log('📋 Database unavailable, returning mock verification data');
       return res.json({
         id: vendorId,
         userId: `user_${vendorId}`,
@@ -331,182 +336,6 @@ router.post('/:vendorId/documents', async (req, res) => {
       success: false,
       error: 'Internal server error',
       message: 'Failed to upload documents'
-    });
-  }
-});
-
-// Update vendor profile
-router.put('/:vendorId', async (req, res) => {
-  try {
-    const { vendorId } = req.params;
-    const updateData = req.body;
-    
-    console.log('📝 Updating vendor profile:', vendorId, updateData);
-    
-    // If database is not available, return mock success
-    if (!process.env.DATABASE_URL) {
-      console.log('📋 Database unavailable, returning mock update success');
-      return res.json({
-        success: true,
-        message: 'Profile updated successfully (mock)',
-        data: { id: vendorId, ...updateData }
-      });
-    }
-    
-    // Build the update fields dynamically
-    const updateFields = [];
-    const updateValues = [];
-    
-    // Map frontend camelCase fields to database snake_case columns
-    const fieldMapping = {
-      // New camelCase fields from updated frontend
-      businessName: 'business_name',
-      businessType: 'business_type', 
-      description: 'description',
-      location: 'location',
-      yearsInBusiness: 'years_in_business',
-      website: 'website',
-      phone: 'phone',
-      email: 'email',
-      serviceArea: 'service_area',
-      socialMedia: 'social_media',
-      profileImage: 'profile_image',
-      
-      // Legacy snake_case fields for backward compatibility
-      business_name: 'business_name',
-      business_type: 'business_type', 
-      business_description: 'description',
-      years_in_business: 'years_in_business',
-      website_url: 'website',
-      contact_phone: 'phone',
-      contact_email: 'email',
-      service_areas: 'service_area',
-      social_media: 'social_media',
-      featured_image_url: 'profile_image'
-    };
-    
-    // Build SET clause for SQL update
-    Object.keys(updateData).forEach((key, index) => {
-      const dbField = fieldMapping[key] || key;
-      updateFields.push(`${dbField} = $${index + 2}`); // $1 is reserved for vendorId
-      updateValues.push(updateData[key]);
-    });
-    
-    if (updateFields.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'No valid fields to update'
-      });
-    }
-    
-    // Add updated_at timestamp
-    updateFields.push(`updated_at = NOW()`);
-    
-    // Execute the update using Neon tagged template - updated for new camelCase fields
-    let result;
-    
-    // Handle all possible field updates
-    const updates = {
-      businessName: updateData.businessName || updateData.business_name,
-      businessType: updateData.businessType || updateData.business_type,
-      description: updateData.description || updateData.business_description,
-      location: updateData.location,
-      yearsInBusiness: updateData.yearsInBusiness || updateData.years_in_business,
-      website: updateData.website || updateData.website_url,
-      phone: updateData.phone || updateData.contact_phone,
-      email: updateData.email || updateData.contact_email,
-      serviceArea: updateData.serviceArea || updateData.service_areas,
-      socialMedia: updateData.socialMedia || updateData.social_media,
-      profileImage: updateData.profileImage || updateData.featured_image_url
-    };
-    
-    // Build dynamic SQL update
-    result = await sql`
-      UPDATE vendor_profiles 
-      SET 
-        business_name = COALESCE(${updates.businessName}, business_name),
-        business_type = COALESCE(${updates.businessType}, business_type),
-        description = COALESCE(${updates.description}, description),
-        location = COALESCE(${updates.location}, location),
-        years_in_business = COALESCE(${updates.yearsInBusiness}, years_in_business),
-        website = COALESCE(${updates.website}, website),
-        service_area = COALESCE(${updates.serviceArea}, service_area),
-        profile_image = COALESCE(${updates.profileImage}, profile_image),
-        updated_at = NOW()
-      WHERE id = ${vendorId}
-      RETURNING *;
-    `;
-    
-    // Also update user table if email/phone provided
-    if (updates.email || updates.phone) {
-      await sql`
-        UPDATE users 
-        SET 
-          email = COALESCE(${updates.email}, email),
-          phone = COALESCE(${updates.phone}, phone),
-          updated_at = NOW()
-        WHERE id = (SELECT user_id FROM vendor_profiles WHERE id = ${vendorId});
-      `;
-    }
-    
-    // Handle social media separately (JSONB update)
-    if (updates.socialMedia) {
-      await sql`
-        UPDATE vendor_profiles 
-        SET 
-          facebook_url = ${updates.socialMedia.facebook || null},
-          instagram_url = ${updates.socialMedia.instagram || null},
-          twitter_url = ${updates.socialMedia.twitter || null},
-          linkedin_url = ${updates.socialMedia.linkedin || null},
-          updated_at = NOW()
-        WHERE id = ${vendorId};
-      `;
-    }
-    
-    if (result.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Vendor not found'
-      });
-    }
-    
-    const updatedVendor = result[0];
-    
-    // Format response to match frontend expectations
-    const formattedResponse = {
-      id: updatedVendor.id,
-      userId: updatedVendor.user_id,
-      businessName: updatedVendor.business_name,
-      businessType: updatedVendor.business_type,
-      description: updatedVendor.description,
-      location: updatedVendor.location,
-      yearsInBusiness: updatedVendor.years_in_business,
-      website: updatedVendor.website,
-      serviceArea: updatedVendor.service_area,
-      socialMedia: {
-        facebook: updatedVendor.facebook_url,
-        instagram: updatedVendor.instagram_url,
-        twitter: updatedVendor.twitter_url,
-        linkedin: updatedVendor.linkedin_url
-      },
-      profileImage: updatedVendor.profile_image,
-      portfolioImages: updatedVendor.portfolio_images || [],
-      updatedAt: updatedVendor.updated_at
-    };
-    
-    res.json({
-      success: true,
-      message: 'Profile updated successfully',
-      data: formattedResponse
-    });
-    
-  } catch (error) {
-    console.error('❌ Error updating vendor profile:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to update vendor profile',
-      details: error.message
     });
   }
 });
