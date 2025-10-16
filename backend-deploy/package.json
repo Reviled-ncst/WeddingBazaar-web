@@ -2,10 +2,10 @@
   "name": "wedding-bazaar-backend",
   "version": "2.5.0",
   "description": "Wedding Bazaar Backend API - Modular Architecture Complete",
-  "main": "server-modular.cjs",
+  "main": "production-backend.js",
   "scripts": {
     "build": "echo 'Build complete - using modular architecture with separated route files'",
-    "start": "node server-modular.cjs",
+    "start": "node production-backend.js",
     "dev": "node server-modular.cjs",
     "test": "node server-modular.cjs"
   },

@@ -11,6 +11,28 @@ const sql = neon(process.env.DATABASE_URL);
 router.get('/:vendorId', async (req, res) => {
   try {
     const { vendorId } = req.params;
+        
+    // Handle both UUID and string ID formats
+    let queryVendorId = vendorId;
+    
+    // If it's not a UUID format, try to find matching vendor by user_id
+    if (!vendorId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      console.log('🔍 Non-UUID vendor ID detected, looking up by user_id:', vendorId);
+      const userLookup = await sql`
+        SELECT vp.id as vendor_profile_id
+        FROM vendor_profiles vp
+        INNER JOIN users u ON vp.user_id = u.id
+        WHERE u.id = ${vendorId}
+      `;
+      
+      if (userLookup.length > 0) {
+        queryVendorId = userLookup[0].vendor_profile_id;
+        console.log('✅ Found vendor profile ID:', queryVendorId);
+      } else {
+        console.log('❌ No vendor profile found for user ID:', vendorId);
+      }
+    }
+    
     
     console.log('🔍 Getting vendor profile for ID:', vendorId);
     
@@ -69,7 +91,7 @@ router.get('/:vendorId', async (req, res) => {
         u.updated_at as user_updated_at
       FROM vendor_profiles vp
       INNER JOIN users u ON vp.user_id = u.id
-      WHERE vp.id = ${vendorId}
+      WHERE vp.id = ${queryVendorId}
     `;
     
     if (vendorResult.length === 0) {
