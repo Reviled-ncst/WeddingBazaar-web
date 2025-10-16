@@ -661,9 +661,22 @@ export const VendorProfile: React.FC = () => {
                               placeholder="Primary location or service area"
                             />
                           ) : (
-                            <p className="text-gray-900">
-                              {profile.location || 'No location specified yet. Click Edit Profile to add your location.'}
-                            </p>
+                            <div>
+                              {profile.location || profile.serviceArea ? (
+                                <p className="text-gray-900">
+                                  {profile.location || profile.serviceArea}
+                                </p>
+                              ) : (
+                                <div className="space-y-2">
+                                  <p className="text-gray-500 italic">
+                                    Location information is being updated from your registration data.
+                                  </p>
+                                  <p className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                                    <strong>Note:</strong> If you registered with location information, it will appear here shortly. You can also click "Edit Profile" to add or update your service areas.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
 
