@@ -1,7 +1,11 @@
 const express = require('express');
-const { sql } = require('../config/database.cjs');
+const { neon } = require('@neondatabase/serverless');
+require('dotenv').config();
 
 const router = express.Router();
+
+// Use the same database connection pattern
+const sql = neon(process.env.DATABASE_URL);
 
 // Get couple profile with verification status
 router.get('/:coupleId', async (req, res) => {
