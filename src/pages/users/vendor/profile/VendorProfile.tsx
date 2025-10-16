@@ -31,14 +31,14 @@ import { VendorHeader } from '../../../../shared/components/layout/VendorHeader'
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { cn } from '../../../../utils/cn';
 import type { VendorProfile as VendorProfileType } from '../../../../services/api/vendorApiService';
+import { PhoneVerification } from '../../../../components/PhoneVerification';
 
 export const VendorProfile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('business');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
-  const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
-  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
+
   const [showPhoneVerification, setShowPhoneVerification] = useState(false);
   const [uploadedDocuments, setUploadedDocuments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -109,34 +109,47 @@ export const VendorProfile: React.FC = () => {
   };
 
   const handlePhoneVerification = async () => {
-    setIsVerifyingPhone(true);
+    setShowPhoneVerification(true);
+  };
+
+  const handlePhoneVerificationComplete = async (verifiedPhoneNumber: string) => {
     try {
+      console.log('✅ Phone verified with Firebase:', verifiedPhoneNumber);
+      
+      // Update the profile with the verified phone number
+      await updateProfile({ phone: verifiedPhoneNumber });
+      
+      // Update backend verification status
       const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      const response = await fetch(`${apiUrl}/api/vendor-profile/${vendorId}/verify-phone`, {
+      const response = await fetch(`${apiUrl}/api/vendor-profile/${vendorId}/phone-verified`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({ 
-          phone: editForm.contact_phone || profile?.contact_phone 
+          phone: verifiedPhoneNumber,
+          verified: true 
         })
       });
       
       if (response.ok) {
-        const result = await response.json();
-        setShowPhoneVerification(true);
-        alert('📱 Verification code sent to your phone!');
-        console.log('Phone verification result:', result);
+        console.log('✅ Backend updated with phone verification status');
       } else {
-        const errorText = await response.text();
-        throw new Error(`Failed to send phone verification: ${errorText}`);
+        console.warn('⚠️ Failed to update backend verification status');
       }
+      
+      // Refresh profile data
+      await refetch();
+      
+      // Hide verification modal
+      setShowPhoneVerification(false);
+      
+      alert('✅ Phone number verified successfully!');
+      
     } catch (error) {
-      console.error('Phone verification error:', error);
-      alert('❌ Failed to send phone verification. Please try again.');
-    } finally {
-      setIsVerifyingPhone(false);
+      console.error('❌ Error updating phone verification:', error);
+      alert('⚠️ Phone verified but failed to update profile. Please refresh the page.');
     }
   };
 
@@ -1009,79 +1022,80 @@ export const VendorProfile: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Phone Verification */}
-                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-8">
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center space-x-3">
-                          <Phone className="w-6 h-6 text-green-600" />
-                          <h3 className="text-xl font-semibold text-gray-900">Phone Verification</h3>
-                        </div>
-                        {profile?.phone_verified ? (
-                          <div className="flex items-center space-x-2 text-green-600">
-                            <CheckCircle className="w-5 h-5" />
-                            <span className="font-medium">Verified</span>
+                    {/* Phone Verification with Firebase */}
+                    <div className="space-y-6">
+                      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-8">
+                        <div className="flex items-center justify-between mb-6">
+                          <div className="flex items-center space-x-3">
+                            <Phone className="w-6 h-6 text-green-600" />
+                            <h3 className="text-xl font-semibold text-gray-900">Phone Verification</h3>
                           </div>
-                        ) : (
-                          <div className="flex items-center space-x-2 text-amber-600">
-                            <XCircle className="w-5 h-5" />
-                            <span className="font-medium">Not Verified</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <p className="text-gray-600 mb-4">
-                            Verify your phone number to allow customers to contact you directly and improve your profile credibility.
-                          </p>
-                          <div className="space-y-2">
-                            <p className="text-sm text-gray-500"><strong>Phone:</strong> {profile?.contact_phone || user?.phone || 'Not provided'}</p>
-                            <p className="text-sm text-gray-500"><strong>Status:</strong> {profile?.phone_verified ? 'Verified' : 'Pending verification'}</p>
-                          </div>
-                          
-                          {showPhoneVerification && (
-                            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Enter verification code:
-                              </label>
-                              <div className="flex space-x-2">
-                                <input
-                                  type="text"
-                                  value={phoneVerificationCode}
-                                  onChange={(e) => setPhoneVerificationCode(e.target.value)}
-                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                  placeholder="Enter 6-digit code"
-                                  maxLength={6}
-                                />
-                                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                  Verify
-                                </button>
-                              </div>
+                          {profile?.phoneVerified ? (
+                            <div className="flex items-center space-x-2 text-green-600">
+                              <CheckCircle className="w-5 h-5" />
+                              <span className="font-medium">Verified</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2 text-amber-600">
+                              <XCircle className="w-5 h-5" />
+                              <span className="font-medium">Not Verified</span>
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center justify-center">
-                          {!profile?.phone_verified && (profile?.contact_phone || user?.phone) && (
-                            <button
-                              onClick={handlePhoneVerification}
-                              disabled={isVerifyingPhone}
-                              className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                            >
-                              {isVerifyingPhone ? (
-                                <RefreshCw className="w-5 h-5 animate-spin" />
-                              ) : (
-                                <Send className="w-5 h-5" />
+                        
+                        {!showPhoneVerification ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <p className="text-gray-600 mb-4">
+                                Verify your phone number using Firebase SMS verification to allow customers to contact you directly and improve your profile credibility.
+                              </p>
+                              <div className="space-y-2">
+                                <p className="text-sm text-gray-500"><strong>Current Phone:</strong> {profile?.phone || 'Not provided'}</p>
+                                <p className="text-sm text-gray-500"><strong>Status:</strong> {profile?.phoneVerified ? 'Verified with Firebase' : 'Pending verification'}</p>
+                              </div>
+                              
+                              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                <h4 className="font-medium text-green-900 mb-2">Firebase SMS Verification</h4>
+                                <ul className="text-sm text-green-700 space-y-1">
+                                  <li>• Secure SMS verification</li>
+                                  <li>• Real-time code delivery</li>
+                                  <li>• Automatic phone number linking</li>
+                                  <li>• Works internationally</li>
+                                </ul>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-center">
+                              {!profile?.phoneVerified && (
+                                <button
+                                  onClick={handlePhoneVerification}
+                                  className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                                >
+                                  <Send className="w-5 h-5" />
+                                  <span>Start Phone Verification</span>
+                                </button>
                               )}
-                              <span>{isVerifyingPhone ? 'Sending...' : 'Send Verification Code'}</span>
-                            </button>
-                          )}
-                          {!profile?.contact_phone && !user?.phone && (
-                            <p className="text-sm text-gray-500 text-center">
-                              Please add a phone number in your business info to verify it.
-                            </p>
-                          )}
-                        </div>
+                              {profile?.phoneVerified && (
+                                <div className="text-center">
+                                  <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-2" />
+                                  <p className="text-green-700 font-medium">Phone Verified!</p>
+                                  <p className="text-sm text-green-600">{profile?.phone}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
+                      
+                      {/* Firebase Phone Verification Component */}
+                      {showPhoneVerification && (
+                        <PhoneVerification
+                          onVerificationComplete={handlePhoneVerificationComplete}
+                          onCancel={() => setShowPhoneVerification(false)}
+                          initialPhoneNumber={profile?.phone || user?.phone || ''}
+                          title="Verify Your Phone Number"
+                          description="We'll send you a secure SMS verification code to confirm your phone number."
+                        />
+                      )}
                     </div>
 
                     {/* Business Document Verification */}
