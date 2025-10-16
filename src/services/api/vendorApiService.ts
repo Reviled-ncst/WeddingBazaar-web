@@ -26,16 +26,56 @@ interface RecentActivity {
 }
 
 export interface VendorProfile {
+  // Core fields (matching backend camelCase response)
   id: string;
-  user_id: string;
-  business_name: string;
-  business_type: string;
+  userId: string;
+  businessName: string;
+  businessType: string;
+  description?: string;  // Backend returns 'description' not 'businessDescription'
+  location?: string;     // Backend returns 'location'
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  website?: string;
+  yearsInBusiness?: number;
+  teamSize?: number;
+  serviceArea?: string;
+  priceRange?: string;
+  
+  // Verification fields (matching backend response)
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  businessVerified: boolean;
+  documentsVerified: boolean;
+  overallVerificationStatus: string;
+  businessInfoComplete: boolean;
+  
+  // Complex fields
+  socialMedia?: {
+    facebook?: string;
+    instagram?: string;
+    twitter?: string;
+    linkedin?: string;
+  };
+  portfolioImages?: string[];
+  documents?: any[];
+  profileImage?: string;
+  coverImage?: string;
+  featuredImageUrl?: string;
+  
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+  
+  // Legacy fields for backward compatibility (snake_case)
+  business_name?: string;
+  business_type?: string;
   business_description?: string;
-  location?: string;
-  service_areas?: string[] | string;
   contact_phone?: string;
   contact_email?: string;
   contact_website?: string;
+  service_areas?: string[] | string;
   social_media?: {
     instagram?: string;
     facebook?: string;
@@ -43,41 +83,22 @@ export interface VendorProfile {
     tiktok?: string;
   };
   portfolio_images?: string[];
-  pricing?: {
-    starting_price?: number;
-    price_range?: string;
-    packages?: Array<{
-      name: string;
-      price: number;
-      description: string;
-    }>;
-  };
-  specialties?: string[];
-  equipment?: string[];
-  rating?: number;
-  review_count?: number;
   years_experience?: number;
-  verified?: boolean;
-  created_at: string;
-  awards?: string[];
-  certifications?: string[];
-  // New verification fields
-  phone_verified?: boolean;
-  business_verified?: boolean;
-  documents_verified?: boolean;
-  verification_status?: 'pending' | 'approved' | 'rejected' | 'under_review';
-  verification_notes?: string;
-  verified_at?: string;
-  // Legacy fields for compatibility
   years_in_business?: number;
   portfolio_url?: string;
   website_url?: string;
   featured_image_url?: string;
-  updated_at?: string;
-  email?: string;
-  first_name?: string;
-  last_name?: string;
-  profile_image?: string;
+  phone_verified?: boolean;
+  business_verified?: boolean;
+  documents_verified?: boolean;
+  verification_status?: 'pending' | 'approved' | 'rejected' | 'under_review';
+  specialties?: string[];
+  equipment?: string[];
+  rating?: number;
+  review_count?: number;
+  verified?: boolean;
+  awards?: string[];
+  certifications?: string[];
   profile_image_public_id?: string;
 }
 
@@ -584,7 +605,7 @@ class VendorApiService {
   private getMockProfile(): VendorProfile {
     return {
       id: '1',
-      user_id: 'vendor-user-1',
+      userId: 'vendor-user-1',
       business_name: 'Elegant Moments Photography',
       business_type: 'Photography',
       business_description: 'We specialize in capturing the most precious moments of your special day with artistic flair and professional expertise. Our team has been creating beautiful wedding memories for over 8 years.',
@@ -602,12 +623,12 @@ class VendorApiService {
         'https://picsum.photos/600/400?random=102',
         'https://picsum.photos/600/400?random=103'
       ],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       email: 'info@elegantmoments.com',
-      first_name: 'Sarah',
-      last_name: 'Johnson',
-      profile_image: 'https://picsum.photos/400/300?random=100' // Backwards compatibility
+      firstName: 'Sarah',
+      lastName: 'Johnson',
+      profileImage: 'https://picsum.photos/400/300?random=100' // Backwards compatibility
     };
   }
 

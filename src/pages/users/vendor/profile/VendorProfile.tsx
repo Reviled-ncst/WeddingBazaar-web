@@ -59,22 +59,22 @@ export const VendorProfile: React.FC = () => {
   // Local state for editing
   const [editForm, setEditForm] = useState<Partial<VendorProfileType>>({});
 
-  // Update form when profile loads
+  // Update form when profile loads - FIXED FIELD MAPPING
   React.useEffect(() => {
     if (profile) {
       setEditForm({
-        business_name: profile.business_name || '',
-        business_type: profile.business_type || '',
-        business_description: profile.business_description || '',
-        years_in_business: profile.years_experience || profile.years_in_business || 0,
-        website_url: profile.contact_website || profile.website_url || '',
-        social_media: profile.social_media || {},
-        service_areas: profile.service_areas || [],
+        // Use correct backend field names (camelCase from API response)
+        businessName: profile.businessName || '',
+        businessType: profile.businessType || '',
+        description: profile.description || '',
         location: profile.location || '',
-        contact_phone: profile.contact_phone || '',
-        contact_email: profile.contact_email || '',
-        specialties: profile.specialties || [],
-        equipment: profile.equipment || []
+        yearsInBusiness: profile.yearsInBusiness || 0,
+        website: profile.website || '',
+        socialMedia: profile.socialMedia || { facebook: '', instagram: '', twitter: '', linkedin: '' },
+        serviceArea: profile.serviceArea || '',
+        phone: profile.phone || '',
+        email: profile.email || '',
+        profileImage: profile.profileImage || ''
       });
     }
   }, [profile]);
@@ -222,13 +222,17 @@ export const VendorProfile: React.FC = () => {
   const handleCancel = () => {
     if (profile) {
       setEditForm({
-        business_name: profile.business_name || '',
-        business_type: profile.business_type || '',
-        business_description: profile.business_description || '',
-        years_in_business: profile.years_in_business || 0,
-        website_url: profile.website_url || '',
-        social_media: profile.social_media || {},
-        service_areas: profile.service_areas || []
+        businessName: profile.businessName || '',
+        businessType: profile.businessType || '',
+        description: profile.description || '',
+        location: profile.location || '',
+        yearsInBusiness: profile.yearsInBusiness || 0,
+        website: profile.website || '',
+        socialMedia: profile.socialMedia || { facebook: '', instagram: '', twitter: '', linkedin: '' },
+        serviceArea: profile.serviceArea || '',
+        phone: profile.phone || '',
+        email: profile.email || '',
+        profileImage: profile.profileImage || ''
       });
     }
     setIsEditing(false);
@@ -273,7 +277,7 @@ export const VendorProfile: React.FC = () => {
       console.log('✅ Image upload successful:', result);
 
       // Update the profile in the database
-      await updateProfile({ featured_image_url: result.imageUrl });
+      await updateProfile({ profileImage: result.imageUrl });
       
       // Refresh profile data
       await refetch();
@@ -307,7 +311,7 @@ export const VendorProfile: React.FC = () => {
       console.log('🗑️ Deleting profile image...');
 
       // Remove image from profile
-      await updateProfile({ featured_image_url: undefined });
+      await updateProfile({ profileImage: undefined });
       
       // Refresh profile data
       await refetch();
@@ -523,7 +527,7 @@ export const VendorProfile: React.FC = () => {
                           <div className="relative">
                             <img
                               src={
-                                profile.featured_image_url || 
+                                profile.profileImage || 
                                 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400&q=80'
                               }
                               alt="Profile"
@@ -552,7 +556,7 @@ export const VendorProfile: React.FC = () => {
                                 </button>
                                 
                                 {/* Delete Button - Only show if there's an image */}
-                                {profile.featured_image_url && (
+                                {profile.profileImage && (
                                   <button
                                     onClick={handleImageDelete}
                                     disabled={isUploadingImage}
@@ -580,7 +584,7 @@ export const VendorProfile: React.FC = () => {
                                 placeholder="Business Name"
                               />
                             ) : (
-                              <h2 className="text-2xl font-bold text-gray-900 mb-2">{profile.business_name}</h2>
+                              <h2 className="text-2xl font-bold text-gray-900 mb-2">{profile.businessName}</h2>
                             )}
                             
                             {isEditing ? (
@@ -595,7 +599,7 @@ export const VendorProfile: React.FC = () => {
                                 ))}
                               </select>
                             ) : (
-                              <p className="text-pink-600 font-medium">{profile.business_type}</p>
+                              <p className="text-pink-600 font-medium">{profile.businessType}</p>
                             )}
                           </div>
                           
@@ -610,7 +614,7 @@ export const VendorProfile: React.FC = () => {
                             </div>
                             <div className="flex items-center space-x-1">
                               <Calendar className="w-4 h-4" />
-                              <span>{profile.years_in_business} years</span>
+                              <span>{profile.yearsInBusiness || 0} years</span>
                             </div>
                           </div>
                         </div>
@@ -629,14 +633,16 @@ export const VendorProfile: React.FC = () => {
                           </label>
                           {isEditing ? (
                             <textarea
-                              value={editForm.business_description || ''}
-                              onChange={(e) => setEditForm({...editForm, business_description: e.target.value})}
+                              value={editForm.description || ''}
+                              onChange={(e) => setEditForm({...editForm, description: e.target.value})}
                               rows={4}
                               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none resize-none"
                               placeholder="Describe your business and services..."
                             />
                           ) : (
-                            <p className="text-gray-600 leading-relaxed">{profile.business_description}</p>
+                            <p className="text-gray-600 leading-relaxed">
+                              {profile.description || 'No description provided yet. Click Edit Profile to add your business description.'}
+                            </p>
                           )}
                         </div>
 
@@ -644,18 +650,20 @@ export const VendorProfile: React.FC = () => {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             <MapPin className="w-4 h-4 inline mr-1" />
-                            Service Areas
+                            Location/Service Area
                           </label>
                           {isEditing ? (
                             <input
                               type="text"
-                              value={Array.isArray(editForm.service_areas) ? editForm.service_areas.join(', ') : editForm.service_areas || ''}
-                              onChange={(e) => setEditForm({...editForm, service_areas: e.target.value.split(', ').filter(area => area.trim())})}
+                              value={editForm.location || ''}
+                              onChange={(e) => setEditForm({...editForm, location: e.target.value})}
                               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
-                              placeholder="Service areas (comma separated)"
+                              placeholder="Primary location or service area"
                             />
                           ) : (
-                            <p className="text-gray-900">{Array.isArray(profile.service_areas) ? profile.service_areas.join(', ') : profile.service_areas}</p>
+                            <p className="text-gray-900">
+                              {profile.location || 'No location specified yet. Click Edit Profile to add your location.'}
+                            </p>
                           )}
                         </div>
 
@@ -667,13 +675,13 @@ export const VendorProfile: React.FC = () => {
                           {isEditing ? (
                             <input
                               type="tel"
-                              value={editForm.contact_phone || ''}
-                              onChange={(e) => setEditForm({...editForm, contact_phone: e.target.value})}
+                              value={editForm.phone || ''}
+                              onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
                               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
                               placeholder="Contact phone number"
                             />
                           ) : (
-                            <p className="text-gray-900">{profile.contact_phone || user?.phone || 'No phone number'}</p>
+                            <p className="text-gray-900">{profile.phone || 'No phone number provided'}</p>
                           )}
                         </div>
 
@@ -685,13 +693,13 @@ export const VendorProfile: React.FC = () => {
                           {isEditing ? (
                             <input
                               type="email"
-                              value={editForm.contact_email || ''}
-                              onChange={(e) => setEditForm({...editForm, contact_email: e.target.value})}
+                              value={editForm.email || ''}
+                              onChange={(e) => setEditForm({...editForm, email: e.target.value})}
                               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
                               placeholder="Contact email"
                             />
                           ) : (
-                            <p className="text-gray-900">{profile.contact_email || user?.email || 'No email'}</p>
+                            <p className="text-gray-900">{profile.email || 'No email provided'}</p>
                           )}
                         </div>
 
@@ -703,40 +711,46 @@ export const VendorProfile: React.FC = () => {
                           {isEditing ? (
                             <input
                               type="url"
-                              value={editForm.website_url || ''}
-                              onChange={(e) => setEditForm({...editForm, website_url: e.target.value})}
+                              value={editForm.website || ''}
+                              onChange={(e) => setEditForm({...editForm, website: e.target.value})}
                               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
                               placeholder="Business website"
                             />
                           ) : (
-                            <a 
-                              href={profile.contact_website || profile.website_url || '#'} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-pink-600 hover:text-pink-700 transition-colors"
-                            >
-                              {profile.contact_website || profile.website_url || 'No website'}
-                            </a>
+                            <div>
+                              {profile.website ? (
+                                <a 
+                                  href={profile.website} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-pink-600 hover:text-pink-700 transition-colors"
+                                >
+                                  {profile.website}
+                                </a>
+                              ) : (
+                                <p className="text-gray-500 italic">No website provided yet. Click Edit Profile to add your website.</p>
+                              )}
+                            </div>
                           )}
                         </div>
 
-                        {/* Years of Experience */}
+                        {/* Years Established */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             <Clock className="w-4 h-4 inline mr-1" />
-                            Years of Experience
+                            Years Established
                           </label>
                           {isEditing ? (
                             <input
                               type="number"
-                              value={editForm.years_in_business || 0}
-                              onChange={(e) => setEditForm({...editForm, years_in_business: parseInt(e.target.value)})}
+                              value={editForm.yearsInBusiness || 0}
+                              onChange={(e) => setEditForm({...editForm, yearsInBusiness: parseInt(e.target.value)})}
                               min="0"
                               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
-                              placeholder="Years of experience"
+                              placeholder="Years your business has been established"
                             />
                           ) : (
-                            <p className="text-gray-900">{profile.years_experience || profile.years_in_business || 0} years</p>
+                            <p className="text-gray-900">{profile.yearsInBusiness || 0} years</p>
                           )}
                         </div>
 
@@ -797,28 +811,34 @@ export const VendorProfile: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Instagram Handle
+                            Instagram URL
                           </label>
                           {isEditing ? (
                             <input
-                              type="text"
-                              value={profile.social_media?.instagram || ''}
+                              type="url"
+                              value={editForm.socialMedia?.instagram || ''}
                               onChange={(e) => {
-                                const newSocialMedia = { ...profile.social_media, instagram: e.target.value };
-                                setEditForm({...editForm, social_media: newSocialMedia});
+                                const newSocialMedia = { ...editForm.socialMedia, instagram: e.target.value };
+                                setEditForm({...editForm, socialMedia: newSocialMedia});
                               }}
                               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
-                              placeholder="Instagram URL"
+                              placeholder="https://instagram.com/yourbusiness"
                             />
                           ) : (
-                            <a 
-                              href={profile.social_media?.instagram || '#'} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-pink-600 hover:text-pink-700 transition-colors"
-                            >
-                              {profile.social_media?.instagram || 'Not provided'}
-                            </a>
+                            <div>
+                              {profile.socialMedia?.instagram ? (
+                                <a 
+                                  href={profile.socialMedia.instagram} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-pink-600 hover:text-pink-700 transition-colors"
+                                >
+                                  {profile.socialMedia.instagram}
+                                </a>
+                              ) : (
+                                <p className="text-gray-500 italic">No Instagram profile yet. Click Edit Profile to add your Instagram.</p>
+                              )}
+                            </div>
                           )}
                         </div>
 
@@ -829,23 +849,95 @@ export const VendorProfile: React.FC = () => {
                           {isEditing ? (
                             <input
                               type="url"
-                              value={profile.social_media?.facebook || ''}
+                              value={editForm.socialMedia?.facebook || ''}
                               onChange={(e) => {
-                                const newSocialMedia = { ...profile.social_media, facebook: e.target.value };
-                                setEditForm({...editForm, social_media: newSocialMedia});
+                                const newSocialMedia = { ...editForm.socialMedia, facebook: e.target.value };
+                                setEditForm({...editForm, socialMedia: newSocialMedia});
                               }}
                               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
-                              placeholder="Facebook page URL"
+                              placeholder="https://facebook.com/yourbusiness"
                             />
                           ) : (
-                            <a 
-                              href={profile.social_media?.facebook || '#'} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-pink-600 hover:text-pink-700 transition-colors"
-                            >
-                              {profile.social_media?.facebook || 'Not provided'}
-                            </a>
+                            <div>
+                              {profile.socialMedia?.facebook ? (
+                                <a 
+                                  href={profile.socialMedia.facebook} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-pink-600 hover:text-pink-700 transition-colors"
+                                >
+                                  {profile.socialMedia.facebook}
+                                </a>
+                              ) : (
+                                <p className="text-gray-500 italic">No Facebook page yet. Click Edit Profile to add your Facebook page.</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Twitter/X Profile
+                          </label>
+                          {isEditing ? (
+                            <input
+                              type="url"
+                              value={editForm.socialMedia?.twitter || ''}
+                              onChange={(e) => {
+                                const newSocialMedia = { ...editForm.socialMedia, twitter: e.target.value };
+                                setEditForm({...editForm, socialMedia: newSocialMedia});
+                              }}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
+                              placeholder="https://twitter.com/yourbusiness"
+                            />
+                          ) : (
+                            <div>
+                              {profile.socialMedia?.twitter ? (
+                                <a 
+                                  href={profile.socialMedia.twitter} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-pink-600 hover:text-pink-700 transition-colors"
+                                >
+                                  {profile.socialMedia.twitter}
+                                </a>
+                              ) : (
+                                <p className="text-gray-500 italic">No Twitter/X profile yet. Click Edit Profile to add your Twitter.</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            LinkedIn Profile
+                          </label>
+                          {isEditing ? (
+                            <input
+                              type="url"
+                              value={editForm.socialMedia?.linkedin || ''}
+                              onChange={(e) => {
+                                const newSocialMedia = { ...editForm.socialMedia, linkedin: e.target.value };
+                                setEditForm({...editForm, socialMedia: newSocialMedia});
+                              }}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
+                              placeholder="https://linkedin.com/company/yourbusiness"
+                            />
+                          ) : (
+                            <div>
+                              {profile.socialMedia?.linkedin ? (
+                                <a 
+                                  href={profile.socialMedia.linkedin} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-pink-600 hover:text-pink-700 transition-colors"
+                                >
+                                  {profile.socialMedia.linkedin}
+                                </a>
+                              ) : (
+                                <p className="text-gray-500 italic">No LinkedIn profile yet. Click Edit Profile to add your LinkedIn.</p>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
