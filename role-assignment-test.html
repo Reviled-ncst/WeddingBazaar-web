@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Role Assignment & Document Upload Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        .json-output {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Role Assignment & Document Upload Fix Test</h1>
+    
+    <div class="test-section">
+        <h2>🔐 Step 1: Test Vendor Login & Role Assignment</h2>
+        <p>This tests if the vendor user gets assigned the correct role after login.</p>
+        <button onclick="testVendorLogin()">Test Vendor Login</button>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📄 Step 2: Test Document Upload (After Login)</h2>
+        <p>This tests document upload with the fixed API URL (no double /api).</p>
+        <input type="file" id="testFile" accept=".pdf,.jpg,.png" />
+        <button onclick="testDocumentUpload()" disabled id="uploadBtn">Upload Test Document</button>
+        <div id="uploadResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎯 Step 3: Test API Endpoints</h2>
+        <p>Test various API endpoints to ensure no double /api issues.</p>
+        <button onclick="testApiEndpoints()">Test All Endpoints</button>
+        <div id="apiResult"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+        let vendorId = null;
+
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function showJsonResult(elementId, data, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">
+                <strong>Response:</strong>
+                <div class="json-output">${JSON.stringify(data, null, 2)}</div>
+            </div>`;
+        }
+
+        async function testVendorLogin() {
+            showResult('loginResult', 'Testing vendor login...', 'info');
+            
+            try {
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'renzrusselbauto@gmail.com',
+                        password: 'test123'
+                    })
+                });
+
+                const data = await response.json();
+                console.log('🔐 Login response:', data);
+
+                if (data.success && data.user && data.token) {
+                    authToken = data.token;
+                    vendorId = data.user.vendorId;
+                    
+                    // Test role mapping logic
+                    const userRole = data.user.userType || data.user.user_type || data.user.role || 'couple';
+                    
+                    showJsonResult('loginResult', {
+                        success: true,
+                        message: 'Login successful!',
+                        userRole: userRole,
+                        userType: data.user.userType,
+                        vendorId: data.user.vendorId,
+                        expectedRole: 'vendor',
+                        roleCorrect: userRole === 'vendor'
+                    }, userRole === 'vendor' ? 'success' : 'error');
+                    
+                    // Enable upload button
+                    document.getElementById('uploadBtn').disabled = false;
+                } else {
+                    showJsonResult('loginResult', data, 'error');
+                }
+            } catch (error) {
+                showResult('loginResult', `Login error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDocumentUpload() {
+            if (!authToken) {
+                showResult('uploadResult', 'Please login first!', 'warning');
+                return;
+            }
+
+            const fileInput = document.getElementById('testFile');
+            if (!fileInput.files[0]) {
+                showResult('uploadResult', 'Please select a file first!', 'warning');
+                return;
+            }
+
+            showResult('uploadResult', 'Testing document upload...', 'info');
+
+            try {
+                const formData = new FormData();
+                formData.append('document', fileInput.files[0]);
+                formData.append('document_type', 'business_license');
+                formData.append('description', 'Test document upload');
+
+                console.log('📄 Uploading to:', 'https://weddingbazaar-web.onrender.com/api/vendor-profile/documents/upload');
+
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/vendor-profile/documents/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                console.log('📄 Upload response:', data);
+
+                if (data.success) {
+                    showJsonResult('uploadResult', {
+                        success: true,
+                        message: 'Document upload successful!',
+                        documentId: data.document?.id,
+                        cloudinaryUrl: data.document?.file_url
+                    }, 'success');
+                } else {
+                    showJsonResult('uploadResult', data, 'error');
+                }
+            } catch (error) {
+                showResult('uploadResult', `Upload error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testApiEndpoints() {
+            showResult('apiResult', 'Testing API endpoints...', 'info');
+            
+            const endpoints = [
+                { name: 'Health Check', url: 'https://weddingbazaar-web.onrender.com/api/health' },
+                { name: 'Featured Vendors', url: 'https://weddingbazaar-web.onrender.com/api/vendors/featured' },
+                { name: 'Ping', url: 'https://weddingbazaar-web.onrender.com/api/ping' }
+            ];
+
+            const results = [];
+
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint.url);
+                    const data = await response.json();
+                    results.push({
+                        name: endpoint.name,
+                        status: response.status,
+                        success: response.ok,
+                        data: data
+                    });
+                } catch (error) {
+                    results.push({
+                        name: endpoint.name,
+                        status: 'ERROR',
+                        success: false,
+                        error: error.message
+                    });
+                }
+            }
+
+            showJsonResult('apiResult', {
+                message: 'API endpoint test results',
+                results: results
+            }, 'info');
+        }
+
+        // Auto-test login on page load
+        window.onload = function() {
+            console.log('🧪 Role Assignment & Document Upload Test Page Loaded');
+            console.log('Frontend URL: https://weddingbazaarph.web.app');
+            console.log('Backend URL: https://weddingbazaar-web.onrender.com');
+        };
+    </script>
+</body>
+</html>

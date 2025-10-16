@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Upload Debug 2</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        .test-results { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Document Upload Debug Test 2</h1>
+    <p>Testing the exact same flow as the frontend</p>
+
+    <div class="test-section info">
+        <h3>Test Configuration</h3>
+        <p><strong>Backend URL:</strong> <span id="backendUrl">https://weddingbazaar-web.onrender.com</span></p>
+        <p><strong>Test Vendor ID:</strong> <span id="testVendorId">eb5c47b9-6442-4ded-8a9a-cd98bfb7bca1</span></p>
+        <p><strong>Frontend URL:</strong> <span>https://weddingbazaarph.web.app</span></p>
+    </div>
+
+    <div class="test-section">
+        <h3>1. Test Exact Frontend Flow</h3>
+        <button onclick="testFrontendFlow()">Test Frontend Document Upload Flow</button>
+        <div id="frontendResult" class="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Test Error Debugging</h3>
+        <button onclick="testErrorDebugging()">Debug Upload Errors</button>
+        <div id="errorResult" class="test-results"></div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://weddingbazaar-web.onrender.com';
+        const TEST_VENDOR_ID = 'eb5c47b9-6442-4ded-8a9a-cd98bfb7bca1';
+
+        function showResult(elementId, success, message, data = null) {
+            const element = document.getElementById(elementId);
+            element.className = `test-results ${success ? 'success' : 'error'}`;
+            
+            let html = `<p><strong>${success ? '✅' : '❌'} ${message}</strong></p>`;
+            if (data) {
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            element.innerHTML = html;
+        }
+
+        async function testFrontendFlow() {
+            try {
+                showResult('frontendResult', true, 'Testing frontend document upload flow...', null);
+                
+                // Simulate the exact same data that the frontend sends
+                const documentData = {
+                    documentType: 'business_license',
+                    documentName: 'test-frontend-flow.png',
+                    documentUrl: 'https://res.cloudinary.com/dht64xt1g/image/upload/v1760624395/vendor-documents/eb5c47b9-6442-4ded-8a9a-cd98bfb7bca1/vaxyqeos0u37bcunqaut.png',
+                    fileSize: 123456,
+                    mimeType: 'image/png'
+                };
+
+                console.log('📄 Sending document data:', documentData);
+
+                const response = await fetch(`${BACKEND_URL}/api/vendor-profile/${TEST_VENDOR_ID}/documents`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(documentData)
+                });
+
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response ok:', response.ok);
+
+                const responseText = await response.text();
+                console.log('📡 Raw response:', responseText);
+
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (e) {
+                    throw new Error(`Invalid JSON response: ${responseText}`);
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${result.message || result.error || responseText}`);
+                }
+                
+                if (!result.success) {
+                    throw new Error(result.message || 'API returned success: false');
+                }
+
+                showResult('frontendResult', true, 'Frontend flow successful!', result);
+                
+            } catch (error) {
+                console.error('❌ Frontend flow error:', error);
+                showResult('frontendResult', false, `Frontend flow failed: ${error.message}`, { 
+                    error: error.message,
+                    stack: error.stack
+                });
+            }
+        }
+
+        async function testErrorDebugging() {
+            try {
+                showResult('errorResult', true, 'Debugging upload errors...', null);
+                
+                // Test multiple scenarios
+                const tests = [
+                    {
+                        name: 'Valid document type',
+                        data: {
+                            documentType: 'business_license',
+                            documentName: 'test.pdf',
+                            documentUrl: 'https://example.com/test.pdf',
+                            fileSize: 12345,
+                            mimeType: 'application/pdf'
+                        }
+                    },
+                    {
+                        name: 'Different document type',
+                        data: {
+                            documentType: 'Business License',
+                            documentName: 'test2.pdf',
+                            documentUrl: 'https://example.com/test2.pdf',
+                            fileSize: 12345,
+                            mimeType: 'application/pdf'
+                        }
+                    },
+                    {
+                        name: 'Image document',
+                        data: {
+                            documentType: 'business_license',
+                            documentName: 'test.png',
+                            documentUrl: 'https://res.cloudinary.com/dht64xt1g/image/upload/v1760624395/vendor-documents/eb5c47b9-6442-4ded-8a9a-cd98bfb7bca1/vaxyqeos0u37bcunqaut.png',
+                            fileSize: 123456,
+                            mimeType: 'image/png'
+                        }
+                    }
+                ];
+
+                const results = [];
+                for (const test of tests) {
+                    try {
+                        console.log(`🧪 Testing: ${test.name}`);
+                        const response = await fetch(`${BACKEND_URL}/api/vendor-profile/${TEST_VENDOR_ID}/documents`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(test.data)
+                        });
+
+                        const result = await response.json();
+                        results.push({
+                            test: test.name,
+                            success: response.ok && result.success,
+                            status: response.status,
+                            data: result
+                        });
+                    } catch (error) {
+                        results.push({
+                            test: test.name,
+                            success: false,
+                            error: error.message
+                        });
+                    }
+                }
+
+                showResult('errorResult', true, 'Error debugging completed', results);
+                
+            } catch (error) {
+                showResult('errorResult', false, `Error debugging failed: ${error.message}`, { error: error.message });
+            }
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            console.log('🧪 Document upload debug page 2 loaded');
+        };
+    </script>
+</body>
+</html>

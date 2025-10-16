@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Upload Fix Verification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .json-output {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+        .step {
+            border-left: 4px solid #007bff;
+            padding-left: 15px;
+            margin: 15px 0;
+        }
+        .credentials {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Document Upload Fix Verification</h1>
+    <p><strong>Issue Fixed:</strong> Document upload was failing with 404 because frontend was calling <code>/vendor-profile/...</code> instead of <code>/api/vendor-profile/...</code></p>
+    
+    <div class="test-section">
+        <h2>📋 Test Credentials</h2>
+        <div class="credentials">
+            <strong>Vendor Account:</strong><br>
+            Email: renzrusselbauto@gmail.com<br>
+            Password: test123<br>
+            Vendor ID: eb5c47b9-6442-4ded-8a9a-cd98bfb7bca1
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔐 Step 1: Login as Vendor</h2>
+        <div class="step">
+            <p>Login with the vendor account to get authentication token</p>
+            <button onclick="loginAsVendor()">Login as Vendor</button>
+            <div id="loginResult"></div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📄 Step 2: Test Document Upload Endpoints</h2>
+        <div class="step">
+            <p>Test both old (broken) and new (fixed) API paths</p>
+            <button onclick="testDocumentEndpoints()" disabled id="testBtn">Test Document Endpoints</button>
+            <div id="endpointResult"></div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎯 Step 3: Real Frontend Test</h2>  
+        <div class="step">
+            <p>Test the actual frontend document upload by opening the vendor profile</p>
+            <button onclick="openVendorProfile()">Open Vendor Profile</button>
+            <p><em>After logging in, go to the Documents tab and try uploading a file.</em></p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Step 4: Check Uploaded Documents</h2>
+        <div class="step">
+            <p>Verify documents were saved to database</p>
+            <button onclick="checkDocuments()" disabled id="checkBtn">Check Documents</button>
+            <div id="documentsResult"></div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = null;
+        let vendorId = 'eb5c47b9-6442-4ded-8a9a-cd98bfb7bca1';
+
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function showJsonResult(elementId, data, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">
+                <div class="json-output">${JSON.stringify(data, null, 2)}</div>
+            </div>`;
+        }
+
+        async function loginAsVendor() {
+            showResult('loginResult', '🔐 Logging in as vendor...', 'info');
+            
+            try {
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'renzrusselbauto@gmail.com',
+                        password: 'test123'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.user && data.token) {
+                    authToken = data.token;
+                    vendorId = data.user.vendorId || vendorId;
+                    
+                    showJsonResult('loginResult', {
+                        success: true,
+                        message: 'Login successful!',
+                        userRole: data.user.userType,
+                        vendorId: vendorId,
+                        tokenReceived: !!authToken
+                    }, 'success');
+                    
+                    // Enable other test buttons
+                    document.getElementById('testBtn').disabled = false;
+                    document.getElementById('checkBtn').disabled = false;
+                } else {
+                    showJsonResult('loginResult', data, 'error');
+                }
+            } catch (error) {
+                showResult('loginResult', `Login error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDocumentEndpoints() {
+            showResult('endpointResult', '🧪 Testing document upload endpoints...', 'info');
+            
+            const testData = {
+                documentType: 'business_license',
+                documentName: 'test-fix-verification.pdf',
+                documentUrl: 'https://example.com/test-document.pdf',
+                fileSize: 12345,
+                mimeType: 'application/pdf'
+            };
+
+            const tests = [
+                {
+                    name: 'OLD (Broken) Path',
+                    url: `https://weddingbazaar-web.onrender.com/vendor-profile/${vendorId}/documents`,
+                    expected: '404 Not Found'
+                },
+                {
+                    name: 'NEW (Fixed) Path', 
+                    url: `https://weddingbazaar-web.onrender.com/api/vendor-profile/${vendorId}/documents`,
+                    expected: '200 Success'
+                }
+            ];
+
+            const results = [];
+
+            for (const test of tests) {
+                try {
+                    console.log(`🧪 Testing ${test.name}: ${test.url}`);
+                    
+                    const response = await fetch(test.url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(authToken && { 'Authorization': `Bearer ${authToken}` })
+                        },
+                        body: JSON.stringify(testData)
+                    });
+
+                    const responseText = await response.text();
+                    let parsedData = null;
+
+                    try {
+                        parsedData = JSON.parse(responseText);
+                    } catch (e) {
+                        parsedData = { rawResponse: responseText };
+                    }
+
+                    results.push({
+                        name: test.name,
+                        status: response.status,
+                        success: response.ok,
+                        expected: test.expected,
+                        actualResult: response.ok ? 'SUCCESS' : `${response.status} ${response.statusText}`,
+                        data: parsedData
+                    });
+
+                } catch (error) {
+                    results.push({
+                        name: test.name,
+                        status: 'ERROR',
+                        success: false,
+                        error: error.message
+                    });
+                }
+            }
+
+            showJsonResult('endpointResult', {
+                message: 'Document upload endpoint test results',
+                summary: {
+                    oldPathWorking: results[0]?.success || false,
+                    newPathWorking: results[1]?.success || false,
+                    fixConfirmed: !results[0]?.success && results[1]?.success
+                },
+                detailedResults: results
+            }, results[1]?.success ? 'success' : 'error');
+        }
+
+        async function checkDocuments() {
+            showResult('documentsResult', '📊 Checking uploaded documents...', 'info');
+            
+            try {
+                const response = await fetch(`https://weddingbazaar-web.onrender.com/api/vendor-profile/${vendorId}/documents`, {
+                    method: 'GET',
+                    headers: {
+                        ...(authToken && { 'Authorization': `Bearer ${authToken}` })
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showJsonResult('documentsResult', {
+                        success: true,
+                        message: `Found ${data.documents?.length || 0} documents`,
+                        documents: data.documents || []
+                    }, 'success');
+                } else {
+                    const errorText = await response.text();
+                    showResult('documentsResult', `Error fetching documents: ${response.status} ${errorText}`, 'error');
+                }
+            } catch (error) {
+                showResult('documentsResult', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function openVendorProfile() {
+            window.open('https://weddingbazaarph.web.app/vendor', '_blank');
+        }
+
+        // Auto-run on page load
+        window.onload = function() {
+            console.log('🔧 Document Upload Fix Verification Test');
+            console.log('Frontend: https://weddingbazaarph.web.app');
+            console.log('Backend: https://weddingbazaar-web.onrender.com');
+            console.log('Fix: Added /api prefix to document upload endpoints in frontend');
+        };
+    </script>
+</body>
+</html>

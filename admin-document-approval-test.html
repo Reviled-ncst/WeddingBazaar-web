@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Document Approval - Direct Access Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #fdf2f8 0%, #fff 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #ec4899, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border-left: 4px solid #ec4899;
+        }
+        .section h2 {
+            color: #1f2937;
+            margin-top: 0;
+            font-size: 1.5rem;
+        }
+        .link-button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #ec4899, #f59e0b);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            margin: 8px 12px 8px 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+        }
+        .link-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(236, 72, 153, 0.4);
+        }
+        .secondary-button {
+            background: linear-gradient(135deg, #6b7280, #374151);
+            box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+        }
+        .secondary-button:hover {
+            box-shadow: 0 8px 20px rgba(107, 114, 128, 0.4);
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .feature-list li:before {
+            content: "✅";
+            margin-right: 10px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status.completed { background: #dcfce7; color: #166534; }
+        .status.new { background: #fef3c7; color: #92400e; }
+        .api-info {
+            background: #f0f9ff;
+            border-left-color: #0ea5e9;
+            margin-top: 20px;
+        }
+        .mock-data {
+            background: #fffbeb;
+            border-left-color: #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏛️ Admin Document Approval System</h1>
+        <p class="subtitle">Test and manage vendor document verification from your Wedding Bazaar admin panel</p>
+
+        <div class="section">
+            <h2>🚀 Quick Access Links</h2>
+            <a href="http://localhost:5176/admin/documents" class="link-button" target="_blank">
+                📄 Document Approval Page
+            </a>
+            <a href="http://localhost:5176/admin/dashboard" class="link-button secondary-button" target="_blank">
+                📊 Admin Dashboard
+            </a>
+            <a href="http://localhost:5176/admin/vendors" class="link-button secondary-button" target="_blank">
+                🏪 Vendor Management
+            </a>
+        </div>
+
+        <div class="section">
+            <h2>✨ Features Implemented</h2>
+            <ul class="feature-list">
+                <li>📋 Document list with status filters (pending, approved, rejected) <span class="status completed">COMPLETED</span></li>
+                <li>🔍 Search by vendor name, business name, or file name <span class="status completed">COMPLETED</span></li>
+                <li>✅ One-click document approval functionality <span class="status completed">COMPLETED</span></li>
+                <li>❌ Document rejection with custom reason <span class="status completed">COMPLETED</span></li>
+                <li>👁️ Document preview (opens in new tab) <span class="status completed">COMPLETED</span></li>
+                <li>📊 Real-time statistics dashboard <span class="status completed">COMPLETED</span></li>
+                <li>📱 Responsive design with glassmorphism UI <span class="status completed">COMPLETED</span></li>
+                <li>🔗 Integration with existing admin routes <span class="status completed">COMPLETED</span></li>
+            </ul>
+        </div>
+
+        <div class="section mock-data">
+            <h2>🎭 Mock Data Available</h2>
+            <p>The system includes 5 sample vendor documents for testing:</p>
+            <ul class="feature-list">
+                <li><strong>Perfect Weddings Co.</strong> - Business License (Pending)</li>
+                <li><strong>Elegant Flowers Studio</strong> - Insurance Certificate (Approved)</li>
+                <li><strong>Soundwave Entertainment</strong> - Tax Registration (Rejected)</li>
+                <li><strong>Memories Photography</strong> - Professional License (Pending)</li>
+                <li><strong>Gourmet Catering Co.</strong> - Food Safety Certificate (Pending)</li>
+            </ul>
+        </div>
+
+        <div class="section api-info">
+            <h2>🔌 Backend Integration</h2>
+            <p><strong>API Endpoints Ready:</strong></p>
+            <ul class="feature-list">
+                <li><code>PATCH /api/vendor-profile/:vendorId/documents/:documentId/verify</code> - Approve/reject documents</li>
+                <li><code>POST /api/auth/admin/verify-vendor</code> - Verify entire vendor account</li>
+                <li><code>GET /api/admin/documents/pending</code> - Get pending documents (to be implemented)</li>
+            </ul>
+            <p><strong>Current Status:</strong> Uses mock data with graceful API fallback. Real API integration is partially implemented and ready for backend completion.</p>
+        </div>
+
+        <div class="section">
+            <h2>📋 How to Use</h2>
+            <ol>
+                <li><strong>Access:</strong> Click "Document Approval Page" above or navigate to <code>/admin/documents</code></li>
+                <li><strong>Filter:</strong> Use the status dropdown to filter by pending/approved/rejected documents</li>
+                <li><strong>Search:</strong> Search by vendor name, business name, or document filename</li>
+                <li><strong>Review:</strong> Click "View" to open documents in a new tab</li>
+                <li><strong>Approve:</strong> Click "Approve" for pending documents</li>
+                <li><strong>Reject:</strong> Click "Reject" and provide a reason for rejection</li>
+                <li><strong>Monitor:</strong> Check the statistics cards at the top for overview</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h2>🎯 Next Steps for Production</h2>
+            <ul class="feature-list">
+                <li>Implement <code>GET /api/admin/documents/pending</code> backend endpoint</li>
+                <li>Add real document storage and retrieval from Cloudinary</li>
+                <li>Implement admin authentication middleware</li>
+                <li>Add email notifications for document status changes</li>
+                <li>Create document upload history and audit trail</li>
+                <li>Add bulk approval/rejection functionality</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; padding: 20px; background: #f9fafb; border-radius: 12px;">
+            <p style="margin: 0; color: #6b7280;">
+                🎉 <strong>Document Approval System Ready!</strong><br>
+                You can now approve vendor business documents directly from the admin panel.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactive functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click tracking for links
+            const links = document.querySelectorAll('.link-button');
+            links.forEach(link => {
+                link.addEventListener('click', function() {
+                    console.log('🔗 Navigating to:', this.href);
+                });
+            });
+
+            // Add a simple animation
+            const sections = document.querySelectorAll('.section');
+            sections.forEach((section, index) => {
+                section.style.opacity = '0';
+                section.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    section.style.transition = 'all 0.6s ease';
+                    section.style.opacity = '1';
+                    section.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        });
+    </script>
+</body>
+</html>

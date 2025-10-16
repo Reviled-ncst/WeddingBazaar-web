@@ -29,6 +29,7 @@ export const AdminHeader: React.FC = () => {
     { name: 'Dashboard', href: '/admin/dashboard', icon: BarChart3 },
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Vendors', href: '/admin/vendors', icon: Store },
+    { name: 'Documents', href: '/admin/documents', icon: Shield },
     { name: 'Bookings', href: '/admin/bookings', icon: Calendar },
     { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     { name: 'Finances', href: '/admin/finances', icon: DollarSign },

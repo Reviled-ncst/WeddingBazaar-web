@@ -228,6 +228,87 @@ class CloudinaryService {
       return false;
     }
   }
+
+  /**
+   * Upload a document to Cloudinary (supports PDF, DOC, DOCX, etc.)
+   * @param file - The document file to upload
+   * @param folder - Optional folder to organize uploads
+   * @returns Promise with the upload response
+   */
+  async uploadDocument(
+    file: File, 
+    folder: string = 'vendor-documents'
+  ): Promise<CloudinaryUploadResponse> {
+    try {
+      // Validate file type - allow common business document types
+      const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/jpg',
+        'image/gif',
+        'image/webp',
+        'text/plain'
+      ];
+      
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('File must be a PDF, DOC, DOCX, TXT, or image file');
+      }
+
+      // Validate file size (max 25MB for documents)
+      const maxSize = 25 * 1024 * 1024; // 25MB
+      if (file.size > maxSize) {
+        throw new Error('Document size must be less than 25MB');
+      }
+
+      console.log('🌤️ [Cloudinary] Starting document upload...', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        folder: folder,
+        uploadPreset: this.uploadPreset,
+        cloudName: this.cloudName
+      });
+
+      // Create form data for upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', this.uploadPreset);
+      formData.append('resource_type', 'auto'); // Let Cloudinary auto-detect resource type
+      
+      if (folder) {
+        formData.append('folder', folder);
+      }
+
+      // Upload to Cloudinary
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${this.cloudName}/auto/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json() as CloudinaryError;
+        throw new Error(errorData.error?.message || `Upload failed with status ${response.status}`);
+      }
+
+      const data = await response.json() as CloudinaryUploadResponse;
+      
+      console.log('🌤️ [Cloudinary] Document upload successful:', {
+        publicId: data.public_id,
+        secureUrl: data.secure_url,
+        format: data.format,
+        resourceType: data.resource_type,
+        bytes: data.bytes
+      });
+
+      return data;
+    } catch (error) {
+      console.error('Cloudinary document upload error:', error);
+      throw error instanceof Error ? error : new Error('Failed to upload document');
+    }
+  }
 }
 
 export const cloudinaryService = new CloudinaryService();

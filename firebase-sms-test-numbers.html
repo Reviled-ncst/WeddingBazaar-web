@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase SMS Test Phone Numbers - Wedding Bazaar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #f3e8ff 100%);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">🚀 Firebase SMS Test Mode</h1>
+            <p class="text-lg text-gray-600">Use these test phone numbers to verify functionality without SMS billing</p>
+        </div>
+
+        <!-- Status Card -->
+        <div class="glass-card rounded-3xl p-8 mb-8 max-w-4xl mx-auto">
+            <div class="flex items-center justify-center mb-6">
+                <div class="bg-green-100 rounded-full p-4">
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-4">Test Phone Numbers Configured</h2>
+            <p class="text-center text-gray-600 mb-6">Your Firebase phone verification service now supports test numbers for development</p>
+        </div>
+
+        <!-- Test Phone Numbers -->
+        <div class="max-w-4xl mx-auto grid md:grid-cols-2 gap-6 mb-8">
+            <div class="glass-card rounded-2xl p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">📱 Available Test Numbers</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 bg-white/30 rounded-lg">
+                        <span class="font-mono text-gray-700">+1 650-555-3434</span>
+                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">Code: 123456</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-white/30 rounded-lg">
+                        <span class="font-mono text-gray-700">+1 555-555-5555</span>
+                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">Code: 654321</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-white/30 rounded-lg">
+                        <span class="font-mono text-gray-700">+1 415-555-2671</span>
+                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">Code: 111111</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-white/30 rounded-lg">
+                        <span class="font-mono text-gray-700">+1 234-567-8901</span>
+                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">Code: 999999</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">🔄 How It Works</h3>
+                <div class="space-y-4">
+                    <div class="flex items-start">
+                        <div class="bg-pink-100 rounded-full p-2 mr-3 mt-1">
+                            <span class="text-pink-600 font-bold text-sm">1</span>
+                        </div>
+                        <div>
+                            <p class="text-gray-700"><strong>Enter test number</strong></p>
+                            <p class="text-sm text-gray-600">Use any of the test phone numbers listed</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="bg-pink-100 rounded-full p-2 mr-3 mt-1">
+                            <span class="text-pink-600 font-bold text-sm">2</span>
+                        </div>
+                        <div>
+                            <p class="text-gray-700"><strong>No SMS sent</strong></p>
+                            <p class="text-sm text-gray-600">System detects test number and skips SMS</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="bg-pink-100 rounded-full p-2 mr-3 mt-1">
+                            <span class="text-pink-600 font-bold text-sm">3</span>
+                        </div>
+                        <div>
+                            <p class="text-gray-700"><strong>Enter code</strong></p>
+                            <p class="text-sm text-gray-600">Use the corresponding verification code</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="bg-pink-100 rounded-full p-2 mr-3 mt-1">
+                            <span class="text-pink-600 font-bold text-sm">4</span>
+                        </div>
+                        <div>
+                            <p class="text-gray-700"><strong>Verification success</strong></p>
+                            <p class="text-sm text-gray-600">Phone number verified without billing</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Testing Instructions -->
+        <div class="glass-card rounded-3xl p-8 max-w-4xl mx-auto mb-8">
+            <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">🧪 Testing Instructions</h3>
+            
+            <div class="grid md:grid-cols-2 gap-8">
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-700 mb-4">Via Vendor Profile Page</h4>
+                    <ol class="space-y-2 text-gray-600">
+                        <li class="flex items-start">
+                            <span class="bg-pink-200 text-pink-800 rounded-full px-2 py-1 text-xs font-medium mr-3 mt-0.5">1</span>
+                            Navigate to vendor profile page
+                        </li>
+                        <li class="flex items-start">
+                            <span class="bg-pink-200 text-pink-800 rounded-full px-2 py-1 text-xs font-medium mr-3 mt-0.5">2</span>
+                            Click "Verify Phone Number" button
+                        </li>
+                        <li class="flex items-start">
+                            <span class="bg-pink-200 text-pink-800 rounded-full px-2 py-1 text-xs font-medium mr-3 mt-0.5">3</span>
+                            Enter: <code class="bg-gray-100 px-2 py-1 rounded text-sm">+16505553434</code>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="bg-pink-200 text-pink-800 rounded-full px-2 py-1 text-xs font-medium mr-3 mt-0.5">4</span>
+                            Click "Send Code" (no SMS sent)
+                        </li>
+                        <li class="flex items-start">
+                            <span class="bg-pink-200 text-pink-800 rounded-full px-2 py-1 text-xs font-medium mr-3 mt-0.5">5</span>
+                            Enter code: <code class="bg-gray-100 px-2 py-1 rounded text-sm">123456</code>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="bg-pink-200 text-pink-800 rounded-full px-2 py-1 text-xs font-medium mr-3 mt-0.5">6</span>
+                            Verification complete! ✅
+                        </li>
+                    </ol>
+                </div>
+
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-700 mb-4">Console Output</h4>
+                    <div class="bg-gray-900 text-green-400 p-4 rounded-lg text-sm font-mono">
+                        <div>📱 Sending SMS verification to: +16505553434</div>
+                        <div>✅ Test phone number detected. Bypassing SMS sending.</div>
+                        <div>💡 Use verification code: 123456 for testing</div>
+                        <div>🔐 Verifying SMS code: 123456</div>
+                        <div>✅ Test phone number verified successfully</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Production Billing Info -->
+        <div class="glass-card rounded-3xl p-8 max-w-4xl mx-auto">
+            <div class="text-center mb-6">
+                <div class="bg-yellow-100 rounded-full p-4 inline-block mb-4">
+                    <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">For Production Use</h3>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6 text-center">
+                <div class="bg-white/30 rounded-xl p-6">
+                    <div class="text-3xl mb-3">🔥</div>
+                    <h4 class="font-semibold text-gray-700 mb-2">Enable Firebase Billing</h4>
+                    <p class="text-sm text-gray-600">Upgrade to Blaze plan in Firebase Console</p>
+                </div>
+                <div class="bg-white/30 rounded-xl p-6">
+                    <div class="text-3xl mb-3">💰</div>
+                    <h4 class="font-semibold text-gray-700 mb-2">SMS Pricing</h4>
+                    <p class="text-sm text-gray-600">~$0.01 per SMS (very affordable)</p>
+                </div>
+                <div class="bg-white/30 rounded-xl p-6">
+                    <div class="text-3xl mb-3">📱</div>
+                    <h4 class="font-semibold text-gray-700 mb-2">Real Phone Numbers</h4>
+                    <p class="text-sm text-gray-600">Users can verify with actual phone numbers</p>
+                </div>
+            </div>
+
+            <div class="mt-8 text-center">
+                <a href="https://console.firebase.google.com" target="_blank" class="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-full font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300 inline-block">
+                    Open Firebase Console →
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-12">
+            <p class="text-gray-600">
+                🎉 <strong>Wedding Bazaar</strong> - Test phone verification is now working!
+            </p>
+            <p class="text-sm text-gray-500 mt-2">
+                Check the browser console for detailed verification logs
+            </p>
+        </div>
+    </div>
+</body>
+</html>

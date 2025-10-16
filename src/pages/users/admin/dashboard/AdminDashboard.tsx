@@ -12,7 +12,8 @@ import {
   Star,
   ChevronRight,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Shield
 } from 'lucide-react';
 
 interface PlatformMetric {
@@ -349,6 +350,13 @@ export const AdminDashboard: React.FC = () => {
       icon: DollarSign,
       href: '/admin/finances',
       color: 'bg-rose-500'
+    },
+    {
+      title: 'Document Approval',
+      description: 'Review and approve vendor documents',
+      icon: Shield,
+      href: '/admin/documents',
+      color: 'bg-amber-500'
     }
   ];
 

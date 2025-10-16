@@ -32,6 +32,7 @@ import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { cn } from '../../../../utils/cn';
 import type { VendorProfile as VendorProfileType } from '../../../../services/api/vendorApiService';
 import { PhoneVerification } from '../../../../components/PhoneVerification';
+import { DocumentUploadComponent } from '../../../../components/DocumentUpload';
 
 export const VendorProfile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -40,9 +41,7 @@ export const VendorProfile: React.FC = () => {
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
 
   const [showPhoneVerification, setShowPhoneVerification] = useState(false);
-  const [uploadedDocuments, setUploadedDocuments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const documentInputRef = useRef<HTMLInputElement>(null);
   
   // Get real authenticated user data
   const { user } = useAuth();
@@ -153,44 +152,10 @@ export const VendorProfile: React.FC = () => {
     }
   };
 
-  const handleDocumentUpload = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    
-    const formData = new FormData();
-    Array.from(files).forEach((file, index) => {
-      formData.append(`document_${index}`, file);
-    });
-    formData.append('documentType', 'business_verification');
-
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      const response = await fetch(`${apiUrl}/api/vendor-profile/${vendorId}/documents`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        alert('✅ Documents uploaded successfully! They will be reviewed by our admin team.');
-        console.log('Document upload result:', result);
-        await refetch(); // Refresh profile data
-      } else {
-        const errorText = await response.text();
-        throw new Error(`Failed to upload documents: ${errorText}`);
-      }
-    } catch (error) {
-      console.error('Document upload error:', error);
-      alert('❌ Failed to upload documents. Please try again.');
-    }
-  };
-
   // Define constants and functions before early returns to avoid hook order issues
   const tabs = [
     { id: 'business', name: 'Business Info', icon: Users },
-    { id: 'verification', name: 'Verification', icon: Shield },
+    { id: 'verification', name: 'Verification & Documents', icon: Shield },
     { id: 'portfolio', name: 'Portfolio Settings', icon: Camera },
     { id: 'pricing', name: 'Pricing & Services', icon: DollarSign },
     { id: 'settings', name: 'Account Settings', icon: FileText }
@@ -1022,13 +987,16 @@ export const VendorProfile: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Phone Verification with Firebase */}
+                    {/* Phone Verification with Firebase (Optional) */}
                     <div className="space-y-6">
                       <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-8">
                         <div className="flex items-center justify-between mb-6">
                           <div className="flex items-center space-x-3">
                             <Phone className="w-6 h-6 text-green-600" />
-                            <h3 className="text-xl font-semibold text-gray-900">Phone Verification</h3>
+                            <h3 className="text-xl font-semibold text-gray-900">
+                              Phone Verification 
+                              <span className="text-sm font-normal text-gray-500 ml-2">(Optional)</span>
+                            </h3>
                           </div>
                           {profile?.phoneVerified ? (
                             <div className="flex items-center space-x-2 text-green-600">
@@ -1036,9 +1004,9 @@ export const VendorProfile: React.FC = () => {
                               <span className="font-medium">Verified</span>
                             </div>
                           ) : (
-                            <div className="flex items-center space-x-2 text-amber-600">
-                              <XCircle className="w-5 h-5" />
-                              <span className="font-medium">Not Verified</span>
+                            <div className="flex items-center space-x-2 text-gray-400">
+                              <Clock className="w-5 h-5" />
+                              <span className="font-medium">Optional</span>
                             </div>
                           )}
                         </div>
@@ -1047,7 +1015,7 @@ export const VendorProfile: React.FC = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                               <p className="text-gray-600 mb-4">
-                                Verify your phone number using Firebase SMS verification to allow customers to contact you directly and improve your profile credibility.
+                                <strong>Optional:</strong> Verify your phone number using Firebase SMS verification to allow customers to contact you directly and improve your profile credibility. This step is not required but recommended for better customer trust.
                               </p>
                               <div className="space-y-2">
                                 <p className="text-sm text-gray-500"><strong>Current Phone:</strong> {profile?.phone || 'Not provided'}</p>
@@ -1126,7 +1094,7 @@ export const VendorProfile: React.FC = () => {
                       <div className="space-y-6">
                         <div>
                           <p className="text-gray-600 mb-4">
-                            Upload your business registration documents for manual verification by our admin team. 
+                            Upload your business documents below for manual verification by our admin team. 
                             This helps build trust with customers and unlocks premium features.
                           </p>
                           
@@ -1150,32 +1118,15 @@ export const VendorProfile: React.FC = () => {
                               </ul>
                             </div>
                           </div>
-                        </div>
-                        
-                        {/* Document Upload Section */}
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                          <input
-                            ref={documentInputRef}
-                            type="file"
-                            multiple
-                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                            onChange={(e) => handleDocumentUpload(e.target.files)}
-                            className="hidden"
-                          />
-                          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                          <h4 className="text-lg font-medium text-gray-900 mb-2">Upload Business Documents</h4>
-                          <p className="text-gray-600 mb-4">
-                            Drag and drop files here or click to browse
-                          </p>
-                          <button
-                            onClick={() => documentInputRef.current?.click()}
-                            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                          >
-                            Choose Files
-                          </button>
-                          <p className="text-xs text-gray-500 mt-2">
-                            Supported formats: PDF, JPG, PNG, DOC, DOCX (Max 10MB per file)
-                          </p>
+                          
+                          {/* Document Upload Section */}
+                          <div className="space-y-4">
+                            <h4 className="font-medium text-gray-900">Upload Business Documents</h4>
+                            <DocumentUploadComponent 
+                              vendorId={vendorId}
+                              className="max-w-4xl"
+                            />
+                          </div>
                         </div>
 
                         {/* Verification Status */}
@@ -1186,14 +1137,9 @@ export const VendorProfile: React.FC = () => {
                               <p className="text-sm text-gray-600">
                                 <strong>Status:</strong> {profile.verification_status}
                               </p>
-                              {profile.verification_notes && (
+                              {profile.createdAt && (
                                 <p className="text-sm text-gray-600">
-                                  <strong>Admin Notes:</strong> {profile.verification_notes}
-                                </p>
-                              )}
-                              {profile.verified_at && (
-                                <p className="text-sm text-gray-600">
-                                  <strong>Verified On:</strong> {new Date(profile.verified_at).toLocaleDateString()}
+                                  <strong>Profile Created:</strong> {new Date(profile.createdAt).toLocaleDateString()}
                                 </p>
                               )}
                             </div>

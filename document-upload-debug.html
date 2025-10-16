@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Upload Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+        .test-results { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🐛 Document Upload Debug - Real User Session</h1>
+    <p>Testing document upload with the actual vendor ID from console logs</p>
+
+    <div class="test-section info">
+        <h3>Test Configuration</h3>
+        <p><strong>Backend URL:</strong> <span id="backendUrl">https://weddingbazaar-web.onrender.com</span></p>
+        <p><strong>Vendor ID:</strong> <span id="testVendorId">eb5c47b9-6442-4ded-8a9a-cd98bfb7bca1</span></p>
+        <p><strong>User ID:</strong> <span>2-2025-001</span></p>
+        <p><strong>Business Name:</strong> <span>nananananna</span></p>
+    </div>
+
+    <div class="test-section">
+        <h3>1. Test Exact Frontend Call</h3>
+        <button onclick="testExactFrontendCall()">Test Exact Frontend Call</button>
+        <div id="frontendResult" class="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Test Backend Health</h3>
+        <button onclick="testBackendHealth()">Check Backend Health</button>
+        <div id="healthResult" class="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Test Get Documents</h3>
+        <button onclick="testGetDocuments()">Get Existing Documents</button>
+        <div id="getDocsResult" class="test-results"></div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://weddingbazaar-web.onrender.com';
+        const VENDOR_ID = 'eb5c47b9-6442-4ded-8a9a-cd98bfb7bca1';
+
+        function showResult(elementId, success, message, data = null) {
+            const element = document.getElementById(elementId);
+            element.className = `test-results ${success ? 'success' : 'error'}`;
+            
+            let html = `<p><strong>${success ? '✅' : '❌'} ${message}</strong></p>`;
+            if (data) {
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            element.innerHTML = html;
+        }
+
+        async function testExactFrontendCall() {
+            try {
+                showResult('frontendResult', true, 'Testing exact frontend document save call...', null);
+                
+                // This mimics exactly what the frontend is doing after Cloudinary upload
+                const documentData = {
+                    documentType: 'business_license',
+                    documentName: 'test-debug-document.jpg',
+                    documentUrl: 'https://res.cloudinary.com/dht64xt1g/image/upload/v1760623855/vendor-documents/eb5c47b9-6442-4ded-8a9a-cd98bfb7bca1/iywup0448nget0egvngy.jpg',
+                    fileSize: 245760,
+                    mimeType: 'image/jpeg'
+                };
+
+                console.log('📄 Sending document data:', documentData);
+
+                const response = await fetch(`${BACKEND_URL}/api/vendor-profile/${VENDOR_ID}/documents`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(documentData)
+                });
+
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response headers:', [...response.headers.entries()]);
+
+                const result = await response.json();
+                console.log('📡 Response data:', result);
+                
+                if (response.ok && result.success) {
+                    showResult('frontendResult', true, 'Document save successful!', result);
+                } else {
+                    showResult('frontendResult', false, `Document save failed: ${result.message || result.error}`, result);
+                }
+                
+            } catch (error) {
+                console.error('❌ Frontend test error:', error);
+                showResult('frontendResult', false, `Frontend test error: ${error.message}`, { error: error.message, stack: error.stack });
+            }
+        }
+
+        async function testBackendHealth() {
+            try {
+                showResult('healthResult', true, 'Checking backend health...', null);
+                
+                const response = await fetch(`${BACKEND_URL}/api/health`);
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult('healthResult', true, 'Backend is healthy', result);
+                } else {
+                    showResult('healthResult', false, `Backend health check failed`, result);
+                }
+                
+            } catch (error) {
+                showResult('healthResult', false, `Health check error: ${error.message}`, { error: error.message });
+            }
+        }
+
+        async function testGetDocuments() {
+            try {
+                showResult('getDocsResult', true, 'Getting vendor documents...', null);
+                
+                const response = await fetch(`${BACKEND_URL}/api/vendor-profile/${VENDOR_ID}/documents`);
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    showResult('getDocsResult', true, `Found ${result.documents.length} documents`, result);
+                } else {
+                    showResult('getDocsResult', false, `Get documents failed: ${result.message || result.error}`, result);
+                }
+                
+            } catch (error) {
+                showResult('getDocsResult', false, `Get documents error: ${error.message}`, { error: error.message });
+            }
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            console.log('🐛 Document upload debug page loaded');
+            console.log('Backend URL:', BACKEND_URL);
+            console.log('Vendor ID:', VENDOR_ID);
+        };
+    </script>
+</body>
+</html>
