@@ -34,21 +34,35 @@ router.get('/', async (req, res) => {
     console.log('📊 [AdminAPI] Fetching all users for admin...');
 
     // Get all users
-    const users = await sql`
+    const usersRaw = await sql`
       SELECT 
         id,
         email,
         first_name,
         last_name,
         phone,
-        role,
-        status,
+        user_type,
         created_at,
-        last_login,
-        updated_at
+        updated_at,
+        email_verified,
+        phone_verified
       FROM users
       ORDER BY created_at DESC
     `;
+
+    // Transform users to match frontend expectations
+    const users = usersRaw.map(user => ({
+      id: user.id,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      phone: user.phone,
+      role: user.user_type === 'couple' ? 'individual' : user.user_type, // Map couple -> individual
+      status: user.email_verified ? 'active' : 'inactive', // Derive status from verification
+      created_at: user.created_at,
+      last_login: user.updated_at, // Use updated_at as last_login proxy
+      updated_at: user.updated_at
+    }));
 
     // Calculate stats
     const stats = {
@@ -91,12 +105,11 @@ router.get('/stats', async (req, res) => {
     const result = await sql`
       SELECT 
         COUNT(*) as total,
-        COUNT(*) FILTER (WHERE status = 'active') as active,
-        COUNT(*) FILTER (WHERE status = 'inactive') as inactive,
-        COUNT(*) FILTER (WHERE status = 'suspended') as suspended,
-        COUNT(*) FILTER (WHERE role = 'individual') as individuals,
-        COUNT(*) FILTER (WHERE role = 'vendor') as vendors,
-        COUNT(*) FILTER (WHERE role = 'admin') as admins
+        COUNT(*) FILTER (WHERE email_verified = true) as active,
+        COUNT(*) FILTER (WHERE email_verified = false) as inactive,
+        COUNT(*) FILTER (WHERE user_type = 'couple') as couples,
+        COUNT(*) FILTER (WHERE user_type = 'vendor') as vendors,
+        COUNT(*) FILTER (WHERE user_type = 'admin') as admins
       FROM users
     `;
 
@@ -108,9 +121,9 @@ router.get('/stats', async (req, res) => {
         total: parseInt(stats.total),
         active: parseInt(stats.active),
         inactive: parseInt(stats.inactive),
-        suspended: parseInt(stats.suspended),
+        suspended: 0, // Not tracked in current schema
         byRole: {
-          individual: parseInt(stats.individuals),
+          individual: parseInt(stats.couples), // Map couple -> individual
           vendor: parseInt(stats.vendors),
           admin: parseInt(stats.admins)
         }
@@ -141,11 +154,11 @@ router.get('/:id', async (req, res) => {
         first_name,
         last_name,
         phone,
-        role,
-        status,
+        user_type,
         created_at,
-        last_login,
-        updated_at
+        updated_at,
+        email_verified,
+        phone_verified
       FROM users
       WHERE id = ${id}
     `;
@@ -157,11 +170,25 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    console.log(`✅ [AdminAPI] Found user: ${result[0].email}`);
+    // Transform to match frontend expectations
+    const user = {
+      id: result[0].id,
+      email: result[0].email,
+      first_name: result[0].first_name,
+      last_name: result[0].last_name,
+      phone: result[0].phone,
+      role: result[0].user_type === 'couple' ? 'individual' : result[0].user_type,
+      status: result[0].email_verified ? 'active' : 'inactive',
+      created_at: result[0].created_at,
+      last_login: result[0].updated_at,
+      updated_at: result[0].updated_at
+    };
+
+    console.log(`✅ [AdminAPI] Found user: ${user.email}`);
 
     res.json({
       success: true,
-      user: result[0]
+      user
     });
 
   } catch (error) {
@@ -190,19 +217,40 @@ router.post('/', async (req, res) => {
       });
     }
 
-    console.log(`📊 [AdminAPI] Creating new user: ${email}`);
+    // Map frontend role to database user_type
+    const user_type = role === 'individual' ? 'couple' : role;
+
+    console.log(`📊 [AdminAPI] Creating new user: ${email} (role: ${role} -> user_type: ${user_type})`);
+
+    // Generate a random ID
+    const userId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    const bcrypt = require('bcrypt');
+    const hashedPassword = await bcrypt.hash(password || 'changeme', 10);
 
     const result = await sql`
-      INSERT INTO users (email, first_name, last_name, phone, role, password_hash, status)
-      VALUES (${email}, ${first_name}, ${last_name}, ${phone || null}, ${role}, ${password || 'changeme'}, 'active')
-      RETURNING id, email, first_name, last_name, phone, role, status, created_at
+      INSERT INTO users (id, email, first_name, last_name, phone, user_type, password, email_verified)
+      VALUES (${userId}, ${email}, ${first_name}, ${last_name}, ${phone || null}, ${user_type}, ${hashedPassword}, true)
+      RETURNING id, email, first_name, last_name, phone, user_type, created_at, email_verified
     `;
 
-    console.log(`✅ [AdminAPI] User created successfully: ${result[0].id}`);
+    // Transform response
+    const newUser = {
+      id: result[0].id,
+      email: result[0].email,
+      first_name: result[0].first_name,
+      last_name: result[0].last_name,
+      phone: result[0].phone,
+      role: result[0].user_type === 'couple' ? 'individual' : result[0].user_type,
+      status: result[0].email_verified ? 'active' : 'inactive',
+      created_at: result[0].created_at
+    };
+
+    console.log(`✅ [AdminAPI] User created successfully: ${newUser.id}`);
 
     res.status(201).json({
       success: true,
-      user: result[0]
+      user: newUser
     });
 
   } catch (error) {
@@ -238,17 +286,23 @@ router.patch('/:id', async (req, res) => {
     // For now, support specific fields
     const { first_name, last_name, phone, role, status } = updates;
 
+    // Map frontend role to database user_type
+    const user_type = role ? (role === 'individual' ? 'couple' : role) : undefined;
+    
+    // Map status to email_verified
+    const email_verified = status === 'active' ? true : (status === 'inactive' ? false : undefined);
+
     const result = await sql`
       UPDATE users
       SET 
         first_name = COALESCE(${first_name}, first_name),
         last_name = COALESCE(${last_name}, last_name),
         phone = COALESCE(${phone}, phone),
-        role = COALESCE(${role}, role),
-        status = COALESCE(${status}, status),
+        user_type = COALESCE(${user_type}, user_type),
+        email_verified = COALESCE(${email_verified}, email_verified),
         updated_at = NOW()
       WHERE id = ${id}
-      RETURNING id, email, first_name, last_name, phone, role, status, created_at, last_login, updated_at
+      RETURNING id, email, first_name, last_name, phone, user_type, created_at, updated_at, email_verified
     `;
 
     if (result.length === 0) {
@@ -258,11 +312,25 @@ router.patch('/:id', async (req, res) => {
       });
     }
 
+    // Transform response
+    const updatedUser = {
+      id: result[0].id,
+      email: result[0].email,
+      first_name: result[0].first_name,
+      last_name: result[0].last_name,
+      phone: result[0].phone,
+      role: result[0].user_type === 'couple' ? 'individual' : result[0].user_type,
+      status: result[0].email_verified ? 'active' : 'inactive',
+      created_at: result[0].created_at,
+      last_login: result[0].updated_at,
+      updated_at: result[0].updated_at
+    };
+
     console.log(`✅ [AdminAPI] User updated successfully: ${id}`);
 
     res.json({
       success: true,
-      user: result[0]
+      user: updatedUser
     });
 
   } catch (error) {
@@ -293,11 +361,14 @@ router.patch('/:id/status', async (req, res) => {
 
     console.log(`📊 [AdminAPI] Updating user status: ${id} -> ${status}`);
 
+    // Map status to email_verified (suspended not supported in current schema)
+    const email_verified = status === 'active';
+
     const result = await sql`
       UPDATE users
-      SET status = ${status}, updated_at = NOW()
+      SET email_verified = ${email_verified}, updated_at = NOW()
       WHERE id = ${id}
-      RETURNING id, email, first_name, last_name, role, status, updated_at
+      RETURNING id, email, first_name, last_name, user_type, email_verified, updated_at
     `;
 
     if (result.length === 0) {
@@ -307,11 +378,22 @@ router.patch('/:id/status', async (req, res) => {
       });
     }
 
+    // Transform response
+    const updatedUser = {
+      id: result[0].id,
+      email: result[0].email,
+      first_name: result[0].first_name,
+      last_name: result[0].last_name,
+      role: result[0].user_type === 'couple' ? 'individual' : result[0].user_type,
+      status: result[0].email_verified ? 'active' : 'inactive',
+      updated_at: result[0].updated_at
+    };
+
     console.log(`✅ [AdminAPI] User status updated: ${id} -> ${status}`);
 
     res.json({
       success: true,
-      user: result[0]
+      user: updatedUser
     });
 
   } catch (error) {
@@ -333,10 +415,10 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`📊 [AdminAPI] Deleting user: ${id}`);
 
-    // Soft delete by setting status to inactive
+    // Soft delete by setting email_verified to false
     const result = await sql`
       UPDATE users
-      SET status = 'inactive', updated_at = NOW()
+      SET email_verified = false, updated_at = NOW()
       WHERE id = ${id}
       RETURNING id, email
     `;
