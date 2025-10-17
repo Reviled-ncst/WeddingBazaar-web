@@ -639,20 +639,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       console.log('✅ Backend login successful:', data.user);
       
-      // Map backend user data to our User interface
-      const backendUser: User = {
-        id: data.user.id,
-        email: data.user.email,
-        firstName: data.user.firstName || data.user.first_name || '',
-        lastName: data.user.lastName || data.user.last_name || '',
-        role: data.user.userType === 'admin' ? 'admin' : 
-              data.user.userType === 'vendor' ? 'vendor' : 'couple',
-        emailVerified: data.user.emailVerified || false,
-        vendorId: data.user.vendorId || null,
-        phone: data.user.phone || '',
-        // Store JWT token for API calls
-        firebaseUid: data.token // Temporarily store JWT in firebaseUid field
-      };
+        // Map backend user data to our User interface
+        // Handle both 'role' and 'userType' field names from different backend endpoints
+        const getUserRole = (user: any): 'couple' | 'vendor' | 'admin' => {
+          const roleField = user.role || user.userType || user.user_type;
+          if (roleField === 'admin') return 'admin';
+          if (roleField === 'vendor') return 'vendor';
+          return 'couple';
+        };
+
+        const backendUser: User = {
+          id: data.user.id,
+          email: data.user.email,
+          firstName: data.user.firstName || data.user.first_name || '',
+          lastName: data.user.lastName || data.user.last_name || '',
+          role: getUserRole(data.user),
+          emailVerified: data.user.emailVerified || false,
+          vendorId: data.user.vendorId || null,
+          phone: data.user.phone || '',
+          // Store JWT token for API calls
+          firebaseUid: data.token // Temporarily store JWT in firebaseUid field
+        };
       
       // Store JWT token in localStorage for API authentication
       if (data.token) {

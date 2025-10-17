@@ -270,16 +270,18 @@ export class MessagingApiService {
 
 
 
-  // Send a new message
+  // Send a new message using the compatibility endpoint
   static async sendMessage(
     conversationId: string,
     content: string,
     senderId: string,
     senderName: string,
     senderType: 'couple' | 'vendor' | 'admin',
-    messageType: 'text' | 'image' | 'file' = 'text'
+    messageType: 'text' | 'image' | 'file' = 'text',
+    attachments?: Array<{url: string, fileName: string, fileType: string, fileSize: number}>
   ): Promise<Message> {
     try {
+      // Use the working /api/messages endpoint (compatibility endpoint)
       const response = await fetch(`${API_BASE}/messages`, {
         method: 'POST',
         headers: {
@@ -288,40 +290,21 @@ export class MessagingApiService {
         },
         body: JSON.stringify({
           conversationId,
-          content,
           senderId,
           senderName,
           senderType,
-          messageType
+          content,
+          messageType,
+          attachments: attachments || []
         }),
       });
       
       console.log('📤 Send message response status:', response.status);
       
-      // TEMPORARY FIX: If endpoint fails (404 or 500), create a mock message
       if (!response.ok) {
-        if (response.status === 404) {
-          console.warn('⚠️ [MessagingApiService] POST /messages endpoint not available (404), creating mock message');
-        } else if (response.status === 500) {
-          console.warn('⚠️ [MessagingApiService] POST /messages endpoint failed (500), creating mock message');
-        } else {
-          console.warn(`⚠️ [MessagingApiService] POST /messages endpoint failed (${response.status}), creating mock message`);
-        }
-        
-        // Create a mock message object that matches the expected format
-        const mockMessage: Message = {
-          id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
-          conversationId,
-          senderId,
-          senderName,
-          senderRole: senderType,
-          content,
-          timestamp: new Date().toISOString(),
-          type: messageType,
-        };
-        
-        console.log('✅ [MessagingApiService] Created mock message for UI:', mockMessage.id);
-        return mockMessage;
+        const errorText = await response.text();
+        console.error('❌ Send message failed:', response.status, errorText);
+        throw new Error(`Failed to send message: ${response.status} ${errorText}`);
       }
       
       const data: any = await response.json();
@@ -339,6 +322,7 @@ export class MessagingApiService {
           content,
           timestamp: data.timestamp,
           type: messageType,
+          attachments: attachments || []
         };
         console.log('✅ [MessagingApiService] Constructed message object:', message);
         return message;
@@ -355,6 +339,7 @@ export class MessagingApiService {
         content,
         timestamp: new Date().toISOString(),
         type: messageType,
+        attachments: attachments || []
       };
       
       return fallbackMessage;
@@ -371,6 +356,7 @@ export class MessagingApiService {
         content,
         timestamp: new Date().toISOString(),
         type: messageType,
+        attachments: attachments || []
       };
       
       console.log('✅ [MessagingApiService] Created fallback message after error:', fallbackMessage.id);

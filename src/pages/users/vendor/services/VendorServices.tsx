@@ -102,11 +102,11 @@ export const VendorServices: React.FC = () => {
   const [highlightedServiceId, setHighlightedServiceId] = useState<string | null>(null);
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
 
-  // Get current vendor ID from auth context with fallback
-  const vendorId = user?.id || getVendorIdForUser(user as any) || '2-2025-001';
+  // Get current vendor ID from auth context - no fallback for non-vendors
+  const vendorId = user?.role === 'vendor' ? (user?.id || getVendorIdForUser(user as any)) : null;
   
   // Use the same vendor profile hook as VendorProfile component
-  const { profile, refetch: refetchProfile } = useVendorProfile(vendorId);
+  const { profile, refetch: refetchProfile } = useVendorProfile(vendorId || '');
 
   // Get API base URL
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
@@ -583,6 +583,39 @@ export const VendorServices: React.FC = () => {
             <p className="text-xs text-gray-500 mt-2">Vendor ID: {vendorId}</p>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Handle case where user is not a vendor or no vendor ID available
+  if (!vendorId || user?.role !== 'vendor') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 relative">
+        <VendorHeader />
+        
+        <main className="pt-24 pb-12 relative z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center py-16">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-red-600 text-2xl">⚠️</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
+              <p className="text-gray-600 mb-6">
+                This page is only accessible to verified vendor accounts.
+              </p>
+              <div className="space-y-2 text-sm text-gray-500">
+                <p>Current user role: {user?.role || 'Not logged in'}</p>
+                <p>Vendor ID: {vendorId || 'None'}</p>
+              </div>
+              <button
+                onClick={() => window.history.back()}
+                className="mt-6 px-6 py-3 bg-rose-600 text-white rounded-xl hover:bg-rose-700 transition-colors"
+              >
+                Go Back
+              </button>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }

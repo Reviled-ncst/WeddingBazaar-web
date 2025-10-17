@@ -18,7 +18,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../../../utils/cn';
 import { CoupleHeader } from '../landing/CoupleHeader';
-import { useUnifiedMessaging } from '../../../../shared/contexts/UnifiedMessagingContext';
+import { useMessagingModal } from '../../../../shared/components/messaging';
 import { SERVICE_CATEGORIES } from '../../../../shared/services/CentralizedServiceManager';
 import { BookingRequestModal } from '../../../../modules/services/components/BookingRequestModal';
 import { DecisionSupportSystem } from './dss/DecisionSupportSystem';
@@ -126,7 +126,8 @@ export function Services() {
   const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<Service | null>(null);
   const [showDSS, setShowDSS] = useState(false);
   
-  const { createBusinessConversation, setModalOpen, setActiveConversation } = useUnifiedMessaging();
+  
+  const { openModal: openMessagingModal } = useMessagingModal();
 
   // Load services with enhanced data from multiple APIs
   useEffect(() => {
@@ -554,45 +555,56 @@ Best regards`;
   // Removed unused helper functions: handleQuickContact, handleCompareService, handleViewGallery
 
   const handleMessageVendor = async (service: Service) => {
-    console.log('🗨️ [Services] Starting conversation with vendor:', service.vendorName);
+    console.log('� [Services] =================== MESSAGE VENDOR BUTTON CLICKED ===================');
+    console.log('�🗨️ [Services] Starting conversation with vendor:', service.vendorName);
+    console.log('🔍 [Services] Service details:', {
+      serviceId: service.id,
+      serviceName: service.name,
+      vendorId: service.vendorId,
+      vendorName: service.vendorName,
+      category: service.category,
+      contactInfo: service.contactInfo
+    });
     
     try {
-      // Create a business conversation using the UnifiedMessaging context
-      const vendor = {
-        id: service.vendorId,
-        name: service.vendorName,
-        role: 'vendor' as const,
-        businessName: service.vendorName,
-        serviceCategory: service.category
+      console.log('📱 [Services] Preparing messaging modal data...');
+      const modalData = {
+        vendorId: service.vendorId,
+        vendorName: service.vendorName,
+        serviceName: service.name,
+        serviceCategory: service.category,
+        vendorInfo: {
+          id: service.vendorId,
+          name: service.vendorName,
+          businessName: service.vendorName,
+          category: service.category,
+          email: service.contactInfo.email,
+          phone: service.contactInfo.phone,
+          website: service.contactInfo.website,
+          image: service.vendorImage
+        },
+        serviceInfo: {
+          id: service.id,
+          name: service.name,
+          category: service.category,
+          description: service.description,
+          image: service.image
+        }
       };
-
-      // Create conversation name focused on the service
-      const conversationName = `${service.name} Inquiry`;
       
-      // Create conversation with service-specific context
-      const conversationId = await createBusinessConversation(
-        vendor.id, 
-        undefined, 
-        conversationName, 
-        service.vendorName
-      );
+      console.log('📤 [Services] Modal data prepared:', modalData);
+      console.log('🔄 [Services] Calling openMessagingModal...');
       
-      if (conversationId) {
-        console.log('✅ [Services] Service-focused conversation created:', conversationId);
-        
-        // Set the active conversation and open modal
-        setActiveConversation(conversationId);
-        setModalOpen(true);
-        
-        console.log('📱 [Services] Opening messaging modal for service conversation:', conversationId);
-        
-        // Show success message
-        console.log(`✅ [Services] Started conversation about "${service.name}" with ${service.vendorName}`);
-      } else {
-        throw new Error('Failed to create conversation');
-      }
+      // Use the new messaging modal system
+      await openMessagingModal(modalData);
+      
+      console.log('✅ [Services] =================== MESSAGE VENDOR SUCCESS ===================');
+      console.log('✅ [Services] Messaging modal opened successfully');
     } catch (error) {
-      console.error('❌ [Services] Error opening service conversation:', error);
+      console.error('❌ [Services] =================== MESSAGE VENDOR FAILED ===================');
+      console.error('❌ [Services] Error opening messaging modal:', error);
+      console.error('❌ [Services] Error details:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('❌ [Services] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       alert('Unable to start conversation at this time. Please try again later.');
     }
   };

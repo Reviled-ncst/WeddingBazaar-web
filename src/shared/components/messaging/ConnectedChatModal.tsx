@@ -37,27 +37,66 @@ export const ConnectedChatModal: React.FC<ConnectedChatModalProps> = ({
   // Load messages for active conversation (only when conversation changes)
   useEffect(() => {
     if (activeConversation?.id) {
-      console.log('🔄 [ConnectedChatModal] Loading messages for conversation:', activeConversation.id);
-      loadMessages(activeConversation.id);
+      console.log('🔄 [ConnectedChatModal] Loading messages for conversation:', {
+        conversationId: activeConversation.id,
+        conversationData: activeConversation,
+        loadMessagesFunction: typeof loadMessages
+      });
+      
+      // Ensure we have a valid loadMessages function
+      if (typeof loadMessages === 'function') {
+        loadMessages(activeConversation.id).catch(error => {
+          console.error('❌ [ConnectedChatModal] Failed to load messages:', error);
+        });
+      } else {
+        console.error('❌ [ConnectedChatModal] loadMessages is not a function:', loadMessages);
+      }
+    } else {
+      console.log('⚠️ [ConnectedChatModal] No active conversation to load messages for');
     }
-  }, [activeConversation?.id, loadMessages]); // Include loadMessages dependency
+  }, [activeConversation?.id, loadMessages]);
 
   const handleSendMessage = async () => {
     console.log('🔘 [ConnectedChatModal] Send button clicked!');
-    console.log('🔍 [ConnectedChatModal] Validation checks:', {
+    console.log('🔍 [ConnectedChatModal] Current state:', {
       hasMessage: !!newMessage.trim(),
+      messageContent: newMessage,
       hasConversation: !!activeConversation?.id,
+      conversationId: activeConversation?.id,
       notSending: !sending,
-      conversationId: activeConversation?.id
+      sendingState: sending,
+      userId: user?.id,
+      userEmail: user?.email,
+      activeConversation: activeConversation
     });
 
-    if (!newMessage.trim() || !activeConversation?.id || sending) {
-      console.warn('⚠️ [ConnectedChatModal] Send blocked by validation');
+    if (!newMessage.trim()) {
+      console.warn('⚠️ [ConnectedChatModal] No message content');
       return;
     }
 
-    console.log('📤 [ConnectedChatModal] Attempting to send message:', newMessage);
-    console.log('🎛️ [ConnectedChatModal] sendMessage function:', typeof sendMessage);
+    if (!activeConversation?.id) {
+      console.error('❌ [ConnectedChatModal] No active conversation ID');
+      alert('No conversation selected. Please try again.');
+      return;
+    }
+
+    if (sending) {
+      console.warn('⚠️ [ConnectedChatModal] Already sending a message');
+      return;
+    }
+
+    if (!user?.id) {
+      console.error('❌ [ConnectedChatModal] No user ID found');
+      alert('User not authenticated. Please log in again.');
+      return;
+    }
+
+    console.log('📤 [ConnectedChatModal] Attempting to send message:', {
+      conversationId: activeConversation.id,
+      message: newMessage.substring(0, 50) + (newMessage.length > 50 ? '...' : ''),
+      sendMessageFunction: typeof sendMessage
+    });
     
     try {
       await sendMessage(activeConversation.id, newMessage.trim());
@@ -65,7 +104,21 @@ export const ConnectedChatModal: React.FC<ConnectedChatModalProps> = ({
       console.log('✅ [ConnectedChatModal] Message sent successfully, input cleared');
     } catch (error) {
       console.error('❌ [ConnectedChatModal] Error sending message:', error);
-      alert('Failed to send message. Please try again.');
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('404')) {
+          alert('Messaging service not available. Please try again later.');
+        } else if (error.message.includes('Failed to fetch')) {
+          alert('Connection error. Please check your internet connection.');
+        } else if (error.message.includes('403') || error.message.includes('401')) {
+          alert('Authentication error. Please log in again.');
+        } else {
+          alert(`Failed to send message: ${error.message}`);
+        }
+      } else {
+        alert('Failed to send message. Please try again.');
+      }
     }
   };
 
@@ -79,12 +132,62 @@ export const ConnectedChatModal: React.FC<ConnectedChatModalProps> = ({
   // Get vendor name from active conversation
   const getVendorName = (): string => {
     if (activeConversation) {
-      // Get participant names from the conversation
-      const participantNames = Object.values(activeConversation.participantNames || {}) as string[];
-      // Find the name that's not the current user
-      return participantNames.find(name => name !== user?.name) || 'Vendor';
+      console.log('🔍 [ConnectedChatModal] Getting vendor name from conversation:', {
+        conversationId: activeConversation.id,
+        participantName: activeConversation.participant_name,
+        participantNames: activeConversation.participantNames,
+        creatorName: activeConversation.creator_name,
+        vendorBusinessName: activeConversation.vendor_business_name,
+        businessContext: activeConversation.businessContext,
+        currentUserId: user?.id,
+        currentUserName: user?.name,
+        currentUserEmail: user?.email
+      });
+
+      // Priority 1: Use participant_name from backend (most reliable)
+      if (activeConversation.participant_name && activeConversation.participant_name !== 'undefined') {
+        console.log('✅ [ConnectedChatModal] Using participant_name:', activeConversation.participant_name);
+        return activeConversation.participant_name;
+      }
+
+      // Priority 2: Use business context vendor name
+      if (activeConversation.businessContext?.vendorBusinessName) {
+        console.log('✅ [ConnectedChatModal] Using businessContext vendor name:', activeConversation.businessContext.vendorBusinessName);
+        return activeConversation.businessContext.vendorBusinessName;
+      }
+
+      // Priority 3: Use creator_name if it's not the current user
+      if (activeConversation.creator_name && activeConversation.creator_id !== user?.id) {
+        console.log('✅ [ConnectedChatModal] Using creator_name:', activeConversation.creator_name);
+        return activeConversation.creator_name;
+      }
+
+      // Priority 4: Try participantNames object (fallback)
+      if (activeConversation.participantNames) {
+        const participantNames = Object.values(activeConversation.participantNames) as string[];
+        const otherParticipant = participantNames.find(name => 
+          name !== user?.name && 
+          name !== user?.email && 
+          name !== 'undefined' && 
+          name && 
+          name.trim()
+        );
+        if (otherParticipant) {
+          console.log('✅ [ConnectedChatModal] Using participantNames:', otherParticipant);
+          return otherParticipant;
+        }
+      }
+
+      // Priority 5: Use service-based name
+      if (activeConversation.service_name) {
+        const serviceName = `${activeConversation.service_name} Provider`;
+        console.log('✅ [ConnectedChatModal] Using service-based name:', serviceName);
+        return serviceName;
+      }
+
+      console.log('⚠️ [ConnectedChatModal] No specific vendor name found, using default');
     }
-    return 'Vendor';
+    return 'Wedding Vendor';
   };
 
   const getVendorInitial = (): string => {
@@ -133,6 +236,21 @@ export const ConnectedChatModal: React.FC<ConnectedChatModalProps> = ({
                 Your conversation with {getVendorName()} has been created. <br/>
                 Send your first message about your wedding service needs!
               </p>
+              {/* Debug info for development */}
+              {process.env.NODE_ENV === 'development' && (
+                <details className="mt-4 text-xs text-gray-400">
+                  <summary>Debug Info</summary>
+                  <pre className="mt-2 text-left">
+                    {JSON.stringify({
+                      conversationId: activeConversation?.id,
+                      messagesLength: messages?.length,
+                      loading,
+                      vendorName: getVendorName(),
+                      userId: user?.id
+                    }, null, 2)}
+                  </pre>
+                </details>
+              )}
             </div>
           ) : (
             <>

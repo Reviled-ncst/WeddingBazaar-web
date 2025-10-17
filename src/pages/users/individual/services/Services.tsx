@@ -245,6 +245,10 @@ export const Services: React.FC = () => {
         const CentralizedServiceManager = (await import('../../../shared/services/CentralizedServiceManager')).CentralizedServiceManager;
         const serviceManager = CentralizedServiceManager.getInstance();
         
+        // 🧹 Force cache clear to get fresh vendor-enriched data
+        console.log('🧹 [IndividualServices] Clearing cache to ensure fresh vendor data');
+        serviceManager.forceClearCache();
+        
         const result = await serviceManager.getAllServices();
         
         if (result.success && result.services.length > 0) {
@@ -273,6 +277,18 @@ export const Services: React.FC = () => {
               website: service.website || service.business_website
             }
           }));
+
+          console.log('🎯 [IndividualServices] Sample mapped services:', mappedServices.slice(0, 2));
+          console.log('🎯 [IndividualServices] Checking business names:', mappedServices.map((s: any) => ({ id: s.id, name: s.name, vendorName: s.vendorName })));
+          
+          setServices(mappedServices);
+          // setOriginalServices(mappedServices); // Remove this line as setOriginalServices doesn't exist
+          setFilteredServices(mappedServices);
+          setLoading(false);
+          return;
+        }
+        
+        console.log('⚠️ [IndividualServices] Centralized manager returned empty - falling back to direct API calls');
 
         // Enhanced helper function to convert service to service format  
         const convertServiceToService = (service: any) => {
