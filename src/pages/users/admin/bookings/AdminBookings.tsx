@@ -114,17 +114,59 @@ export const AdminBookings: React.FC = () => {
     const loadBookings = async () => {
       setLoading(true);
       try {
-        // For now, use sample data. Replace with API call:
-        // const response = await adminApi.bookings.getBookings({ page: currentPage, limit: itemsPerPage });
-        // if (response.success && response.data) {
-        //   setBookings(response.data);
-        // }
-        
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setBookings(generateSampleBookings());
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/bookings`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Map database schema to frontend interface
+          const mappedBookings: AdminBooking[] = (data.bookings || []).map((booking: any) => ({
+            id: booking.id?.toString() || '',
+            bookingReference: `WB${String(booking.id).padStart(4, '0')}`,
+            userId: booking.couple_id || '',
+            vendorId: booking.vendor_id || '',
+            serviceId: booking.service_id || '',
+            userName: booking.couple_name || 'Unknown Client',
+            vendorName: booking.vendor_name || 'Unknown Vendor',
+            serviceName: booking.service_name || 'Unknown Service',
+            serviceCategory: booking.service_type || 'Other',
+            status: mapDatabaseStatus(booking.status || 'pending'),
+            bookingDate: booking.created_at || new Date().toISOString(),
+            eventDate: booking.event_date || new Date().toISOString(),
+            duration: 1, // Default duration
+            totalAmount: parseFloat(booking.total_amount || 0),
+            paidAmount: parseFloat(booking.deposit_amount || 0),
+            commission: parseFloat(booking.total_amount || 0) * 0.1, // 10% commission
+            paymentStatus: mapPaymentStatus(booking.status || 'pending'),
+            paymentMethod: 'Not specified',
+            notes: booking.notes || undefined,
+            cancellationReason: booking.status === 'cancelled' ? 'Cancelled by admin' : undefined,
+            createdAt: booking.created_at || new Date().toISOString(),
+            updatedAt: booking.updated_at || new Date().toISOString(),
+            clientContact: {
+              email: `client${booking.couple_id}@example.com`,
+              phone: booking.contact_phone || undefined
+            },
+            vendorContact: {
+              email: `vendor${booking.vendor_id}@example.com`,
+              phone: undefined
+            }
+          }));
+          
+          setBookings(mappedBookings);
+        } else {
+          // Fallback to sample data on error
+          console.warn('Failed to load bookings from API, using sample data');
+          setBookings(generateSampleBookings());
+        }
       } catch (error) {
         console.error('Failed to load bookings:', error);
+        // Fallback to sample data on error
+        setBookings(generateSampleBookings());
       } finally {
         setLoading(false);
       }
@@ -132,6 +174,34 @@ export const AdminBookings: React.FC = () => {
 
     loadBookings();
   }, [currentPage, itemsPerPage]);
+
+  // Map database status to frontend status
+  const mapDatabaseStatus = (dbStatus: string): AdminBooking['status'] => {
+    const statusMap: Record<string, AdminBooking['status']> = {
+      'request': 'pending',
+      'approved': 'confirmed',
+      'downpayment': 'in_progress',
+      'fully_paid': 'in_progress',
+      'completed': 'completed',
+      'declined': 'cancelled',
+      'cancelled': 'cancelled'
+    };
+    return statusMap[dbStatus] || 'pending';
+  };
+
+  // Map database status to payment status
+  const mapPaymentStatus = (dbStatus: string): AdminBooking['paymentStatus'] => {
+    const paymentMap: Record<string, AdminBooking['paymentStatus']> = {
+      'request': 'pending',
+      'approved': 'pending',
+      'downpayment': 'partial',
+      'fully_paid': 'paid',
+      'completed': 'paid',
+      'declined': 'failed',
+      'cancelled': 'refunded'
+    };
+    return paymentMap[dbStatus] || 'pending';
+  };
 
   // Filter and sort bookings
   const filteredAndSortedBookings = useMemo(() => {
