@@ -1,1 +1,1 @@
-export { default as UserManagement } from './UserManagement';
+export { UserManagement } from './UserManagement';
