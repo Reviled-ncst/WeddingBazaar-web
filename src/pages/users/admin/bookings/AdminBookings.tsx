@@ -21,7 +21,17 @@ import {
 } from 'lucide-react';
 import { AdminLayout } from '../shared';
 
-// Booking interface - will be updated to use adminApi types later
+/**
+ * Admin Bookings Management
+ * 
+ * Environment Configuration:
+ * - VITE_USE_MOCK_BOOKINGS=true  -> Use mock/sample data (75 bookings)
+ * - VITE_USE_MOCK_BOOKINGS=false -> Use real API data from backend
+ * 
+ * If not set or API fails, falls back to mock data automatically.
+ */
+
+// Booking interface - aligned with database schema
 interface AdminBooking {
   id: string;
   bookingReference: string;
@@ -113,7 +123,21 @@ export const AdminBookings: React.FC = () => {
   useEffect(() => {
     const loadBookings = async () => {
       setLoading(true);
+      
+      // Check if we should use mock data
+      const useMockData = import.meta.env.VITE_USE_MOCK_BOOKINGS === 'true';
+      
+      if (useMockData) {
+        console.log('📊 [AdminBookings] Using mock data (VITE_USE_MOCK_BOOKINGS=true)');
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 800));
+        setBookings(generateSampleBookings());
+        setLoading(false);
+        return;
+      }
+      
       try {
+        console.log('🌐 [AdminBookings] Fetching real data from API...');
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/bookings`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -122,6 +146,7 @@ export const AdminBookings: React.FC = () => {
 
         if (response.ok) {
           const data = await response.json();
+          console.log(`✅ [AdminBookings] Loaded ${data.bookings?.length || 0} bookings from API`);
           
           // Map database schema to frontend interface
           const mappedBookings: AdminBooking[] = (data.bookings || []).map((booking: any) => ({
@@ -159,13 +184,11 @@ export const AdminBookings: React.FC = () => {
           
           setBookings(mappedBookings);
         } else {
-          // Fallback to sample data on error
-          console.warn('Failed to load bookings from API, using sample data');
+          console.warn(`⚠️ [AdminBookings] API returned ${response.status}, falling back to mock data`);
           setBookings(generateSampleBookings());
         }
       } catch (error) {
-        console.error('Failed to load bookings:', error);
-        // Fallback to sample data on error
+        console.error('❌ [AdminBookings] API request failed, falling back to mock data:', error);
         setBookings(generateSampleBookings());
       } finally {
         setLoading(false);
