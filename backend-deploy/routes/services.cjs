@@ -34,15 +34,29 @@ router.get('/', async (req, res) => {
     
     console.log(`✅ Found ${services.length} services`);
     
-    // Step 2: Get vendor data separately and enrich services
+    // Step 2: Get per-service review stats from reviews table
     if (services.length > 0) {
       const vendorIds = [...new Set(services.map(s => s.vendor_id))];
+      const serviceIds = services.map(s => s.id);
       console.log('🏪 Getting vendor data for IDs:', vendorIds);
+      console.log('⭐ Calculating per-service review stats for:', serviceIds.length, 'services');
       
       // Get all relevant vendors in one query
-      const vendors = await sql`SELECT id, business_name, rating, review_count FROM vendors WHERE id = ANY(${vendorIds})`;
+      const vendors = await sql`SELECT id, business_name FROM vendors WHERE id = ANY(${vendorIds})`;
+      
+      // Get per-service review stats
+      const reviewStats = await sql`
+        SELECT 
+          service_id,
+          COALESCE(ROUND(AVG(rating)::numeric, 2), 0) as rating,
+          COALESCE(COUNT(id), 0) as review_count
+        FROM reviews
+        WHERE service_id = ANY(${serviceIds})
+        GROUP BY service_id
+      `;
       
       console.log(`✅ Found ${vendors.length} vendors`);
+      console.log(`✅ Calculated review stats for ${reviewStats.length} services`);
       
       // Create vendor lookup map
       const vendorMap = {};
@@ -50,14 +64,27 @@ router.get('/', async (req, res) => {
         vendorMap[vendor.id] = vendor;
       });
       
-      // Enrich services with vendor data
+      // Create review stats lookup map
+      const reviewMap = {};
+      reviewStats.forEach(stat => {
+        reviewMap[stat.service_id] = {
+          rating: parseFloat(stat.rating),
+          review_count: parseInt(stat.review_count)
+        };
+      });
+      
+      // Enrich services with vendor data AND per-service review stats
       services.forEach(service => {
         const vendor = vendorMap[service.vendor_id];
+        const reviews = reviewMap[service.id] || { rating: 0, review_count: 0 };
+        
         if (vendor) {
           service.vendor_business_name = vendor.business_name;
-          service.vendor_rating = vendor.rating;
-          service.vendor_review_count = vendor.review_count;
         }
+        
+        // ✅ Per-service review stats (not vendor totals!)
+        service.vendor_rating = reviews.rating;
+        service.vendor_review_count = reviews.review_count;
       });
       
       console.log('🎯 Sample enriched service:', {
