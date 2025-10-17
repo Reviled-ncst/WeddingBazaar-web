@@ -1,0 +1,8 @@
+# Backend Deployment Trigger
+# Updated: 2025-10-17T03:27:02.171Z
+# Reason: Service enrichment with vendor data support
+# Changes: Enhanced services endpoint with vendor joins
+
+DEPLOYMENT_TRIGGER_TIME=1760671622172
+FEATURE=service_enrichment_with_vendor_data
+STATUS=ready_for_deploy
