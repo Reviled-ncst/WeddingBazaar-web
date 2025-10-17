@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Logging Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .status { padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 10px 10px 0;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #007bff;
+        }
+        .log-entry {
+            padding: 8px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-left: 3px solid #28a745;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        #logOutput {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #fff;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Service Logging Test Page</h1>
+        
+        <div class="status info">
+            <strong>Instructions:</strong>
+            <ol>
+                <li>Open your browser's DevTools (F12)</li>
+                <li>Go to the Console tab</li>
+                <li>Click the "Test Service Loading" button</li>
+                <li>Watch for logs in the console</li>
+            </ol>
+        </div>
+
+        <button onclick="testServiceLoading()">🚀 Test Service Loading</button>
+        <button onclick="testVendorMapping()">👥 Test Vendor Mapping</button>
+        <button onclick="clearLogs()">🗑️ Clear Logs</button>
+        
+        <h2>📊 Log Output:</h2>
+        <div id="logOutput"></div>
+
+        <h2>📋 What to Look For in Console:</h2>
+        <pre>
+🚀 [Services] *** LOADING ENHANCED SERVICES ***
+📋 [Services] Loading services with vendor data...
+🌐 [Services] Fetching from APIs: { ... }
+📡 [Services] API Response Status: { ... }
+📦 [Services] Raw API Response - Services: { ... }
+👥 [Services] Raw API Response - Vendors: { ... }
+🗺️ [Services] Building vendor lookup map...
+  ➕ Added vendor to map: { ... }
+🔄 [Services] Starting enhancement for X services
+📋 [Services] [1/X] Service: { ... }
+📊 [Services] Final data for service: { ... }
+✅ [Services] Enhanced services created: { ... }
+        </pre>
+    </div>
+
+    <script>
+        const logOutput = document.getElementById('logOutput');
+        
+        function addLog(message, data = null) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.textContent = data ? `${message} ${JSON.stringify(data, null, 2)}` : message;
+            logOutput.appendChild(logEntry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+
+        function clearLogs() {
+            logOutput.innerHTML = '';
+            console.clear();
+            addLog('🗑️ Logs cleared');
+        }
+
+        async function testServiceLoading() {
+            console.log('🚀 [TEST] *** STARTING SERVICE LOAD TEST ***');
+            addLog('🚀 [TEST] Starting service load test...');
+            
+            try {
+                // Test 1: Fetch Services
+                console.log('📋 [TEST] Fetching services from API...');
+                addLog('📋 [TEST] Fetching services from API...');
+                
+                const servicesResponse = await fetch('https://weddingbazaar-web.onrender.com/api/services');
+                console.log('📡 [TEST] Services API Status:', servicesResponse.status, servicesResponse.ok);
+                addLog(`📡 [TEST] Services API Status: ${servicesResponse.status}`);
+                
+                const servicesData = await servicesResponse.json();
+                console.log('📦 [TEST] Raw Services Data:', servicesData);
+                addLog(`📦 [TEST] Services Count: ${servicesData.services?.length || 0}`);
+                
+                if (servicesData.services && servicesData.services.length > 0) {
+                    const firstService = servicesData.services[0];
+                    console.log('🔍 [TEST] First Service:', {
+                        id: firstService.id,
+                        name: firstService.name,
+                        category: firstService.category,
+                        vendor_id: firstService.vendor_id
+                    });
+                    addLog(`🔍 [TEST] First Service: ${firstService.name} (${firstService.category})`);
+                }
+                
+                // Test 2: Fetch Vendors
+                console.log('👥 [TEST] Fetching vendors from API...');
+                addLog('👥 [TEST] Fetching vendors from API...');
+                
+                const vendorsResponse = await fetch('https://weddingbazaar-web.onrender.com/api/vendors/featured');
+                console.log('📡 [TEST] Vendors API Status:', vendorsResponse.status, vendorsResponse.ok);
+                addLog(`📡 [TEST] Vendors API Status: ${vendorsResponse.status}`);
+                
+                const vendorsData = await vendorsResponse.json();
+                console.log('👥 [TEST] Raw Vendors Data:', vendorsData);
+                addLog(`👥 [TEST] Vendors Count: ${vendorsData.vendors?.length || 0}`);
+                
+                if (vendorsData.vendors && vendorsData.vendors.length > 0) {
+                    vendorsData.vendors.forEach((vendor, index) => {
+                        console.log(`  ➕ [TEST] Vendor ${index + 1}:`, {
+                            id: vendor.id,
+                            name: vendor.name,
+                            rating: vendor.rating,
+                            ratingType: typeof vendor.rating,
+                            review_count: vendor.review_count,
+                            reviewCountType: typeof vendor.review_count
+                        });
+                        addLog(`  ➕ [TEST] ${vendor.name}: ${vendor.rating}⭐ (${vendor.review_count} reviews)`);
+                    });
+                }
+                
+                console.log('✅ [TEST] Service load test complete!');
+                addLog('✅ [TEST] Test complete! Check console for detailed logs.');
+                
+            } catch (error) {
+                console.error('❌ [TEST] Error:', error);
+                addLog(`❌ [TEST] Error: ${error.message}`);
+            }
+        }
+
+        async function testVendorMapping() {
+            console.log('🗺️ [TEST] *** STARTING VENDOR MAPPING TEST ***');
+            addLog('🗺️ [TEST] Starting vendor mapping test...');
+            
+            try {
+                const [servicesResponse, vendorsResponse] = await Promise.all([
+                    fetch('https://weddingbazaar-web.onrender.com/api/services'),
+                    fetch('https://weddingbazaar-web.onrender.com/api/vendors/featured')
+                ]);
+                
+                const servicesData = await servicesResponse.json();
+                const vendorsData = await vendorsResponse.json();
+                
+                // Create vendor map
+                const vendorMap = new Map();
+                if (vendorsData.vendors) {
+                    vendorsData.vendors.forEach(vendor => {
+                        vendorMap.set(vendor.id, vendor);
+                        console.log('  ➕ [TEST] Added to map:', vendor.id, '→', vendor.name);
+                    });
+                }
+                
+                console.log('🗺️ [TEST] Vendor map created with', vendorMap.size, 'vendors');
+                addLog(`🗺️ [TEST] Vendor map created with ${vendorMap.size} vendors`);
+                
+                // Test mapping
+                if (servicesData.services) {
+                    servicesData.services.forEach((service, index) => {
+                        const vendor = vendorMap.get(service.vendor_id);
+                        console.log(`📋 [TEST] [${index + 1}/${servicesData.services.length}] Service:`, {
+                            serviceId: service.id,
+                            serviceName: service.name,
+                            vendorId: service.vendor_id,
+                            vendorFound: !!vendor,
+                            vendorName: vendor?.name || 'N/A',
+                            rating: vendor?.rating || 0,
+                            reviewCount: vendor?.review_count || 0
+                        });
+                        
+                        const status = vendor ? '✅' : '⚠️';
+                        addLog(`${status} [TEST] ${service.name} → ${vendor?.name || 'No vendor'} (${vendor?.rating || 0}⭐)`);
+                    });
+                }
+                
+                console.log('✅ [TEST] Vendor mapping test complete!');
+                addLog('✅ [TEST] Vendor mapping test complete!');
+                
+            } catch (error) {
+                console.error('❌ [TEST] Error:', error);
+                addLog(`❌ [TEST] Error: ${error.message}`);
+            }
+        }
+
+        // Auto-run on load
+        addLog('🎯 [TEST] Page loaded. Click buttons to test or check console.');
+        console.log('🎯 [TEST] Service Logging Test Page Loaded');
+        console.log('💡 [TEST] Click the buttons to run tests and check console output');
+    </script>
+</body>
+</html>

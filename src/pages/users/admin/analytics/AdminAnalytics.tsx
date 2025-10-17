@@ -94,7 +94,7 @@ export const AdminAnalytics: React.FC = () => {
   // ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50/30 via-pink-50/20 to-white">
+    <div className="min-h-screen bg-slate-50">
       <AdminHeader />
       
       <main className="pt-24 pb-12">

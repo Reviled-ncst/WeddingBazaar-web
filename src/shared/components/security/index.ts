@@ -1,8 +1,10 @@
 export { EmailVerification } from './EmailVerification';
 export { PhoneVerification } from './PhoneVerification';
 export { SecuritySettings } from './SecuritySettings';
+export { DocumentUploader, type ExtractedDocumentData } from './DocumentUploader';
 
-// Face recognition will be available once face-api.js is installed
+// Face recognition available (face-api.js already installed)
+// Temporarily commented out for build - face-api.js dependency issue
 // export { FaceRecognitionVerification } from './FaceRecognitionVerification';
 
 export type VerificationType = 'email' | 'phone' | 'face';
