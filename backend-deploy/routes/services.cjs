@@ -42,18 +42,13 @@ router.get('/', async (req, res) => {
   try {
     const { vendorId, category, limit = 50, offset = 0 } = req.query;
     
-    // Enhanced query with vendor data join
+    // Enhanced query with vendor data join - Fixed for actual DB schema
     let query = `
       SELECT 
         s.*,
         v.name as vendor_business_name,
-        v.business_name as vendor_business_name_alt,
         v.rating as vendor_rating,
-        v.review_count as vendor_review_count,
-        v.profile_image as vendor_profile_image,
-        v.website_url as vendor_website_url,
-        v.business_type as vendor_business_type,
-        v.location as vendor_location
+        v.review_count as vendor_review_count
       FROM services s
       LEFT JOIN vendors v ON s.vendor_id = v.id
       WHERE s.is_active = true
