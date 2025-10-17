@@ -6,8 +6,22 @@
 const express = require('express');
 const router = express.Router();
 
-// Import admin modules
-const usersRoutes = require('./users.cjs');
+// Import admin modules with error handling
+let usersRoutes;
+try {
+  console.log('🔍 Loading admin users routes...');
+  usersRoutes = require('./users.cjs');
+  console.log('✅ Users routes loaded successfully');
+  console.log('   - Type:', typeof usersRoutes);
+  console.log('   - Is router:', usersRoutes?.stack !== undefined);
+  
+  if (!usersRoutes || typeof usersRoutes !== 'function') {
+    throw new Error('Users routes did not export a valid Express router');
+  }
+} catch (error) {
+  console.error('❌ Failed to load admin users routes:', error);
+  throw error;
+}
 
 // Mount routes
 router.use('/users', usersRoutes);

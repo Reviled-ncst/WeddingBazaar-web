@@ -5,7 +5,24 @@
  */
 
 const express = require('express');
-const { sql } = require('../../config/database.cjs');
+
+// Import database with error handling
+let sql;
+try {
+  console.log('🔍 Loading database module for admin users...');
+  const dbModule = require('../../config/database.cjs');
+  sql = dbModule.sql;
+  console.log('✅ Database module loaded successfully');
+  console.log('   - sql type:', typeof sql);
+  
+  if (!sql || typeof sql !== 'function') {
+    throw new Error('Database module did not export a valid sql function');
+  }
+} catch (error) {
+  console.error('❌ Failed to load database module:', error);
+  throw error;
+}
+
 const router = express.Router();
 
 /**
