@@ -52,8 +52,13 @@ app.use(express.urlencoded({ extended: true }));
 
 // Import route modules
 const verificationRoutes = require('./routes/verification.cjs');
+const adminRoutes = require('./routes/admin/index.cjs');
+
+// Make db available to routes
+app.set('db', db);
 
 // Register API routes
+app.use('/api/admin', adminRoutes);
 app.use('/api/verification', verificationRoutes);
 
 // Health check endpoint

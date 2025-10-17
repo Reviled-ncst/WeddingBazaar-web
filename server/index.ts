@@ -26,6 +26,7 @@ import messagingRoutes from '../backend/api/messaging/routes';
 import subscriptionRoutes from '../backend/api/subscriptions/routes';
 import paymentRoutes from '../backend/api/payment/routes';
 import dssRoutes from '../backend/api/dss/routes';
+import adminRoutes from '../backend/src/api/admin/index';
 
 // Debug imports
 console.log('📦 Enhanced booking routes import type:', typeof enhancedBookingRoutes);
@@ -276,6 +277,10 @@ app.get('/api/conversations/individual/:userId', async (req, res) => {
   }
 });
 
+// Admin routes (must be registered before other routes to avoid conflicts)
+app.use('/api/admin', adminRoutes);
+
+// Core API routes
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/dss', dssRoutes);
 app.use('/api/bookings/enhanced', enhancedBookingRoutes);
