@@ -30,57 +30,26 @@ export const GlobalFloatingChat: React.FC = () => {
   
   const [message, setMessage] = useState('');
   const [showConversationList, setShowConversationList] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const activeConversation = getActiveConversation();
-  const isVendorTyping = activeConversation?.isTyping || false;
+  // Fixed: Use activeConversation from context, not undefined function
+  const isVendorTyping = false; // Remove typing simulation for now
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeConversation?.messages]);
+  }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!message.trim() || !activeConversationId) return;
+    if (!message.trim() || !activeConversation?.id) return;
 
     try {
-      await addMessage(activeConversationId, {
-        text: message,
-        sender: 'user',
-        timestamp: new Date()
-      });
-
+      // Use the unified sendMessage method from context
+      await sendMessage(activeConversation.id, message.trim());
       setMessage('');
-
-      // Show typing indicator
-      setTypingStatus(activeConversationId, true);
-
-      // Simulate vendor response
-      setTimeout(async () => {
-        setTypingStatus(activeConversationId, false);
-        
-        const responses = [
-          "That's a great question! Let me get back to you with those details.",
-          "I'd be happy to help with that. When are you planning your event?",
-          "Absolutely! I can provide more information about that service.",
-          "Thank you for reaching out. I'll send you a detailed proposal soon."
-        ];
-        
-        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-        
-        try {
-          await addMessage(activeConversationId, {
-            text: randomResponse,
-            sender: 'vendor',
-            timestamp: new Date()
-          });
-        } catch (error) {
-          console.error('Failed to send vendor response:', error);
-        }
-      }, 1500);
     } catch (error) {
       console.error('Failed to send message:', error);
-      // You might want to show an error message to the user here
     }
   };
 

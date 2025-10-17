@@ -1,8 +1,8 @@
 # Backend Deployment Trigger
-# Updated: 2025-10-17T03:27:02.171Z
-# Reason: Service enrichment with vendor data support
-# Changes: Enhanced services endpoint with vendor joins
+# Updated: 2025-10-17T04:01:00.000Z
+# Reason: Fixed database column name issue (business_name vs name)
+# Changes: Corrected services endpoint vendor enrichment query
 
-DEPLOYMENT_TRIGGER_TIME=1760671622172
-FEATURE=service_enrichment_with_vendor_data
+DEPLOYMENT_TRIGGER_TIME=1760671622173
+FEATURE=fixed_vendor_enrichment_column_names
 STATUS=ready_for_deploy

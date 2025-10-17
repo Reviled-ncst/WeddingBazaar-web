@@ -7,7 +7,7 @@ export interface Message {
   content: string;
   timestamp: string | Date; // API returns string, but we might convert to Date
   type?: 'text' | 'image' | 'file';
-  attachments?: string[];
+  attachments?: Array<{url: string, fileName: string, fileType: string, fileSize: number}>;
   isRead?: boolean;
 }
 

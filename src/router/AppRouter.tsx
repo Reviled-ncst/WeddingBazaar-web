@@ -76,6 +76,7 @@ import { SubscriptionProvider } from '../shared/contexts/SubscriptionContext';
 // Universal Messaging System
 import { UnifiedMessagingProvider } from '../shared/contexts/UnifiedMessagingContext';
 import { GlobalFloatingChatButton } from '../shared/components/messaging/GlobalFloatingChatButton';
+import { MessagingModalConnector } from '../shared/components/messaging';
 
 // Notification System
 import { NotificationProvider } from '../shared/components/notifications/NotificationProvider';
@@ -89,7 +90,8 @@ export const AppRouter: React.FC = () => {
       <SubscriptionProvider>
         <NotificationProvider>
           <UnifiedMessagingProvider>
-          <Router>
+            <MessagingModalConnector>
+              <Router>
           <div className="min-h-screen flex flex-col">
             <Routes>
               {/* Public Homepage - redirect to user's landing page if authenticated */}
@@ -412,6 +414,7 @@ export const AppRouter: React.FC = () => {
           <GlobalFloatingChatButton />
         </div>
       </Router>
+            </MessagingModalConnector>
           </UnifiedMessagingProvider>
         </NotificationProvider>
       </SubscriptionProvider>

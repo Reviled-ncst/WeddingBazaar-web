@@ -39,43 +39,25 @@ export const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
     console.log('🔧 [RoleProtectedRoute] User keys:', Object.keys(user || {}));
     console.log('🔧 [RoleProtectedRoute] User.role specifically:', user.role, 'type:', typeof user.role);
     
-    // Enhanced vendor detection with detailed logging
-    const hasBusinessName = !!user?.businessName;
-    const hasVendorId = !!user?.vendorId;
-    const hasVendorIdPattern = user?.id && user.id.startsWith('2-2025-');
-    const hasVendorEmailPattern = user?.email && (
-      user.email.includes('vendor') || 
-      user.email.includes('business') || 
-      user.email.includes('company')
-    );
-    const isVendorByProperties = hasBusinessName || hasVendorId || hasVendorIdPattern || hasVendorEmailPattern;
-    
-    // Determine actual user role with fallback logic
+    // Determine actual user role - trust the backend role field
     let actualRole = user.role;
     
-    // SAFETY: If role is missing but user has vendor properties, set as vendor
-    if (!actualRole && isVendorByProperties) {
-      actualRole = 'vendor';
-      console.log('🔧 [RoleProtectedRoute] Role missing, detected vendor by properties');
-    }
-    
-    // SAFETY: If role is still missing, check for user_type field (backend inconsistency)
+    // SAFETY: If role is missing, check for user_type field (backend inconsistency)
     if (!actualRole && (user as any).user_type) {
       actualRole = (user as any).user_type;
       console.log('🔧 [RoleProtectedRoute] Using user_type field:', actualRole);
     }
     
-    // Apply vendor detection override
-    if (isVendorByProperties && actualRole !== 'vendor') {
-      actualRole = 'vendor';
-      console.log('🔧 [RoleProtectedRoute] Override role to vendor based on properties');
+    // SAFETY: If role is still missing, use 'couple' as default
+    if (!actualRole) {
+      actualRole = 'couple';
+      console.log('🔧 [RoleProtectedRoute] No role found, defaulting to couple');
     }
-    
+
     console.log('🔒 [RoleProtectedRoute] Role check:', {
       requestedRoles: allowedRoles,
       userRole: user.role,
       actualRole,
-      isVendorByProperties,
       allowed: allowedRoles.includes(actualRole)
     });
     

@@ -870,6 +870,11 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
             setSubmitStatus('success');
             setShowSuccessModal(true);
             
+            console.log('🎉 [BookingModal] SUCCESS MODAL STATE UPDATED:');
+            console.log('   showSuccessModal:', true);
+            console.log('   successBookingData:', successData);
+            console.log('   submitStatus:', 'success');
+            
             // Don't close immediately - let BookingSuccessModal handle the lifecycle
             onBookingCreated?.(bookingData);
             
@@ -1070,19 +1075,27 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
 
   // Render success modal instead if booking was successful
   if (showSuccessModal && successBookingData) {
+    console.log('🚀 [BookingModal] RENDERING SUCCESS MODAL');
+    console.log('   showSuccessModal:', showSuccessModal);
+    console.log('   successBookingData:', successBookingData);
+    
     return (
       <BookingSuccessModal
         isOpen={showSuccessModal}
         onClose={() => {
+          console.log('🚪 [BookingModal] Success modal closed');
           setShowSuccessModal(false);
           setSuccessBookingData(null);
           resetForm();
+          onClose(); // Also close the main modal
         }}
         bookingData={successBookingData}
         onViewBookings={() => {
+          console.log('📋 [BookingModal] Navigating to bookings from success modal');
           setShowSuccessModal(false);
           setSuccessBookingData(null);
           resetForm();
+          onClose(); // Close the main modal first
           // Navigate to bookings page - you can add navigation logic here
           window.location.href = '/individual/bookings';
         }}
@@ -1202,6 +1215,14 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
       </div>
     );
   }
+
+  console.log('🎭 [BookingModal] MAIN MODAL RENDER - State check:');
+  console.log('   isOpen:', isOpen);
+  console.log('   showSuccessModal:', showSuccessModal);
+  console.log('   successBookingData:', !!successBookingData);
+  console.log('   submitStatus:', submitStatus);
+  console.log('   checkingExisting:', checkingExisting);
+  console.log('   existingBooking:', !!existingBooking);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-[90] animate-in fade-in duration-200">

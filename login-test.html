@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Test - Wedding Bazaar</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test-section { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .result { background: #e8f5e9; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e9; color: #2e7d32; }
+        .info { background: #e3f2fd; color: #1565c0; }
+        button { background: #1976d2; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #1565c0; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; width: 250px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Login Authentication Test</h1>
+    <p>Testing login flow to verify correct user role assignment</p>
+
+    <div class="test-section">
+        <h3>Test Login with Different User Types</h3>
+        
+        <div>
+            <h4>Test 1: Vendor Login</h4>
+            <input type="email" id="vendorEmail" placeholder="Vendor Email" value="renzrusselbauto@gmail.com">
+            <input type="password" id="vendorPassword" placeholder="Password" value="">
+            <button onclick="testLogin('vendor')">Login as Vendor</button>
+            <div id="vendorResult" class="result"></div>
+        </div>
+
+        <div>
+            <h4>Test 2: Couple Login</h4>
+            <input type="email" id="coupleEmail" placeholder="Couple Email" value="testcouple@example.com">
+            <input type="password" id="couplePassword" placeholder="Password" value="testpass123">
+            <button onclick="testLogin('couple')">Login as Couple</button>
+            <div id="coupleResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>Backend API Profile Test</h3>
+        <button onclick="testBackendProfile('renzrusselbauto@gmail.com')">Test Vendor Profile API</button>
+        <button onclick="testBackendProfile('testcouple@example.com')">Test Couple Profile API</button>
+        <div id="backendResult" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://weddingbazaar-web.onrender.com';
+
+        async function testLogin(userType) {
+            const emailId = userType + 'Email';
+            const passwordId = userType + 'Password';
+            const resultId = userType + 'Result';
+            
+            const email = document.getElementById(emailId).value;
+            const password = document.getElementById(passwordId).value;
+            const resultDiv = document.getElementById(resultId);
+
+            resultDiv.innerHTML = '<p class="info">🔄 Testing login...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Login successful!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <p><strong>User Role:</strong> ${data.user?.role || data.user?.user_type || 'Unknown'}</p>
+                        <p><strong>User ID:</strong> ${data.user?.id}</p>
+                        <p><strong>Expected:</strong> ${userType}</p>
+                        <p><strong>Match:</strong> ${(data.user?.role === userType || data.user?.user_type === userType) ? '✅ CORRECT' : '❌ MISMATCH'}</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="error">❌ Login failed</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Network error: ${error.message}</p>
+                `;
+            }
+        }
+
+        async function testBackendProfile(email) {
+            const resultDiv = document.getElementById('backendResult');
+            resultDiv.innerHTML = '<p class="info">🔄 Testing backend profile...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/profile?email=${encodeURIComponent(email)}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-user-email': email
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Profile found!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <p><strong>Email:</strong> ${email}</p>
+                        <p><strong>Role:</strong> ${data.user?.role}</p>
+                        <p><strong>User ID:</strong> ${data.user?.id}</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="error">❌ Profile not found</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Network error: ${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

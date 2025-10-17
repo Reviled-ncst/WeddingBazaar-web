@@ -3,6 +3,8 @@
  * Handles all service operations with business rules, vendor permissions, and data consistency
  */
 
+import { ReviewApiService } from '../../services/api/reviewApiService';
+
 // Temporary fix for module resolution issues - define Service interface locally
 interface Service {
   id: string;
@@ -374,9 +376,29 @@ export class CentralizedServiceManager {
                   price: s.price || s.price_range
                 })));
                 
-                // Map services/vendors to frontend format
+                // 🔄 ENHANCED: Fetch vendors data to enrich services with business names and ratings
+                let vendorsData = null;
+                try {
+                  console.log(`🏪 [ServiceManager] Fetching vendors data to enrich services...`);
+                  const vendorsResponse = await fetch(`${this.apiUrl}/api/vendors`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: { 'Content-Type': 'application/json' }
+                  });
+                  if (vendorsResponse.ok) {
+                    const vendorsJson = await vendorsResponse.json();
+                    vendorsData = vendorsJson.vendors || [];
+                    console.log(`✅ [ServiceManager] Fetched ${vendorsData.length} vendors for enrichment`);
+                  } else {
+                    console.warn(`⚠️ [ServiceManager] Failed to fetch vendors: ${vendorsResponse.status}`);
+                  }
+                } catch (vendorError) {
+                  console.warn(`⚠️ [ServiceManager] Error fetching vendors:`, vendorError);
+                }
+                
+                // Map services/vendors to frontend format with vendor enrichment
                 const mappedServices = servicesArray.map((service: any) => 
-                  this.mapDatabaseServiceToFrontend(service)
+                  this.mapDatabaseServiceToFrontend(service, vendorsData)
                 );
 
               console.log(`🔄 [ServiceManager] Mapped ${mappedServices.length} services to frontend format`);
@@ -855,7 +877,7 @@ export class CentralizedServiceManager {
   }
 
   // Utility Methods
-  private mapDatabaseServiceToFrontend(dbService: any): Service {
+  private mapDatabaseServiceToFrontend(dbService: any, vendorsData?: any[]): Service {
     const category = this.normalizeCategory(dbService.category);
     const categoryInfo = SERVICE_CATEGORIES.find(c => c.name === category);
 
@@ -873,8 +895,28 @@ export class CentralizedServiceManager {
     
     const serviceId = dbService.id || dbService.service_id;
     const vendorId = dbService.vendorId || dbService.vendor_id;
-    const serviceRating = parseFloat(dbService.rating) || (4.2 + Math.random() * 0.6); // Generate realistic rating
-    const serviceReviewCount = parseInt(dbService.reviewCount) || parseInt(dbService.review_count) || Math.floor(Math.random() * 80) + 15;
+    
+    // 🔄 ENHANCED: Use vendor data for accurate business names and ratings
+    let vendorInfo = null;
+    if (vendorsData && vendorId) {
+      vendorInfo = vendorsData.find((vendor: any) => vendor.id === vendorId);
+      if (vendorInfo) {
+        console.log(`✅ [ServiceManager] Found vendor data for ${vendorId}:`, {
+          name: vendorInfo.name,
+          rating: vendorInfo.rating,
+          reviewCount: vendorInfo.reviewCount
+        });
+      }
+    }
+    
+    // Use vendor data for business name and ratings if available
+    const businessName = vendorInfo?.name || dbService.vendor_name || dbService.business_name || dbService.vendorName || 'Wedding Professional';
+    const actualRating = vendorInfo?.rating || parseFloat(dbService.rating) || parseFloat(dbService.average_rating) || 0;
+    const actualReviewCount = vendorInfo?.reviewCount || parseInt(dbService.reviewCount) || parseInt(dbService.review_count) || parseInt(dbService.total_reviews) || 0;
+    
+    // Use business name as the display name for the service
+    const displayName = businessName + (dbService.title && dbService.title !== 'asdsa' ? ` - ${dbService.title}` : '');
+    
     const serviceLocation = dbService.location || 'Metro Manila, Philippines';
     const serviceDescription = dbService.description || `Professional ${category.toLowerCase()} service for your special day`;
     const servicePrice = dbService.price;
@@ -883,19 +925,19 @@ export class CentralizedServiceManager {
 
     return {
       id: serviceId,
-      title: serviceName,
-      name: serviceName,
+      title: displayName,
+      name: displayName,
       category: category,
       vendor_id: vendorId,
       vendorId: vendorId,
-      vendorName: dbService.vendor_name || 'Wedding Professional',
+      vendorName: businessName,
       vendorImage: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
       description: serviceDescription,
       price: servicePrice,
       priceRange: servicePrice ? `₱${parseFloat(servicePrice).toLocaleString()}` : categoryInfo?.average_price_range || 'Contact for pricing',
       location: serviceLocation,
-      rating: parseFloat(String(serviceRating)) || (4.5 + Math.random() * 0.4),
-      reviewCount: parseInt(String(serviceReviewCount)) || Math.floor(Math.random() * 100) + 20,
+      rating: actualRating, // Use vendor rating for accuracy
+      reviewCount: actualReviewCount, // Use vendor review count for accuracy
       image: serviceImageUrl || this.getCategoryImage(category),
       images: dbService.images || [serviceImageUrl || this.getCategoryImage(category)],
       gallery: dbService.images || [serviceImageUrl || this.getCategoryImage(category)],
@@ -959,6 +1001,13 @@ export class CentralizedServiceManager {
   private setCache(key: string, data: any, ttl: number = 5 * 60 * 1000): void {
     this.cache.set(key, data);
     this.cacheExpiry.set(key, Date.now() + ttl);
+  }
+
+  // Public method to force cache clear - useful for debugging and testing
+  public forceClearCache(): void {
+    console.log('🧹 [ServiceManager] Forcing cache clear for fresh data');
+    this.cache.clear();
+    this.cacheExpiry.clear();
   }
 
   private clearCache(): void {
