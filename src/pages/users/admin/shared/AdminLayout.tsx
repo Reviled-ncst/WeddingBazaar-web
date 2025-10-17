@@ -31,10 +31,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
+  // If sidebar is shown, don't show header (sidebar handles navigation)
+  const shouldShowHeader = showHeader && !showSidebar;
+
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Admin Header */}
-      {showHeader && <AdminHeader />}
+      {/* Admin Header - Only show if no sidebar */}
+      {shouldShowHeader && <AdminHeader />}
 
       {/* Admin Sidebar */}
       {showSidebar && (
@@ -48,7 +51,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       <main
         className={cn(
           'transition-all duration-300',
-          showHeader && 'pt-16',
+          shouldShowHeader && 'pt-16',
           showSidebar && (sidebarCollapsed ? 'ml-20' : 'ml-64')
         )}
       >
