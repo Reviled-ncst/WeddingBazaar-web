@@ -10,42 +10,41 @@ export const AdminLanding: React.FC = () => {
     <div className="min-h-screen flex flex-col">
       <AdminHeader />
       <main className="flex-1">
-        <div className="min-h-screen bg-gradient-to-br from-rose-50/30 via-pink-50/20 to-white">
+        <div className="min-h-screen bg-slate-50">
       {/* Hero Section */}
-      <section className="pt-24 pb-16 px-4 relative">
+      <section className="pt-24 pb-16 px-4 relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         {/* Background Elements */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-indigo-50/20 to-rose-50/10"></div>
-        <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-rose-200/30 to-pink-200/30 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 right-10 w-96 h-96 bg-gradient-to-r from-blue-200/20 to-indigo-200/20 rounded-full blur-3xl"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-10 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl"></div>
         
         <div className="container mx-auto text-center relative z-10">
           <div className="flex justify-center mb-8">
-            <div className="p-6 bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50">
-              <div className="p-4 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl">
+            <div className="p-6 bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50">
+              <div className="p-4 bg-blue-600 rounded-xl">
                 <Shield className="h-12 w-12 text-white" />
               </div>
             </div>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            <span className="text-gray-900">Admin</span>
-            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-rose-600 bg-clip-text text-transparent">
-              {' '}Dashboard
+            <span className="text-white">Administration</span>
+            <span className="text-blue-400">
+              {' '}Console
             </span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-4xl mx-auto leading-relaxed">
-            Comprehensive platform management and analytics for Wedding Bazaar. 
-            Monitor platform health, manage users, and drive business growth.
+          <p className="text-xl md:text-2xl text-slate-300 mb-12 max-w-4xl mx-auto leading-relaxed">
+            Centralized platform management system. Monitor operations, manage users, and oversee business performance.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link 
               to="/admin/dashboard"
               className={cn(
-                "px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-2xl",
-                "hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-300",
-                "shadow-xl hover:shadow-2xl border border-white/20"
+                "px-8 py-4 bg-blue-600 text-white font-semibold rounded-lg",
+                "hover:bg-blue-700 transform hover:scale-105 transition-all duration-200",
+                "shadow-lg hover:shadow-xl"
               )}
             >
               Access Dashboard
@@ -53,26 +52,25 @@ export const AdminLanding: React.FC = () => {
             <Link 
               to="/admin/analytics"
               className={cn(
-                "px-8 py-4 bg-white/90 backdrop-blur-xl border-2 border-blue-200 text-blue-700 font-semibold rounded-2xl",
-                "hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 shadow-lg hover:shadow-xl"
+                "px-8 py-4 bg-slate-700 border border-slate-600 text-white font-semibold rounded-lg",
+                "hover:bg-slate-600 transition-all duration-200 shadow-lg hover:shadow-xl"
               )}
             >
-              View Reports
+              View Analytics
             </Link>
           </div>
         </div>
       </section>
 
       {/* Key Metrics */}
-      <section className="py-20 relative">
-        <div className="absolute inset-0 bg-white/60 backdrop-blur-xl"></div>
-        <div className="container mx-auto px-4 relative z-10">
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-4">
-              Platform Overview
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+              Platform Metrics
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Real-time insights into Wedding Bazaar platform performance and user engagement
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Real-time platform performance and key business indicators
             </p>
           </div>
 
@@ -84,19 +82,18 @@ export const AdminLanding: React.FC = () => {
               { icon: FileText, number: "3,291", label: "Total Bookings", change: "+22.1%", color: "from-rose-500 to-pink-500" }
             ].map((metric, index) => (
               <div key={index} className="group">
-                <div className="p-8 bg-white/95 backdrop-blur-xl rounded-3xl border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
-                  <div className="flex items-center justify-between mb-6">
+                <div className="p-6 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all duration-200">
+                  <div className="flex items-center justify-between mb-4">
                     <div className={cn(
-                      "p-3 rounded-2xl bg-gradient-to-r",
-                      metric.color,
-                      "group-hover:scale-110 transition-transform duration-300"
+                      "p-2.5 rounded-lg bg-gradient-to-br",
+                      metric.color
                     )}>
-                      <metric.icon className="h-6 w-6 text-white" />
+                      <metric.icon className="h-5 w-5 text-white" />
                     </div>
-                    <span className="text-green-600 text-sm font-bold bg-green-50 px-3 py-1 rounded-full">{metric.change}</span>
+                    <span className="text-green-700 text-xs font-semibold bg-green-100 px-2 py-1 rounded">{metric.change}</span>
                   </div>
-                  <div className="text-3xl font-bold text-gray-900 mb-2">{metric.number}</div>
-                  <div className="text-gray-600 font-medium">{metric.label}</div>
+                  <div className="text-2xl font-bold text-slate-900 mb-1">{metric.number}</div>
+                  <div className="text-slate-600 text-sm font-medium">{metric.label}</div>
                 </div>
               </div>
             ))}
@@ -105,15 +102,14 @@ export const AdminLanding: React.FC = () => {
       </section>
 
       {/* Admin Features */}
-      <section className="py-20 relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-rose-50/50"></div>
-        <div className="container mx-auto px-4 relative z-10">
+      <section className="py-20 bg-slate-50">
+        <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-4">
-              Administrative Control Center
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+              Administrative Tools
             </h2>
-            <p className="text-xl text-gray-600">
-              Powerful tools for platform management and business operations
+            <p className="text-xl text-slate-600">
+              Comprehensive platform management and control systems
             </p>
           </div>
 
@@ -163,21 +159,20 @@ export const AdminLanding: React.FC = () => {
               }
             ].map((feature, index) => (
               <Link key={index} to={feature.link} className="group">
-                <div className="p-8 bg-white/95 backdrop-blur-xl rounded-3xl border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 h-full">
+                <div className="p-6 bg-white rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 h-full">
                   <div className={cn(
-                    "w-14 h-14 mb-6 rounded-2xl bg-gradient-to-r flex items-center justify-center",
-                    feature.color,
-                    "group-hover:scale-110 transition-transform duration-300"
+                    "w-12 h-12 mb-4 rounded-lg bg-gradient-to-br flex items-center justify-center",
+                    feature.color
                   )}>
-                    <feature.icon className="h-7 w-7 text-white" />
+                    <feature.icon className="h-6 w-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors">
+                  <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">
                     {feature.title}
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">{feature.description}</p>
-                  <div className="mt-4 flex items-center text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <span>Manage</span>
-                    <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                  <p className="text-slate-600 text-sm leading-relaxed">{feature.description}</p>
+                  <div className="mt-3 flex items-center text-blue-600 font-medium text-sm">
+                    <span>Access</span>
+                    <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
               </Link>
@@ -189,29 +184,30 @@ export const AdminLanding: React.FC = () => {
       {/* Quick Actions */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Quick Administrative Actions
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">
+              Quick Actions
             </h2>
-            <p className="text-xl text-gray-600">
-              Common administrative tasks and system operations
+            <p className="text-lg text-slate-600">
+              Frequently accessed administrative tasks
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { title: "Approve Vendors", description: "Review pending vendor applications", count: "23 pending" },
-              { title: "System Health", description: "Monitor platform performance", status: "All systems operational" },
-              { title: "Revenue Reports", description: "Generate financial reports", action: "Export data" },
-              { title: "User Support", description: "Handle customer inquiries", count: "12 open tickets" }
+              { title: "Approve Vendors", description: "Review pending applications", count: "23 pending", color: "bg-blue-50 border-blue-200" },
+              { title: "System Health", description: "Monitor performance", status: "All operational", color: "bg-green-50 border-green-200" },
+              { title: "Revenue Reports", description: "Generate financials", action: "Export", color: "bg-purple-50 border-purple-200" },
+              { title: "User Support", description: "Handle inquiries", count: "12 tickets", color: "bg-orange-50 border-orange-200" }
             ].map((action, index) => (
               <div key={index} className={cn(
-                "p-6 bg-gray-50 rounded-xl border border-gray-200",
-                "hover:bg-white hover:shadow-md transition-all duration-200 cursor-pointer"
+                "p-5 rounded-lg border-2 cursor-pointer",
+                "hover:shadow-md transition-all duration-200",
+                action.color
               )}>
-                <h3 className="font-bold text-gray-900 mb-2">{action.title}</h3>
-                <p className="text-gray-600 text-sm mb-3">{action.description}</p>
-                <div className="text-xs text-slate-600 font-semibold">
+                <h3 className="font-bold text-slate-900 mb-1.5 text-sm">{action.title}</h3>
+                <p className="text-slate-600 text-xs mb-2">{action.description}</p>
+                <div className="text-xs text-slate-700 font-semibold">
                   {action.count || action.status || action.action}
                 </div>
               </div>
@@ -221,45 +217,39 @@ export const AdminLanding: React.FC = () => {
       </section>
 
       {/* System Status */}
-      <section className="py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700"></div>
-        <div className="absolute top-0 left-0 w-full h-full opacity-10">
-          <div className="w-full h-full bg-white/5 bg-[radial-gradient(circle,_white_1px,_transparent_1px)] bg-[length:30px_30px]"></div>
-        </div>
-        
-        <div className="container mx-auto px-4 text-center relative z-10">
+      <section className="py-16 bg-slate-900">
+        <div className="container mx-auto px-4 text-center">
           <div className="flex justify-center mb-6">
-            <div className="p-4 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20">
-              <CheckCircle className="h-12 w-12 text-white" />
+            <div className="p-3 bg-green-500/20 rounded-lg border border-green-500/30">
+              <CheckCircle className="h-10 w-10 text-green-400" />
             </div>
           </div>
           
-          <h2 className="text-4xl font-bold text-white mb-6">
-            System Status: All Systems Operational
+          <h2 className="text-3xl font-bold text-white mb-4">
+            System Status: Operational
           </h2>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Platform is running smoothly with 99.9% uptime. All services are operational and performing optimally.
+          <p className="text-lg text-slate-300 mb-8 max-w-2xl mx-auto">
+            All systems running normally. 99.9% uptime maintained.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link 
               to="/admin/system-status"
               className={cn(
-                "px-8 py-4 bg-white/90 backdrop-blur-xl text-blue-700 font-semibold rounded-2xl",
-                "hover:bg-white transform hover:scale-105 transition-all duration-300",
-                "shadow-xl hover:shadow-2xl border border-white/20"
+                "px-6 py-3 bg-white text-slate-900 font-semibold rounded-lg",
+                "hover:bg-slate-100 transition-all duration-200 shadow-lg"
               )}
             >
-              View Detailed Status
+              System Details
             </Link>
             <Link 
               to="/admin/emergency"
               className={cn(
-                "px-8 py-4 bg-white/10 backdrop-blur-xl border-2 border-white/30 text-white font-semibold rounded-2xl",
-                "hover:bg-white/20 hover:border-white/50 transition-all duration-300 shadow-lg hover:shadow-xl"
+                "px-6 py-3 bg-slate-800 border border-slate-700 text-white font-semibold rounded-lg",
+                "hover:bg-slate-700 transition-all duration-200"
               )}
             >
-              Emergency Procedures
+              Emergency Tools
             </Link>
           </div>
         </div>

@@ -265,8 +265,9 @@ export const Services: React.FC = () => {
             description: service.description,
             priceRange: service.priceRange,
             location: service.location || service.address || 'Philippines',
-            rating: typeof service.rating === 'number' ? service.rating : parseFloat(service.rating) || 4.5,
-            reviewCount: service.review_count || service.reviewCount || service.reviews_count || 0,
+            rating: typeof service.vendor_rating !== 'undefined' ? parseFloat(service.vendor_rating) : 
+                   typeof service.rating === 'number' ? service.rating : parseFloat(service.rating) || 0,
+            reviewCount: service.vendor_review_count || service.review_count || service.reviewCount || service.reviews_count || 0,
             image: service.image,
             gallery: service.gallery || service.images || [service.image],
             features: service.features || service.specialties || service.services || [],
@@ -323,8 +324,9 @@ export const Services: React.FC = () => {
             description: service.description || `Professional ${service.category || 'wedding'} service`,
             priceRange: service.price_range || service.priceRange || '₱₱',
             location: service.location || 'Philippines',
-            rating: typeof service.rating === 'number' ? service.rating : parseFloat(service.rating) || 4.5,
-            reviewCount: service.review_count || service.reviewCount || 0,
+            rating: typeof service.vendor_rating !== 'undefined' ? parseFloat(service.vendor_rating) : 
+                   typeof service.rating === 'number' ? service.rating : parseFloat(service.rating) || 0,
+            reviewCount: service.vendor_review_count || service.review_count || service.reviewCount || 0,
             image: imageUrl,
             gallery: service.gallery || service.images || [imageUrl],
             features: service.features || service.tags || [],

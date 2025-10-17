@@ -19,7 +19,7 @@ import {
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { userService, type UserProfile, type UpdateProfileData } from '../../../../shared/services/userService';
 import { CoupleHeader } from '../landing/CoupleHeader';
-import { SecuritySettings } from '../../../../shared/components/security';
+import { SecuritySettings, DocumentUploader, type ExtractedDocumentData } from '../../../../shared/components/security';
 
 export const ProfileSettings: React.FC = () => {
   const { user, isEmailVerified, firebaseUser } = useAuth();
@@ -27,6 +27,7 @@ export const ProfileSettings: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [showDocumentUploader, setShowDocumentUploader] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -129,6 +130,41 @@ export const ProfileSettings: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleDocumentUploadComplete = async (imageUrl: string, extractedData: ExtractedDocumentData) => {
+    console.log('📄 Document uploaded:', { imageUrl, extractedData });
+    
+    // TODO: Call backend API to save verification data
+    try {
+      const response = await fetch('/api/verification/upload-document', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: user?.id,
+          documentType: extractedData.documentType,
+          imageUrl,
+          extractedData
+        })
+      });
+      
+      if (response.ok) {
+        console.log('✅ Document verification submitted for review');
+        // Update user profile state
+        if (userProfile) {
+          setUserProfile({
+            ...userProfile,
+            // Add verification status fields when backend is ready
+          });
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to submit document:', error);
+    }
+    
+    setShowDocumentUploader(false);
   };
 
   const weddingStyles = [
@@ -615,6 +651,15 @@ export const ProfileSettings: React.FC = () => {
               </span>
             </button>
           </div>
+        )}
+
+        {/* Document Uploader - For Verification */}
+        {showDocumentUploader && user?.id && (
+          <DocumentUploader
+            userId={user.id}
+            onUploadComplete={handleDocumentUploadComplete}
+            onClose={() => setShowDocumentUploader(false)}
+          />
         )}
       </div>
       )}

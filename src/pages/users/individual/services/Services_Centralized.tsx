@@ -135,33 +135,104 @@ export function Services() {
     
     const loadEnhancedServices = async () => {
       setLoading(true);
-      console.log('� [Services] Loading services with vendor data...');
+      console.log('📋 [Services] Loading services with vendor data...');
       
       try {
         // Load services and vendors in parallel
+        console.log('🌐 [Services] Fetching from APIs:', {
+          servicesUrl: 'https://weddingbazaar-web.onrender.com/api/services',
+          vendorsUrl: 'https://weddingbazaar-web.onrender.com/api/vendors/featured'
+        });
+        
         const [servicesResponse, vendorsResponse] = await Promise.all([
           fetch('https://weddingbazaar-web.onrender.com/api/services'),
           fetch('https://weddingbazaar-web.onrender.com/api/vendors/featured')
         ]);
 
+        console.log('📡 [Services] API Response Status:', {
+          services: {
+            status: servicesResponse.status,
+            ok: servicesResponse.ok,
+            statusText: servicesResponse.statusText
+          },
+          vendors: {
+            status: vendorsResponse.status,
+            ok: vendorsResponse.ok,
+            statusText: vendorsResponse.statusText
+          }
+        });
+
+        if (!servicesResponse.ok) {
+          console.error('❌ [Services] Services API returned error:', servicesResponse.status);
+        }
+        if (!vendorsResponse.ok) {
+          console.error('❌ [Services] Vendors API returned error:', vendorsResponse.status);
+        }
+
         const servicesData = await servicesResponse.json();
         const vendorsData = await vendorsResponse.json();
 
-        console.log('📊 [Services] Raw services data:', servicesData.services?.length || 0);
-        console.log('� [Services] Vendors data:', vendorsData.vendors?.length || 0);
+        console.log('� [Services] Raw API Response - Services:', {
+          success: servicesData.success,
+          serviceCount: servicesData.services?.length || 0,
+          firstService: servicesData.services?.[0] ? {
+            id: servicesData.services[0].id,
+            name: servicesData.services[0].name,
+            category: servicesData.services[0].category,
+            vendor_id: servicesData.services[0].vendor_id,
+            hasImages: !!servicesData.services[0].images
+          } : null
+        });
+        
+        console.log('👥 [Services] Raw API Response - Vendors:', {
+          success: vendorsData.success,
+          vendorCount: vendorsData.vendors?.length || 0,
+          vendors: vendorsData.vendors?.map((v: any) => ({
+            id: v.id,
+            name: v.name,
+            rating: v.rating,
+            ratingType: typeof v.rating,
+            reviewCount: v.reviewCount,
+            reviewCountType: typeof v.reviewCount,
+            note: 'API uses camelCase reviewCount, not snake_case review_count'
+          })) || []
+        });
 
         if (servicesData.success && servicesData.services) {
           // Create vendor lookup map
           const vendorMap = new Map();
           if (vendorsData.success && vendorsData.vendors) {
+            console.log('🗺️ [Services] Building vendor lookup map...');
             vendorsData.vendors.forEach((vendor: any) => {
               vendorMap.set(vendor.id, vendor);
+              console.log('  ➕ Added vendor to map:', {
+                id: vendor.id,
+                name: vendor.name,
+                rating: vendor.rating,
+                reviewCount: vendor.reviewCount
+              });
             });
+            console.log('✅ [Services] Vendor map created with', vendorMap.size, 'vendors');
+          } else {
+            console.log('⚠️ [Services] No vendors data available for mapping');
           }
 
           // Enhance services with vendor data and real/fallback images
-          const enhancedServices = servicesData.services.map((service: any) => {
+          console.log('🔄 [Services] Starting enhancement for', servicesData.services.length, 'services');
+          const enhancedServices = servicesData.services.map((service: any, index: number) => {
             const vendor = vendorMap.get(service.vendor_id);
+            console.log(`📋 [Services] [${index + 1}/${servicesData.services.length}] Service:`, {
+              id: service.id,
+              name: service.name,
+              category: service.category,
+              vendor_id: service.vendor_id,
+              vendorFound: !!vendor,
+              vendorName: vendor?.name || 'N/A',
+              rawRating: vendor?.rating,
+              ratingType: typeof vendor?.rating,
+              rawReviewCount: vendor?.reviewCount,
+              reviewCountType: typeof vendor?.reviewCount
+            });
             
             // Use real service images from database
             const getServiceImages = (service: any, category: string) => {
@@ -358,6 +429,40 @@ export function Services() {
             const generatedLocation = generateLocation();
             const generatedContactInfo = generateContactInfo(service.vendor_id);
             
+            // Calculate final rating and review count with explicit logging
+            // 🔥 FIX: Use per-service ratings from API (field is misleadingly named vendor_rating but contains per-service data)
+            // Primary: service.vendor_rating (per-service rating from reviews table grouped by service_id)
+            // Fallback: vendor.rating (vendor overall rating, only used if service has no reviews yet)
+            const finalRating = service.vendor_rating ? parseFloat(service.vendor_rating) : 
+                               (vendor?.rating ? parseFloat(vendor.rating) : 0);
+            const finalReviewCount = service.vendor_review_count ? parseInt(service.vendor_review_count) : 
+                                    (vendor?.reviewCount ? parseInt(vendor.reviewCount) : 0);
+            
+            console.log(`📊 [Services] Rating for "${service.title || service.name}":`, {
+              serviceId: service.id,
+              vendorId: service.vendor_id,
+              vendorName: vendor?.name || service.vendor_business_name || 'Generated',
+              
+              // Per-service ratings (from API - field name is misleading!)
+              serviceRating: service.vendor_rating,
+              serviceReviewCount: service.vendor_review_count,
+              
+              // Vendor overall ratings (from vendor lookup map)
+              vendorRating: vendor?.rating,
+              vendorReviewCount: vendor?.reviewCount,
+              
+              // Final calculated values
+              finalRating,
+              finalReviewCount,
+              
+              // Data source tracking
+              usingServiceRating: !!service.vendor_rating,
+              usingVendorRatingAsFallback: !service.vendor_rating && !!vendor?.rating,
+              imageCount: serviceImages.length,
+              
+              note: '⚠️ API field "vendor_rating" actually contains PER-SERVICE rating (not vendor overall rating)'
+            });
+
             return {
               id: service.id,
               title: service.name,
@@ -373,9 +478,9 @@ export function Services() {
               priceRange: `₱${parseFloat(service.price || 0).toLocaleString()}`,
               // Use real vendor location if available, otherwise use generated
               location: vendor?.location || generatedLocation,
-              // Use real vendor rating data if available, otherwise use generated
-              rating: parseFloat(vendor?.rating) || (4.1 + (Math.random() * 0.7)), // Between 4.1-4.8
-              reviewCount: vendor?.review_count || Math.floor(Math.random() * 60) + 15,
+              // Use real vendor rating data if available, otherwise default to 0
+              rating: finalRating,
+              reviewCount: finalReviewCount,
               image: serviceImages[0],
               images: serviceImages,
               gallery: serviceImages,
@@ -394,7 +499,28 @@ export function Services() {
             };
           }).filter(Boolean); // Remove null values from services without real images
 
-          console.log('✅ [Services] Enhanced services created (real images only):', enhancedServices.length);
+          console.log('✅ [Services] Enhanced services created:', {
+            totalCount: enhancedServices.length,
+            servicesWithRealRatings: enhancedServices.filter(s => s.rating > 0).length,
+            servicesWithReviews: enhancedServices.filter(s => s.reviewCount > 0).length,
+            averageRating: (enhancedServices.reduce((sum, s) => sum + s.rating, 0) / enhancedServices.length).toFixed(2),
+            totalReviews: enhancedServices.reduce((sum, s) => sum + s.reviewCount, 0)
+          });
+          
+          // Log a sample of the final enhanced services
+          if (enhancedServices.length > 0) {
+            console.log('📋 [Services] Sample enhanced services:', enhancedServices.slice(0, 3).map(s => ({
+              id: s.id,
+              name: s.name,
+              category: s.category,
+              vendorName: s.vendorName,
+              rating: s.rating,
+              reviewCount: s.reviewCount,
+              price: s.price,
+              imageCount: s.images?.length || 0
+            })));
+          }
+          
           setServices(enhancedServices);
         } else {
           console.log('⚠️ [Services] No services found');

@@ -2,11 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
   Search,
-  MoreVertical,
   CheckCircle,
   XCircle,
   AlertCircle,
-  Clock,
   TrendingUp,
   Calendar,
   MapPin,
@@ -14,18 +12,20 @@ import {
   Eye,
   Edit,
   Ban,
-  Download,
-  RefreshCcw,
   Plus,
-  Award,
   Shield,
-  Activity,
   UserCheck,
   UserX,
-  UserPlus,
-  Heart
 } from 'lucide-react';
-import { AdminHeader } from '../../../../shared/components/layout/AdminHeader';
+import {
+  AdminLayout,
+  StatCard,
+  DataTable,
+  Badge,
+  Button,
+  Modal,
+  Tabs,
+} from '../shared';
 // import { adminApi, type AdminUser } from '../../../../services/api/adminApi';
 
 // Import types - will be updated once we fix the path

@@ -50,6 +50,12 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Import route modules
+const verificationRoutes = require('./routes/verification.cjs');
+
+// Register API routes
+app.use('/api/verification', verificationRoutes);
+
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
   try {

@@ -911,8 +911,8 @@ export class CentralizedServiceManager {
     
     // Use vendor data for business name and ratings if available
     const businessName = vendorInfo?.name || dbService.vendor_name || dbService.business_name || dbService.vendorName || 'Wedding Professional';
-    const actualRating = vendorInfo?.rating || parseFloat(dbService.rating) || parseFloat(dbService.average_rating) || 0;
-    const actualReviewCount = vendorInfo?.reviewCount || parseInt(dbService.reviewCount) || parseInt(dbService.review_count) || parseInt(dbService.total_reviews) || 0;
+    const actualRating = vendorInfo?.rating || parseFloat(dbService.vendor_rating) || parseFloat(dbService.rating) || parseFloat(dbService.average_rating) || 0;
+    const actualReviewCount = vendorInfo?.reviewCount || parseInt(dbService.vendor_review_count) || parseInt(dbService.reviewCount) || parseInt(dbService.review_count) || parseInt(dbService.total_reviews) || 0;
     
     // Use business name as the display name for the service
     const displayName = businessName + (dbService.title && dbService.title !== 'asdsa' ? ` - ${dbService.title}` : '');

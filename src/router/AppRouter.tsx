@@ -29,6 +29,7 @@ import { AdminSystemStatus } from '../pages/users/admin/system-status';
 import { AdminEmergency } from '../pages/users/admin/emergency';
 import { VendorManagement } from '../pages/users/admin/vendors';
 import { DocumentApproval } from '../pages/users/admin/documents';
+import { AdminVerificationReview } from '../pages/users/admin/verifications';
 
 // Individual Pages
 import { Services } from '../pages/users/individual/services';
@@ -398,6 +399,12 @@ export const AppRouter: React.FC = () => {
             <Route path="/admin/documents" element={
               <ProtectedRoute requireAuth={true}>
                 <DocumentApproval />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/verifications" element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminVerificationReview />
               </ProtectedRoute>
             } />
             

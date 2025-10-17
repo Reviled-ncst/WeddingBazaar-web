@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Deployment Verification</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 36px;
+        }
+        .status-box {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 5px solid;
+        }
+        .success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+        .warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 10px 10px 10px 0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            border-left: 4px solid #667eea;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .progress {
+            text-align: center;
+            padding: 40px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .code {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        .result-item {
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .checkmark { color: #28a745; font-size: 24px; }
+        .crossmark { color: #dc3545; font-size: 24px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Deployment Verification Tool</h1>
+        
+        <div class="status-box info">
+            <strong>📍 Production URL:</strong> <a href="https://weddingbazaarph.web.app" target="_blank">https://weddingbazaarph.web.app</a><br>
+            <strong>🏗️ New Build Hash:</strong> <span class="code">index-HoEYz4nq.js</span><br>
+            <strong>⏱️ Deployed:</strong> Just now
+        </div>
+
+        <h2>🧪 Quick Tests</h2>
+        <button onclick="checkDeployedFile()">✅ Check if New Code is Deployed</button>
+        <button onclick="testLogsLocally()">🏠 Test Logs (Opens in New Tab)</button>
+        <button onclick="clearCacheInstructions()">🗑️ Show Cache Clear Instructions</button>
+
+        <div id="results"></div>
+
+        <h2>📋 Manual Verification Steps</h2>
+        <div class="status-box warning">
+            <strong>⚠️ IMPORTANT: Clear your browser cache first!</strong>
+            <ol style="margin-top: 10px;">
+                <li>Press <span class="code">Ctrl + Shift + Delete</span></li>
+                <li>Select "All time"</li>
+                <li>Check: Cached images and files</li>
+                <li>Click "Clear data"</li>
+                <li><strong>Close browser completely</strong> (all windows)</li>
+                <li>Reopen and test</li>
+            </ol>
+        </div>
+
+        <h3>Step 1: Open Production Site</h3>
+        <pre>1. Open: <a href="https://weddingbazaarph.web.app" target="_blank">https://weddingbazaarph.web.app</a>
+2. Press F12 (Open DevTools)
+3. Go to Console tab
+4. Navigate to: /individual/services (you must be logged in)</pre>
+
+        <h3>Step 2: Look for These Logs</h3>
+        <pre>✅ YOU SHOULD SEE:
+🎯 [Services] *** SERVICES COMPONENT RENDERED ***
+🚀 [Services] *** LOADING ENHANCED SERVICES ***
+📋 [Services] Loading services with vendor data...
+🌐 [Services] Fetching from APIs: { servicesUrl: '...', vendorsUrl: '...' }
+📡 [Services] API Response Status: { ... }
+📦 [Services] Raw API Response - Services: { ... }
+👥 [Services] Raw API Response - Vendors: { ... }
+🗺️ [Services] Building vendor lookup map...
+  ➕ Added vendor to map: { ... }
+🔄 [Services] Starting enhancement for X services
+📋 [Services] [1/X] Service: { ... }
+📊 [Services] Final data: { ... }
+✅ [Services] Enhanced services created: { ... }
+
+❌ YOU SHOULD NOT SEE (old version):
+📊 [Services] Raw services data: 2
+👥 [Services] Vendors data: 1</pre>
+
+        <div class="status-box info" id="cacheInstructions" style="display: none;">
+            <h3>🗑️ Complete Cache Clear Instructions</h3>
+            <h4>Chrome/Edge:</h4>
+            <ol>
+                <li>Press <span class="code">Ctrl + Shift + Delete</span></li>
+                <li>Or Menu → More tools → Clear browsing data</li>
+                <li>Select <strong>"All time"</strong></li>
+                <li>Check these boxes:
+                    <ul>
+                        <li>✅ Browsing history</li>
+                        <li>✅ Cookies and other site data</li>
+                        <li>✅ Cached images and files</li>
+                    </ul>
+                </li>
+                <li>Click "Clear data"</li>
+                <li><strong>Close ALL browser windows</strong></li>
+                <li>Wait 5 seconds</li>
+                <li>Open new browser window</li>
+            </ol>
+            
+            <h4>Alternative: Hard Reload</h4>
+            <ol>
+                <li>Open the site</li>
+                <li>Open DevTools (F12)</li>
+                <li>Right-click the refresh button</li>
+                <li>Select "Empty Cache and Hard Reload"</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const results = document.getElementById('results');
+
+        function addResult(html) {
+            results.innerHTML = html + results.innerHTML;
+        }
+
+        async function checkDeployedFile() {
+            addResult('<div class="progress"><div class="spinner"></div><p>Checking deployed code...</p></div>');
+            
+            try {
+                // Fetch the main HTML to get the script tag
+                const htmlResponse = await fetch('https://weddingbazaarph.web.app/');
+                const htmlText = await htmlResponse.text();
+                
+                // Extract the script filename
+                const scriptMatch = htmlText.match(/src="\/assets\/(index-[^"]+\.js)"/);
+                
+                if (scriptMatch) {
+                    const scriptFile = scriptMatch[1];
+                    const scriptUrl = `https://weddingbazaarph.web.app/assets/${scriptFile}`;
+                    
+                    // Fetch the script
+                    const scriptResponse = await fetch(scriptUrl);
+                    const scriptText = await scriptResponse.text();
+                    
+                    // Check for our new log strings
+                    const hasNewLogs = scriptText.includes('Loading services with vendor data') ||
+                                      scriptText.includes('Fetching from APIs') ||
+                                      scriptText.includes('Raw API Response - Services');
+                    
+                    const hasOldFormat = scriptText.includes('Raw services data:') && 
+                                        !scriptText.includes('Raw API Response - Services');
+                    
+                    let resultHtml = '<div class="result-item">';
+                    resultHtml += `<strong>📦 Deployed Script File:</strong> <span class="code">${scriptFile}</span><br>`;
+                    resultHtml += `<strong>📏 File Size:</strong> ${(scriptText.length / 1024).toFixed(2)} KB<br>`;
+                    
+                    if (hasNewLogs) {
+                        resultHtml += '<div class="status-box success"><span class="checkmark">✅</span> <strong>SUCCESS!</strong> New logging code is deployed!<br>';
+                        resultHtml += 'The enhanced logs are in the production build.</div>';
+                        resultHtml += '<div class="status-box info">🎯 <strong>Next Step:</strong> Clear your browser cache and reload the site to see the logs.</div>';
+                    } else if (hasOldFormat) {
+                        resultHtml += '<div class="status-box error"><span class="crossmark">❌</span> <strong>OLD CODE DETECTED</strong><br>';
+                        resultHtml += 'The deployed code still has the old logging format.</div>';
+                    } else {
+                        resultHtml += '<div class="status-box warning"><span class="crossmark">⚠️</span> <strong>LOGS NOT FOUND</strong><br>';
+                        resultHtml += 'Could not find logging code in the deployed file.</div>';
+                    }
+                    
+                    resultHtml += '</div>';
+                    results.innerHTML = resultHtml;
+                    
+                } else {
+                    addResult('<div class="status-box error">❌ Could not find script file in HTML</div>');
+                }
+                
+            } catch (error) {
+                addResult(`<div class="status-box error">❌ Error: ${error.message}</div>`);
+            }
+        }
+
+        function testLogsLocally() {
+            window.open('https://weddingbazaarph.web.app/individual/services', '_blank');
+            addResult(`
+                <div class="status-box info">
+                    <strong>🌐 Opened production site in new tab</strong><br>
+                    <ol style="margin-top: 10px;">
+                        <li>Press F12 to open DevTools</li>
+                        <li>Go to Console tab</li>
+                        <li>Login if needed</li>
+                        <li>You should see the enhanced logs</li>
+                    </ol>
+                </div>
+            `);
+        }
+
+        function clearCacheInstructions() {
+            const cacheDiv = document.getElementById('cacheInstructions');
+            if (cacheDiv.style.display === 'none') {
+                cacheDiv.style.display = 'block';
+                cacheDiv.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                cacheDiv.style.display = 'none';
+            }
+        }
+
+        // Auto-run check on load
+        window.onload = () => {
+            setTimeout(() => {
+                checkDeployedFile();
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
