@@ -175,7 +175,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                   {columns.map((column) => (
                     <td key={column.key} className="px-6 py-4 text-sm text-slate-900">
                       {column.render
-                        ? column.render(row[column.key], row)
+                        ? column.render(row, row[column.key])
                         : row[column.key]}
                     </td>
                   ))}
