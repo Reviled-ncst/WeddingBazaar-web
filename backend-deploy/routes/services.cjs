@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
       console.log('🏪 Getting vendor data for IDs:', vendorIds);
       
       // Get all relevant vendors in one query
-      const vendors = await sql`SELECT id, name, rating, review_count FROM vendors WHERE id = ANY(${vendorIds})`;
+      const vendors = await sql`SELECT id, business_name, rating, review_count FROM vendors WHERE id = ANY(${vendorIds})`;
       
       console.log(`✅ Found ${vendors.length} vendors`);
       
@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
       services.forEach(service => {
         const vendor = vendorMap[service.vendor_id];
         if (vendor) {
-          service.vendor_business_name = vendor.name;
+          service.vendor_business_name = vendor.business_name;
           service.vendor_rating = vendor.rating;
           service.vendor_review_count = vendor.review_count;
         }
