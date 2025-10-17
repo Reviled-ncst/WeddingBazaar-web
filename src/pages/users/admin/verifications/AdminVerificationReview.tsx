@@ -17,9 +17,7 @@ import {
   MapPin,
   Phone
 } from 'lucide-react';
-import { AdminHeader } from '../../../../shared/components/layout/AdminHeader';
 import { AdminLayout, DataTable, StatCard, statusColors } from '../shared';
-import { useAuth } from '../../../../shared/contexts/AuthContext';
 import { cn } from '../../../../utils/cn';
 
 interface Verification {
@@ -52,7 +50,6 @@ interface Stats {
 }
 
 export const AdminVerificationReview: React.FC = () => {
-  const { user } = useAuth();
   const [verifications, setVerifications] = useState<Verification[]>([]);
   const [stats, setStats] = useState<Stats>({
     total: 0,
@@ -285,15 +282,13 @@ export const AdminVerificationReview: React.FC = () => {
   ];
 
   return (
-    <>
-      <AdminHeader />
-      <AdminLayout
-        title="Identity Verifications"
-        subtitle="Review and manage user identity verification requests"
-        breadcrumbs={[
-          { label: 'Admin', href: '/admin/dashboard' },
-          { label: 'Verifications' },
-        ]}
+    <AdminLayout
+      title="Identity Verifications"
+      subtitle="Review and manage user identity verification requests"
+      breadcrumbs={[
+        { label: 'Admin', href: '/admin/dashboard' },
+        { label: 'Verifications' },
+      ]}
         actions={
           <div className="flex items-center gap-3">
             <select
@@ -373,9 +368,8 @@ export const AdminVerificationReview: React.FC = () => {
           }}
           emptyMessage={`No ${filter} verifications found`}
         />
-      </AdminLayout>
 
-      {/* Details Modal */}
+        {/* Details Modal */}
       {showDetailsModal && selectedVerification && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -595,6 +589,6 @@ export const AdminVerificationReview: React.FC = () => {
           </div>
         </div>
       )}
-    </>
+    </AdminLayout>
   );
 };
