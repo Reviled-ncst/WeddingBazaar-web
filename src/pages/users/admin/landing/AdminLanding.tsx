@@ -1,16 +1,16 @@
 import React from 'react';
-import { Shield, BarChart3, Users, Settings, Database, FileText, TrendingUp, Activity, ArrowRight, CheckCircle } from 'lucide-react';
+import { Shield, BarChart3, Users, Settings, Database, FileText, TrendingUp, Activity, ArrowRight, CheckCircle, Store, Calendar, DollarSign } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '../../../../utils/cn';
-import { AdminHeader } from '../../../../shared/components/layout/AdminHeader';
-import { Footer } from '../../../../shared/components/layout/Footer';
+import { AdminLayout, StatCard } from '../shared';
 
 export const AdminLanding: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col">
-      <AdminHeader />
-      <main className="flex-1">
-        <div className="min-h-screen bg-slate-50">
+    <AdminLayout 
+      title="Administration Console" 
+      subtitle="Welcome! Centralized platform management and oversight"
+    >
+      <div className="container mx-auto px-4 max-w-7xl">
       {/* Hero Section */}
       <section className="pt-24 pb-16 px-4 relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         {/* Background Elements */}
@@ -254,9 +254,7 @@ export const AdminLanding: React.FC = () => {
           </div>
         </div>
       </section>
-        </div>
-      </main>
-      <Footer />
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
