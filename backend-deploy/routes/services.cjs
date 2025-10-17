@@ -35,32 +35,61 @@ router.get('/vendor/:vendorId', async (req, res) => {
   }
 });
 
-// Get all services with optional filters
+// Get all services with optional filters - ENHANCED WITH VENDOR DATA
 router.get('/', async (req, res) => {
-  console.log('🛠️ Getting services with filters:', req.query);
+  console.log('🛠️ Getting services with filters and vendor data:', req.query);
   
   try {
     const { vendorId, category, limit = 50, offset = 0 } = req.query;
     
-    let query = `SELECT * FROM services WHERE 1=1`;
+    // Enhanced query with vendor data join
+    let query = `
+      SELECT 
+        s.*,
+        v.name as vendor_business_name,
+        v.business_name as vendor_business_name_alt,
+        v.rating as vendor_rating,
+        v.review_count as vendor_review_count,
+        v.profile_image as vendor_profile_image,
+        v.website_url as vendor_website_url,
+        v.business_type as vendor_business_type,
+        v.location as vendor_location
+      FROM services s
+      LEFT JOIN vendors v ON s.vendor_id = v.id
+      WHERE s.is_active = true
+    `;
     let params = [];
     
     if (vendorId) {
-      query += ` AND vendor_id = $${params.length + 1}`;
+      query += ` AND s.vendor_id = $${params.length + 1}`;
       params.push(vendorId);
     }
     
     if (category) {
-      query += ` AND category = $${params.length + 1}`;
+      query += ` AND s.category = $${params.length + 1}`;
       params.push(category);
     }
     
-    query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    query += ` ORDER BY s.featured DESC, s.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(parseInt(limit), parseInt(offset));
+    
+    console.log('🔍 Enhanced SQL query:', query);
     
     const services = await sql(query, params);
     
-    console.log(`✅ Found ${services.length} services`);
+    console.log(`✅ Found ${services.length} services with vendor data`);
+    
+    // Log sample service for debugging
+    if (services.length > 0) {
+      console.log('📋 Sample enriched service:', {
+        id: services[0].id,
+        title: services[0].title,
+        vendor_id: services[0].vendor_id,
+        vendor_business_name: services[0].vendor_business_name,
+        vendor_rating: services[0].vendor_rating,
+        vendor_review_count: services[0].vendor_review_count
+      });
+    }
     
     res.json({
       success: true,
@@ -70,7 +99,7 @@ router.get('/', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Services error:', error);
+    console.error('❌ Enhanced services error:', error);
     res.status(500).json({
       success: false,
       error: error.message,
