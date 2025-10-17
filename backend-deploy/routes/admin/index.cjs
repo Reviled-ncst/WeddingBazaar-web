@@ -7,7 +7,8 @@ const express = require('express');
 const router = express.Router();
 
 // Import admin modules with error handling
-let usersRoutes;
+let usersRoutes, bookingsRoutes;
+
 try {
   console.log('🔍 Loading admin users routes...');
   usersRoutes = require('./users.cjs');
@@ -23,8 +24,24 @@ try {
   throw error;
 }
 
+try {
+  console.log('🔍 Loading admin bookings routes...');
+  bookingsRoutes = require('./bookings.cjs');
+  console.log('✅ Bookings routes loaded successfully');
+  console.log('   - Type:', typeof bookingsRoutes);
+  console.log('   - Is router:', bookingsRoutes?.stack !== undefined);
+  
+  if (!bookingsRoutes || typeof bookingsRoutes !== 'function') {
+    throw new Error('Bookings routes did not export a valid Express router');
+  }
+} catch (error) {
+  console.error('❌ Failed to load admin bookings routes:', error);
+  throw error;
+}
+
 // Mount routes
 router.use('/users', usersRoutes);
+router.use('/bookings', bookingsRoutes);
 
 // Health check for admin API
 router.get('/health', (req, res) => {
@@ -33,7 +50,8 @@ router.get('/health', (req, res) => {
     message: 'Admin API is running',
     timestamp: new Date().toISOString(),
     modules: {
-      users: 'active'
+      users: 'active',
+      bookings: 'active'
     }
   });
 });
