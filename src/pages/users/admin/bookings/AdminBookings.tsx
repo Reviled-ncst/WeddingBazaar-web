@@ -19,7 +19,7 @@ import {
   CreditCard,
   Award
 } from 'lucide-react';
-import { AdminHeader } from '../../../../shared/components/layout/AdminHeader';
+import { AdminLayout } from '../shared';
 
 // Booking interface - will be updated to use adminApi types later
 interface AdminBooking {
@@ -291,9 +291,8 @@ export const AdminBookings: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
-      <AdminHeader />
-      <div className="container mx-auto px-4 py-8 pt-28">
+    <AdminLayout title="Booking Management" subtitle="Monitor and manage all platform bookings">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -648,6 +647,6 @@ export const AdminBookings: React.FC = () => {
           </>
         )}
       </div>
-    </div>
+    </AdminLayout>
   );
 };
