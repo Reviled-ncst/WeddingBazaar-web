@@ -111,53 +111,70 @@ export const UserManagement: React.FC = () => {
     {
       key: 'name',
       label: 'User',
-      render: (user: User) => (
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-            {user.first_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+      render: (user: User) => {
+        if (!user) return null;
+        return (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+              {user.first_name?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || '?'}
+            </div>
+            <div>
+              <div className="font-medium text-slate-900">
+                {user.first_name || ''} {user.last_name || ''}
+              </div>
+              <div className="text-sm text-slate-500">{user.email || 'No email'}</div>
+            </div>
           </div>
-          <div>
-            <div className="font-medium text-slate-900">{user.first_name} {user.last_name}</div>
-            <div className="text-sm text-slate-500">{user.email}</div>
-          </div>
-        </div>
-      )
+        );
+      }
     },
     {
       key: 'role',
       label: 'Role',
-      render: (user: User) => (
-        <Badge variant={user.role === 'admin' ? 'info' : user.role === 'vendor' ? 'warning' : 'default'}>
-          {user.role}
-        </Badge>
-      )
+      render: (user: User) => {
+        if (!user) return null;
+        return (
+          <Badge variant={user.role === 'admin' ? 'info' : user.role === 'vendor' ? 'warning' : 'default'}>
+            {user.role || 'Unknown'}
+          </Badge>
+        );
+      }
     },
     {
       key: 'status',
       label: 'Status',
-      render: (user: User) => (
-        <Badge variant={user.status === 'active' ? 'success' : user.status === 'suspended' ? 'error' : 'default'}>
-          {user.status}
-        </Badge>
-      )
+      render: (user: User) => {
+        if (!user) return null;
+        return (
+          <Badge variant={user.status === 'active' ? 'success' : user.status === 'suspended' ? 'error' : 'default'}>
+            {user.status || 'Unknown'}
+          </Badge>
+        );
+      }
     },
     {
       key: 'created_at',
       label: 'Joined',
-      render: (user: User) => (
-        <div className="text-sm text-slate-600">
-          {new Date(user.created_at).toLocaleDateString()}
-        </div>
-      )
+      render: (user: User) => {
+        if (!user || !user.created_at) return <div className="text-sm text-slate-600">N/A</div>;
+        return (
+          <div className="text-sm text-slate-600">
+            {new Date(user.created_at).toLocaleDateString()}
+          </div>
+        );
+      }
     },
     {
       key: 'last_login',
       label: 'Last Login',
-      render: (user: User) => (
-        <div className="text-sm text-slate-600">
-          {user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}
-        </div>
-      )
+      render: (user: User) => {
+        if (!user) return <div className="text-sm text-slate-600">N/A</div>;
+        return (
+          <div className="text-sm text-slate-600">
+            {user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}
+          </div>
+        );
+      }
     },
     {
       key: 'actions',
