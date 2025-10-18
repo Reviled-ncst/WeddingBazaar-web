@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 
 // Import admin modules with error handling
-let usersRoutes, bookingsRoutes;
+let usersRoutes, bookingsRoutes, documentsRoutes;
 
 try {
   console.log('🔍 Loading admin users routes...');
@@ -39,9 +39,27 @@ try {
   throw error;
 }
 
+try {
+  console.log('🔍 Loading admin documents routes...');
+  const documentsModule = require('./documents.cjs');
+  
+  // Create router for documents endpoints
+  documentsRoutes = express.Router();
+  documentsRoutes.get('/', documentsModule.getDocuments);
+  documentsRoutes.get('/stats', documentsModule.getDocumentStats);
+  documentsRoutes.get('/:id', documentsModule.getDocumentById);
+  documentsRoutes.patch('/:id/status', documentsModule.updateDocumentStatus);
+  
+  console.log('✅ Documents routes loaded successfully');
+} catch (error) {
+  console.error('❌ Failed to load admin documents routes:', error);
+  throw error;
+}
+
 // Mount routes
 router.use('/users', usersRoutes);
 router.use('/bookings', bookingsRoutes);
+router.use('/documents', documentsRoutes);
 
 // Health check for admin API
 router.get('/health', (req, res) => {
@@ -51,7 +69,8 @@ router.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     modules: {
       users: 'active',
-      bookings: 'active'
+      bookings: 'active',
+      documents: 'active'
     }
   });
 });
