@@ -1,4 +1,4 @@
-const { sql } = require('../config/database.cjs');
+const { sql } = require('../../config/database.cjs');
 
 /**
  * Admin Security Management API
