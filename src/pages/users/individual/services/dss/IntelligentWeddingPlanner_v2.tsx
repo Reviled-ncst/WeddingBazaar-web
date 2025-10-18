@@ -668,11 +668,11 @@ export function IntelligentWeddingPlanner({
             </div>
             <div className="relative px-3">
               {/* Background track */}
-              <div className="absolute top-1/2 -translate-y-1/2 left-3 right-3 h-3 bg-gray-200 rounded-lg" />
+              <div className="absolute top-1/2 -translate-y-1/2 left-3 right-3 h-4 bg-gray-200 rounded-lg" />
               
               {/* Filled track */}
               <div 
-                className="absolute top-1/2 -translate-y-1/2 left-3 h-3 bg-gradient-to-r from-pink-400 to-pink-600 rounded-lg pointer-events-none"
+                className="absolute top-1/2 -translate-y-1/2 left-3 h-4 bg-gradient-to-r from-pink-400 to-pink-600 rounded-lg pointer-events-none"
                 style={{ 
                   width: `calc((100% - 24px) * ${(preferences.guestCount - 20) / (500 - 20)})` 
                 }}
@@ -683,39 +683,43 @@ export function IntelligentWeddingPlanner({
                 type="range"
                 min="20"
                 max="500"
-                step="10"
+                step="5"
                 value={preferences.guestCount}
                 onChange={(e) => updatePreferences({ guestCount: parseInt(e.target.value) })}
                 aria-label="Guest count slider"
                 title="Adjust guest count"
-                className="relative w-full h-3 appearance-none cursor-pointer bg-transparent z-10
+                className="relative w-full h-10 appearance-none cursor-grab active:cursor-grabbing bg-transparent z-10
                   [&::-webkit-slider-thumb]:appearance-none
-                  [&::-webkit-slider-thumb]:w-6
-                  [&::-webkit-slider-thumb]:h-6
+                  [&::-webkit-slider-thumb]:w-7
+                  [&::-webkit-slider-thumb]:h-7
                   [&::-webkit-slider-thumb]:rounded-full
                   [&::-webkit-slider-thumb]:bg-white
                   [&::-webkit-slider-thumb]:border-4
                   [&::-webkit-slider-thumb]:border-pink-500
-                  [&::-webkit-slider-thumb]:cursor-pointer
-                  [&::-webkit-slider-thumb]:shadow-lg
+                  [&::-webkit-slider-thumb]:cursor-grab
+                  [&::-webkit-slider-thumb]:shadow-xl
                   [&::-webkit-slider-thumb]:hover:border-pink-600
                   [&::-webkit-slider-thumb]:hover:scale-110
+                  [&::-webkit-slider-thumb]:active:cursor-grabbing
+                  [&::-webkit-slider-thumb]:active:scale-105
                   [&::-webkit-slider-thumb]:transition-all
-                  [&::-moz-range-thumb]:w-6
-                  [&::-moz-range-thumb]:h-6
+                  [&::-moz-range-thumb]:w-7
+                  [&::-moz-range-thumb]:h-7
                   [&::-moz-range-thumb]:rounded-full
                   [&::-moz-range-thumb]:bg-white
                   [&::-moz-range-thumb]:border-4
                   [&::-moz-range-thumb]:border-pink-500
-                  [&::-moz-range-thumb]:cursor-pointer
-                  [&::-moz-range-thumb]:shadow-lg
+                  [&::-moz-range-thumb]:cursor-grab
+                  [&::-moz-range-thumb]:shadow-xl
                   [&::-moz-range-thumb]:hover:border-pink-600
                   [&::-moz-range-thumb]:hover:scale-110
+                  [&::-moz-range-thumb]:active:cursor-grabbing
+                  [&::-moz-range-thumb]:active:scale-105
                   [&::-moz-range-thumb]:transition-all
-                  [&::-webkit-slider-runnable-track]:h-3
+                  [&::-webkit-slider-runnable-track]:h-4
                   [&::-webkit-slider-runnable-track]:bg-transparent
                   [&::-webkit-slider-runnable-track]:rounded-lg
-                  [&::-moz-range-track]:h-3
+                  [&::-moz-range-track]:h-4
                   [&::-moz-range-track]:bg-transparent
                   [&::-moz-range-track]:rounded-lg"
               />
