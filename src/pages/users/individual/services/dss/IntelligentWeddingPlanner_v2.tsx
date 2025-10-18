@@ -666,7 +666,7 @@ export function IntelligentWeddingPlanner({
                 {preferences.guestCount >= 500 ? '500+' : preferences.guestCount}
               </span>
             </div>
-            <div className="relative px-3">
+            <div className="relative px-3 py-2">
               {/* Background track */}
               <div className="absolute top-1/2 -translate-y-1/2 left-3 right-3 h-4 bg-gray-200 rounded-lg" />
               
@@ -683,15 +683,15 @@ export function IntelligentWeddingPlanner({
                 type="range"
                 min="20"
                 max="500"
-                step="1"
+                step="10"
                 value={preferences.guestCount}
                 onChange={(e) => updatePreferences({ guestCount: parseInt(e.target.value) })}
                 aria-label="Guest count slider"
                 title="Adjust guest count"
-                className="relative w-full h-10 appearance-none cursor-grab active:cursor-grabbing bg-transparent z-10
+                className="relative w-full h-12 appearance-none cursor-grab active:cursor-grabbing bg-transparent z-10
                   [&::-webkit-slider-thumb]:appearance-none
-                  [&::-webkit-slider-thumb]:w-7
-                  [&::-webkit-slider-thumb]:h-7
+                  [&::-webkit-slider-thumb]:w-8
+                  [&::-webkit-slider-thumb]:h-8
                   [&::-webkit-slider-thumb]:rounded-full
                   [&::-webkit-slider-thumb]:bg-white
                   [&::-webkit-slider-thumb]:border-4
@@ -703,8 +703,8 @@ export function IntelligentWeddingPlanner({
                   [&::-webkit-slider-thumb]:active:cursor-grabbing
                   [&::-webkit-slider-thumb]:active:scale-105
                   [&::-webkit-slider-thumb]:transition-all
-                  [&::-moz-range-thumb]:w-7
-                  [&::-moz-range-thumb]:h-7
+                  [&::-moz-range-thumb]:w-8
+                  [&::-moz-range-thumb]:h-8
                   [&::-moz-range-thumb]:rounded-full
                   [&::-moz-range-thumb]:bg-white
                   [&::-moz-range-thumb]:border-4
