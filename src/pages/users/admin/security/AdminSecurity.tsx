@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '../shared';
 import { 
   Shield, 
@@ -37,72 +37,122 @@ interface SecurityLog {
 
 export const AdminSecurity: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<'overview' | 'logs' | 'settings' | 'compliance'>('overview');
+  const [loading, setLoading] = useState(true);
+  const [securityMetrics, setSecurityMetrics] = useState<SecurityMetric[]>([]);
+  const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
+  const [activeSessions, setActiveSessions] = useState<any[]>([]);
 
-  const securityMetrics: SecurityMetric[] = [
-    {
-      title: 'System Security Score',
-      value: '94/100',
-      status: 'good',
-      icon: Shield,
-      description: 'Overall security health assessment'
-    },
-    {
-      title: 'Active Sessions',
-      value: '1,247',
-      status: 'good',
-      icon: Users,
-      description: 'Currently authenticated user sessions'
-    },
-    {
-      title: 'Failed Login Attempts',
-      value: '23',
-      status: 'warning',
-      icon: Lock,
-      description: 'Failed authentication attempts (last 24h)'
-    },
-    {
-      title: 'Security Alerts',
-      value: '2',
-      status: 'warning',
-      icon: AlertTriangle,
-      description: 'Active security incidents requiring attention'
-    }
-  ];
+  useEffect(() => {
+    loadSecurityData();
+  }, []);
 
-  const securityLogs: SecurityLog[] = [
-    {
-      id: '1',
-      timestamp: '2024-01-15 14:32:15',
-      event: 'Multiple failed login attempts',
-      severity: 'medium',
-      user: 'user@example.com',
-      details: '5 consecutive failed attempts from IP 192.168.1.100'
-    },
-    {
-      id: '2',
-      timestamp: '2024-01-15 13:45:22',
-      event: 'Admin password changed',
-      severity: 'low',
-      user: 'admin@weddingbazaar.com',
-      details: 'Password successfully updated for admin account'
-    },
-    {
-      id: '3',
-      timestamp: '2024-01-15 12:18:33',
-      event: 'Suspicious API activity',
-      severity: 'high',
-      user: 'Unknown',
-      details: 'Unusual API request patterns detected from IP 203.0.113.0'
-    },
-    {
-      id: '4',
-      timestamp: '2024-01-15 11:55:41',
-      event: 'New admin user created',
-      severity: 'medium',
-      user: 'admin@weddingbazaar.com',
-      details: 'New admin account created for security@weddingbazaar.com'
+  const loadSecurityData = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      
+      console.log('🔒 [AdminSecurity] Fetching security data from API');
+      
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      // Fetch metrics, logs, and sessions in parallel
+      const [metricsRes, logsRes, sessionsRes] = await Promise.all([
+        fetch(`${apiUrl}/api/admin/security/metrics`, { headers }),
+        fetch(`${apiUrl}/api/admin/security/logs`, { headers }),
+        fetch(`${apiUrl}/api/admin/security/sessions`, { headers })
+      ]);
+      
+      if (metricsRes.ok) {
+        const metricsData = await metricsRes.json();
+        console.log('✅ [AdminSecurity] Metrics loaded:', metricsData.data);
+        
+        // Transform API data to SecurityMetric format
+        const metrics: SecurityMetric[] = [
+          {
+            title: 'System Security Score',
+            value: `${metricsData.data.securityScore}/100`,
+            status: metricsData.data.status,
+            icon: Shield,
+            description: 'Overall security health assessment'
+          },
+          {
+            title: 'Active Sessions',
+            value: metricsData.data.activeSessions.toLocaleString(),
+            status: 'good',
+            icon: Users,
+            description: 'Currently authenticated user sessions'
+          },
+          {
+            title: 'Failed Login Attempts',
+            value: metricsData.data.failedLoginAttempts.toString(),
+            status: metricsData.data.failedLoginAttempts > 10 ? 'warning' : 'good',
+            icon: Lock,
+            description: 'Failed authentication attempts (last 24h)'
+          },
+          {
+            title: 'Security Alerts',
+            value: metricsData.data.securityAlerts.toString(),
+            status: metricsData.data.securityAlerts > 0 ? 'warning' : 'good',
+            icon: AlertTriangle,
+            description: 'Active security incidents requiring attention'
+          }
+        ];
+        setSecurityMetrics(metrics);
+      }
+      
+      if (logsRes.ok) {
+        const logsData = await logsRes.json();
+        console.log('✅ [AdminSecurity] Logs loaded:', logsData.data?.length || 0);
+        setSecurityLogs(logsData.data || []);
+      }
+      
+      if (sessionsRes.ok) {
+        const sessionsData = await sessionsRes.json();
+        console.log('✅ [AdminSecurity] Sessions loaded:', sessionsData.data?.length || 0);
+        setActiveSessions(sessionsData.data || []);
+      }
+      
+    } catch (error) {
+      console.error('❌ [AdminSecurity] Error loading security data:', error);
+      // Set default fallback data
+      setSecurityMetrics([
+        {
+          title: 'System Security Score',
+          value: 'N/A',
+          status: 'warning',
+          icon: Shield,
+          description: 'Unable to fetch security data'
+        },
+        {
+          title: 'Active Sessions',
+          value: 'N/A',
+          status: 'warning',
+          icon: Users,
+          description: 'Data unavailable'
+        },
+        {
+          title: 'Failed Login Attempts',
+          value: 'N/A',
+          status: 'warning',
+          icon: Lock,
+          description: 'Data unavailable'
+        },
+        {
+          title: 'Security Alerts',
+          value: 'N/A',
+          status: 'warning',
+          icon: AlertTriangle,
+          description: 'Data unavailable'
+        }
+      ]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const getStatusColor = (status: SecurityMetric['status']) => {
     switch (status) {

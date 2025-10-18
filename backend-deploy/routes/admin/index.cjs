@@ -74,11 +74,31 @@ try {
   throw error;
 }
 
+let securityRoutes;
+try {
+  console.log('🔍 Loading admin security routes...');
+  const securityModule = require('./security.cjs');
+  
+  // Create router for security endpoints
+  securityRoutes = express.Router();
+  securityRoutes.get('/metrics', securityModule.getSecurityMetrics);
+  securityRoutes.get('/logs', securityModule.getSecurityLogs);
+  securityRoutes.get('/sessions', securityModule.getActiveSessions);
+  securityRoutes.get('/settings', securityModule.getSecuritySettings);
+  securityRoutes.put('/settings', securityModule.updateSecuritySettings);
+  
+  console.log('✅ Security routes loaded successfully');
+} catch (error) {
+  console.error('❌ Failed to load admin security routes:', error);
+  throw error;
+}
+
 // Mount routes
 router.use('/users', usersRoutes);
 router.use('/bookings', bookingsRoutes);
 router.use('/documents', documentsRoutes);
 router.use('/messages', messagesRoutes);
+router.use('/security', securityRoutes);
 
 // Health check for admin API
 router.get('/health', (req, res) => {
@@ -90,7 +110,8 @@ router.get('/health', (req, res) => {
       users: 'active',
       bookings: 'active',
       documents: 'active',
-      messages: 'active'
+      messages: 'active',
+      security: 'active'
     }
   });
 });
