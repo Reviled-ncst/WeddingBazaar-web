@@ -34,10 +34,10 @@ async function getMessages(req, res) {
         s.name as service_name,
         s.category as service_category,
         v.business_name as vendor_business_name,
-        u1.first_name || ' ' || u1.last_name as creator_name,
+        COALESCE(u1.first_name || ' ' || u1.last_name, u1.email, 'Unknown User') as creator_name,
         u1.email as creator_email,
         u1.user_type as creator_type,
-        u2.first_name || ' ' || u2.last_name as participant_name,
+        COALESCE(u2.first_name || ' ' || u2.last_name, u2.email, 'Unknown User') as participant_name,
         u2.email as participant_email,
         u2.user_type as participant_type,
         (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id) as message_count
@@ -204,9 +204,9 @@ async function getConversationById(req, res) {
         s.name as service_name,
         s.category as service_category,
         v.business_name as vendor_business_name,
-        u1.first_name || ' ' || u1.last_name as creator_name,
+        COALESCE(u1.first_name || ' ' || u1.last_name, u1.email, 'Unknown User') as creator_name,
         u1.email as creator_email,
-        u2.first_name || ' ' || u2.last_name as participant_name,
+        COALESCE(u2.first_name || ' ' || u2.last_name, u2.email, 'Unknown User') as participant_name,
         u2.email as participant_email
       FROM conversations c
       LEFT JOIN services s ON c.service_id = s.id
@@ -227,7 +227,7 @@ async function getConversationById(req, res) {
     const messages = await sql`
       SELECT 
         m.*,
-        u.first_name || ' ' || u.last_name as sender_name,
+        COALESCE(u.first_name || ' ' || u.last_name, u.email, 'Unknown User') as sender_name,
         u.email as sender_email
       FROM messages m
       LEFT JOIN users u ON m.sender_id = u.id
