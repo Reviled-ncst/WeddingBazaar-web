@@ -21,7 +21,7 @@ import { CoupleHeader } from '../landing/CoupleHeader';
 import { useMessagingModal } from '../../../../shared/components/messaging';
 import { SERVICE_CATEGORIES } from '../../../../shared/services/CentralizedServiceManager';
 import { BookingRequestModal } from '../../../../modules/services/components/BookingRequestModal';
-import { SmartWeddingPlanner } from './dss/SmartWeddingPlanner';
+import { IntelligentWeddingPlanner } from './dss/IntelligentWeddingPlanner_v2';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 import type { Service as BookingService } from '../../../../modules/services/types';
 
@@ -1284,9 +1284,9 @@ Best regards`;
         />
       )}
 
-      {/* Smart Wedding Planner - Personalized Questionnaire & Packages! */}
+      {/* Intelligent Wedding Planner - Complete Questionnaire & Personalized Recommendations! */}
       {showDSS && (
-        <SmartWeddingPlanner
+        <IntelligentWeddingPlanner
           services={filteredServices.map(convertToBookingService)}
           isOpen={showDSS}
           onClose={handleCloseDSS}
