@@ -71,6 +71,7 @@ interface AdminBooking {
   progressPercentage?: number;
   nextAction?: string;
   nextActionBy?: string;
+  hasAmounts?: boolean; // Flag to indicate if financial amounts are set
 }
 
 // Sample data for development
@@ -158,8 +159,13 @@ export const AdminBookings: React.FC = () => {
           
           // Map database schema to frontend interface with rich data
           const mappedBookings: AdminBooking[] = (data.bookings || []).map((booking: any) => {
-            const totalAmount = parseFloat(booking.total_amount || booking.estimated_cost_max || booking.estimated_cost_min || 0);
-            const paidAmount = parseFloat(booking.deposit_amount || 0);
+            // Handle NULL/missing amounts properly - don't default to 0
+            const hasTotalAmount = booking.total_amount !== null && booking.total_amount !== undefined;
+            const hasDepositAmount = booking.deposit_amount !== null && booking.deposit_amount !== undefined;
+            
+            const totalAmount = hasTotalAmount ? parseFloat(booking.total_amount) : 0;
+            const paidAmount = hasDepositAmount ? parseFloat(booking.deposit_amount) : 0;
+            const commission = hasTotalAmount ? totalAmount * 0.1 : 0;
             
             return {
               id: booking.id?.toString() || '',
@@ -174,10 +180,12 @@ export const AdminBookings: React.FC = () => {
               status: mapDatabaseStatus(booking.status || 'pending'),
               bookingDate: booking.created_at || new Date().toISOString(),
               eventDate: booking.event_date || new Date().toISOString(),
-              duration: 1, // Can be calculated from event time if needed
+              duration: 1,
               totalAmount: totalAmount,
               paidAmount: paidAmount,
-              commission: totalAmount * 0.1, // 10% commission
+              commission: commission,
+              // Add flag to indicate if amounts are set
+              hasAmounts: hasTotalAmount,
               paymentStatus: mapPaymentStatus(booking.status || 'pending'),
               paymentMethod: booking.preferred_contact_method || 'Not specified',
               notes: booking.special_requests || booking.notes || undefined,
@@ -306,16 +314,28 @@ export const AdminBookings: React.FC = () => {
   const endIndex = startIndex + itemsPerPage;
   const currentBookings = filteredAndSortedBookings.slice(startIndex, endIndex);
 
-  // Statistics
+  // Statistics - only count revenue from bookings with amounts set
   const stats = useMemo(() => {
     const total = bookings.length;
     const pending = bookings.filter(b => b.status === 'pending').length;
     const confirmed = bookings.filter(b => b.status === 'confirmed').length;
     const completed = bookings.filter(b => b.status === 'completed').length;
-    const totalRevenue = bookings.reduce((sum, b) => sum + b.totalAmount, 0);
-    const totalCommission = bookings.reduce((sum, b) => sum + b.commission, 0);
+    
+    // Only sum amounts from bookings that have amounts set
+    const bookingsWithAmounts = bookings.filter(b => b.hasAmounts);
+    const totalRevenue = bookingsWithAmounts.reduce((sum, b) => sum + b.totalAmount, 0);
+    const totalCommission = bookingsWithAmounts.reduce((sum, b) => sum + b.commission, 0);
+    const pendingQuotes = bookings.filter(b => !b.hasAmounts).length;
 
-    return { total, pending, confirmed, completed, totalRevenue, totalCommission };
+    return { 
+      total, 
+      pending, 
+      confirmed, 
+      completed, 
+      totalRevenue, 
+      totalCommission,
+      pendingQuotes  // Number of bookings awaiting pricing
+    };
   }, [bookings]);
 
   const getStatusIcon = (status: AdminBooking['status']) => {
@@ -681,32 +701,44 @@ export const AdminBookings: React.FC = () => {
                     </div>
 
                     {/* Financial Details */}
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-green-50 rounded-xl p-3 text-center">
-                        <DollarSign className="w-4 h-4 text-green-600 mx-auto mb-1" />
-                        <p className="text-lg font-bold text-green-900">{formatCurrency(booking.totalAmount)}</p>
-                        <p className="text-xs text-green-600">Total</p>
+                    {booking.hasAmounts ? (
+                      // Show actual amounts if they exist
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-green-50 rounded-xl p-3 text-center">
+                          <DollarSign className="w-4 h-4 text-green-600 mx-auto mb-1" />
+                          <p className="text-lg font-bold text-green-900">{formatCurrency(booking.totalAmount)}</p>
+                          <p className="text-xs text-green-600">Total</p>
+                        </div>
+                        <div className="bg-blue-50 rounded-xl p-3 text-center">
+                          <CreditCard className="w-4 h-4 text-blue-600 mx-auto mb-1" />
+                          <p className="text-lg font-bold text-blue-900">{formatCurrency(booking.paidAmount)}</p>
+                          <p className="text-xs text-blue-600">Paid</p>
+                        </div>
+                        <div className="bg-purple-50 rounded-xl p-3 text-center">
+                          <Award className="w-4 h-4 text-purple-600 mx-auto mb-1" />
+                          <p className="text-lg font-bold text-purple-900">{formatCurrency(booking.commission)}</p>
+                          <p className="text-xs text-purple-600">Commission</p>
+                        </div>
                       </div>
-                      <div className="bg-blue-50 rounded-xl p-3 text-center">
-                        <CreditCard className="w-4 h-4 text-blue-600 mx-auto mb-1" />
-                        <p className="text-lg font-bold text-blue-900">{formatCurrency(booking.paidAmount)}</p>
-                        <p className="text-xs text-blue-600">Paid</p>
+                    ) : (
+                      // Show "Pending Quote" if amounts not set
+                      <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 text-center">
+                        <AlertCircle className="w-6 h-6 text-amber-600 mx-auto mb-2" />
+                        <p className="text-sm font-semibold text-amber-900 mb-1">Pending Quote</p>
+                        <p className="text-xs text-amber-700">Awaiting vendor pricing and confirmation</p>
                       </div>
-                      <div className="bg-purple-50 rounded-xl p-3 text-center">
-                        <Award className="w-4 h-4 text-purple-600 mx-auto mb-1" />
-                        <p className="text-lg font-bold text-purple-900">{formatCurrency(booking.commission)}</p>
-                        <p className="text-xs text-purple-600">Commission</p>
-                      </div>
-                    </div>
+                    )}
 
-                    {/* Payment Status */}
-                    <div className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg">
-                      <span className="text-xs text-gray-600">Payment Status</span>
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(booking.paymentStatus)}`}>
-                        <CreditCard className="w-3 h-3" />
-                        {booking.paymentStatus.charAt(0).toUpperCase() + booking.paymentStatus.slice(1)}
-                      </span>
-                    </div>
+                    {/* Payment Status - only show if amounts are set */}
+                    {booking.hasAmounts && (
+                      <div className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg">
+                        <span className="text-xs text-gray-600">Payment Status</span>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(booking.paymentStatus)}`}>
+                          <CreditCard className="w-3 h-3" />
+                          {booking.paymentStatus.charAt(0).toUpperCase() + booking.paymentStatus.slice(1)}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Event Details */}
                     <div className="space-y-2 text-sm">
