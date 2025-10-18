@@ -21,7 +21,7 @@ import { CoupleHeader } from '../landing/CoupleHeader';
 import { useMessagingModal } from '../../../../shared/components/messaging';
 import { SERVICE_CATEGORIES } from '../../../../shared/services/CentralizedServiceManager';
 import { BookingRequestModal } from '../../../../modules/services/components/BookingRequestModal';
-import { PackageDSS } from './dss/PackageDSS';
+import { SmartWeddingPlanner } from './dss/SmartWeddingPlanner';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 import type { Service as BookingService } from '../../../../modules/services/types';
 
@@ -1284,12 +1284,10 @@ Best regards`;
         />
       )}
 
-      {/* Smart Recommendations Modal - Package Recommendations! */}
+      {/* Smart Wedding Planner - Personalized Questionnaire & Packages! */}
       {showDSS && (
-        <PackageDSS
+        <SmartWeddingPlanner
           services={filteredServices.map(convertToBookingService)}
-          budget={50000}
-          location={locationFilter}
           isOpen={showDSS}
           onClose={handleCloseDSS}
           onBookService={(serviceId: string) => {
