@@ -116,7 +116,7 @@ async function getMessages(req, res) {
     
     res.json({
       success: true,
-      conversations,
+      data: conversations,
       count: conversations.length
     });
     
@@ -174,7 +174,7 @@ async function getMessagingStats(req, res) {
     
     res.json({
       success: true,
-      stats
+      data: stats
     });
     
   } catch (error) {
@@ -237,9 +237,11 @@ async function getConversationById(req, res) {
     
     res.json({
       success: true,
-      conversation: convResult[0],
-      messages: messages,
-      messageCount: messages.length
+      data: {
+        conversation: convResult[0],
+        messages: messages,
+        messageCount: messages.length
+      }
     });
     
   } catch (error) {
