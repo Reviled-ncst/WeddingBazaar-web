@@ -1,1 +1,1 @@
-export { default as DocumentApproval } from './DocumentApproval';
+export { DocumentVerification } from './DocumentVerification';
