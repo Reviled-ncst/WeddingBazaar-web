@@ -71,7 +71,7 @@ export const DocumentVerification: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selectedDocument, setSelectedDocument] = useState<VendorDocument | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -107,24 +107,32 @@ export const DocumentVerification: React.FC = () => {
       const token = localStorage.getItem('token');
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       
-      // Load documents from admin API
-      const docsResponse = await fetch(`${apiUrl}/api/admin/documents?status=${filterStatus}`, {
+      // First, get stats from all documents
+      const statsResponse = await fetch(`${apiUrl}/api/admin/documents/stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        setStats(statsData.stats || {
+          total: 0,
+          pending: 0,
+          approved: 0,
+          rejected: 0,
+          avgReviewTime: 0
+        });
+      }
+      
+      // Then load documents with filter
+      const statusParam = filterStatus === 'all' ? '' : `?status=${filterStatus}`;
+      const docsResponse = await fetch(`${apiUrl}/api/admin/documents${statusParam}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
       if (docsResponse.ok) {
         const docsData = await docsResponse.json();
+        console.log(`✅ [DocumentVerification] Loaded ${docsData.documents?.length || 0} documents (filter: ${filterStatus})`);
         setDocuments(docsData.documents || []);
-        
-        // Calculate stats
-        const allDocs = docsData.documents || [];
-        setStats({
-          total: allDocs.length,
-          pending: allDocs.filter((d: VendorDocument) => d.verificationStatus === 'pending').length,
-          approved: allDocs.filter((d: VendorDocument) => d.verificationStatus === 'approved').length,
-          rejected: allDocs.filter((d: VendorDocument) => d.verificationStatus === 'rejected').length,
-          avgReviewTime: 2.5, // Mock data
-        });
       } else {
         console.warn('⚠️ [DocumentVerification] API request failed, using mock data');
         const mockDocs = generateMockDocuments();
