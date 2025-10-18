@@ -100,6 +100,9 @@ export const AdminMessages: React.FC = () => {
         const token = localStorage.getItem('token');
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
         
+        console.log('🔗 [AdminMessages] API URL:', apiUrl);
+        console.log('🔑 [AdminMessages] Token exists:', !!token);
+        
         // Fetch conversations with filters
         const params = new URLSearchParams();
         if (filterStatus !== 'all') params.append('status', filterStatus);
@@ -119,10 +122,27 @@ export const AdminMessages: React.FC = () => {
           const statsData = await statsRes.json();
           
           console.log('✅ [AdminMessages] Loaded conversations:', conversationsData.data?.length || 0);
+          console.log('📊 [AdminMessages] Conversations data:', conversationsData);
+          console.log('📊 [AdminMessages] Stats data:', statsData);
           setConversations(conversationsData.data || []);
           setStats(statsData.data || stats);
         } else {
-          console.warn('⚠️ [AdminMessages] API error, falling back to mock data');
+          console.error('❌ [AdminMessages] API error - Status codes:', {
+            conversations: conversationsRes.status,
+            stats: statsRes.status
+          });
+          
+          // Try to get error details
+          try {
+            const convError = await conversationsRes.text();
+            const statsError = await statsRes.text();
+            console.error('❌ [AdminMessages] Conversations error:', convError);
+            console.error('❌ [AdminMessages] Stats error:', statsError);
+          } catch (e) {
+            console.error('❌ [AdminMessages] Could not parse error response');
+          }
+          
+          console.warn('⚠️ [AdminMessages] Falling back to mock data');
           const mockConvos = generateMockConversations();
           setConversations(mockConvos);
           setStats({
