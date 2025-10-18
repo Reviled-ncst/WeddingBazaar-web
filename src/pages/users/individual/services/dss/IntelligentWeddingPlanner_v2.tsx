@@ -674,7 +674,7 @@ export function IntelligentWeddingPlanner({
               <div 
                 className="absolute top-1/2 -translate-y-1/2 left-3 h-3 bg-gradient-to-r from-pink-400 to-pink-600 rounded-lg pointer-events-none"
                 style={{ 
-                  width: `calc(${((preferences.guestCount - 20) / (500 - 20)) * 100}% - 24px)` 
+                  width: `calc((100% - 24px) * ${(preferences.guestCount - 20) / (500 - 20)})` 
                 }}
               />
               
