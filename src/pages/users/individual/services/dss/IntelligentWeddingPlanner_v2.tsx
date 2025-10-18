@@ -720,12 +720,14 @@ export function IntelligentWeddingPlanner({
                   [&::-moz-range-track]:rounded-lg"
               />
             </div>
-            <div className="flex justify-between text-xs text-gray-500 font-medium px-3 mt-2">
-              <span>20</span>
-              <span>100</span>
-              <span>200</span>
-              <span>300</span>
-              <span>500+</span>
+            <div className="relative px-3 mt-2">
+              <div className="flex text-xs text-gray-500 font-medium">
+                <span className="absolute left-3" style={{ transform: 'translateX(-50%)' }}>20</span>
+                <span className="absolute" style={{ left: `calc(${((100-20)/(500-20))*100}% + 12px)`, transform: 'translateX(-50%)' }}>100</span>
+                <span className="absolute" style={{ left: `calc(${((200-20)/(500-20))*100}% + 12px)`, transform: 'translateX(-50%)' }}>200</span>
+                <span className="absolute" style={{ left: `calc(${((300-20)/(500-20))*100}% + 12px)`, transform: 'translateX(-50%)' }}>300</span>
+                <span className="absolute right-3" style={{ transform: 'translateX(50%)' }}>500+</span>
+              </div>
             </div>
           </div>
         </div>
