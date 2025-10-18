@@ -21,7 +21,7 @@ import { CoupleHeader } from '../landing/CoupleHeader';
 import { useMessagingModal } from '../../../../shared/components/messaging';
 import { SERVICE_CATEGORIES } from '../../../../shared/services/CentralizedServiceManager';
 import { BookingRequestModal } from '../../../../modules/services/components/BookingRequestModal';
-import { DecisionSupportSystem } from './dss/DecisionSupportSystem';
+import { SimplifiedDSS } from './dss/SimplifiedDSS';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 import type { Service as BookingService } from '../../../../modules/services/types';
 
@@ -1284,16 +1284,22 @@ Best regards`;
         />
       )}
 
-      {/* Decision Support System (DSS) Modal */}
+      {/* Smart Recommendations Modal - Simplified! */}
       {showDSS && (
-        <DecisionSupportSystem
-          services={filteredServices as any}
+        <SimplifiedDSS
+          services={filteredServices.map(convertToBookingService)}
           budget={50000}
           location={locationFilter}
-          priorities={[selectedCategory]}
           isOpen={showDSS}
           onClose={handleCloseDSS}
-          onServiceRecommend={handleServiceRecommend}
+          onBookService={(serviceId) => {
+            const service = filteredServices.find(s => s.id === serviceId);
+            if (service) handleBookingRequest(service);
+          }}
+          onMessageVendor={(serviceId) => {
+            const service = filteredServices.find(s => s.id === serviceId);
+            if (service) handleMessageVendor(service);
+          }}
         />
       )}
 
