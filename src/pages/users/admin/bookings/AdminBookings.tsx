@@ -169,7 +169,7 @@ export const AdminBookings: React.FC = () => {
             
             return {
               id: booking.id?.toString() || '',
-              bookingReference: `WB${String(booking.id).padStart(4, '0')}`,
+              bookingReference: booking.booking_reference || `WB${String(booking.id).padStart(4, '0')}`,
               userId: booking.couple_id || '',
               vendorId: booking.vendor_id || '',
               serviceId: booking.service_id || '',
