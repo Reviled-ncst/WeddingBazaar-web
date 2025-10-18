@@ -18,7 +18,9 @@ import {
   Mountain,
   Building2,
   Trees,
-  Waves
+  Waves,
+  ArrowRight,
+  CheckCircle2
 } from 'lucide-react';
 import type { Service } from '../../../../../modules/services/types';
 
@@ -196,12 +198,310 @@ export function IntelligentWeddingPlanner({
 
   // ==================== MATCHING ALGORITHM ====================
 
+  // Calculate match score for a service based on preferences
+  const calculateServiceMatch = (service: Service): { score: number; reasons: string[] } => {
+    let score = 0;
+    const reasons: string[] = [];
+    const maxScore = 100;
+
+    // Category/Service Type Match (20 points)
+    if (preferences.mustHaveServices.length > 0) {
+      const serviceCategoryMap: Record<string, string[]> = {
+        'venue': ['venue', 'wedding_venue', 'event_venue'],
+        'catering': ['catering', 'food_beverage'],
+        'photography': ['photography', 'photographer'],
+        'videography': ['videography', 'video'],
+        'music_dj': ['dj', 'music', 'entertainment'],
+        'flowers_decor': ['flowers', 'florist', 'decoration', 'decor'],
+        'wedding_planning': ['wedding_planner', 'planning', 'coordinator'],
+        'makeup_hair': ['makeup', 'hair', 'beauty'],
+      };
+
+      for (const [prefCategory, apiCategories] of Object.entries(serviceCategoryMap)) {
+        if (preferences.mustHaveServices.includes(prefCategory)) {
+          if (apiCategories.some(cat => service.category?.toLowerCase().includes(cat))) {
+            score += 20;
+            reasons.push(`Matches your must-have: ${prefCategory.replace(/_/g, ' ')}`);
+            break;
+          }
+        }
+      }
+    }
+
+    // Location Match (15 points)
+    if (preferences.locations.length > 0) {
+      const serviceLocation = service.location?.toLowerCase() || '';
+      const matchesLocation = preferences.locations.some(loc => 
+        serviceLocation.includes(loc.toLowerCase())
+      );
+      if (matchesLocation) {
+        score += 15;
+        reasons.push('Available in your preferred location');
+      }
+    }
+
+    // Budget Match (20 points)
+    if (preferences.budgetRange || preferences.customBudget > 0) {
+      const budgetRanges = {
+        'budget': { min: 200000, max: 500000 },
+        'moderate': { min: 500000, max: 1000000 },
+        'upscale': { min: 1000000, max: 2000000 },
+        'luxury': { min: 2000000, max: 10000000 }
+      };
+
+      const budgetRange = preferences.budgetRange ? budgetRanges[preferences.budgetRange] : null;
+      const servicePrice = service.basePrice || service.minimumPrice || 0;
+
+      if (budgetRange && servicePrice > 0) {
+        if (servicePrice >= budgetRange.min && servicePrice <= budgetRange.max) {
+          score += 20;
+          reasons.push('Within your budget range');
+        } else if (preferences.budgetFlexibility === 'flexible') {
+          const deviation = Math.abs(servicePrice - budgetRange.max) / budgetRange.max;
+          if (deviation <= 0.2) {
+            score += 15;
+            reasons.push('Close to your budget with flexibility');
+          }
+        }
+      }
+    }
+
+    // Rating & Reviews (15 points)
+    if (service.rating >= 4.5) {
+      score += 15;
+      reasons.push(`Highly rated (${service.rating.toFixed(1)}★)`);
+    } else if (service.rating >= 4.0) {
+      score += 10;
+      reasons.push('Well-rated by couples');
+    } else if (service.rating >= 3.5) {
+      score += 5;
+    }
+
+    // Verification Status (10 points)
+    if (service.verificationStatus === 'verified') {
+      score += 10;
+      reasons.push('Verified vendor');
+    }
+
+    // Service Tier Preference Match (10 points)
+    const serviceCategoryKey = Object.keys(preferences.servicePreferences).find(key => {
+      const serviceCat = service.category?.toLowerCase() || '';
+      return serviceCat.includes(key.toLowerCase().replace(/_/g, ''));
+    });
+
+    if (serviceCategoryKey) {
+      const preferredTier = preferences.servicePreferences[serviceCategoryKey];
+      if (preferredTier === 'luxury' && service.isPremium) {
+        score += 10;
+        reasons.push('Premium service matching your luxury preference');
+      } else if (preferredTier === 'premium' && (service.isFeatured || service.isPremium)) {
+        score += 8;
+        reasons.push('Featured service for premium experience');
+      } else if (preferredTier === 'basic' && !service.isPremium) {
+        score += 10;
+        reasons.push('Great value option');
+      }
+    }
+
+    // Years in Business (5 points)
+    if (service.yearsInBusiness && service.yearsInBusiness >= 5) {
+      score += 5;
+      reasons.push(`${service.yearsInBusiness}+ years of experience`);
+    }
+
+    // Availability (5 points)
+    if (service.availability) {
+      score += 5;
+      reasons.push('Currently accepting bookings');
+    }
+
+    return { score: Math.min(score, maxScore), reasons };
+  };
+
+  // Generate wedding packages from matched services
   const generateRecommendations = useMemo(() => {
     if (!showResults) return [];
 
-    // TODO: Implement intelligent matching algorithm
-    // This will be implemented in Phase 3
-    return [];
+    // Calculate match scores for all services
+    const scoredServices = services
+      .map(service => ({
+        service,
+        ...calculateServiceMatch(service)
+      }))
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    if (scoredServices.length === 0) return [];
+
+    // Group services by category
+    const servicesByCategory: Record<string, typeof scoredServices> = {};
+    scoredServices.forEach(item => {
+      const category = item.service.category || 'other';
+      if (!servicesByCategory[category]) {
+        servicesByCategory[category] = [];
+      }
+      servicesByCategory[category].push(item);
+    });
+
+    // Generate three packages: Essential, Deluxe, Premium
+    const packages: WeddingPackage[] = [];
+
+    // Essential Package - Budget-friendly essentials
+    const essentialServices: PackageService[] = [];
+    let essentialPrice = 0;
+    
+    Object.values(servicesByCategory).forEach(categoryServices => {
+      if (categoryServices.length > 0) {
+        // Pick the most affordable with decent rating
+        const affordable = categoryServices
+          .filter(s => s.service.rating >= 3.5)
+          .sort((a, b) => {
+            const priceA = a.service.basePrice || a.service.minimumPrice || 0;
+            const priceB = b.service.basePrice || b.service.minimumPrice || 0;
+            return priceA - priceB;
+          })[0];
+
+        if (affordable) {
+          essentialServices.push({
+            service: affordable.service,
+            category: affordable.service.category || 'other',
+            matchScore: affordable.score,
+            matchReasons: affordable.reasons
+          });
+          essentialPrice += affordable.service.basePrice || affordable.service.minimumPrice || 0;
+        }
+      }
+    });
+
+    if (essentialServices.length > 0) {
+      const discountPercentage = 10;
+      const discountedPrice = essentialPrice * (1 - discountPercentage / 100);
+      packages.push({
+        id: 'essential',
+        tier: 'essential',
+        name: 'Essential Package',
+        tagline: 'Perfect start to your special day',
+        description: 'All the wedding essentials you need, carefully selected to fit your budget while maintaining quality.',
+        services: essentialServices.slice(0, 5),
+        originalPrice: essentialPrice,
+        discountedPrice: discountedPrice,
+        savings: essentialPrice - discountedPrice,
+        discountPercentage,
+        matchScore: Math.round(essentialServices.reduce((sum, s) => sum + s.matchScore, 0) / essentialServices.length),
+        matchPercentage: Math.round((essentialServices.reduce((sum, s) => sum + s.matchScore, 0) / essentialServices.length)),
+        reasons: [
+          'Budget-friendly options',
+          'Well-rated vendors',
+          'Covers essential services',
+          '10% package discount'
+        ],
+        highlights: essentialServices.slice(0, 3).map(s => s.service.name)
+      });
+    }
+
+    // Deluxe Package - Balanced quality and value
+    const deluxeServices: PackageService[] = [];
+    let deluxePrice = 0;
+
+    Object.values(servicesByCategory).forEach(categoryServices => {
+      if (categoryServices.length > 0) {
+        // Pick medium price with good rating
+        const balanced = categoryServices
+          .filter(s => s.service.rating >= 4.0)
+          .sort((a, b) => b.score - a.score)[0];
+
+        if (balanced) {
+          deluxeServices.push({
+            service: balanced.service,
+            category: balanced.service.category || 'other',
+            matchScore: balanced.score,
+            matchReasons: balanced.reasons
+          });
+          deluxePrice += balanced.service.basePrice || balanced.service.minimumPrice || 0;
+        }
+      }
+    });
+
+    if (deluxeServices.length > 0) {
+      const discountPercentage = 15;
+      const discountedPrice = deluxePrice * (1 - discountPercentage / 100);
+      packages.push({
+        id: 'deluxe',
+        tier: 'deluxe',
+        name: 'Deluxe Package',
+        tagline: 'Elevated experience with premium touches',
+        description: 'The perfect balance of quality and value. Highly-rated vendors with excellent service and attention to detail.',
+        services: deluxeServices.slice(0, 6),
+        originalPrice: deluxePrice,
+        discountedPrice: discountedPrice,
+        savings: deluxePrice - discountedPrice,
+        discountPercentage,
+        matchScore: Math.round(deluxeServices.reduce((sum, s) => sum + s.matchScore, 0) / deluxeServices.length),
+        matchPercentage: Math.round((deluxeServices.reduce((sum, s) => sum + s.matchScore, 0) / deluxeServices.length)),
+        reasons: [
+          'Highly-rated vendors',
+          'Best match for your preferences',
+          'Premium quality services',
+          '15% package discount'
+        ],
+        highlights: deluxeServices.slice(0, 3).map(s => s.service.name)
+      });
+    }
+
+    // Premium Package - Luxury, best of the best
+    const premiumServices: PackageService[] = [];
+    let premiumPrice = 0;
+
+    Object.values(servicesByCategory).forEach(categoryServices => {
+      if (categoryServices.length > 0) {
+        // Pick highest-rated, premium services
+        const premium = categoryServices
+          .filter(s => s.service.rating >= 4.5)
+          .sort((a, b) => {
+            if (a.service.isPremium && !b.service.isPremium) return -1;
+            if (!a.service.isPremium && b.service.isPremium) return 1;
+            return b.service.rating - a.service.rating;
+          })[0];
+
+        if (premium) {
+          premiumServices.push({
+            service: premium.service,
+            category: premium.service.category || 'other',
+            matchScore: premium.score,
+            matchReasons: premium.reasons
+          });
+          premiumPrice += premium.service.basePrice || premium.service.minimumPrice || 0;
+        }
+      }
+    });
+
+    if (premiumServices.length > 0) {
+      const discountPercentage = 20;
+      const discountedPrice = premiumPrice * (1 - discountPercentage / 100);
+      packages.push({
+        id: 'premium',
+        tier: 'premium',
+        name: 'Premium Package',
+        tagline: 'Luxury experience with the finest vendors',
+        description: 'The ultimate wedding package featuring top-rated, premium vendors who will make your dream wedding a reality.',
+        services: premiumServices.slice(0, 7),
+        originalPrice: premiumPrice,
+        discountedPrice: discountedPrice,
+        savings: premiumPrice - discountedPrice,
+        discountPercentage,
+        matchScore: Math.round(premiumServices.reduce((sum, s) => sum + s.matchScore, 0) / premiumServices.length),
+        matchPercentage: Math.round((premiumServices.reduce((sum, s) => sum + s.matchScore, 0) / premiumServices.length)),
+        reasons: [
+          'Top-rated luxury vendors',
+          'Premium verified services',
+          'Exceptional quality guarantee',
+          '20% exclusive package discount'
+        ],
+        highlights: premiumServices.slice(0, 3).map(s => s.service.name)
+      });
+    }
+
+    return packages.sort((a, b) => b.matchScore - a.matchScore);
   }, [showResults, preferences, services]);
 
   // ==================== STEP COMPONENTS ====================
@@ -1315,9 +1615,227 @@ export function IntelligentWeddingPlanner({
     );
   };
 
+  // ==================== RESULTS VIEW ====================
+
+  const ResultsView = () => {
+    const packages = generateRecommendations;
+
+    if (packages.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <div className="mb-6">
+            <Sparkles className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              No matches found
+            </h3>
+            <p className="text-gray-600">
+              We couldn't find services matching your preferences. Try adjusting your filters.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setShowResults(false);
+              setCurrentStep(1);
+            }}
+            className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+          >
+            Start Over
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full mb-4"
+          >
+            <Sparkles className="w-8 h-8 text-white" />
+          </motion.div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            Your Personalized Wedding Packages
+          </h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Based on your preferences, we've created {packages.length} tailored packages from our verified vendors. 
+            Each package is designed to match your vision, budget, and style.
+          </p>
+        </div>
+
+        {/* Packages Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {packages.map((pkg, index) => {
+            const tierColors = {
+              essential: { from: 'from-blue-500', to: 'to-cyan-500', bg: 'bg-blue-50', text: 'text-blue-900', border: 'border-blue-200' },
+              deluxe: { from: 'from-purple-500', to: 'to-pink-500', bg: 'bg-purple-50', text: 'text-purple-900', border: 'border-purple-200' },
+              premium: { from: 'from-amber-500', to: 'to-orange-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' }
+            };
+            const colors = tierColors[pkg.tier];
+
+            return (
+              <motion.div
+                key={pkg.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className={`relative rounded-2xl border-2 ${colors.border} ${colors.bg} overflow-hidden hover:shadow-xl transition-all`}
+              >
+                {/* Best Match Badge */}
+                {index === 0 && (
+                  <div className="absolute top-4 right-4 z-10">
+                    <div className="px-3 py-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold rounded-full shadow-lg">
+                      BEST MATCH
+                    </div>
+                  </div>
+                )}
+
+                {/* Package Header */}
+                <div className={`p-6 bg-gradient-to-r ${colors.from} ${colors.to} text-white`}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="text-2xl font-bold mb-1">{pkg.name}</h3>
+                      <p className="text-white/90 text-sm">{pkg.tagline}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs opacity-90">Match Score</div>
+                      <div className="text-2xl font-bold">{pkg.matchPercentage}%</div>
+                    </div>
+                  </div>
+                  
+                  {/* Price */}
+                  <div className="mt-4 pt-4 border-t border-white/20">
+                    <div className="flex items-baseline space-x-2">
+                      <span className="text-3xl font-bold">
+                        ₱{pkg.discountedPrice.toLocaleString()}
+                      </span>
+                      <span className="text-sm line-through opacity-75">
+                        ₱{pkg.originalPrice.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="text-sm mt-1 opacity-90">
+                      Save ₱{pkg.savings.toLocaleString()} ({pkg.discountPercentage}% off)
+                    </div>
+                  </div>
+                </div>
+
+                {/* Package Content */}
+                <div className="p-6 space-y-4">
+                  {/* Description */}
+                  <p className="text-sm text-gray-700">
+                    {pkg.description}
+                  </p>
+
+                  {/* Match Reasons */}
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-700 uppercase mb-2">
+                      Why This Package?
+                    </h4>
+                    <div className="space-y-1.5">
+                      {pkg.reasons.slice(0, 3).map((reason, i) => (
+                        <div key={i} className="flex items-start space-x-2">
+                          <CheckCircle2 className={`w-4 h-4 mt-0.5 flex-shrink-0 ${colors.text}`} />
+                          <span className="text-xs text-gray-700">{reason}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Included Services */}
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-700 uppercase mb-2">
+                      Included Services ({pkg.services.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {pkg.services.slice(0, 4).map((service, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center space-x-2 flex-1 min-w-0">
+                            <div className={`w-2 h-2 rounded-full ${colors.from.replace('from-', 'bg-')}`} />
+                            <span className="text-gray-800 font-medium truncate">
+                              {service.service.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-1 ml-2">
+                            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                            <span className="text-gray-600">{service.service.rating}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {pkg.services.length > 4 && (
+                        <div className="text-xs text-gray-500 italic">
+                          +{pkg.services.length - 4} more services
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="space-y-2 pt-4">
+                    <button
+                      onClick={() => {
+                        // TODO: Handle package selection
+                        console.log('Selected package:', pkg.id);
+                      }}
+                      className={`w-full py-3 bg-gradient-to-r ${colors.from} ${colors.to} text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center space-x-2`}
+                    >
+                      <span>Select Package</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        // TODO: Handle view details
+                        console.log('View details:', pkg.id);
+                      }}
+                      className="w-full py-2 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:border-gray-400 hover:bg-gray-50 transition-all"
+                    >
+                      View Full Details
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Additional Actions */}
+        <div className="flex flex-col items-center space-y-4 pt-8 border-t border-gray-200">
+          <p className="text-sm text-gray-600 text-center">
+            Not quite what you're looking for?
+          </p>
+          <div className="flex space-x-4">
+            <button
+              onClick={() => {
+                setShowResults(false);
+                setCurrentStep(1);
+              }}
+              className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:border-gray-400 hover:shadow-md transition-all"
+            >
+              Adjust Preferences
+            </button>
+            <button
+              onClick={() => {
+                // TODO: Handle browse all services
+                console.log('Browse all services');
+              }}
+              className="px-6 py-3 bg-white border-2 border-pink-500 text-pink-600 rounded-xl font-semibold hover:bg-pink-50 transition-all"
+            >
+              Browse All Services
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ==================== RENDER STEP ====================
 
   const renderStep = () => {
+    if (showResults) {
+      return <ResultsView />;
+    }
+
     switch (currentStep) {
       case 1:
         return <WeddingBasicsStep />;
@@ -1358,7 +1876,7 @@ export function IntelligentWeddingPlanner({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+          className={`relative w-full ${showResults ? 'max-w-6xl' : 'max-w-4xl'} max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col transition-all`}
         >
           {/* Header */}
           <div className="relative bg-gradient-to-r from-pink-50 via-white to-pink-50 px-8 py-6 border-b border-gray-200">
@@ -1379,39 +1897,47 @@ export function IntelligentWeddingPlanner({
                   Intelligent Wedding Planner
                 </h1>
                 <p className="text-sm text-gray-600">
-                  Step {currentStep} of {totalSteps}: {
-                    currentStep === 1 ? 'Wedding Basics' :
-                    currentStep === 2 ? 'Budget & Priorities' :
-                    currentStep === 3 ? 'Wedding Style & Theme' :
-                    currentStep === 4 ? 'Location & Venue' :
-                    currentStep === 5 ? 'Must-Have Services' :
-                    'Special Requirements'
-                  }
+                  {showResults ? (
+                    'Your Personalized Recommendations'
+                  ) : (
+                    `Step ${currentStep} of ${totalSteps}: ${
+                      currentStep === 1 ? 'Wedding Basics' :
+                      currentStep === 2 ? 'Budget & Priorities' :
+                      currentStep === 3 ? 'Wedding Style & Theme' :
+                      currentStep === 4 ? 'Location & Venue' :
+                      currentStep === 5 ? 'Must-Have Services' :
+                      'Special Requirements'
+                    }`
+                  )}
                 </p>
               </div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPercentage}%` }}
-                transition={{ duration: 0.5, ease: 'easeOut' }}
-                className="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-500 to-purple-600 rounded-full"
-              />
-            </div>
-            <div className="flex justify-between mt-2">
-              {Array.from({ length: totalSteps }, (_, i) => (
-                <div
-                  key={i}
-                  className={`text-xs font-medium transition-colors ${
-                    i + 1 <= currentStep ? 'text-pink-600' : 'text-gray-400'
-                  }`}
-                >
-                  {i + 1}
+            {/* Progress Bar - Only show during questionnaire */}
+            {!showResults && (
+              <>
+                <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progressPercentage}%` }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-500 to-purple-600 rounded-full"
+                  />
                 </div>
-              ))}
-            </div>
+                <div className="flex justify-between mt-2">
+                  {Array.from({ length: totalSteps }, (_, i) => (
+                    <div
+                      key={i}
+                      className={`text-xs font-medium transition-colors ${
+                        i + 1 <= currentStep ? 'text-pink-600' : 'text-gray-400'
+                      }`}
+                    >
+                      {i + 1}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Content */}
@@ -1430,43 +1956,45 @@ export function IntelligentWeddingPlanner({
           </div>
 
           {/* Footer Navigation */}
-          <div className="bg-gray-50 px-8 py-6 border-t border-gray-200 flex items-center justify-between">
-            <button
-              onClick={handleBack}
-              disabled={currentStep === 1}
-              className={`
-                flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all
-                ${currentStep === 1
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-gray-400 hover:shadow-md'
-                }
-              `}
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span>Back</span>
-            </button>
+          {!showResults && (
+            <div className="bg-gray-50 px-8 py-6 border-t border-gray-200 flex items-center justify-between">
+              <button
+                onClick={handleBack}
+                disabled={currentStep === 1}
+                className={`
+                  flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all
+                  ${currentStep === 1
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-gray-400 hover:shadow-md'
+                  }
+                `}
+              >
+                <ChevronLeft className="w-5 h-5" />
+                <span>Back</span>
+              </button>
 
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleClose}
-                className="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium transition-colors"
-              >
-                Save & Exit
-              </button>
-              
-              <button
-                onClick={handleNext}
-                className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all"
-              >
-                <span>{currentStep === totalSteps ? 'Generate Recommendations' : 'Next'}</span>
-                {currentStep === totalSteps ? (
-                  <Sparkles className="w-5 h-5" />
-                ) : (
-                  <ChevronRight className="w-5 h-5" />
-                )}
-              </button>
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={handleClose}
+                  className="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                >
+                  Save & Exit
+                </button>
+                
+                <button
+                  onClick={handleNext}
+                  className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all"
+                >
+                  <span>{currentStep === totalSteps ? 'Generate Recommendations' : 'Next'}</span>
+                  {currentStep === totalSteps ? (
+                    <Sparkles className="w-5 h-5" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </motion.div>
       </motion.div>
     </AnimatePresence>
