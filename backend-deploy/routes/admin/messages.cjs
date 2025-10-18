@@ -28,28 +28,23 @@ async function getMessages(req, res) {
         c.creator_id,
         c.participant_id,
         c.service_id,
-        c.vendor_id,
         c.status,
         c.created_at,
         c.last_message_time,
-        c.last_message_content,
-        c.unread_count_creator,
-        c.unread_count_participant,
-        s.name as service_name,
-        s.category as service_category,
-        v.business_name as vendor_business_name,
-        COALESCE(u1.first_name || ' ' || u1.last_name, u1.email, 'Unknown User') as creator_name,
-        u1.email as creator_email,
-        u1.user_type as creator_type,
-        COALESCE(u2.first_name || ' ' || u2.last_name, u2.email, 'Unknown User') as participant_name,
-        u2.email as participant_email,
-        u2.user_type as participant_type,
+        c.last_message as last_message_content,
+        c.unread_count as unread_count_creator,
+        0 as unread_count_participant,
+        c.service_name,
+        c.service_category,
+        c.participant_name as vendor_business_name,
+        c.creator_id as creator_name,
+        c.creator_id as creator_email,
+        c.creator_type,
+        c.participant_name,
+        c.participant_id as participant_email,
+        c.participant_type,
         (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id) as message_count
       FROM conversations c
-      LEFT JOIN services s ON c.service_id = s.id
-      LEFT JOIN vendor_profiles v ON c.vendor_id = v.id
-      LEFT JOIN users u1 ON c.creator_id = u1.id
-      LEFT JOIN users u2 ON c.participant_id = u2.id
       ORDER BY c.last_message_time DESC NULLS LAST, c.created_at DESC
       LIMIT 100
     `;
