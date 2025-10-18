@@ -161,7 +161,7 @@ export const UserManagement: React.FC = () => {
       console.log('📡 [UserManagement] Fetching from API');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
 
@@ -192,7 +192,7 @@ export const UserManagement: React.FC = () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
         body: JSON.stringify({ status: newStatus })
       });

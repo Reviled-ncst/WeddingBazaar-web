@@ -69,7 +69,7 @@ export const VendorManagement: React.FC = () => {
       setLoading(true);
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/vendors`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
 
@@ -96,7 +96,7 @@ export const VendorManagement: React.FC = () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
         body: JSON.stringify({ status: newStatus })
       });

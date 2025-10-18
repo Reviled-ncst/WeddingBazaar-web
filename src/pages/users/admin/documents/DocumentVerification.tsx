@@ -104,7 +104,7 @@ export const DocumentVerification: React.FC = () => {
       }
       
       console.log('📡 [DocumentVerification] Fetching from API');
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       
       // First, get stats from all documents
@@ -215,7 +215,7 @@ export const DocumentVerification: React.FC = () => {
 
     setIsProcessing(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       
       const response = await fetch(`${apiUrl}/api/admin/documents/${docId}/approve`, {
@@ -251,7 +251,7 @@ export const DocumentVerification: React.FC = () => {
 
     setIsProcessing(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       
       const response = await fetch(`${apiUrl}/api/admin/documents/${docId}/reject`, {

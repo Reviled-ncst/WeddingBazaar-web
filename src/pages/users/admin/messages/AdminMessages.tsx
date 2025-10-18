@@ -97,11 +97,12 @@ export const AdminMessages: React.FC = () => {
         });
       } else {
         console.log('🌐 [AdminMessages] Fetching real data from API');
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('auth_token'); // Fixed: Use 'auth_token' not 'token'
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
         
         console.log('🔗 [AdminMessages] API URL:', apiUrl);
         console.log('🔑 [AdminMessages] Token exists:', !!token);
+        console.log('🔑 [AdminMessages] Token value:', token ? `${token.substring(0, 20)}...` : 'null');
         
         // Fetch conversations with filters
         const params = new URLSearchParams();
@@ -231,7 +232,7 @@ export const AdminMessages: React.FC = () => {
 
     setIsProcessing(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       
       // Build headers - only add Authorization if token exists
