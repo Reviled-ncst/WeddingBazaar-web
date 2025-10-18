@@ -1137,10 +1137,10 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                 </div>
                 <div>
                   <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold tracking-tight">
-                    AI Wedding Assistant
+                    Smart Wedding Planner
                   </h2>
                   <p className="text-white/90 text-xs sm:text-sm lg:text-base leading-relaxed">
-                    Smart recommendations for your perfect day
+                    Intelligent recommendations for your perfect day
                   </p>
                 </div>
               </div>
