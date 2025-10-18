@@ -20,7 +20,8 @@ import {
   ShoppingBag,
   Calendar,
   Heart,
-  Shield
+  Shield,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
 import type { Service } from '../../../../../modules/services/types';
@@ -1107,147 +1108,100 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4"
+      className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0, y: 20 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        transition={{ type: "spring", duration: 0.5 }}
-        className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-[95vw] xl:max-w-7xl h-full max-h-[98vh] sm:max-h-[95vh] overflow-hidden flex flex-col"
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ type: "spring", duration: 0.3 }}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Enhanced Header with Stunning Gradient */}
-        <div className="bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 p-3 sm:p-4 lg:p-6 text-white relative overflow-hidden">
-          {/* Animated Background Elements */}
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-0 left-0 w-20 h-20 sm:w-32 sm:h-32 bg-white rounded-full -translate-x-8 -translate-y-8 sm:-translate-x-16 sm:-translate-y-16 animate-pulse"></div>
-            <div className="absolute bottom-0 right-0 w-16 h-16 sm:w-24 sm:h-24 bg-white rounded-full translate-x-6 translate-y-6 sm:translate-x-12 sm:translate-y-12 animate-pulse delay-1000"></div>
-            <div className="absolute top-1/2 left-1/2 w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 opacity-30 animate-pulse delay-500"></div>
-          </div>
-          
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-3 sm:mb-4 lg:mb-6">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-1.5 sm:p-2 lg:p-3 bg-white/20 rounded-lg sm:rounded-xl backdrop-blur-sm ring-1 ring-white/30">
-                  <Brain className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
-                </div>
-                <div>
-                  <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold tracking-tight">
-                    Smart Wedding Planner
-                  </h2>
-                  <p className="text-white/90 text-xs sm:text-sm lg:text-base leading-relaxed">
-                    Intelligent recommendations for your perfect day
-                  </p>
-                </div>
+        {/* Simple Clean Header */}
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                <Sparkles className="h-6 w-6" />
               </div>
-              <button
-                onClick={onClose}
-                className="p-1.5 sm:p-2 hover:bg-white/20 rounded-lg sm:rounded-xl transition-all duration-200 hover:scale-105 hover:rotate-90 ring-1 ring-white/20 hover:ring-white/40"
-                title="Close Decision Support System"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
-              </button>
-            </div>
-
-            {/* Data Status Indicator */}
-            {dataLoaded && (
-              <div className="mt-3 flex items-center justify-center gap-2 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-lg border border-white/20">
-                <CheckCircle2 className="w-4 h-4 text-green-300" />
-                <span className="text-sm text-white/90">
-                  Real data loaded: {realVendors.length} vendors, {realServices.length} services
-                </span>
-              </div>
-            )}
-            
-            {dataError && (
-              <div className="mt-3 flex items-center justify-center gap-2 px-3 py-1.5 bg-red-500/20 backdrop-blur-sm rounded-lg border border-red-300/30">
-                <AlertCircle className="w-4 h-4 text-red-300" />
-                <span className="text-sm text-red-200">{dataError}</span>
-              </div>
-            )}
-
-            {/* Enhanced Quick Stats Grid with Better Mobile Layout */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
-              <div className="bg-white/15 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 border border-white/20 hover:bg-white/25 transition-all duration-300 hover:scale-105">
-                <div className="flex items-center gap-1 sm:gap-2 mb-1">
-                  <Target className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="text-xs sm:text-sm font-medium truncate">Budget</span>
-                </div>
-                <p className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold">{Math.round(analyzeBudget().percentageUsed)}%</p>
-                <div className="w-full bg-white/20 rounded-full h-1 sm:h-1.5 lg:h-2 mt-1">
-                  <div 
-                    className="bg-white rounded-full h-full transition-all duration-1000 ease-out"></div>
-                </div>
-              </div>
-              
-              <div className="bg-white/15 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 border border-white/20 hover:bg-white/25 transition-all duration-300 hover:scale-105">
-                <div className="flex items-center gap-1 sm:gap-2 mb-1">
-                  <Award className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="text-xs sm:text-sm font-medium truncate">Top Matches</span>
-                </div>
-                <p className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold">{recommendations.filter(r => r.priority === 'high').length}</p>
-                <p className="text-xs text-white/80">high priority</p>
-              </div>
-              
-              <div className="bg-white/15 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 border border-white/20 hover:bg-white/25 transition-all duration-300 hover:scale-105">
-                <div className="flex items-center gap-1 sm:gap-2 mb-1">
-                  <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="text-xs sm:text-sm font-medium truncate">Insights</span>
-                </div>
-                <p className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold">{insights.length}</p>
-                <p className="text-xs text-white/80">available</p>
-              </div>
-              
-              <div className="bg-white/15 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 border border-white/20 hover:bg-white/25 transition-all duration-300 hover:scale-105">
-                <div className="flex items-center gap-1 sm:gap-2 mb-1">
-                  <Zap className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="text-xs sm:text-sm font-medium truncate">Value Picks</span>
-                </div>
-                <p className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold">{recommendations.filter(r => r.valueRating >= 8).length}</p>
-                <p className="text-xs text-white/80">excellent value</p>
+              <div>
+                <h2 className="text-2xl font-bold">Smart Wedding Planner</h2>
+                <p className="text-purple-100 text-sm">Find your perfect vendors instantly</p>
               </div>
             </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white/20 rounded-xl transition-all"
+              aria-label="Close"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
         </div>
 
-        {/* Enhanced Responsive Tabs */}
-        <div className="border-b border-gray-200 bg-white sticky top-0 z-20">
-          <nav className="flex overflow-x-auto scrollbar-hide">
-            {[
-              { id: 'recommendations', label: 'Smart Recommendations', shortLabel: 'Recs', icon: Lightbulb },
-              { id: 'packages', label: 'Wedding Packages', shortLabel: 'Packages', icon: Package },
-              { id: 'insights', label: 'Market Insights', shortLabel: 'Insights', icon: TrendingUp },
-              { id: 'budget', label: 'Budget Analysis', shortLabel: 'Budget', icon: DollarSign },
-              { id: 'comparison', label: 'Service Comparison', shortLabel: 'Compare', icon: BarChart3 }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={cn(
-                  "flex items-center gap-1 sm:gap-2 py-3 sm:py-4 px-3 sm:px-6 lg:px-8 border-b-2 font-medium text-xs sm:text-sm lg:text-base transition-all duration-200 whitespace-nowrap min-w-0 hover:bg-gray-50",
-                  activeTab === tab.id
-                    ? "border-purple-500 text-purple-600 bg-purple-50"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                )}
-              >
-                <tab.icon className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">{tab.label}</span>
-                <span className="sm:hidden">{tab.shortLabel}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
-        {/* Enhanced Content Area */}
-        <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto p-3 sm:p-6">
-            <AnimatePresence mode="wait">
-              {/* Enhanced Recommendations Tab */}
-              {activeTab === 'recommendations' && (
+        {/* Simple Content Area - No Tabs! */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6">
+            {/* Quick Stats */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-4 border border-purple-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Lightbulb className="h-5 w-5 text-purple-600" />
+                  <span className="text-sm font-medium text-purple-900">Top Picks</span>
+                </div>
+                <p className="text-3xl font-bold text-purple-600">{recommendations.filter(r => r.priority === 'high').length}</p>
+                <p className="text-xs text-purple-700 mt-1">Perfect matches for you</p>
+              </div>
+              
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-4 border border-green-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                  <span className="text-sm font-medium text-green-900">Budget</span>
+                </div>
+                <p className="text-3xl font-bold text-green-600">{Math.round(analyzeBudget().percentageUsed)}%</p>
+                <p className="text-xs text-green-700 mt-1">Of your ₱{budget.toLocaleString()} budget</p>
+              </div>
+              
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Star className="h-5 w-5 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-900">Avg Rating</span>
+                </div>
+                <p className="text-3xl font-bold text-blue-600">
+                  {(recommendations.reduce((sum, r) => sum + (services.find(s => s.id === r.serviceId)?.rating || 0), 0) / recommendations.length).toFixed(1)}
+                </p>
+                <p className="text-xs text-blue-700 mt-1">From {recommendations.length} services</p>
+              </div>
+            </div>
+
+            {/* Simple Filter */}
+            <div className="bg-gray-50 rounded-2xl p-4 mb-6 border border-gray-200">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">Quick Filter:</span>
+                </div>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-4 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                >
+                  <option value="score">🎯 Best Match</option>
+                  <option value="price">💰 Lowest Price</option>
+                  <option value="rating">⭐ Highest Rated</option>
+                </select>
+                <div className="flex-1"></div>
+                <span className="text-sm text-gray-600">{filteredRecommendations.length} recommendations</span>
+              </div>
+            </div>
+
+            {/* Recommendations List */}
+            <div className="space-y-4">
+              {(
                 <motion.div
                   key="recommendations"
                   initial={{ opacity: 0, y: 20 }}
