@@ -726,6 +726,13 @@ export const AdminBookings: React.FC = () => {
                         <AlertCircle className="w-6 h-6 text-amber-600 mx-auto mb-2" />
                         <p className="text-sm font-semibold text-amber-900 mb-1">Pending Quote</p>
                         <p className="text-xs text-amber-700">Awaiting vendor pricing and confirmation</p>
+                        {/* Show budget range if available */}
+                        {booking.budgetRange && (
+                          <div className="mt-3 pt-3 border-t border-amber-300">
+                            <p className="text-xs text-amber-600 mb-1">Client Budget Range</p>
+                            <p className="text-sm font-bold text-amber-900">{booking.budgetRange}</p>
+                          </div>
+                        )}
                       </div>
                     )}
 
