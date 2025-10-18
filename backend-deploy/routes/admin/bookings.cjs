@@ -78,8 +78,15 @@ router.get('/', async (req, res) => {
     `;
 
     // Calculate statistics
+    const totalRevenue = bookings
+      .filter(b => b.total_amount)
+      .reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0);
+    
+    const totalCommission = totalRevenue * 0.10; // 10% commission
+    
     const stats = {
       total: bookings.length,
+      // Database status mappings
       request: bookings.filter(b => b.status === 'request').length,
       approved: bookings.filter(b => b.status === 'approved').length,
       downpayment: bookings.filter(b => b.status === 'downpayment').length,
@@ -87,9 +94,12 @@ router.get('/', async (req, res) => {
       completed: bookings.filter(b => b.status === 'completed').length,
       declined: bookings.filter(b => b.status === 'declined').length,
       cancelled: bookings.filter(b => b.status === 'cancelled').length,
-      totalRevenue: bookings
-        .filter(b => b.total_amount)
-        .reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0),
+      // Frontend status mappings (for compatibility)
+      pending: bookings.filter(b => b.status === 'request').length,
+      confirmed: bookings.filter(b => b.status === 'approved' || b.status === 'downpayment' || b.status === 'fully_paid').length,
+      // Financial data
+      totalRevenue: totalRevenue,
+      totalCommission: totalCommission,
       totalDeposits: bookings
         .filter(b => b.deposit_amount)
         .reduce((sum, b) => sum + parseFloat(b.deposit_amount || 0), 0),
