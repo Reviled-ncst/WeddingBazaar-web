@@ -660,13 +660,25 @@ export function IntelligentWeddingPlanner({
             How many guests are you expecting?
           </label>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-6">
               <span className="text-sm text-gray-600">Guest Count</span>
               <span className="text-2xl font-bold text-pink-600">
                 {preferences.guestCount >= 500 ? '500+' : preferences.guestCount}
               </span>
             </div>
-            <div className="relative">
+            <div className="relative px-3">
+              {/* Background track */}
+              <div className="absolute top-1/2 -translate-y-1/2 left-3 right-3 h-3 bg-gray-200 rounded-lg" />
+              
+              {/* Filled track */}
+              <div 
+                className="absolute top-1/2 -translate-y-1/2 left-3 h-3 bg-gradient-to-r from-pink-400 to-pink-600 rounded-lg pointer-events-none"
+                style={{ 
+                  width: `calc(${((preferences.guestCount - 20) / (500 - 20)) * 100}% - 24px)` 
+                }}
+              />
+              
+              {/* Slider input */}
               <input
                 type="range"
                 min="20"
@@ -676,30 +688,39 @@ export function IntelligentWeddingPlanner({
                 onChange={(e) => updatePreferences({ guestCount: parseInt(e.target.value) })}
                 aria-label="Guest count slider"
                 title="Adjust guest count"
-                className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer relative z-10
+                className="relative w-full h-3 appearance-none cursor-pointer bg-transparent z-10
                   [&::-webkit-slider-thumb]:appearance-none
                   [&::-webkit-slider-thumb]:w-6
                   [&::-webkit-slider-thumb]:h-6
                   [&::-webkit-slider-thumb]:rounded-full
-                  [&::-webkit-slider-thumb]:bg-pink-500
+                  [&::-webkit-slider-thumb]:bg-white
+                  [&::-webkit-slider-thumb]:border-4
+                  [&::-webkit-slider-thumb]:border-pink-500
                   [&::-webkit-slider-thumb]:cursor-pointer
                   [&::-webkit-slider-thumb]:shadow-lg
-                  [&::-webkit-slider-thumb]:hover:bg-pink-600
+                  [&::-webkit-slider-thumb]:hover:border-pink-600
+                  [&::-webkit-slider-thumb]:hover:scale-110
+                  [&::-webkit-slider-thumb]:transition-all
                   [&::-moz-range-thumb]:w-6
                   [&::-moz-range-thumb]:h-6
                   [&::-moz-range-thumb]:rounded-full
-                  [&::-moz-range-thumb]:bg-pink-500
-                  [&::-moz-range-thumb]:border-0
+                  [&::-moz-range-thumb]:bg-white
+                  [&::-moz-range-thumb]:border-4
+                  [&::-moz-range-thumb]:border-pink-500
                   [&::-moz-range-thumb]:cursor-pointer
                   [&::-moz-range-thumb]:shadow-lg
-                  [&::-moz-range-thumb]:hover:bg-pink-600
-                  [&::-webkit-slider-runnable-track]:rounded-lg
-                  [&::-moz-range-track]:rounded-lg
+                  [&::-moz-range-thumb]:hover:border-pink-600
+                  [&::-moz-range-thumb]:hover:scale-110
+                  [&::-moz-range-thumb]:transition-all
+                  [&::-webkit-slider-runnable-track]:h-3
                   [&::-webkit-slider-runnable-track]:bg-transparent
-                  [&::-moz-range-track]:bg-transparent"
+                  [&::-webkit-slider-runnable-track]:rounded-lg
+                  [&::-moz-range-track]:h-3
+                  [&::-moz-range-track]:bg-transparent
+                  [&::-moz-range-track]:rounded-lg"
               />
             </div>
-            <div className="flex justify-between text-xs text-gray-500 font-medium">
+            <div className="flex justify-between text-xs text-gray-500 font-medium px-3 mt-2">
               <span>20</span>
               <span>100</span>
               <span>200</span>
