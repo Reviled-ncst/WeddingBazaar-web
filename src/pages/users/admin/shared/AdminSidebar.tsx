@@ -52,15 +52,10 @@ const navigationItems: NavItem[] = [
     icon: Calendar,
   },
   {
-    label: 'Verifications',
-    href: '/admin/verifications',
+    label: 'Document Verification',
+    href: '/admin/documents',
     icon: FileCheck,
     badge: 5,
-  },
-  {
-    label: 'Documents',
-    href: '/admin/documents',
-    icon: FileText,
   },
   {
     label: 'Analytics',

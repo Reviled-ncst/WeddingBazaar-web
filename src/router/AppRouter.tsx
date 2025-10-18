@@ -28,8 +28,7 @@ import { AdminSettings } from '../pages/users/admin/settings';
 import { AdminSystemStatus } from '../pages/users/admin/system-status';
 import { AdminEmergency } from '../pages/users/admin/emergency';
 import { VendorManagement } from '../pages/users/admin/vendors';
-import { DocumentApproval } from '../pages/users/admin/documents';
-import { AdminVerificationReview } from '../pages/users/admin/verifications';
+import { DocumentVerification } from '../pages/users/admin/documents';
 
 // Individual Pages
 import { Services } from '../pages/users/individual/services';
@@ -398,15 +397,12 @@ export const AppRouter: React.FC = () => {
             
             <Route path="/admin/documents" element={
               <ProtectedRoute requireAuth={true}>
-                <DocumentApproval />
+                <DocumentVerification />
               </ProtectedRoute>
             } />
             
-            <Route path="/admin/verifications" element={
-              <ProtectedRoute requireAuth={true}>
-                <AdminVerificationReview />
-              </ProtectedRoute>
-            } />
+            {/* Redirect old verifications route to documents */}
+            <Route path="/admin/verifications" element={<Navigate to="/admin/documents" replace />} />
             
             {/* Legacy redirect routes */}
             <Route path="/couples" element={<Navigate to="/individual" replace />} />
