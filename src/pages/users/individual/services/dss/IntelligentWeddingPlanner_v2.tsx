@@ -4,26 +4,20 @@ import {
   X, 
   Sparkles, 
   Star, 
-  MapPin, 
   Calendar,
-  Users,
   DollarSign,
   Heart,
   ChevronRight,
   ChevronLeft,
   Check,
-  Package,
-  TrendingUp,
   Zap,
   Award,
-  Filter,
   Church,
   Palmtree,
   Home,
   Mountain,
   Building2,
   Trees,
-  Sunset,
   Waves
 } from 'lucide-react';
 import type { Service } from '../../../../../modules/services/types';
@@ -142,6 +136,13 @@ export function IntelligentWeddingPlanner({
   const handleNext = () => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
+      // Scroll to top when changing steps
+      setTimeout(() => {
+        const contentArea = document.querySelector('.dss-content-area');
+        if (contentArea) {
+          contentArea.scrollTop = 0;
+        }
+      }, 100);
     } else {
       // Generate recommendations
       setShowResults(true);
@@ -151,6 +152,13 @@ export function IntelligentWeddingPlanner({
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+      // Scroll to top when changing steps
+      setTimeout(() => {
+        const contentArea = document.querySelector('.dss-content-area');
+        if (contentArea) {
+          contentArea.scrollTop = 0;
+        }
+      }, 100);
     }
   };
 
@@ -286,19 +294,43 @@ export function IntelligentWeddingPlanner({
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Guest Count</span>
               <span className="text-2xl font-bold text-pink-600">
-                {preferences.guestCount}
+                {preferences.guestCount >= 500 ? '500+' : preferences.guestCount}
               </span>
             </div>
-            <input
-              type="range"
-              min="20"
-              max="500"
-              step="10"
-              value={preferences.guestCount}
-              onChange={(e) => updatePreferences({ guestCount: parseInt(e.target.value) })}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
-            />
-            <div className="flex justify-between text-xs text-gray-500">
+            <div className="relative">
+              <input
+                type="range"
+                min="20"
+                max="500"
+                step="10"
+                value={preferences.guestCount}
+                onChange={(e) => updatePreferences({ guestCount: parseInt(e.target.value) })}
+                aria-label="Guest count slider"
+                title="Adjust guest count"
+                className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer relative z-10
+                  [&::-webkit-slider-thumb]:appearance-none
+                  [&::-webkit-slider-thumb]:w-6
+                  [&::-webkit-slider-thumb]:h-6
+                  [&::-webkit-slider-thumb]:rounded-full
+                  [&::-webkit-slider-thumb]:bg-pink-500
+                  [&::-webkit-slider-thumb]:cursor-pointer
+                  [&::-webkit-slider-thumb]:shadow-lg
+                  [&::-webkit-slider-thumb]:hover:bg-pink-600
+                  [&::-moz-range-thumb]:w-6
+                  [&::-moz-range-thumb]:h-6
+                  [&::-moz-range-thumb]:rounded-full
+                  [&::-moz-range-thumb]:bg-pink-500
+                  [&::-moz-range-thumb]:border-0
+                  [&::-moz-range-thumb]:cursor-pointer
+                  [&::-moz-range-thumb]:shadow-lg
+                  [&::-moz-range-thumb]:hover:bg-pink-600
+                  [&::-webkit-slider-runnable-track]:rounded-lg
+                  [&::-moz-range-track]:rounded-lg
+                  [&::-webkit-slider-runnable-track]:bg-transparent
+                  [&::-moz-range-track]:bg-transparent"
+              />
+            </div>
+            <div className="flex justify-between text-xs text-gray-500 font-medium">
               <span>20</span>
               <span>100</span>
               <span>200</span>
@@ -308,20 +340,39 @@ export function IntelligentWeddingPlanner({
           </div>
         </div>
 
-        {/* Wedding Date */}
+        {/* Wedding Date - Enhanced Calendar */}
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-4">
             When is your wedding date? (Optional)
           </label>
-          <div className="relative">
-            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="date"
-              value={preferences.weddingDate}
-              onChange={(e) => updatePreferences({ weddingDate: e.target.value })}
-              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all"
-              placeholder="Select your wedding date"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="relative">
+              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+              <input
+                type="date"
+                value={preferences.weddingDate}
+                onChange={(e) => updatePreferences({ weddingDate: e.target.value })}
+                min={new Date().toISOString().split('T')[0]}
+                aria-label="Wedding date"
+                title="Select your wedding date"
+                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all"
+              />
+            </div>
+            {preferences.weddingDate && (
+              <div className="flex items-center p-3 bg-pink-50 rounded-xl border-2 border-pink-200">
+                <div className="flex-1">
+                  <div className="text-xs text-gray-600">Selected Date</div>
+                  <div className="font-semibold text-pink-900">
+                    {new Date(preferences.weddingDate + 'T00:00:00').toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <p className="text-xs text-gray-500 mt-2">
             This helps us check vendor availability for your date
@@ -483,7 +534,7 @@ export function IntelligentWeddingPlanner({
             Drag and drop to reorder, or click to select/deselect
           </p>
           <div className="space-y-2">
-            {serviceCategories.map((category, index) => {
+            {serviceCategories.map((category) => {
               const Icon = category.icon;
               const isSelected = preferences.servicePriorities.includes(category.value);
               const priority = preferences.servicePriorities.indexOf(category.value) + 1;
@@ -657,8 +708,9 @@ export function IntelligentWeddingPlanner({
                     {palette.colors.map((color, idx) => (
                       <div
                         key={idx}
-                        className="w-10 h-10 rounded-full border-2 border-gray-200"
+                        className={`w-10 h-10 rounded-full border-2 border-gray-200`}
                         style={{ backgroundColor: color }}
+                        aria-label={`Color ${idx + 1}`}
                       />
                     ))}
                   </div>
@@ -966,7 +1018,7 @@ export function IntelligentWeddingPlanner({
                   key={service.value}
                   whileHover={{ scale: 1.02 }}
                   className={`
-                    rounded-xl border-2 transition-all overflow-hidden
+                    rounded-xl border-2 transition-all overflow-hidden min-h-[140px] flex flex-col
                     ${isSelected 
                       ? 'border-pink-500 bg-pink-50' 
                       : 'border-gray-200 bg-white hover:border-pink-300'
@@ -1160,10 +1212,10 @@ export function IntelligentWeddingPlanner({
           </div>
         </div>
 
-        {/* Cultural/Religious Requirements */}
+        {/* Cultural/Religious Requirements - Single Select */}
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-4">
-            Cultural or religious preferences
+            Cultural or religious preference (Select one)
           </label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {culturalOptions.map((option) => {
@@ -1173,13 +1225,14 @@ export function IntelligentWeddingPlanner({
                 <motion.button
                   key={option}
                   onClick={() => {
+                    // Single select - replace the array with just this option
                     if (isSelected) {
                       updatePreferences({
-                        culturalRequirements: preferences.culturalRequirements.filter(c => c !== option)
+                        culturalRequirements: []
                       });
                     } else {
                       updatePreferences({
-                        culturalRequirements: [...preferences.culturalRequirements, option]
+                        culturalRequirements: [option]
                       });
                     }
                   }}
@@ -1242,12 +1295,17 @@ export function IntelligentWeddingPlanner({
 
         {/* Special Notes */}
         <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-4">
+          <label htmlFor="special-notes" className="block text-sm font-semibold text-gray-900 mb-4">
             Any other special requests or notes?
           </label>
           <textarea
+            id="special-notes"
             value={preferences.specialNotes}
             onChange={(e) => updatePreferences({ specialNotes: e.target.value })}
+            onFocus={(e) => {
+              // Prevent any auto-scroll behavior
+              e.preventDefault();
+            }}
             rows={4}
             className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all resize-none"
             placeholder="Tell us anything else we should know about your dream wedding..."
@@ -1306,6 +1364,7 @@ export function IntelligentWeddingPlanner({
           <div className="relative bg-gradient-to-r from-pink-50 via-white to-pink-50 px-8 py-6 border-b border-gray-200">
             <button
               onClick={handleClose}
+              aria-label="Close wedding planner"
               className="absolute top-6 right-8 p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
             >
               <X className="w-6 h-6 text-gray-600" />
@@ -1356,7 +1415,7 @@ export function IntelligentWeddingPlanner({
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-8">
+          <div className="flex-1 overflow-y-auto p-8 dss-content-area">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentStep}
