@@ -97,12 +97,54 @@ export const AdminMessages: React.FC = () => {
         });
       } else {
         console.log('🌐 [AdminMessages] Fetching real data from API');
-        const token = localStorage.getItem('auth_token'); // Fixed: Use 'auth_token' not 'token'
+        
+        // Try multiple token sources (in order of preference)
+        let token = localStorage.getItem('auth_token')      // Standard auth token
+                 || localStorage.getItem('jwt_token')       // Backend/Admin token
+                 || null;
+        
+        // Fallback: Check if admin session has a token
+        if (!token) {
+          try {
+            const adminSessionStr = localStorage.getItem('adminSession');
+            const cachedUserStr = localStorage.getItem('cached_user_data');
+            const backendUserStr = localStorage.getItem('backend_user');
+            
+            console.log('🔍 [AdminMessages] Checking alternate token sources...');
+            console.log('🔍 [AdminMessages] adminSession exists:', !!adminSessionStr);
+            console.log('🔍 [AdminMessages] cached_user_data exists:', !!cachedUserStr);
+            console.log('🔍 [AdminMessages] backend_user exists:', !!backendUserStr);
+            
+            if (adminSessionStr) {
+              const adminSession = JSON.parse(adminSessionStr);
+              token = adminSession.token || adminSession.auth_token || adminSession.jwt_token;
+              console.log('🔑 [AdminMessages] Token from adminSession:', !!token);
+            }
+            
+            if (!token && cachedUserStr) {
+              const cachedUser = JSON.parse(cachedUserStr);
+              token = cachedUser.token || cachedUser.auth_token || cachedUser.jwt_token;
+              console.log('🔑 [AdminMessages] Token from cached_user_data:', !!token);
+            }
+            
+            if (!token && backendUserStr) {
+              const backendUser = JSON.parse(backendUserStr);
+              token = backendUser.token || backendUser.auth_token || backendUser.jwt_token;
+              console.log('🔑 [AdminMessages] Token from backend_user:', !!token);
+            }
+          } catch (e) {
+            console.error('❌ [AdminMessages] Error parsing session data:', e);
+          }
+        }
+        
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
         
         console.log('🔗 [AdminMessages] API URL:', apiUrl);
         console.log('🔑 [AdminMessages] Token exists:', !!token);
         console.log('🔑 [AdminMessages] Token value:', token ? `${token.substring(0, 20)}...` : 'null');
+        
+        // List all localStorage keys for debugging
+        console.log('🗂️ [AdminMessages] All localStorage keys:', Object.keys(localStorage));
         
         // Fetch conversations with filters
         const params = new URLSearchParams();
@@ -232,7 +274,7 @@ export const AdminMessages: React.FC = () => {
 
     setIsProcessing(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       
       // Build headers - only add Authorization if token exists
