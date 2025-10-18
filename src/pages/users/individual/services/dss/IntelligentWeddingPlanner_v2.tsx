@@ -683,7 +683,7 @@ export function IntelligentWeddingPlanner({
                 type="range"
                 min="20"
                 max="500"
-                step="5"
+                step="1"
                 value={preferences.guestCount}
                 onChange={(e) => updatePreferences({ guestCount: parseInt(e.target.value) })}
                 aria-label="Guest count slider"
