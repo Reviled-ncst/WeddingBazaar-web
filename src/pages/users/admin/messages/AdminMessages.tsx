@@ -108,13 +108,15 @@ export const AdminMessages: React.FC = () => {
         if (filterStatus !== 'all') params.append('status', filterStatus);
         if (filterUserType !== 'all') params.append('user_type', filterUserType);
         
+        // Build headers - only add Authorization if token exists
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         const [conversationsRes, statsRes] = await Promise.all([
-          fetch(`${apiUrl}/api/admin/messages?${params}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          fetch(`${apiUrl}/api/admin/messages/stats`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
+          fetch(`${apiUrl}/api/admin/messages?${params}`, { headers }),
+          fetch(`${apiUrl}/api/admin/messages/stats`, { headers })
         ]);
 
         if (conversationsRes.ok && statsRes.ok) {
@@ -232,11 +234,17 @@ export const AdminMessages: React.FC = () => {
       const token = localStorage.getItem('token');
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       
+      // Build headers - only add Authorization if token exists
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`${apiUrl}/api/admin/messages/${convId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers
       });
 
       if (response.ok) {
