@@ -57,6 +57,108 @@ export const UserManagement: React.FC = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
+      
+      // Check if mock data is enabled
+      const useMockData = import.meta.env.VITE_USE_MOCK_USERS === 'true';
+      
+      if (useMockData) {
+        console.log('📊 [UserManagement] Using mock data (VITE_USE_MOCK_USERS=true)');
+        
+        // Generate mock users
+        const mockUsers: User[] = [
+          {
+            id: '1',
+            email: 'john.doe@example.com',
+            first_name: 'John',
+            last_name: 'Doe',
+            phone: '+1234567890',
+            role: 'individual',
+            status: 'active',
+            created_at: '2024-01-15T10:30:00Z',
+            last_login: '2024-12-20T15:45:00Z'
+          },
+          {
+            id: '2',
+            email: 'sarah.vendor@weddingpro.com',
+            first_name: 'Sarah',
+            last_name: 'Johnson',
+            phone: '+1234567891',
+            role: 'vendor',
+            status: 'active',
+            created_at: '2024-02-20T09:15:00Z',
+            last_login: '2024-12-21T08:30:00Z'
+          },
+          {
+            id: '3',
+            email: 'admin@weddingbazaar.com',
+            first_name: 'Admin',
+            last_name: 'User',
+            phone: '+1234567892',
+            role: 'admin',
+            status: 'active',
+            created_at: '2024-01-01T00:00:00Z',
+            last_login: '2024-12-22T10:00:00Z'
+          },
+          {
+            id: '4',
+            email: 'mike.photographer@example.com',
+            first_name: 'Mike',
+            last_name: 'Wilson',
+            phone: '+1234567893',
+            role: 'vendor',
+            status: 'active',
+            created_at: '2024-03-10T14:20:00Z',
+            last_login: '2024-12-19T16:00:00Z'
+          },
+          {
+            id: '5',
+            email: 'emily.bride@example.com',
+            first_name: 'Emily',
+            last_name: 'Brown',
+            phone: '+1234567894',
+            role: 'individual',
+            status: 'active',
+            created_at: '2024-04-05T11:00:00Z',
+            last_login: '2024-12-21T12:30:00Z'
+          },
+          {
+            id: '6',
+            email: 'inactive.user@example.com',
+            first_name: 'Test',
+            last_name: 'Inactive',
+            phone: '+1234567895',
+            role: 'individual',
+            status: 'inactive',
+            created_at: '2024-05-01T08:00:00Z'
+          },
+          {
+            id: '7',
+            email: 'suspended.vendor@example.com',
+            first_name: 'Suspended',
+            last_name: 'Vendor',
+            phone: '+1234567896',
+            role: 'vendor',
+            status: 'suspended',
+            created_at: '2024-06-15T09:30:00Z',
+            last_login: '2024-11-01T10:00:00Z'
+          }
+        ];
+        
+        const mockStats: Stats = {
+          total: mockUsers.length,
+          active: mockUsers.filter(u => u.status === 'active').length,
+          inactive: mockUsers.filter(u => u.status === 'inactive').length,
+          suspended: mockUsers.filter(u => u.status === 'suspended').length
+        };
+        
+        setUsers(mockUsers);
+        setStats(mockStats);
+        setLoading(false);
+        return;
+      }
+      
+      // Use real API data
+      console.log('📡 [UserManagement] Fetching from API');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -67,9 +169,13 @@ export const UserManagement: React.FC = () => {
         const data = await response.json();
         setUsers(data.users || []);
         setStats(data.stats || stats);
+      } else {
+        console.error('❌ [UserManagement] API request failed, using empty data');
+        setUsers([]);
       }
     } catch (error) {
-      console.error('Error loading users:', error);
+      console.error('❌ [UserManagement] Error loading users:', error);
+      setUsers([]);
     } finally {
       setLoading(false);
     }

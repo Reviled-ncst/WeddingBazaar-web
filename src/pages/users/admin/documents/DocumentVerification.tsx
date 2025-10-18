@@ -85,6 +85,25 @@ export const DocumentVerification: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
+      // Check if mock data is enabled
+      const useMockData = import.meta.env.VITE_USE_MOCK_DOCUMENTS === 'true';
+      
+      if (useMockData) {
+        console.log('📊 [DocumentVerification] Using mock data (VITE_USE_MOCK_DOCUMENTS=true)');
+        const mockDocs = generateMockDocuments();
+        setDocuments(mockDocs);
+        setStats({
+          total: mockDocs.length,
+          pending: mockDocs.filter(d => d.verificationStatus === 'pending').length,
+          approved: mockDocs.filter(d => d.verificationStatus === 'approved').length,
+          rejected: mockDocs.filter(d => d.verificationStatus === 'rejected').length,
+          avgReviewTime: 2.5,
+        });
+        setLoading(false);
+        return;
+      }
+      
+      console.log('📡 [DocumentVerification] Fetching from API');
       const token = localStorage.getItem('token');
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       
@@ -106,16 +125,29 @@ export const DocumentVerification: React.FC = () => {
           rejected: allDocs.filter((d: VendorDocument) => d.verificationStatus === 'rejected').length,
           avgReviewTime: 2.5, // Mock data
         });
+      } else {
+        console.warn('⚠️ [DocumentVerification] API request failed, using mock data');
+        const mockDocs = generateMockDocuments();
+        setDocuments(mockDocs);
+        setStats({
+          total: mockDocs.length,
+          pending: mockDocs.filter(d => d.verificationStatus === 'pending').length,
+          approved: mockDocs.filter(d => d.verificationStatus === 'approved').length,
+          rejected: mockDocs.filter(d => d.verificationStatus === 'rejected').length,
+          avgReviewTime: 2.5,
+        });
       }
     } catch (error) {
-      console.error('Failed to load documents:', error);
+      console.error('❌ [DocumentVerification] Error loading documents:', error);
+      console.log('📊 [DocumentVerification] Falling back to mock data');
       // Use mock data for development
-      setDocuments(generateMockDocuments());
+      const mockDocs = generateMockDocuments();
+      setDocuments(mockDocs);
       setStats({
-        total: 15,
-        pending: 5,
-        approved: 8,
-        rejected: 2,
+        total: mockDocs.length,
+        pending: mockDocs.filter(d => d.verificationStatus === 'pending').length,
+        approved: mockDocs.filter(d => d.verificationStatus === 'approved').length,
+        rejected: mockDocs.filter(d => d.verificationStatus === 'rejected').length,
         avgReviewTime: 2.5,
       });
     } finally {
