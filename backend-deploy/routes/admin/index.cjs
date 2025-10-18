@@ -56,10 +56,29 @@ try {
   throw error;
 }
 
+let messagesRoutes;
+try {
+  console.log('🔍 Loading admin messages routes...');
+  const messagesModule = require('./messages.cjs');
+  
+  // Create router for messages endpoints
+  messagesRoutes = express.Router();
+  messagesRoutes.get('/', messagesModule.getMessages);
+  messagesRoutes.get('/stats', messagesModule.getMessagingStats);
+  messagesRoutes.get('/:id', messagesModule.getConversationById);
+  messagesRoutes.delete('/:id', messagesModule.deleteConversation);
+  
+  console.log('✅ Messages routes loaded successfully');
+} catch (error) {
+  console.error('❌ Failed to load admin messages routes:', error);
+  throw error;
+}
+
 // Mount routes
 router.use('/users', usersRoutes);
 router.use('/bookings', bookingsRoutes);
 router.use('/documents', documentsRoutes);
+router.use('/messages', messagesRoutes);
 
 // Health check for admin API
 router.get('/health', (req, res) => {
@@ -70,7 +89,8 @@ router.get('/health', (req, res) => {
     modules: {
       users: 'active',
       bookings: 'active',
-      documents: 'active'
+      documents: 'active',
+      messages: 'active'
     }
   });
 });

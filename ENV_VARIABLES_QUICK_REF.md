@@ -9,6 +9,7 @@ VITE_CLOUDINARY_CLOUD_NAME=dht64xt1g
 VITE_CLOUDINARY_UPLOAD_PRESET=weddingbazaarus
 NODE_ENV=production
 VITE_USE_MOCK_BOOKINGS=false
+VITE_USE_MOCK_MESSAGES=false
 VITE_FIREBASE_API_KEY=AIzaSyBrrGVT9tyka4l2Jsph0VJVmjw5OmLXqI0
 VITE_FIREBASE_AUTH_DOMAIN=weddingbazaarph.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=weddingbazaarph
@@ -119,3 +120,17 @@ npm run build
 ## 📚 Full Documentation
 
 See `DEPLOYMENT_GUIDE.md` for comprehensive deployment instructions.
+
+## Mock Data Control Variables
+
+| Variable | Purpose | Values | Default |
+|----------|---------|--------|---------|
+| `VITE_USE_MOCK_USERS` | Use mock users in admin panel | `true`/`false` | `false` |
+| `VITE_USE_MOCK_BOOKINGS` | Use mock bookings in admin panel | `true`/`false` | `false` |
+| `VITE_USE_MOCK_DOCUMENTS` | Use mock documents in admin document verification | `true`/`false` | `false` |
+| `VITE_USE_MOCK_VERIFICATIONS` | Use mock verifications (legacy) | `true`/`false` | `false` |
+| `VITE_USE_MOCK_MESSAGES` | Use mock messages/conversations in admin panel | `true`/`false` | `false` |
+
+**Usage**: Set these in `.env.development` to enable mock data during development when backend is unavailable.
+
+**Note**: In production (`.env.production`), all these should be `false` to use real API data.
