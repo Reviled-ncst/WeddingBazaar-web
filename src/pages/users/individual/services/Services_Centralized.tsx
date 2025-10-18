@@ -901,11 +901,11 @@ Best regards`;
                   />
                 </div>
 
-                {/* AI Planning Button */}
+                {/* Smart Planning Button */}
                 <motion.button
                   onClick={handleOpenDSS}
                   className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-purple-500 via-purple-600 to-indigo-600 text-white rounded-2xl hover:from-purple-600 hover:via-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-xl border border-purple-300/50"
-                  title="AI Wedding Recommendations"
+                  title="Smart Wedding Recommendations"
                   whileHover={{ 
                     scale: 1.05,
                     boxShadow: "0 20px 25px -5px rgba(139, 92, 246, 0.3)"
@@ -918,7 +918,7 @@ Best regards`;
                   >
                     <Brain className="h-5 w-5" />
                   </motion.div>
-                  <span>AI Planner</span>
+                  <span>Smart Planner</span>
                   <Sparkles className="h-4 w-4 animate-pulse" />
                 </motion.button>
 
