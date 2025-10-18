@@ -18,7 +18,11 @@ async function getMessages(req, res) {
     
     console.log('💬 [Admin Messages] Fetching conversations, filters:', { status, user_type, search });
     
-    let query = `
+    // Build the query using template literals - Neon doesn't support parameterized queries
+    // We'll use a simple approach: fetch all and filter in memory (safe for small datasets)
+    // For production with large datasets, consider using a query builder or ORM
+    
+    const result = await sql`
       SELECT 
         c.id,
         c.creator_id,
@@ -46,51 +50,39 @@ async function getMessages(req, res) {
       LEFT JOIN vendor_profiles v ON c.vendor_id = v.id
       LEFT JOIN users u1 ON c.creator_id = u1.id
       LEFT JOIN users u2 ON c.participant_id = u2.id
-      WHERE 1=1
+      ORDER BY c.last_message_time DESC NULLS LAST, c.created_at DESC
+      LIMIT 100
     `;
     
-    const params = [];
-    let paramIndex = 1;
+    // Apply filters in memory (safe for small datasets, avoids SQL injection)
+    let filtered = result;
     
-    // Add status filter if provided
     if (status && status !== 'all') {
-      query += ` AND c.status = $${paramIndex++}`;
-      params.push(status);
+      filtered = filtered.filter(conv => conv.status === status);
     }
     
-    // Add user type filter if provided
     if (user_type && user_type !== 'all') {
-      query += ` AND (u1.user_type = $${paramIndex++} OR u2.user_type = $${paramIndex})`;
-      params.push(user_type);
-      params.push(user_type);
-      paramIndex++;
+      filtered = filtered.filter(conv => 
+        conv.creator_type === user_type || conv.participant_type === user_type
+      );
     }
     
-    // Add search filter if provided
     if (search) {
-      query += ` AND (
-        u1.first_name ILIKE $${paramIndex} OR 
-        u1.last_name ILIKE $${paramIndex} OR 
-        u2.first_name ILIKE $${paramIndex} OR 
-        u2.last_name ILIKE $${paramIndex} OR
-        s.name ILIKE $${paramIndex} OR
-        v.business_name ILIKE $${paramIndex}
-      )`;
-      params.push(`%${search}%`);
-      paramIndex++;
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter(conv => {
+        return (
+          (conv.creator_name && conv.creator_name.toLowerCase().includes(searchLower)) ||
+          (conv.participant_name && conv.participant_name.toLowerCase().includes(searchLower)) ||
+          (conv.service_name && conv.service_name.toLowerCase().includes(searchLower)) ||
+          (conv.vendor_business_name && conv.vendor_business_name.toLowerCase().includes(searchLower))
+        );
+      });
     }
     
-    query += ` ORDER BY c.last_message_time DESC NULLS LAST, c.created_at DESC
-               LIMIT 100`;
-    
-    const result = params.length > 0 
-      ? await sql(query, params)
-      : await sql(query);
-    
-    console.log(`✅ [Admin Messages] Found ${result.length} conversations`);
+    console.log(`✅ [Admin Messages] Found ${filtered.length} conversations (${result.length} total, filtered by: status=${status}, user_type=${user_type}, search=${search})`);
     
     // Transform to match frontend interface
-    const conversations = result.map(conv => ({
+    const conversations = filtered.map(conv => ({
       id: conv.id,
       creatorId: conv.creator_id,
       participantId: conv.participant_id,
