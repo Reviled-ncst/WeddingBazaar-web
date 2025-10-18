@@ -22,6 +22,7 @@ const debugRoutes = require('./routes/debug.cjs');
 const bookingsTestRoutes = require('./routes/bookings-test.cjs');
 const adminRoutes = require('./routes/admin.cjs'); // Old admin routes
 const adminUserRoutes = require('./routes/admin/index.cjs'); // New modular admin routes
+const dssRoutes = require('./routes/dss.cjs'); // Decision Support System routes
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -175,6 +176,9 @@ app.use('/api/debug', debugRoutes);
 // Admin routes - New modular user management system
 app.use('/api/admin', adminUserRoutes); // User management, stats, etc.
 // app.use('/api/admin/legacy', adminRoutes); // Old admin routes (vendor mappings)
+
+// DSS routes - Intelligent recommendation system
+app.use('/api/dss', dssRoutes); // Decision Support System endpoints
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {

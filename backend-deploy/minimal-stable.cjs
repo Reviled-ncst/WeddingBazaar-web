@@ -21,7 +21,16 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Mount modular routes
+const adminRoutes = require('./routes/admin/index.cjs');
+app.use('/api/admin', adminRoutes);
+
+// Mount DSS routes for Decision Support System
+const dssRoutes = require('./routes/dss.cjs');
+app.use('/api/dss', dssRoutes);
+
 console.log('Wedding Bazaar Backend Starting...');
+console.log('📊 DSS Routes mounted at /api/dss');
 
 // Health check - always works
 app.get('/api/health', async (req, res) => {
@@ -29,9 +38,20 @@ app.get('/api/health', async (req, res) => {
     res.json({
       status: 'OK',
       timestamp: new Date().toISOString(),
-      version: '2.1.4-MINIMAL-STABLE',
+      version: '2.2.0-DSS-ENABLED',
       uptime: process.uptime(),
-      endpoints: ['health', 'ping', 'vendors', 'services']
+      endpoints: [
+        'health', 
+        'ping', 
+        'vendors', 
+        'services',
+        'admin/*',
+        'dss/all-data',
+        'dss/vendors-enriched',
+        'dss/budget-recommendations',
+        'dss/timeline',
+        'dss/vendor-comparison'
+      ]
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -233,7 +253,9 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Wedding Bazaar Backend running on port ${PORT}`);
-  console.log('Endpoints: /api/health, /api/ping, /api/vendors/featured, /api/services');
+  console.log('📍 Core endpoints: /api/health, /api/ping, /api/vendors/featured, /api/services');
+  console.log('🔐 Admin endpoints: /api/admin/*');
+  console.log('📊 DSS endpoints: /api/dss/all-data, /api/dss/budget-recommendations, /api/dss/timeline');
 });
 
 module.exports = app;
