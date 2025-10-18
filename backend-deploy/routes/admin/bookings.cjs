@@ -36,6 +36,7 @@ router.get('/', async (req, res) => {
     const bookings = await sql`
       SELECT 
         b.id,
+        b.booking_reference,
         b.service_id,
         b.service_name,
         b.vendor_id,
