@@ -32,6 +32,66 @@ interface IntelligentWeddingPlannerProps {
   onMessageVendor: (serviceId: string) => void;
 }
 
+// ==================== HELPER FUNCTIONS ====================
+
+// Helper function to determine which steps are relevant based on selected services
+function getRelevantSteps(servicePriorities: string[]): number[] {
+  const allSteps = [1, 2, 3, 4, 5, 6];
+  
+  // If no services selected yet, show all steps
+  if (servicePriorities.length === 0) return allSteps;
+  
+  // Step 1 (Basics) and Step 2 (Budget) are always relevant
+  const relevantSteps = [1, 2];
+  
+  // Check if any venue-related services are selected
+  const venueRelatedServices = ['venue', 'catering', 'decoration'];
+  const hasVenueServices = servicePriorities.some(s => venueRelatedServices.includes(s));
+  
+  // Step 3 (Style) is relevant for most services
+  const styleRelevantServices = ['venue', 'decoration', 'photography', 'videography', 'florals'];
+  if (servicePriorities.some(s => styleRelevantServices.includes(s))) {
+    relevantSteps.push(3);
+  }
+  
+  // Step 4 (Location/Venue) is only relevant if venue-related services are selected
+  if (hasVenueServices) {
+    relevantSteps.push(4);
+  }
+  
+  // Step 5 (Must-Have Services) is always relevant
+  relevantSteps.push(5);
+  
+  // Step 6 (Special Requirements) is only relevant for catering/venue
+  if (hasVenueServices) {
+    relevantSteps.push(6);
+  }
+  
+  return relevantSteps.sort((a, b) => a - b);
+}
+
+// Helper to get category-specific fields to display
+function getCategoryRelevantFields(category: string): {
+  showVenue: boolean;
+  showStyle: boolean;
+  showLocation: boolean;
+  showDietary: boolean;
+  showCultural: boolean;
+  showAtmosphere: boolean;
+} {
+  const venueCategories = ['venue', 'catering', 'decoration'];
+  const styleCategories = ['venue', 'decoration', 'photography', 'videography', 'florals'];
+  
+  return {
+    showVenue: venueCategories.includes(category),
+    showStyle: styleCategories.includes(category),
+    showLocation: true, // Location is always relevant
+    showDietary: ['catering'].includes(category),
+    showCultural: venueCategories.includes(category),
+    showAtmosphere: venueCategories.includes(category)
+  };
+}
+
 // ==================== TYPES & INTERFACES ====================
 
 // Wedding Questionnaire Data Structure
@@ -108,6 +168,7 @@ export function IntelligentWeddingPlanner({
   // State Management
   const [currentStep, setCurrentStep] = useState(1);
   const [showResults, setShowResults] = useState(false);
+  const [selectedServiceDetail, setSelectedServiceDetail] = useState<PackageService | null>(null);
   const [preferences, setPreferences] = useState<WeddingPreferences>({
     weddingType: '',
     weddingDate: '',
@@ -131,13 +192,19 @@ export function IntelligentWeddingPlanner({
     specialNotes: ''
   });
 
-  const totalSteps = 6;
+  // Get relevant steps based on selected services
+  const relevantSteps = useMemo(() => 
+    getRelevantSteps(preferences.servicePriorities),
+    [preferences.servicePriorities]
+  );
 
   // ==================== HANDLERS ====================
 
   const handleNext = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
+    const currentIndex = relevantSteps.indexOf(currentStep);
+    if (currentIndex < relevantSteps.length - 1) {
+      // Move to next relevant step
+      setCurrentStep(relevantSteps[currentIndex + 1]);
       // Scroll to top when changing steps
       setTimeout(() => {
         const contentArea = document.querySelector('.dss-content-area');
@@ -152,8 +219,10 @@ export function IntelligentWeddingPlanner({
   };
 
   const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+    const currentIndex = relevantSteps.indexOf(currentStep);
+    if (currentIndex > 0) {
+      // Move to previous relevant step
+      setCurrentStep(relevantSteps[currentIndex - 1]);
       // Scroll to top when changing steps
       setTimeout(() => {
         const contentArea = document.querySelector('.dss-content-area');
@@ -1615,6 +1684,215 @@ export function IntelligentWeddingPlanner({
     );
   };
 
+  // ==================== SERVICE DETAIL MODAL ====================
+
+  const ServiceDetailModal = ({ service, onClose }: { service: PackageService; onClose: () => void }) => {
+    const relevantFields = getCategoryRelevantFields(service.category);
+    
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.9, y: 20 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.9, y: 20 }}
+          onClick={(e) => e.stopPropagation()}
+          className="relative w-full max-w-3xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-6 text-white">
+            <button
+              onClick={onClose}
+              aria-label="Close service details"
+              className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-start space-x-4">
+              <div className="flex-1">
+                <div className="text-sm font-semibold uppercase mb-1 opacity-90">
+                  {service.category}
+                </div>
+                <h2 className="text-2xl font-bold mb-2">{service.service.name}</h2>
+                <div className="flex items-center space-x-4 text-sm">
+                  <div className="flex items-center space-x-1">
+                    <Star className="w-4 h-4 fill-white" />
+                    <span className="font-semibold">{service.service.rating}</span>
+                  </div>
+                  {service.service.verificationStatus === 'verified' && (
+                    <div className="flex items-center space-x-1 bg-white/20 px-2 py-1 rounded-full">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span className="text-xs font-medium">Verified</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm opacity-90 mb-1">Match Score</div>
+                <div className="text-3xl font-bold">{service.matchScore}%</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Description */}
+            <div>
+              <h3 className="text-sm font-bold text-gray-700 uppercase mb-2">About This Service</h3>
+              <p className="text-gray-700">{service.service.description}</p>
+            </div>
+
+            {/* Match Reasons */}
+            <div>
+              <h3 className="text-sm font-bold text-gray-700 uppercase mb-2">Why We Recommend This</h3>
+              <div className="space-y-2">
+                {service.matchReasons.map((reason, i) => (
+                  <div key={i} className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 mt-0.5 text-pink-500 flex-shrink-0" />
+                    <span className="text-sm text-gray-700">{reason}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Price */}
+            <div>
+              <h3 className="text-sm font-bold text-gray-700 uppercase mb-2">Pricing</h3>
+              <div className="flex items-baseline space-x-2">
+                <span className="text-2xl font-bold text-gray-900">
+                  ₱{service.service.basePrice?.toLocaleString() || 'Contact for quote'}
+                </span>
+                {service.service.isPremium && (
+                  <span className="text-sm text-gray-600">· Premium</span>
+                )}
+              </div>
+            </div>
+
+            {/* Category-Specific Information */}
+            <div className="space-y-4 pt-4 border-t border-gray-200">
+              <h3 className="text-sm font-bold text-gray-700 uppercase">Service Details</h3>
+
+              {relevantFields.showLocation && preferences.locations.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Your Preferred Locations</div>
+                  <div className="flex flex-wrap gap-2">
+                    {preferences.locations.map((location) => (
+                      <span key={location} className="px-3 py-1 bg-pink-50 text-pink-700 text-sm rounded-full">
+                        {location}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {relevantFields.showStyle && preferences.styles.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Matches Your Style</div>
+                  <div className="flex flex-wrap gap-2">
+                    {preferences.styles.map((style) => (
+                      <span key={style} className="px-3 py-1 bg-purple-50 text-purple-700 text-sm rounded-full capitalize">
+                        {style}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {relevantFields.showAtmosphere && preferences.atmosphere && (
+                <div>
+                  <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Atmosphere</div>
+                  <span className="px-3 py-1 bg-blue-50 text-blue-700 text-sm rounded-full capitalize">
+                    {preferences.atmosphere}
+                  </span>
+                </div>
+              )}
+
+              {relevantFields.showVenue && preferences.venueTypes.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Venue Compatibility</div>
+                  <div className="flex flex-wrap gap-2">
+                    {preferences.venueTypes.map((type) => (
+                      <span key={type} className="px-3 py-1 bg-green-50 text-green-700 text-sm rounded-full capitalize">
+                        {type}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {relevantFields.showDietary && preferences.dietaryConsiderations.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Dietary Options</div>
+                  <div className="flex flex-wrap gap-2">
+                    {preferences.dietaryConsiderations.map((diet) => (
+                      <span key={diet} className="px-3 py-1 bg-amber-50 text-amber-700 text-sm rounded-full capitalize">
+                        {diet}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {relevantFields.showCultural && preferences.culturalRequirements.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Cultural Preferences</div>
+                  <div className="flex flex-wrap gap-2">
+                    {preferences.culturalRequirements.map((req) => (
+                      <span key={req} className="px-3 py-1 bg-indigo-50 text-indigo-700 text-sm rounded-full capitalize">
+                        {req}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Budget Information */}
+            <div className="pt-4 border-t border-gray-200">
+              <h3 className="text-sm font-bold text-gray-700 uppercase mb-2">Budget Fit</h3>
+              <div className="flex items-center space-x-2">
+                <div className="text-sm text-gray-700">
+                  Your budget: <span className="font-semibold capitalize">{preferences.budgetRange}</span>
+                  {preferences.customBudget > 0 && (
+                    <span className="text-gray-600"> (₱{preferences.customBudget.toLocaleString()})</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-6 border-t border-gray-200 bg-gray-50 flex space-x-3">
+            <button
+              onClick={() => {
+                onBookService(service.service.id);
+                onClose();
+              }}
+              className="flex-1 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center space-x-2"
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Book Service</span>
+            </button>
+            <button
+              onClick={() => {
+                onMessageVendor(service.service.id);
+                onClose();
+              }}
+              className="flex-1 py-3 border-2 border-pink-500 text-pink-600 rounded-xl font-semibold hover:bg-pink-50 transition-all"
+            >
+              Message Vendor
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  };
+
   // ==================== RESULTS VIEW ====================
 
   const ResultsView = () => {
@@ -1700,7 +1978,7 @@ export function IntelligentWeddingPlanner({
                       <p className="text-white/90 text-sm">{pkg.tagline}</p>
                     </div>
                     <div className="text-right">
-                      <div className="text-xs opacity-90">Match Score</div>
+                      <div className="text-xs opacity-90 mb-1">Match Score</div>
                       <div className="text-2xl font-bold">{pkg.matchPercentage}%</div>
                     </div>
                   </div>
@@ -1750,7 +2028,11 @@ export function IntelligentWeddingPlanner({
                     </h4>
                     <div className="space-y-2">
                       {pkg.services.slice(0, 4).map((service, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs">
+                        <button
+                          key={i}
+                          onClick={() => setSelectedServiceDetail(service)}
+                          className="w-full flex items-center justify-between text-xs hover:bg-gray-50 p-2 rounded-lg transition-colors text-left"
+                        >
                           <div className="flex items-center space-x-2 flex-1 min-w-0">
                             <div className={`w-2 h-2 rounded-full ${colors.from.replace('from-', 'bg-')}`} />
                             <span className="text-gray-800 font-medium truncate">
@@ -1761,11 +2043,11 @@ export function IntelligentWeddingPlanner({
                             <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
                             <span className="text-gray-600">{service.service.rating}</span>
                           </div>
-                        </div>
+                        </button>
                       ))}
                       {pkg.services.length > 4 && (
-                        <div className="text-xs text-gray-500 italic">
-                          +{pkg.services.length - 4} more services
+                        <div className="text-xs text-gray-500 italic pl-2">
+                          +{pkg.services.length - 4} more services (click "View Full Details" to see all)
                         </div>
                       )}
                     </div>
@@ -1785,12 +2067,14 @@ export function IntelligentWeddingPlanner({
                     </button>
                     <button
                       onClick={() => {
-                        // TODO: Handle view details
-                        console.log('View details:', pkg.id);
+                        // Show first service for now
+                        if (pkg.services.length > 0) {
+                          setSelectedServiceDetail(pkg.services[0]);
+                        }
                       }}
                       className="w-full py-2 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:border-gray-400 hover:bg-gray-50 transition-all"
                     >
-                      View Full Details
+                      View Service Details
                     </button>
                   </div>
                 </div>
@@ -1831,6 +2115,8 @@ export function IntelligentWeddingPlanner({
 
   // ==================== RENDER STEP ====================
 
+
+
   const renderStep = () => {
     if (showResults) {
       return <ResultsView />;
@@ -1856,7 +2142,8 @@ export function IntelligentWeddingPlanner({
 
   // ==================== PROGRESS BAR ====================
 
-  const progressPercentage = (currentStep / totalSteps) * 100;
+  const currentStepIndex = relevantSteps.indexOf(currentStep);
+  const progressPercentage = ((currentStepIndex + 1) / relevantSteps.length) * 100;
 
   // ==================== MAIN RENDER ====================
 
@@ -1900,7 +2187,7 @@ export function IntelligentWeddingPlanner({
                   {showResults ? (
                     'Your Personalized Recommendations'
                   ) : (
-                    `Step ${currentStep} of ${totalSteps}: ${
+                    `Step ${currentStepIndex + 1} of ${relevantSteps.length}: ${
                       currentStep === 1 ? 'Wedding Basics' :
                       currentStep === 2 ? 'Budget & Priorities' :
                       currentStep === 3 ? 'Wedding Style & Theme' :
@@ -1925,14 +2212,14 @@ export function IntelligentWeddingPlanner({
                   />
                 </div>
                 <div className="flex justify-between mt-2">
-                  {Array.from({ length: totalSteps }, (_, i) => (
+                  {relevantSteps.map((step, index) => (
                     <div
-                      key={i}
+                      key={step}
                       className={`text-xs font-medium transition-colors ${
-                        i + 1 <= currentStep ? 'text-pink-600' : 'text-gray-400'
+                        index <= currentStepIndex ? 'text-pink-600' : 'text-gray-400'
                       }`}
                     >
-                      {i + 1}
+                      {index + 1}
                     </div>
                   ))}
                 </div>
@@ -1985,8 +2272,8 @@ export function IntelligentWeddingPlanner({
                   onClick={handleNext}
                   className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all"
                 >
-                  <span>{currentStep === totalSteps ? 'Generate Recommendations' : 'Next'}</span>
-                  {currentStep === totalSteps ? (
+                  <span>{currentStepIndex === relevantSteps.length - 1 ? 'Generate Recommendations' : 'Next'}</span>
+                  {currentStepIndex === relevantSteps.length - 1 ? (
                     <Sparkles className="w-5 h-5" />
                   ) : (
                     <ChevronRight className="w-5 h-5" />
@@ -1996,6 +2283,14 @@ export function IntelligentWeddingPlanner({
             </div>
           )}
         </motion.div>
+
+        {/* Service Detail Modal */}
+        {selectedServiceDetail && (
+          <ServiceDetailModal
+            service={selectedServiceDetail}
+            onClose={() => setSelectedServiceDetail(null)}
+          />
+        )}
       </motion.div>
     </AnimatePresence>
   );
