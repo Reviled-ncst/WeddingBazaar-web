@@ -32,43 +32,49 @@ router.get('/', async (req, res) => {
   try {
     console.log('📊 [AdminAPI] Fetching all bookings for admin...');
 
-    // Get all bookings
+    // Get all bookings with user names from users table
     const bookings = await sql`
       SELECT 
-        id,
-        service_id,
-        service_name,
-        vendor_id,
-        vendor_name,
-        couple_id,
-        couple_name,
-        event_date,
-        event_time,
-        event_location,
-        guest_count,
-        service_type,
-        budget_range,
-        special_requests,
-        contact_phone,
-        preferred_contact_method,
-        status,
-        total_amount,
-        deposit_amount,
-        notes,
-        contract_details,
-        response_message,
-        estimated_cost_min,
-        estimated_cost_max,
-        estimated_cost_currency,
-        process_stage,
-        progress_percentage,
-        next_action,
-        next_action_by,
-        last_activity_at,
-        created_at,
-        updated_at
-      FROM bookings
-      ORDER BY created_at DESC
+        b.id,
+        b.service_id,
+        b.service_name,
+        b.vendor_id,
+        COALESCE(v.first_name || ' ' || v.last_name, v.email, 'Unknown Vendor') as vendor_name,
+        b.couple_id,
+        COALESCE(c.first_name || ' ' || c.last_name, c.email, 'Unknown Client') as couple_name,
+        c.email as couple_email,
+        c.phone as couple_phone,
+        v.email as vendor_email,
+        v.phone as vendor_phone,
+        b.event_date,
+        b.event_time,
+        b.event_location,
+        b.guest_count,
+        b.service_type,
+        b.budget_range,
+        b.special_requests,
+        b.contact_phone,
+        b.preferred_contact_method,
+        b.status,
+        COALESCE(b.total_amount, 0) as total_amount,
+        COALESCE(b.deposit_amount, 0) as deposit_amount,
+        b.notes,
+        b.contract_details,
+        b.response_message,
+        b.estimated_cost_min,
+        b.estimated_cost_max,
+        b.estimated_cost_currency,
+        b.process_stage,
+        b.progress_percentage,
+        b.next_action,
+        b.next_action_by,
+        b.last_activity_at,
+        b.created_at,
+        b.updated_at
+      FROM bookings b
+      LEFT JOIN users c ON b.couple_id = c.id
+      LEFT JOIN users v ON b.vendor_id = v.id
+      ORDER BY b.created_at DESC
     `;
 
     // Calculate statistics
