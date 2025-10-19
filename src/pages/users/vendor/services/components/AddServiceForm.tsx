@@ -20,6 +20,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { LocationPicker } from '../../../../../shared/components/forms/LocationPicker';
+import { categoryService, Category, CategoryField } from '../../../../../services/api/categoryService';
 
 // Service interface based on the actual database schema
 interface Service {
@@ -28,6 +29,7 @@ interface Service {
   title: string;
   description: string;
   category: string;
+  subcategory?: string;
   price?: number;
   images?: string[];
   featured?: boolean;
@@ -44,6 +46,35 @@ interface Service {
   };
   tags?: string[];
   keywords?: string;
+  // DSS-specific fields
+  years_in_business?: number;
+  service_tier?: 'Basic' | 'Premium' | 'Luxury';
+  wedding_styles?: string[];
+  cultural_specialties?: string[];
+  availability?: {
+    weekdays?: boolean;
+    weekends?: boolean;
+    holidays?: boolean;
+    seasons?: string[];
+  };
+  // Category-specific fields
+  venue_capacity?: {
+    min?: number;
+    max?: number;
+  };
+  catering_options?: {
+    cuisine_types?: string[];
+    dietary_accommodations?: string[];
+    service_style?: string[];
+  };
+  photography_style?: string[];
+  music_genres?: string[];
+  equipment_included?: string[];
+  certifications?: string[];
+  insurance?: boolean;
+  cancellation_policy?: string;
+  portfolio_url?: string;
+  video_url?: string;
 }
 
 interface LocationData {
@@ -59,6 +90,7 @@ interface FormData {
   title: string;
   description: string;
   category: string;
+  subcategory?: string;
   price: string;
   max_price?: string;
   images: string[];
@@ -75,6 +107,35 @@ interface FormData {
   };
   tags: string[];
   keywords: string;
+  // DSS-specific fields
+  years_in_business: string;
+  service_tier: 'Basic' | 'Premium' | 'Luxury';
+  wedding_styles: string[];
+  cultural_specialties: string[];
+  availability: {
+    weekdays: boolean;
+    weekends: boolean;
+    holidays: boolean;
+    seasons: string[];
+  };
+  // Category-specific fields
+  venue_capacity?: {
+    min: string;
+    max: string;
+  };
+  catering_options?: {
+    cuisine_types: string[];
+    dietary_accommodations: string[];
+    service_style: string[];
+  };
+  photography_style?: string[];
+  music_genres?: string[];
+  equipment_included?: string[];
+  certifications?: string[];
+  insurance: boolean;
+  cancellation_policy: string;
+  portfolio_url: string;
+  video_url: string;
 }
 
 interface AddServiceFormProps {
@@ -127,6 +188,85 @@ const PRICE_RANGES = [
     description: 'Exclusive, top-tier services'
   }
 ];
+
+// DSS-specific constants (will be moved to database)
+const WEDDING_STYLES = [
+  'Traditional', 'Modern', 'Rustic', 'Vintage', 'Bohemian',
+  'Beach', 'Garden', 'Industrial', 'Glamorous', 'Minimalist',
+  'Classic', 'Romantic', 'Destination', 'Cultural', 'Themed'
+];
+
+const CULTURAL_SPECIALTIES = [
+  'Filipino', 'Chinese', 'Indian', 'Muslim', 'Christian',
+  'Jewish', 'Korean', 'Japanese', 'Spanish', 'American',
+  'Mixed Cultural', 'International', 'Non-Religious'
+];
+
+const SEASONS = ['Spring', 'Summer', 'Fall', 'Winter', 'All Seasons'];
+
+// Category-specific field configurations (will be moved to database)
+const CATEGORY_FIELDS: Record<string, {
+  subcategories?: string[];
+  specificFields?: string[];
+  cuisineTypes?: string[];
+  dietaryOptions?: string[];
+  serviceStyles?: string[];
+  photographyStyles?: string[];
+  musicGenres?: string[];
+}> = {
+  'Catering': {
+    subcategories: ['Full Service', 'Buffet Style', 'Plated Service', 'Food Truck', 'Dessert Bar'],
+    cuisineTypes: [
+      'Filipino', 'Chinese', 'Japanese', 'Korean', 'Italian',
+      'French', 'Mexican', 'Indian', 'Thai', 'Mediterranean',
+      'American', 'Fusion', 'International Buffet'
+    ],
+    dietaryOptions: [
+      'Vegetarian', 'Vegan', 'Gluten-Free', 'Halal', 'Kosher',
+      'Nut-Free', 'Dairy-Free', 'Organic', 'Farm-to-Table'
+    ],
+    serviceStyles: [
+      'Buffet', 'Plated Service', 'Family Style', 'Cocktail Reception',
+      'Food Stations', 'BBQ', 'Live Cooking Stations'
+    ]
+  },
+  'Photography': {
+    subcategories: ['Photography Only', 'Videography Only', 'Photo & Video Package', 'Drone Coverage'],
+    photographyStyles: [
+      'Candid', 'Traditional', 'Photojournalistic', 'Fine Art',
+      'Editorial', 'Vintage', 'Dramatic', 'Natural Light',
+      'Black & White', 'Film Photography', 'Drone Photography'
+    ]
+  },
+  'Venue': {
+    subcategories: ['Indoor', 'Outdoor', 'Beach', 'Garden', 'Ballroom', 'Historic', 'Modern'],
+    specificFields: ['capacity', 'parking', 'accommodation', 'catering_included']
+  },
+  'Music': {
+    subcategories: ['DJ', 'Live Band', 'Solo Artist', 'String Quartet', 'Acoustic'],
+    musicGenres: [
+      'Pop', 'Rock', 'Jazz', 'Classical', 'R&B',
+      'Country', 'EDM', 'Latin', 'Filipino', 'Acoustic',
+      'Indie', 'Top 40', 'Oldies', 'Mixed Genre'
+    ]
+  },
+  'Planning': {
+    subcategories: ['Full Planning', 'Partial Planning', 'Day-of Coordination', 'Destination Wedding'],
+    specificFields: ['team_size', 'planning_tools', 'vendor_network']
+  },
+  'Florist': {
+    subcategories: ['Bouquets', 'Ceremony Flowers', 'Reception Centerpieces', 'Full Floral Design'],
+    specificFields: ['flower_types', 'seasonal_availability', 'delivery_setup']
+  },
+  'Beauty': {
+    subcategories: ['Bridal Makeup', 'Hair Styling', 'Full Package', 'Trials', 'Entourage Service'],
+    specificFields: ['artist_count', 'products_used', 'trial_included']
+  },
+  'Rentals': {
+    subcategories: ['Tables & Chairs', 'Linens', 'Lighting', 'Tents', 'Decor', 'Audio Visual'],
+    specificFields: ['inventory', 'delivery_setup', 'breakdown_included']
+  }
+};
 
 
 
@@ -243,6 +383,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     title: '',
     description: '',
     category: '',
+    subcategory: '',
     price: '',
     max_price: '',
     images: [],
@@ -258,7 +399,36 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
       website: ''
     },
     tags: [],
-    keywords: ''
+    keywords: '',
+    // DSS fields
+    years_in_business: '',
+    service_tier: 'Basic',
+    wedding_styles: [],
+    cultural_specialties: [],
+    availability: {
+      weekdays: true,
+      weekends: true,
+      holidays: false,
+      seasons: []
+    },
+    // Category-specific fields
+    venue_capacity: {
+      min: '',
+      max: ''
+    },
+    catering_options: {
+      cuisine_types: [],
+      dietary_accommodations: [],
+      service_style: []
+    },
+    photography_style: [],
+    music_genres: [],
+    equipment_included: [],
+    certifications: [],
+    insurance: false,
+    cancellation_policy: '',
+    portfolio_url: '',
+    video_url: ''
   });
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -267,7 +437,60 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const totalSteps = 4;
+  // Dynamic categories state
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryFields, setCategoryFields] = useState<CategoryField[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [loadingFields, setLoadingFields] = useState(false);
+
+  const totalSteps = 5; // 1=Basic Info, 2=Pricing, 3=Contact & Features, 4=Images & Tags, 5=Category-Specific Fields
+
+  // Load categories on mount
+  useEffect(() => {
+    const loadCategories = async () => {
+      setLoadingCategories(true);
+      try {
+        console.log('📂 Loading categories from API...');
+        const cats = await categoryService.fetchCategories();
+        setCategories(cats);
+        console.log(`✅ Loaded ${cats.length} categories`);
+      } catch (error) {
+        console.error('❌ Error loading categories:', error);
+        setErrors(prev => ({ ...prev, categories: 'Failed to load categories. Using defaults.' }));
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    
+    if (isOpen) {
+      loadCategories();
+    }
+  }, [isOpen]);
+
+  // Load fields when category changes
+  useEffect(() => {
+    if (!formData.category) {
+      setCategoryFields([]);
+      return;
+    }
+    
+    const loadFields = async () => {
+      setLoadingFields(true);
+      try {
+        console.log(`📋 Loading fields for category: ${formData.category}`);
+        const fields = await categoryService.fetchCategoryFieldsByName(formData.category);
+        setCategoryFields(fields);
+        console.log(`✅ Loaded ${fields.length} fields`);
+      } catch (error) {
+        console.error('❌ Error loading category fields:', error);
+        setCategoryFields([]);
+      } finally {
+        setLoadingFields(false);
+      }
+    };
+    
+    loadFields();
+  }, [formData.category]);
 
   // Initialize form data when editing
   useEffect(() => {
@@ -276,13 +499,14 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         title: editingService.title || '',
         description: editingService.description || '',
         category: editingService.category || '',
+        subcategory: editingService.subcategory || '',
         price: editingService.price?.toString() || '',
         max_price: '',
         images: editingService.images || [],
         featured: editingService.featured || false,
         is_active: editingService.is_active ?? true,
         location: editingService.location || '',
-        locationData: undefined, // Will be populated if location has coordinates
+        locationData: undefined,
         price_range: editingService.price_range || '₱10,000 - ₱25,000',
         features: editingService.features || [],
         contact_info: {
@@ -291,7 +515,36 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
           website: editingService.contact_info?.website || ''
         },
         tags: editingService.tags || [],
-        keywords: editingService.keywords || ''
+        keywords: editingService.keywords || '',
+        // DSS fields
+        years_in_business: editingService.years_in_business?.toString() || '',
+        service_tier: editingService.service_tier || 'Basic',
+        wedding_styles: editingService.wedding_styles || [],
+        cultural_specialties: editingService.cultural_specialties || [],
+        availability: {
+          weekdays: editingService.availability?.weekdays ?? true,
+          weekends: editingService.availability?.weekends ?? true,
+          holidays: editingService.availability?.holidays ?? false,
+          seasons: editingService.availability?.seasons || []
+        },
+        // Category-specific fields
+        venue_capacity: {
+          min: editingService.venue_capacity?.min?.toString() || '',
+          max: editingService.venue_capacity?.max?.toString() || ''
+        },
+        catering_options: {
+          cuisine_types: editingService.catering_options?.cuisine_types || [],
+          dietary_accommodations: editingService.catering_options?.dietary_accommodations || [],
+          service_style: editingService.catering_options?.service_style || []
+        },
+        photography_style: editingService.photography_style || [],
+        music_genres: editingService.music_genres || [],
+        equipment_included: editingService.equipment_included || [],
+        certifications: editingService.certifications || [],
+        insurance: editingService.insurance || false,
+        cancellation_policy: editingService.cancellation_policy || '',
+        portfolio_url: editingService.portfolio_url || '',
+        video_url: editingService.video_url || ''
       });
     } else {
       // Reset form for new service
@@ -299,6 +552,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         title: '',
         description: '',
         category: '',
+        subcategory: '',
         price: '',
         max_price: '',
         images: [],
@@ -314,7 +568,36 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
           website: ''
         },
         tags: [],
-        keywords: ''
+        keywords: '',
+        // DSS fields
+        years_in_business: '',
+        service_tier: 'Basic',
+        wedding_styles: [],
+        cultural_specialties: [],
+        availability: {
+          weekdays: true,
+          weekends: true,
+          holidays: false,
+          seasons: []
+        },
+        // Category-specific fields
+        venue_capacity: {
+          min: '',
+          max: ''
+        },
+        catering_options: {
+          cuisine_types: [],
+          dietary_accommodations: [],
+          service_style: []
+        },
+        photography_style: [],
+        music_genres: [],
+        equipment_included: [],
+        certifications: [],
+        insurance: false,
+        cancellation_policy: '',
+        portfolio_url: '',
+        video_url: ''
       });
     }
     setCurrentStep(1);
@@ -511,6 +794,34 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     }));
   };
 
+  // Multi-select helpers for arrays
+  const toggleArrayItem = (array: string[], item: string): string[] => {
+    return array.includes(item)
+      ? array.filter(i => i !== item)
+      : [...array, item];
+  };
+
+  const handleMultiSelect = (field: keyof FormData, value: string) => {
+    setFormData(prev => {
+      const currentArray = prev[field] as string[];
+      return {
+        ...prev,
+        [field]: toggleArrayItem(currentArray, value)
+      };
+    });
+  };
+
+  // Category-specific multi-select handlers
+  const handleCateringOption = (field: keyof FormData['catering_options'], value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      catering_options: {
+        ...prev.catering_options!,
+        [field]: toggleArrayItem(prev.catering_options![field], value)
+      }
+    }));
+  };
+
   // Handle drag and drop
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -658,27 +969,39 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                         )}
                       </div>
 
-                      {/* Category */}
+                      {/* Category - Dynamic from Database */}
                       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
                         <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
                           <Tag className="h-5 w-5 text-blue-600" />
                           Service Category *
                         </label>
                         <p className="text-sm text-gray-600 mb-4">
-                          Choose the category that best describes your wedding service
+                          {loadingCategories ? '⏳ Loading categories...' : 'Choose the category that best describes your wedding service'}
                         </p>
                         <select
                           value={formData.category}
-                          onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                          onChange={(e) => {
+                            setFormData(prev => ({ ...prev, category: e.target.value, subcategory: '' }));
+                          }}
                           title="Select service category"
+                          disabled={loadingCategories}
                           className={`w-full px-5 py-4 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg ${
                             errors.category ? 'border-red-300 bg-red-50' : 'border-white bg-white/70 backdrop-blur-sm'
-                          }`}
+                          } ${loadingCategories ? 'opacity-50 cursor-wait' : ''}`}
                         >
-                          <option value="">Select a category</option>
-                          {SERVICE_CATEGORIES.map(category => (
-                            <option key={category.value} value={category.value}>{category.display}</option>
-                          ))}
+                          <option value="">{loadingCategories ? 'Loading...' : 'Select a category'}</option>
+                          {categories.length > 0 ? (
+                            categories.map(cat => (
+                              <option key={cat.id} value={cat.name}>
+                                {cat.display_name}
+                              </option>
+                            ))
+                          ) : !loadingCategories ? (
+                            // Fallback to hardcoded categories if API fails
+                            SERVICE_CATEGORIES.map(category => (
+                              <option key={category.value} value={category.value}>{category.display}</option>
+                            ))
+                          ) : null}
                         </select>
                         {errors.category && (
                           <p className="mt-2 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-2 rounded-lg">
@@ -686,7 +1009,63 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                             {errors.category}
                           </p>
                         )}
+                        {categories.length > 0 && (
+                          <p className="mt-2 text-xs text-green-600 flex items-center gap-1">
+                            <CheckCircle2 size={12} />
+                            ✅ Loaded {categories.length} categories from database
+                          </p>
+                        )}
                       </div>
+
+                      {/* Subcategory - Dynamic based on selected category */}
+                      {formData.category && (
+                        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-2xl border border-indigo-100">
+                          <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            <Tag className="h-5 w-5 text-indigo-600" />
+                            Subcategory (Optional)
+                          </label>
+                          <p className="text-sm text-gray-600 mb-4">
+                            Narrow down your service type for better matching
+                          </p>
+                          <select
+                            value={formData.subcategory || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, subcategory: e.target.value }))}
+                            title="Select subcategory"
+                            className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-lg"
+                          >
+                            <option value="">Select a subcategory (optional)</option>
+                            {(() => {
+                              const selectedCategory = categories.find(cat => cat.name === formData.category);
+                              if (selectedCategory && selectedCategory.subcategories.length > 0) {
+                                return selectedCategory.subcategories.map(sub => (
+                                  <option key={sub.id} value={sub.name}>
+                                    {sub.display_name}
+                                  </option>
+                                ));
+                              } else if (CATEGORY_FIELDS[formData.category]?.subcategories) {
+                                // Fallback to hardcoded subcategories
+                                return CATEGORY_FIELDS[formData.category].subcategories!.map(sub => (
+                                  <option key={sub} value={sub}>{sub}</option>
+                                ));
+                              }
+                              return null;
+                            })()}
+                          </select>
+                          {(() => {
+                            const selectedCategory = categories.find(cat => cat.name === formData.category);
+                            const subCount = selectedCategory?.subcategories.length || 0;
+                            if (subCount > 0) {
+                              return (
+                                <p className="mt-2 text-xs text-indigo-600 flex items-center gap-1">
+                                  <CheckCircle2 size={12} />
+                                  {subCount} subcategories available
+                                </p>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      )}
 
                       {/* Location with Leaflet Map - Full Width Section */}
                       <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
@@ -755,7 +1134,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                           Service Description *
                         </label>
                         <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-purple-200">
-                          ✨ Tell your story! Describe what makes your service special, what's included, and why couples should choose you.
+                          ✨ Tell your story! Describe what makes your service
                         </p>
                         <div className="bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white">
                           <textarea
@@ -1288,6 +1667,130 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                           }}
                         />
                     </div>
+                  </motion.div>
+                )}
+
+                {/* Step 5: Category-Specific Fields (Dynamic) */}
+                {currentStep === 5 && (
+                  <motion.div
+                    key="step5"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="space-y-6"
+                  >
+                    <div className="text-center mb-6">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        {formData.category ? `${categories.find(c => c.name === formData.category)?.display_name || formData.category} Details` : 'Category-Specific Details'}
+                      </h3>
+                      <p className="text-gray-600">
+                        {loadingFields ? 'Loading fields...' : categoryFields.length > 0 ? 'Provide specific details for your service category' : 'No additional fields required for this category'}
+                      </p>
+                    </div>
+
+                    {loadingFields ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <div className="w-16 h-16 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                        <p className="text-gray-600">Loading category-specific fields...</p>
+                      </div>
+                    ) : categoryFields.length > 0 ? (
+                      <div className="space-y-6">
+                        {categoryFields.map((field) => (
+                          <div key={field.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
+                            <label className="block text-lg font-semibold text-gray-800 mb-3">
+                              {field.field_label}
+                              {field.is_required && <span className="text-red-500 ml-1">*</span>}
+                            </label>
+                            {field.help_text && (
+                              <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg">
+                                💡 {field.help_text}
+                              </p>
+                            )}
+
+                            {/* Render field based on type */}
+                            {field.field_type === 'text' && (
+                              <input
+                                type="text"
+                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"
+                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}
+                              />
+                            )}
+
+                            {field.field_type === 'textarea' && (
+                              <textarea
+                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base resize-none"
+                                rows={4}
+                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}
+                              />
+                            )}
+
+                            {field.field_type === 'number' && (
+                              <input
+                                type="number"
+                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"
+                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}
+                              />
+                            )}
+
+                            {field.field_type === 'select' && field.options.length > 0 && (
+                              <select
+                                title={field.field_label}
+                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"
+                              >
+                                <option value="">Select an option</option>
+                                {field.options.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+
+                            {field.field_type === 'multiselect' && field.options.length > 0 && (
+                              <div className="space-y-2">
+                                {field.options.map((option) => (
+                                  <label key={option.value} className="flex items-center gap-3 p-3 bg-white/70 rounded-lg hover:bg-white transition-colors cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      value={option.value}
+                                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <div>
+                                      <div className="font-medium text-gray-900">{option.label}</div>
+                                      {option.description && (
+                                        <div className="text-sm text-gray-600">{option.description}</div>
+                                      )}
+                                    </div>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+
+                            {field.field_type === 'checkbox' && (
+                              <label className="flex items-center gap-3 p-4 bg-white/70 rounded-lg hover:bg-white transition-colors cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  className="w-6 h-6 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                />
+                                <span className="text-gray-700">{field.help_text || field.field_label}</span>
+                              </label>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <CheckCircle2 className="h-8 w-8 text-green-600" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-2">All Set!</h4>
+                        <p className="text-gray-600">
+                          {formData.category 
+                            ? 'No additional category-specific fields required for this service type.'
+                            : 'Select a category to see if additional fields are needed.'}
+                        </p>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
