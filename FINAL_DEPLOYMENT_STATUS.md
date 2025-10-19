@@ -309,3 +309,41 @@ why ratings are 0 or random"
 *Deployed: October 18, 2025, 10:35 PM*  
 *Build Time: 8.24s*  
 *Force Deploy: Successful*
+
+---
+
+##  CONTACT INFO SECTION REMOVAL - DEPLOYED (January 2025)
+
+### Status:  LIVE IN PRODUCTION
+
+**Deployment Date**: January 2025  
+**Frontend Build**: Successfully deployed to https://weddingbazaarph.web.app  
+**Backend**: https://weddingbazaar-web.onrender.com (no changes required)
+
+### Changes Deployed:
+1.  Removed entire "Step 3: Contact Information" section from AddServiceForm
+2.  Updated step navigation (4 steps instead of 5)
+3.  Removed contact fields from form state
+4.  Removed contact validation logic
+5.  Updated step titles and descriptions
+6.  Contact info now auto-populated from vendor profile (users table)
+
+### Benefits:
+- **Data Consistency**: Single source of truth for vendor contact info
+- **Improved UX**: Fewer steps, less manual entry
+- **Simplified Maintenance**: Reduced form complexity
+- **Better Data Integrity**: No duplicate/inconsistent contact data
+
+### Verification:
+- Build completed: 11.51s
+- Deployment successful: Firebase Hosting
+- Production URL: https://weddingbazaarph.web.app
+- Form now shows 4 steps instead of 5
+- No contact info section present
+
+### Documentation:
+- CONTACT_INFO_REMOVAL_COMPLETE.md (Pre-deployment)
+- CONTACT_INFO_REMOVAL_DEPLOYED.md (Post-deployment verification)
+
+---
+
