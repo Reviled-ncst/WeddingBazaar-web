@@ -654,76 +654,31 @@ export function IntelligentWeddingPlanner({
           </div>
         </div>
 
-        {/* Guest Count Slider */}
+        {/* Guest Count - Number Input */}
         <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-4">
+          <label htmlFor="guestCount" className="block text-sm font-semibold text-gray-900 mb-4">
             How many guests are you expecting?
           </label>
-          <div className="space-y-4 max-w-3xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <span className="text-sm text-gray-600">Guest Count</span>
-              <span className="text-2xl font-bold text-pink-600">
-                {preferences.guestCount >= 500 ? '500+' : preferences.guestCount}
-              </span>
-            </div>
-            <div className="relative px-3 py-2">              
-              {/* Slider input - uses step="1" for smooth integer dragging */}
-              <input
-                type="range"
-                min="20"
-                max="500"
-                step="1"
-                value={preferences.guestCount}
-                onChange={(e) => updatePreferences({ guestCount: parseInt(e.target.value) })}
-                aria-label="Guest count slider"
-                title="Adjust guest count"
-                style={{
-                  background: `linear-gradient(to right, 
-                    rgb(244 114 182) 0%, 
-                    rgb(219 39 119) ${((preferences.guestCount - 20) / (500 - 20)) * 100}%, 
-                    rgb(229 231 235) ${((preferences.guestCount - 20) / (500 - 20)) * 100}%, 
-                    rgb(229 231 235) 100%)`
-                }}
-                className="relative w-full h-4 appearance-none cursor-grab active:cursor-grabbing rounded-lg z-20
-                  [&::-webkit-slider-thumb]:appearance-none
-                  [&::-webkit-slider-thumb]:w-8
-                  [&::-webkit-slider-thumb]:h-8
-                  [&::-webkit-slider-thumb]:rounded-full
-                  [&::-webkit-slider-thumb]:bg-white
-                  [&::-webkit-slider-thumb]:border-4
-                  [&::-webkit-slider-thumb]:border-pink-500
-                  [&::-webkit-slider-thumb]:cursor-grab
-                  [&::-webkit-slider-thumb]:shadow-xl
-                  [&::-webkit-slider-thumb]:hover:border-pink-600
-                  [&::-webkit-slider-thumb]:active:cursor-grabbing
-                  [&::-moz-range-thumb]:appearance-none
-                  [&::-moz-range-thumb]:w-8
-                  [&::-moz-range-thumb]:h-8
-                  [&::-moz-range-thumb]:rounded-full
-                  [&::-moz-range-thumb]:bg-white
-                  [&::-moz-range-thumb]:border-4
-                  [&::-moz-range-thumb]:border-pink-500
-                  [&::-moz-range-thumb]:cursor-grab
-                  [&::-moz-range-thumb]:shadow-xl
-                  [&::-moz-range-thumb]:hover:border-pink-600
-                  [&::-moz-range-thumb]:active:cursor-grabbing
-                  [&::-webkit-slider-runnable-track]:h-4
-                  [&::-webkit-slider-runnable-track]:bg-transparent
-                  [&::-webkit-slider-runnable-track]:rounded-lg
-                  [&::-moz-range-track]:h-4
-                  [&::-moz-range-track]:bg-transparent
-                  [&::-moz-range-track]:rounded-lg"
-              />
-            </div>
-            <div className="relative px-3 mt-2">
-              <div className="flex text-xs text-gray-500 font-medium">
-                <span className="absolute left-3" style={{ transform: 'translateX(-50%)' }}>20</span>
-                <span className="absolute" style={{ left: `calc(${((100-20)/(500-20))*100}% + 12px)`, transform: 'translateX(-50%)' }}>100</span>
-                <span className="absolute" style={{ left: `calc(${((200-20)/(500-20))*100}% + 12px)`, transform: 'translateX(-50%)' }}>200</span>
-                <span className="absolute" style={{ left: `calc(${((300-20)/(500-20))*100}% + 12px)`, transform: 'translateX(-50%)' }}>300</span>
-                <span className="absolute right-3" style={{ transform: 'translateX(50%)' }}>500+</span>
-              </div>
-            </div>
+          <div className="max-w-md mx-auto">
+            <input
+              id="guestCount"
+              type="number"
+              min="20"
+              max="500"
+              value={preferences.guestCount}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 20;
+                const clampedValue = Math.min(Math.max(value, 20), 500);
+                updatePreferences({ guestCount: clampedValue });
+              }}
+              aria-label="Guest count"
+              title="Enter number of guests (20-500)"
+              placeholder="Enter guest count"
+              className="w-full px-4 py-3 text-lg font-semibold text-center border-2 border-gray-200 rounded-xl focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all"
+            />
+            <p className="mt-2 text-xs text-gray-500 text-center">
+              Enter a number between 20 and 500 guests
+            </p>
           </div>
         </div>
 
