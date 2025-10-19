@@ -689,10 +689,21 @@ router.post('/request', async (req, res) => {
       serviceType,
       eventDate,
       eventTime,
+      eventEndTime,
       venue,
+      eventLocation,
+      venueDetails,
+      guestCount,
+      budgetRange,
       totalAmount,
       specialRequests,
-      contactInfo
+      contactInfo,
+      contactPerson,
+      contactPhone,
+      contactEmail,
+      preferredContactMethod,
+      vendorName,
+      coupleName
     } = req.body;
     
     if (!coupleId || !vendorId || !eventDate) {
@@ -703,22 +714,69 @@ router.post('/request', async (req, res) => {
       });
     }
     
+    // Use eventLocation if provided, otherwise fall back to venue or 'TBD'
+    const location = eventLocation || venue || 'TBD';
+    
     // Generate unique booking ID (use smaller integer)
     const bookingId = Math.floor(Date.now() / 1000); // Use seconds instead of milliseconds
     
+    console.log('💾 Inserting booking with data:', {
+      bookingId,
+      coupleId,
+      vendorId,
+      serviceId,
+      eventDate,
+      eventTime,
+      eventEndTime,
+      location,
+      venueDetails,
+      guestCount,
+      budgetRange,
+      contactPerson,
+      contactPhone,
+      contactEmail,
+      preferredContactMethod,
+      vendorName,
+      coupleName
+    });
+    
     const booking = await sql`
       INSERT INTO bookings (
-        id, couple_id, vendor_id, service_id, event_date, event_time,
-        event_location, total_amount, special_requests, status,
-        service_name, service_type, created_at, updated_at
+        id, couple_id, vendor_id, service_id, event_date, event_time, event_end_time,
+        event_location, venue_details, guest_count, budget_range, total_amount, 
+        special_requests, contact_person, contact_phone, contact_email, preferred_contact_method,
+        status, service_name, service_type, vendor_name, couple_name,
+        created_at, updated_at
       ) VALUES (
-        ${bookingId}, ${coupleId}, ${vendorId}, ${serviceId || null}, ${eventDate}, ${eventTime || '10:00'},
-        ${venue || 'TBD'}, ${totalAmount || 0}, ${specialRequests || null}, 'request',
-        ${serviceName || 'Wedding Service'}, ${serviceType || 'general'}, NOW(), NOW()
+        ${bookingId}, 
+        ${coupleId}, 
+        ${vendorId}, 
+        ${serviceId || null}, 
+        ${eventDate}, 
+        ${eventTime || '10:00'},
+        ${eventEndTime || null},
+        ${location}, 
+        ${venueDetails || null},
+        ${guestCount || null}, 
+        ${budgetRange || null}, 
+        ${totalAmount || 0}, 
+        ${specialRequests || null}, 
+        ${contactPerson || null},
+        ${contactPhone || null},
+        ${contactEmail || null},
+        ${preferredContactMethod || 'email'},
+        'request',
+        ${serviceName || 'Wedding Service'}, 
+        ${serviceType || 'other'},
+        ${vendorName || null},
+        ${coupleName || null},
+        NOW(), 
+        NOW()
       ) RETURNING *
     `;
     
     console.log(`✅ Booking request created: ${bookingId}`);
+    console.log('📊 Created booking data:', booking[0]);
     
     res.json({
       success: true,
@@ -729,6 +787,8 @@ router.post('/request', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Create booking request error:', error);
+    console.error('❌ Error details:', error.message);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({
       success: false,
       error: error.message,
