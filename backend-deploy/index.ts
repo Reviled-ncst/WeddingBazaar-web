@@ -240,7 +240,13 @@ app.post('/api/services', async (req, res) => {
       keywords,
       location_coordinates,
       location_details,
-      price_range
+      price_range,
+      // DSS Fields
+      years_in_business,
+      service_tier,
+      wedding_styles,
+      cultural_specialties,
+      availability
     } = req.body;
 
     // Validate required fields
@@ -280,9 +286,11 @@ app.post('/api/services', async (req, res) => {
     const result = await db.query(`
       INSERT INTO services (
         vendor_id, title, description, category, price, location, images, 
-        featured, is_active, created_at, updated_at
+        featured, is_active,
+        years_in_business, service_tier, wedding_styles, cultural_specialties, availability,
+        created_at, updated_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW()
       )
       RETURNING *
     `, [
@@ -294,7 +302,12 @@ app.post('/api/services', async (req, res) => {
       location || '',
       JSON.stringify(Array.isArray(images) ? images : []),
       Boolean(featured),
-      Boolean(is_active)
+      Boolean(is_active),
+      years_in_business ? parseInt(years_in_business) : null,
+      service_tier || null,
+      Array.isArray(wedding_styles) ? wedding_styles : null,
+      Array.isArray(cultural_specialties) ? cultural_specialties : null,
+      availability || null
     ]);
 
     console.log('✅ [POST /api/services] Service created successfully:', result.rows[0]);
@@ -333,7 +346,13 @@ app.put('/api/services/:id', async (req, res) => {
       location,
       images,
       is_active,
-      featured
+      featured,
+      // DSS Fields
+      years_in_business,
+      service_tier,
+      wedding_styles,
+      cultural_specialties,
+      availability
     } = req.body;
 
     const finalTitle = title || name;
@@ -356,6 +375,11 @@ app.put('/api/services/:id', async (req, res) => {
         images = COALESCE($7, images),
         is_active = COALESCE($8, is_active),
         featured = COALESCE($9, featured),
+        years_in_business = COALESCE($10, years_in_business),
+        service_tier = COALESCE($11, service_tier),
+        wedding_styles = COALESCE($12, wedding_styles),
+        cultural_specialties = COALESCE($13, cultural_specialties),
+        availability = COALESCE($14, availability),
         updated_at = NOW()
       WHERE id = $1
       RETURNING *
@@ -368,7 +392,12 @@ app.put('/api/services/:id', async (req, res) => {
       location,
       images ? JSON.stringify(Array.isArray(images) ? images : []) : null,
       is_active !== undefined ? Boolean(is_active) : null,
-      featured !== undefined ? Boolean(featured) : null
+      featured !== undefined ? Boolean(featured) : null,
+      years_in_business ? parseInt(years_in_business) : null,
+      service_tier,
+      Array.isArray(wedding_styles) ? wedding_styles : null,
+      Array.isArray(cultural_specialties) ? cultural_specialties : null,
+      availability
     ]);
 
     if (result.rows.length === 0) {
