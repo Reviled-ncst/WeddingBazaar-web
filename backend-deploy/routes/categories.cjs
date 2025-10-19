@@ -7,12 +7,13 @@ const router = express.Router();
 // SERVICE CATEGORIES ENDPOINTS
 // ============================================================================
 
-// GET /api/categories - Get all active service categories
+// GET /api/categories - Get all active service categories with subcategories
 router.get('/', async (req, res) => {
   try {
     console.log('📂 [API] GET /api/categories called');
     
-    const result = await sql`
+    // Fetch all categories
+    const categories = await sql`
       SELECT 
         id, name, display_name, description, icon, sort_order
       FROM service_categories 
@@ -20,12 +21,49 @@ router.get('/', async (req, res) => {
       ORDER BY sort_order ASC, display_name ASC
     `;
     
-    console.log(`✅ [API] Found ${result.length} active categories`);
+    console.log(`✅ [API] Found ${categories.length} active categories`);
+    
+    // Fetch all subcategories for these categories
+    const subcategories = await sql`
+      SELECT 
+        id, category_id, name, display_name, description, sort_order
+      FROM service_subcategories 
+      WHERE is_active = true
+      ORDER BY sort_order ASC, display_name ASC
+    `;
+    
+    console.log(`✅ [API] Found ${subcategories.length} active subcategories`);
+    
+    // Group subcategories by category_id
+    const subcategoriesByCategory = {};
+    subcategories.forEach(sub => {
+      if (!subcategoriesByCategory[sub.category_id]) {
+        subcategoriesByCategory[sub.category_id] = [];
+      }
+      subcategoriesByCategory[sub.category_id].push({
+        id: sub.id,
+        name: sub.name,
+        display_name: sub.display_name,
+        description: sub.description,
+        sort_order: sub.sort_order
+      });
+    });
+    
+    // Attach subcategories to each category
+    const categoriesWithSubcategories = categories.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      display_name: cat.display_name,
+      description: cat.description,
+      icon: cat.icon,
+      sort_order: cat.sort_order,
+      subcategories: subcategoriesByCategory[cat.id] || []
+    }));
     
     res.json({
       success: true,
-      categories: result,
-      total: result.length
+      categories: categoriesWithSubcategories,
+      total: categoriesWithSubcategories.length
     });
   } catch (error) {
     console.error('❌ [API] Error fetching categories:', error);
@@ -68,6 +106,38 @@ router.get('/:categoryId', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch category',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET /api/categories/:categoryId/subcategories - Get subcategories for a category
+router.get('/:categoryId/subcategories', async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    console.log(`📁 [API] GET /api/categories/${categoryId}/subcategories called`);
+    
+    const result = await sql`
+      SELECT 
+        id, category_id, name, display_name, description, sort_order
+      FROM service_subcategories 
+      WHERE category_id = ${categoryId} AND is_active = true
+      ORDER BY sort_order ASC, display_name ASC
+    `;
+    
+    console.log(`✅ [API] Found ${result.length} subcategories for category ${categoryId}`);
+    
+    res.json({
+      success: true,
+      categoryId,
+      subcategories: result,
+      total: result.length
+    });
+  } catch (error) {
+    console.error('❌ [API] Error fetching subcategories:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch subcategories',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
