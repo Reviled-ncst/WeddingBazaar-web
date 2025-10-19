@@ -1647,6 +1647,7 @@ export const VendorServices: React.FC = () => {
           updated_at: editingService.updated_at || new Date().toISOString()
         } : null}
         vendorId={vendorId || ''}
+        vendorProfile={profile}
         isLoading={false}
       />
 

@@ -138,12 +138,23 @@ interface FormData {
   video_url: string;
 }
 
+interface VendorProfile {
+  phone?: string;
+  email?: string;
+  website?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  contact_website?: string;
+  website_url?: string;
+}
+
 interface AddServiceFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (serviceData: any) => Promise<void>;
   editingService?: Service | null;
   vendorId: string;
+  vendorProfile?: VendorProfile | null;
   isLoading?: boolean;
 }
 
@@ -272,6 +283,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   onSubmit,
   editingService,
   vendorId,
+  vendorProfile,
   isLoading = false
 }) => {
   const [formData, setFormData] = useState<FormData>({
@@ -387,7 +399,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     loadFields();
   }, [formData.category]);
 
-  // Initialize form data when editing
+  // Initialize form data when editing OR when vendor profile is available
   useEffect(() => {
     if (editingService) {
       setFormData({
@@ -442,7 +454,16 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         video_url: editingService.video_url || ''
       });
     } else {
-      // Reset form for new service
+      // Auto-populate contact info from vendor profile
+      const contactInfo = {
+        phone: vendorProfile?.phone || vendorProfile?.contact_phone || '',
+        email: vendorProfile?.email || vendorProfile?.contact_email || '',
+        website: vendorProfile?.website || vendorProfile?.website_url || vendorProfile?.contact_website || ''
+      };
+      
+      console.log('📞 Auto-populating contact info from vendor profile:', contactInfo);
+      
+      // Reset form for new service with vendor profile contact info
       setFormData({
         title: '',
         description: '',
@@ -457,11 +478,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         locationData: undefined,
         price_range: '₱10,000 - ₱25,000',
         features: [],
-        contact_info: {
-          phone: '',
-          email: '',
-          website: ''
-        },
+        contact_info: contactInfo,
         tags: [],
         keywords: '',
         // DSS fields
@@ -497,7 +514,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     }
     setCurrentStep(1);
     setErrors({});
-  }, [editingService, isOpen]);
+  }, [editingService, isOpen, vendorProfile]);
 
   // Validation functions
   const validateStep = (step: number): boolean => {
@@ -1291,7 +1308,20 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
 
                     {/* Contact Information */}
                     <div className="space-y-4">
-                      <h4 className="font-medium text-gray-900">Contact Information</h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-gray-900">Contact Information</h4>
+                        {vendorProfile && (formData.contact_info.phone || formData.contact_info.email || formData.contact_info.website) && (
+                          <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
+                            <CheckCircle2 size={14} />
+                            Auto-filled from profile
+                          </div>
+                        )}
+                      </div>
+                      {vendorProfile && (
+                        <p className="text-sm text-gray-600">
+                          Contact info has been pre-filled from your vendor profile. You can edit if needed.
+                        </p>
+                      )}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="relative">
                           <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
