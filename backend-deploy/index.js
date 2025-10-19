@@ -1810,78 +1810,55 @@ app.post('/api/dss/recommendations', async (req, res) => {
     }
 });
 // ============================================================================
-// CATEGORIES, FEATURES & PRICE RANGES ENDPOINTS
+// CATEGORIES API ENDPOINTS - Dynamic Category System
 // ============================================================================
 
-// GET /api/categories - Get all service categories
-// ============ DYNAMIC CATEGORIES API ============
-// GET /api/categories - Get all categories with subcategories
+// GET /api/categories - Fetch all categories
 app.get('/api/categories', async (req, res) => {
     try {
         console.log('📂 [API] GET /api/categories called');
         
-        // Try new schema first (categories + subcategories tables)
-        try {
-            const result = await db.query(`
-                SELECT 
-                    c.id,
-                    c.name,
-                    c.display_name,
-                    c.description,
-                    c.icon,
-                    c.sort_order,
-                    COALESCE(
-                        json_agg(
-                            json_build_object(
-                                'id', s.id,
-                                'name', s.name,
-                                'display_name', s.display_name,
-                                'description', s.description,
-                                'sort_order', s.sort_order
-                            ) ORDER BY s.sort_order
-                        ) FILTER (WHERE s.id IS NOT NULL),
-                        '[]'
-                    ) as subcategories
-                FROM categories c
-                LEFT JOIN subcategories s ON c.id = s.category_id AND s.is_active = true
-                WHERE c.is_active = true
-                GROUP BY c.id, c.name, c.display_name, c.description, c.icon, c.sort_order
-                ORDER BY c.sort_order, c.display_name
-            `);
-            
-            console.log(`✅ [API] Found ${result.rows.length} categories with subcategories (new schema)`);
-            
-            return res.json({
+        // Try to fetch from categories table
+        const result = await db.query(`
+            SELECT id, name, display_name, description, icon, is_active
+            FROM categories
+            WHERE is_active = true
+            ORDER BY name
+        `);
+        
+        if (result.rows.length > 0) {
+            console.log(`✅ [API] Found ${result.rows.length} categories from database`);
+            res.json({
                 success: true,
-                count: result.rows.length,
                 categories: result.rows,
-                schema: 'new'
+                total: result.rows.length,
+                source: 'database'
             });
-        } catch (newSchemaError) {
-            console.log('⚠️ [API] New schema not available, falling back to service_categories');
-            
-            // Fallback to old schema (service_categories)
-            const result = await db.query(`
-                SELECT 
-                    id, name, display_name, description, icon, sort_order
-                FROM service_categories 
-                WHERE is_active = true
-                ORDER BY sort_order ASC, display_name ASC
-            `);
-            
-            // Add empty subcategories array for consistency
-            const categoriesWithSubs = result.rows.map(cat => ({
-                ...cat,
-                subcategories: []
-            }));
-            
-            console.log(`✅ [API] Found ${result.rows.length} categories (old schema)`);
-            
-            return res.json({
+        } else {
+            // Fallback to hardcoded categories
+            console.log('⚠️ [API] No categories in database, using fallback');
+            const fallbackCategories = [
+                { id: 1, name: 'Photography', display_name: 'Photography & Videography', description: null, icon: 'camera', is_active: true },
+                { id: 2, name: 'Catering', display_name: 'Catering Services', description: null, icon: 'utensils', is_active: true },
+                { id: 3, name: 'Venue', display_name: 'Venues', description: null, icon: 'building', is_active: true },
+                { id: 4, name: 'Music', display_name: 'Music & Entertainment', description: null, icon: 'music', is_active: true },
+                { id: 5, name: 'Planning', display_name: 'Wedding Planning', description: null, icon: 'calendar', is_active: true },
+                { id: 6, name: 'Florist', display_name: 'Flowers & Decor', description: null, icon: 'flower', is_active: true },
+                { id: 7, name: 'Beauty', display_name: 'Beauty & Hair', description: null, icon: 'sparkles', is_active: true },
+                { id: 8, name: 'Fashion', display_name: 'Fashion & Attire', description: null, icon: 'shirt', is_active: true },
+                { id: 9, name: 'Cake', display_name: 'Cakes & Desserts', description: null, icon: 'cake', is_active: true },
+                { id: 10, name: 'Rentals', display_name: 'Rentals & Equipment', description: null, icon: 'package', is_active: true },
+                { id: 11, name: 'Transport', display_name: 'Transportation', description: null, icon: 'car', is_active: true },
+                { id: 12, name: 'Stationery', display_name: 'Stationery & Invitations', description: null, icon: 'mail', is_active: true },
+                { id: 13, name: 'Officiant', display_name: 'Officiant Services', description: null, icon: 'user', is_active: true },
+                { id: 14, name: 'Security', display_name: 'Security Services', description: null, icon: 'shield', is_active: true },
+                { id: 15, name: 'AV_Equipment', display_name: 'Audio/Visual Equipment', description: null, icon: 'volume', is_active: true }
+            ];
+            res.json({
                 success: true,
-                count: result.rows.length,
-                categories: categoriesWithSubs,
-                schema: 'legacy'
+                categories: fallbackCategories,
+                total: fallbackCategories.length,
+                source: 'fallback'
             });
         }
     } catch (error) {
@@ -1894,357 +1871,129 @@ app.get('/api/categories', async (req, res) => {
     }
 });
 
-// GET /api/categories/:categoryId/fields - Get dynamic fields for a category
-app.get('/api/categories/:categoryId/fields', async (req, res) => {
+// GET /api/categories/:categoryName/subcategories - Fetch subcategories for a category
+app.get('/api/categories/:categoryName/subcategories', async (req, res) => {
     try {
-        const { categoryId } = req.params;
-        console.log(`📋 [API] GET /api/categories/${categoryId}/fields called`);
+        const { categoryName } = req.params;
+        console.log(`📋 [API] GET /api/categories/${categoryName}/subcategories called`);
         
+        // First, get the category ID
+        const categoryResult = await db.query(
+            'SELECT id FROM categories WHERE name = $1',
+            [categoryName]
+        );
+        
+        if (categoryResult.rows.length === 0) {
+            return res.json({
+                success: true,
+                subcategories: [],
+                total: 0,
+                message: 'Category not found or no subcategories available'
+            });
+        }
+        
+        const categoryId = categoryResult.rows[0].id;
+        
+        // Fetch subcategories
         const result = await db.query(`
+            SELECT id, category_id, name, display_name, description, is_active
+            FROM subcategories
+            WHERE category_id = $1 AND is_active = true
+            ORDER BY name
+        `, [categoryId]);
+        
+        console.log(`✅ [API] Found ${result.rows.length} subcategories for ${categoryName}`);
+        
+        res.json({
+            success: true,
+            subcategories: result.rows,
+            total: result.rows.length,
+            category: categoryName
+        });
+    } catch (error) {
+        console.error('❌ [API] Error fetching subcategories:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch subcategories',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+
+// GET /api/categories/:categoryName/fields - Fetch category-specific fields
+app.get('/api/categories/:categoryName/fields', async (req, res) => {
+    try {
+        const { categoryName } = req.params;
+        console.log(`🔧 [API] GET /api/categories/${categoryName}/fields called`);
+        
+        // First, get the category ID
+        const categoryResult = await db.query(
+            'SELECT id FROM categories WHERE name = $1',
+            [categoryName]
+        );
+        
+        if (categoryResult.rows.length === 0) {
+            return res.json({
+                success: true,
+                fields: [],
+                total: 0,
+                message: 'Category not found or no fields available'
+            });
+        }
+        
+        const categoryId = categoryResult.rows[0].id;
+        
+        // Fetch fields
+        const fieldsResult = await db.query(`
             SELECT 
                 cf.id,
+                cf.category_id,
                 cf.field_name,
                 cf.field_label,
                 cf.field_type,
                 cf.is_required,
+                cf.placeholder,
                 cf.help_text,
-                cf.sort_order,
-                COALESCE(
-                    json_agg(
-                        json_build_object(
-                            'value', cfo.option_value,
-                            'label', cfo.option_label,
-                            'description', cfo.description,
-                            'sort_order', cfo.sort_order
-                        ) ORDER BY cfo.sort_order
-                    ) FILTER (WHERE cfo.id IS NOT NULL),
-                    '[]'
-                ) as options
+                cf.display_order
             FROM category_fields cf
-            LEFT JOIN category_field_options cfo ON cf.id = cfo.field_id AND cfo.is_active = true
             WHERE cf.category_id = $1
-            GROUP BY cf.id, cf.field_name, cf.field_label, cf.field_type, cf.is_required, cf.help_text, cf.sort_order
-            ORDER BY cf.sort_order
+            ORDER BY cf.display_order, cf.field_label
         `, [categoryId]);
         
-        console.log(`✅ [API] Found ${result.rows.length} fields for category ${categoryId}`);
+        // For each field, fetch its options if it has any
+        const fieldsWithOptions = await Promise.all(
+            fieldsResult.rows.map(async (field) => {
+                const optionsResult = await db.query(`
+                    SELECT id, option_value, option_label, display_order
+                    FROM category_field_options
+                    WHERE field_id = $1
+                    ORDER BY display_order, option_label
+                `, [field.id]);
+                
+                return {
+                    ...field,
+                    options: optionsResult.rows
+                };
+            })
+        );
+        
+        console.log(`✅ [API] Found ${fieldsWithOptions.length} fields for ${categoryName}`);
         
         res.json({
             success: true,
-            count: result.rows.length,
-            fields: result.rows
+            fields: fieldsWithOptions,
+            total: fieldsWithOptions.length,
+            category: categoryName
         });
     } catch (error) {
         console.error('❌ [API] Error fetching category fields:', error);
-        // Return empty fields array instead of error for graceful degradation
-        res.json({
-            success: true,
-            count: 0,
-            fields: [],
-            note: 'Category fields table not available'
-        });
-    }
-});
-
-// GET /api/categories/by-name/:categoryName/fields - Get fields by category name
-app.get('/api/categories/by-name/:categoryName/fields', async (req, res) => {
-    try {
-        const { categoryName } = req.params;
-        console.log(`📋 [API] GET /api/categories/by-name/${categoryName}/fields called`);
-        
-        const result = await db.query(`
-            SELECT 
-                cf.id,
-                cf.field_name,
-                cf.field_label,
-                cf.field_type,
-                cf.is_required,
-                cf.help_text,
-                cf.sort_order,
-                COALESCE(
-                    json_agg(
-                        json_build_object(
-                            'value', cfo.option_value,
-                            'label', cfo.option_label,
-                            'description', cfo.description,
-                            'sort_order', cfo.sort_order
-                        ) ORDER BY cfo.sort_order
-                    ) FILTER (WHERE cfo.id IS NOT NULL),
-                    '[]'
-                ) as options
-            FROM categories c
-            JOIN category_fields cf ON c.id = cf.category_id
-            LEFT JOIN category_field_options cfo ON cf.id = cfo.field_id AND cfo.is_active = true
-            WHERE c.name = $1 AND c.is_active = true
-            GROUP BY cf.id, cf.field_name, cf.field_label, cf.field_type, cf.is_required, cf.help_text, cf.sort_order
-            ORDER BY cf.sort_order
-        `, [categoryName]);
-        
-        console.log(`✅ [API] Found ${result.rows.length} fields for category ${categoryName}`);
-        
-        res.json({
-            success: true,
-            count: result.rows.length,
-            categoryName,
-            fields: result.rows
-        });
-    } catch (error) {
-        console.error('❌ [API] Error fetching category fields by name:', error);
-        // Return empty fields array instead of error for graceful degradation
-        res.json({
-            success: true,
-            count: 0,
-            categoryName,
-            fields: [],
-            note: 'Category fields table not available'
-        });
-    }
-});
-
-// GET /api/categories/:categoryId/features - Get features for a category
-app.get('/api/categories/:categoryId/features', async (req, res) => {
-    try {
-        const { categoryId } = req.params;
-        console.log(`✨ [API] GET /api/categories/${categoryId}/features called`);
-        
-        // First, try to match by category ID
-        let result = await db.query(`
-            SELECT 
-                id, name, description, icon, is_common, sort_order
-            FROM service_features 
-            WHERE category_id = $1 AND is_active = true
-            ORDER BY is_common DESC, sort_order ASC, name ASC
-        `, [categoryId]);
-        
-        // If no results, try matching by category name
-        if (result.rows.length === 0) {
-            const catResult = await db.query(`
-                SELECT id FROM service_categories WHERE name = $1
-            `, [categoryId]);
-            
-            if (catResult.rows.length > 0) {
-                result = await db.query(`
-                    SELECT 
-                        id, name, description, icon, is_common, sort_order
-                    FROM service_features 
-                    WHERE category_id = $1 AND is_active = true
-                    ORDER BY is_common DESC, sort_order ASC, name ASC
-                `, [catResult.rows[0].id]);
-            }
-        }
-        
-        console.log(`✅ [API] Found ${result.rows.length} features for category`);
-        
-        res.json({
-            success: true,
-            categoryId,
-            features: result.rows,
-            total: result.rows.length
-        });
-    } catch (error) {
-        console.error('❌ [API] Error fetching features:', error);
         res.status(500).json({
             success: false,
-            error: 'Failed to fetch features',
+            error: 'Failed to fetch category fields',
             message: error instanceof Error ? error.message : 'Unknown error'
         });
     }
 });
-
-// GET /api/price-ranges - Get all price ranges
-app.get('/api/price-ranges', async (req, res) => {
-    try {
-        console.log('💰 [API] GET /api/price-ranges called');
-        
-        const result = await db.query(`
-            SELECT 
-                id, range_text, label, description, min_amount, max_amount, sort_order
-            FROM price_ranges 
-            WHERE is_active = true
-            ORDER BY sort_order ASC
-        `);
-        
-        console.log(`✅ [API] Found ${result.rows.length} price ranges`);
-        
-        res.json({
-            success: true,
-            priceRanges: result.rows.map(row => ({
-                id: row.id,
-                value: row.range_text,
-                label: row.label,
-                description: row.description,
-                minAmount: row.min_amount,
-                maxAmount: row.max_amount
-            })),
-            total: result.rows.length
-        });
-    } catch (error) {
-        console.error('❌ [API] Error fetching price ranges:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch price ranges',
-            message: error instanceof Error ? error.message : 'Unknown error'
-        });
-    }
-});
-
-// Error handling middleware
-app.use('*', (req, res) => {
-    res.status(404).json({
-        error: 'Endpoint not found',
-        message: `The endpoint ${req.method} ${req.originalUrl} does not exist`,
-        availableEndpoints: [
-            'GET /api/health',
-            'GET /api/ping',
-            'GET /api/vendors',
-            'GET /api/vendors/featured',
-            'GET /api/vendors/:vendorId/off-days',
-            'POST /api/vendors/:vendorId/off-days',
-            'POST /api/vendors/:vendorId/off-days/bulk',
-            'DELETE /api/vendors/:vendorId/off-days/:offDayId',
-            'GET /api/vendors/:vendorId/off-days/count',
-            'POST /api/auth/login',
-            'POST /api/auth/register',
-            'POST /api/auth/verify',
-            'POST /api/bookings/request',
-            'GET /api/bookings/couple/:coupleId',
-            'POST /api/admin/fix-vendor-mappings',
-            'POST /api/availability/check',
-            'GET /api/availability/calendar/:vendorId',
-            'POST /api/availability/off-days',
-            'GET /api/availability/off-days/:vendorId',
-            'DELETE /api/availability/off-days/:offDayId'
-        ]
-    });
-});
-// Start server
-
-// SECURITY-ENHANCED: Vendor bookings endpoint with access control
-app.get('/api/bookings/vendor/:vendorId', async (req, res) => {
-  console.log('🔐 SECURITY-ENHANCED: Getting bookings for vendor:', req.params.vendorId);
-  
-  try {
-    const requestedVendorId = req.params.vendorId;
-    
-    // SECURITY CHECK: Fixed validation - allow legitimate vendor IDs
-    const isMalformedUserId = (id) => {
-      if (!id || typeof id !== 'string') return true;
-      
-      // Allow simple numeric vendor IDs (1, 2, 3, etc.)
-      if (/^\d+$/.test(id)) return false;
-      
-      // Allow ALL legitimate vendor IDs in format: X-YYYY-XXX (e.g., 2-2025-003)
-      // This is a VENDOR ID, not a booking ID, so it's legitimate
-      if (/^\d+-\d{4}-\d{3}$/.test(id)) return false;
-      
-      // Allow other patterns that might be vendor IDs
-      if (/^[a-zA-Z0-9_-]+$/.test(id) && id.length <= 50) return false;
-      
-      // Only block obviously malicious patterns
-      if (id.length > 100) return true;
-      if (id.includes('<') || id.includes('>') || id.includes('script')) return true;
-      
-      // Default to allowing - be permissive for vendor IDs
-      return false;
-    };
-    
-    if (isMalformedUserId(requestedVendorId)) {
-      console.log('🚨 SECURITY ALERT: Request blocked for malformed vendor ID:', requestedVendorId);
-      return res.status(403).json({
-        success: false,
-        error: 'Invalid vendor ID format detected. Access denied for security.',
-        code: 'MALFORMED_VENDOR_ID',
-        timestamp: new Date().toISOString()
-      });
-    }
-    
-    const { page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
-    const offset = (page - 1) * limit;
-    
-    console.log('🔍 SECURE: Searching for bookings with exact vendor_id:', requestedVendorId);
-    
-    // SECURITY: Use parameterized query with exact matching
-    let query = `
-      SELECT 
-        b.id,
-        b.service_id,
-        b.user_id,
-        b.vendor_id,
-        b.booking_date,
-        b.status,
-        b.total_amount,
-        b.message,
-        b.created_at,
-        b.updated_at,
-        s.name as service_name,
-        s.category as service_category,
-        u.name as customer_name,
-        u.email as customer_email
-      FROM bookings b
-      LEFT JOIN services s ON b.service_id = s.id
-      LEFT JOIN users u ON b.user_id = u.id
-      WHERE b.vendor_id = $1
-    `;
-    
-    const queryParams = [requestedVendorId];
-    let paramIndex = 2;
-    
-    if (status) {
-      query += ` AND b.status = $${paramIndex}`;
-      queryParams.push(status);
-      paramIndex++;
-    }
-    
-    query += ` ORDER BY b.${sortBy} ${sortOrder} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    queryParams.push(parseInt(limit), parseInt(offset));
-    
-    const result = await db.query(query, queryParams);
-    
-    // Get total count for pagination
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM bookings b
-      WHERE b.vendor_id = $1
-      ${status ? 'AND b.status = $2' : ''}
-    `;
-    const countParams = status ? [requestedVendorId, status] : [requestedVendorId];
-    const countResult = await db.query(countQuery, countParams);
-    
-    const total = parseInt(countResult.rows[0].total);
-    const totalPages = Math.ceil(total / limit);
-    
-    console.log('✅ SECURE: Found bookings for vendor', requestedVendorId, '- Count:', result.rows.length);
-    
-    res.json({
-      success: true,
-      bookings: result.rows,
-      pagination: {
-        current_page: parseInt(page),
-        total_pages: totalPages,
-        total_items: total,
-        items_per_page: parseInt(limit),
-        has_next: parseInt(page) < totalPages,
-        has_previous: parseInt(page) > 1
-      },
-      security: {
-        access_controlled: true,
-        malformed_id_protection: true,
-        exact_matching: true
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ [SECURE VENDOR BOOKINGS] Database error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch vendor bookings',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-      code: 'DATABASE_ERROR',
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
 
 app.listen(PORT, () => {
     console.log(`🚀 Wedding Bazaar Minimal Backend running on port ${PORT}`);
