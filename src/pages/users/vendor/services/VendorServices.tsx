@@ -33,37 +33,74 @@ import { useVendorProfile } from '../../../../hooks/useVendorData';
 
 // Service interface based on the actual API response
 interface Service {
+  // Core identifiers
   id: string;
-  vendorId: string;
-  vendor_id?: string;
-  name: string;
+  vendorId?: string;
+  vendor_id: string;
+  
+  // Basic info (both naming conventions supported)
   title?: string;
+  name: string;
   description: string;
   category: string;
-  price: string;
-  imageUrl?: string | null;
-  images?: string[];
-  rating: number;
-  reviewCount: number;
-  isActive: boolean;
-  is_active?: boolean;
-  featured: boolean;
-  vendor_name?: string;
-  location?: string;
-  review_count?: number;
+  
+  // Pricing
+  price?: number | string;
   price_range?: string;
-  availability?: boolean;
+  
+  // Location
+  location?: string;
+  location_coordinates?: {
+    lat: number;
+    lng: number;
+  };
+  location_details?: {
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+  };
+  
+  // Media
+  images?: string[];
+  imageUrl?: string | null;
   gallery?: string[];
+  
+  // Status flags (both naming conventions)
+  isActive?: boolean;
+  is_active: boolean;
+  featured: boolean;
+  
+  // Vendor info
+  vendor_name?: string;
+  
+  // Rating/Reviews
+  rating?: number;
+  reviewCount?: number;
+  review_count?: number;
+  
+  // Features
   features?: string[];
+  tags?: string[];
+  keywords?: string;
+  
+  // Contact
   contact_info?: {
     phone?: string;
     email?: string;
     website?: string;
   };
+  
+  // DSS Fields (Dynamic Service Scoring)
+  years_in_business?: number;
+  service_tier?: 'premium' | 'standard' | 'basic';
+  wedding_styles?: string[];
+  cultural_specialties?: string[];
+  availability?: string;
+  
+  // Timestamps
   created_at?: string;
   updated_at?: string;
-  tags?: string[];
-  keywords?: string;
 }
 
 // Service categories based on the actual database data
@@ -195,8 +232,8 @@ export const VendorServices: React.FC = () => {
     inactive: services.filter(s => s.is_active === false).length,
     categories: new Set(services.map(s => s.category).filter(Boolean)).size,
     featured: services.filter(s => s.featured === true).length,
-    avgPrice: services.length > 0 ? services.reduce((acc, s) => acc + parseFloat(s.price || '0'), 0) / services.length : 0,
-    totalRevenue: services.reduce((acc, s) => acc + parseFloat(s.price || '0'), 0),
+    avgPrice: services.length > 0 ? services.reduce((acc, s) => acc + parseFloat(String(s.price || '0')), 0) / services.length : 0,
+    totalRevenue: services.reduce((acc, s) => acc + parseFloat(String(s.price || '0')), 0),
     recentServices: services.filter(s => {
       const createdDate = new Date(s.created_at || '');
       const weekAgo = new Date();

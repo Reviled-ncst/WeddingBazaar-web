@@ -59,7 +59,7 @@ const convertToBookingService = (service: Service): BookingService => {
     image: service.image,
     gallery: service.images || service.gallery || [service.image].filter(Boolean),
     features: service.features || [],
-    availability: service.availability,
+    availability: service.availability === 'available' || service.availability === 'true',
     location: service.location,
     rating: service.rating,
     reviewCount: service.reviewCount,
@@ -71,34 +71,63 @@ const convertToBookingService = (service: Service): BookingService => {
 
 // Local interface definitions to avoid module resolution issues
 interface Service {
+  // Core identifiers
   id: string;
-  title?: string;
-  name: string;
-  category: string;
   vendor_id: string;
   vendorId: string;
+  
+  // Names (both conventions)
+  title?: string;
+  name: string;
+  
+  // Vendor details
   vendorName: string;
   vendorImage: string;
+  
+  // Basic info
   description: string;
+  category: string;
+  location: string;
+  
+  // Pricing
   price?: number;
   priceRange: string;
-  location: string;
-  rating: number;
-  reviewCount: number;
+  
+  // Media
   image: string;
   images: string[];
   gallery: string[];
+  
+  // Features
   features: string[];
+  tags?: string[];
+  keywords?: string;
+  
+  // Status
   is_active: boolean;
-  availability: boolean;
   featured: boolean;
-  created_at: string;
-  updated_at: string;
+  
+  // Rating
+  rating: number;
+  reviewCount: number;
+  
+  // Contact
   contactInfo: {
     phone: string;
     email: string;
     website: string;
   };
+  
+  // DSS Fields (Dynamic Service Scoring)
+  years_in_business?: number;
+  service_tier?: 'premium' | 'standard' | 'basic';
+  wedding_styles?: string[];
+  cultural_specialties?: string[];
+  availability: string; // Changed from boolean to string to match backend
+  
+  // Timestamps
+  created_at: string;
+  updated_at: string;
 }
 
 // ServiceFilters interface removed - not currently used
@@ -501,15 +530,15 @@ export function Services() {
 
           console.log('✅ [Services] Enhanced services created:', {
             totalCount: enhancedServices.length,
-            servicesWithRealRatings: enhancedServices.filter(s => s.rating > 0).length,
-            servicesWithReviews: enhancedServices.filter(s => s.reviewCount > 0).length,
-            averageRating: (enhancedServices.reduce((sum, s) => sum + s.rating, 0) / enhancedServices.length).toFixed(2),
-            totalReviews: enhancedServices.reduce((sum, s) => sum + s.reviewCount, 0)
+            servicesWithRealRatings: enhancedServices.filter((s: Service) => s.rating > 0).length,
+            servicesWithReviews: enhancedServices.filter((s: Service) => s.reviewCount > 0).length,
+            averageRating: (enhancedServices.reduce((sum: number, s: Service) => sum + s.rating, 0) / enhancedServices.length).toFixed(2),
+            totalReviews: enhancedServices.reduce((sum: number, s: Service) => sum + s.reviewCount, 0)
           });
           
           // Log a sample of the final enhanced services
           if (enhancedServices.length > 0) {
-            console.log('📋 [Services] Sample enhanced services:', enhancedServices.slice(0, 3).map(s => ({
+            console.log('📋 [Services] Sample enhanced services:', enhancedServices.slice(0, 3).map((s: Service) => ({
               id: s.id,
               name: s.name,
               category: s.category,

@@ -51,10 +51,10 @@ interface Service {
   keywords?: string;
   // DSS-specific fields
   years_in_business?: number;
-  service_tier?: 'Basic' | 'Premium' | 'Luxury';
+  service_tier?: 'premium' | 'standard' | 'basic';
   wedding_styles?: string[];
   cultural_specialties?: string[];
-  availability?: {
+  availability?: string | {
     weekdays?: boolean;
     weekends?: boolean;
     holidays?: boolean;
@@ -112,7 +112,7 @@ interface FormData {
   keywords: string;
   // DSS-specific fields
   years_in_business: string;
-  service_tier: 'Basic' | 'Premium' | 'Luxury';
+  service_tier: 'premium' | 'standard' | 'basic';
   wedding_styles: string[];
   cultural_specialties: string[];
   availability: {
@@ -312,7 +312,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     keywords: '',
     // DSS fields
     years_in_business: '',
-    service_tier: 'Basic',
+    service_tier: 'basic',
     wedding_styles: [],
     cultural_specialties: [],
     availability: {
@@ -439,10 +439,15 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         keywords: editingService.keywords || '',
         // DSS fields
         years_in_business: editingService.years_in_business?.toString() || '',
-        service_tier: editingService.service_tier || 'Basic',
+        service_tier: editingService.service_tier || 'basic',
         wedding_styles: editingService.wedding_styles || [],
         cultural_specialties: editingService.cultural_specialties || [],
-        availability: {
+        availability: typeof editingService.availability === 'string' ? {
+          weekdays: true,
+          weekends: true,
+          holidays: false,
+          seasons: []
+        } : {
           weekdays: editingService.availability?.weekdays ?? true,
           weekends: editingService.availability?.weekends ?? true,
           holidays: editingService.availability?.holidays ?? false,
@@ -497,7 +502,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         keywords: '',
         // DSS fields
         years_in_business: '',
-        service_tier: 'Basic',
+        service_tier: 'basic',
         wedding_styles: [],
         cultural_specialties: [],
         availability: {
@@ -1447,9 +1452,9 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                         </p>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           {[
-                            { value: 'Basic', icon: '⚡', description: 'Essential services with quality results', color: 'blue' },
-                            { value: 'Premium', icon: '✨', description: 'Enhanced services with extra features', color: 'purple' },
-                            { value: 'Luxury', icon: '💎', description: 'Top-tier services with premium experience', color: 'amber' }
+                            { value: 'basic' as const, label: 'Basic', icon: '⚡', description: 'Essential services with quality results', color: 'blue' },
+                            { value: 'standard' as const, label: 'Standard', icon: '✨', description: 'Enhanced services with extra features', color: 'purple' },
+                            { value: 'premium' as const, label: 'Premium', icon: '💎', description: 'Top-tier services with premium experience', color: 'amber' }
                           ].map((tier) => (
                             <label key={tier.value} className="relative cursor-pointer group">
                               <input
@@ -1457,9 +1462,9 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                                 name="service_tier"
                                 value={tier.value}
                                 checked={formData.service_tier === tier.value}
-                                onChange={(e) => setFormData(prev => ({ ...prev, service_tier: e.target.value as 'Basic' | 'Premium' | 'Luxury' }))}
+                                onChange={(e) => setFormData(prev => ({ ...prev, service_tier: e.target.value as 'premium' | 'standard' | 'basic' }))}
                                 className="sr-only"
-                                aria-label={tier.value}
+                                aria-label={tier.label}
                               />
                               <div className={`p-5 rounded-2xl border-2 transition-all duration-300 transform ${
                                 formData.service_tier === tier.value
@@ -1468,7 +1473,7 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                               }`}>
                                 <div className="text-center">
                                   <div className="text-3xl mb-2">{tier.icon}</div>
-                                  <div className="text-lg font-bold text-gray-900 mb-1">{tier.value}</div>
+                                  <div className="text-lg font-bold text-gray-900 mb-1">{tier.label}</div>
                                   <div className="text-sm text-gray-600">{tier.description}</div>
                                 </div>
                                 {formData.service_tier === tier.value && (
