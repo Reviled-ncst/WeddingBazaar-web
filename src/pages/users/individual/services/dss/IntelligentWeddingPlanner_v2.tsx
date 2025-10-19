@@ -659,7 +659,7 @@ export function IntelligentWeddingPlanner({
           <label className="block text-sm font-semibold text-gray-900 mb-4">
             How many guests are you expecting?
           </label>
-          <div className="space-y-4">
+          <div className="space-y-4 max-w-3xl mx-auto">
             <div className="flex items-center justify-between mb-6">
               <span className="text-sm text-gray-600">Guest Count</span>
               <span className="text-2xl font-bold text-pink-600">
@@ -683,7 +683,7 @@ export function IntelligentWeddingPlanner({
                 type="range"
                 min="20"
                 max="500"
-                step="10"
+                step="1"
                 value={preferences.guestCount}
                 onChange={(e) => updatePreferences({ guestCount: parseInt(e.target.value) })}
                 aria-label="Guest count slider"
