@@ -319,7 +319,7 @@ router.put('/:id', async (req, res) => {
     }
     if (images !== undefined) {
       updates.push(`images = $${paramCount++}`);
-      values.push(JSON.stringify(Array.isArray(images) ? images : []));
+      values.push(Array.isArray(images) ? images : []);
     }
     if (is_active !== undefined) {
       updates.push(`is_active = $${paramCount++}`);
