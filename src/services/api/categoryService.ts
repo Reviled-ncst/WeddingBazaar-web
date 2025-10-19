@@ -45,14 +45,14 @@ export interface FieldOption {
 
 interface CategoriesResponse {
   success: boolean;
-  count: number;
-  categories: Category[];
+  total?: number;  // Backend returns 'total', not 'count'
+  categories?: Category[];  // Make optional for safety
 }
 
 interface FieldsResponse {
   success: boolean;
-  count: number;
-  fields: CategoryField[];
+  total?: number;
+  fields?: CategoryField[];
   categoryName?: string;
 }
 
@@ -78,11 +78,18 @@ export async function fetchCategories(): Promise<Category[]> {
 
     const data: CategoriesResponse = await response.json();
     
+    console.log('🔍 Raw API response:', data);
+    
     if (!data.success) {
       throw new Error('API returned unsuccessful response');
     }
 
-    console.log(`✅ Fetched ${data.count} categories`);
+    if (!data.categories || !Array.isArray(data.categories)) {
+      console.error('❌ Invalid categories data:', data);
+      throw new Error('Invalid categories response format');
+    }
+
+    console.log(`✅ Fetched ${data.categories.length} categories`);
     return data.categories;
   } catch (error) {
     console.error('❌ Error fetching categories:', error);
@@ -110,15 +117,22 @@ export async function fetchCategoryFieldsById(categoryId: string): Promise<Categ
 
     const data: FieldsResponse = await response.json();
     
+    console.log('🔍 Raw fields API response:', data);
+    
     if (!data.success) {
       throw new Error('API returned unsuccessful response');
     }
 
-    console.log(`✅ Fetched ${data.count} fields for category ${categoryId}`);
+    if (!data.fields || !Array.isArray(data.fields)) {
+      console.warn('⚠️ No fields found for category:', categoryId);
+      return [];
+    }
+
+    console.log(`✅ Fetched ${data.fields.length} fields for category ${categoryId}`);
     return data.fields;
   } catch (error) {
     console.error('❌ Error fetching category fields:', error);
-    throw error;
+    return []; // Return empty array instead of throwing
   }
 }
 
