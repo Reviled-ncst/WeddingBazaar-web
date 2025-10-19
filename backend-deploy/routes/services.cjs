@@ -207,7 +207,14 @@ router.post('/', async (req, res) => {
     const finalVendorId = vendor_id || vendorId;
     const finalTitle = title || name;
 
+    // Generate service ID (format: SRV-XXXXX)
+    const countResult = await sql`SELECT COUNT(*) as count FROM services`;
+    const serviceCount = parseInt(countResult[0].count) + 1;
+    const serviceId = `SRV-${serviceCount.toString().padStart(5, '0')}`;
+    
+    console.log('🆔 Generated service ID:', serviceId);
     console.log('💾 [POST /api/services] Inserting service data:', {
+      id: serviceId,
       vendor_id: finalVendorId,
       title: finalTitle,
       category,
@@ -217,11 +224,12 @@ router.post('/', async (req, res) => {
     // Insert into database with DSS fields
     const result = await sql`
       INSERT INTO services (
-        vendor_id, title, description, category, price, location, images, 
+        id, vendor_id, title, description, category, price, location, images, 
         featured, is_active,
         years_in_business, service_tier, wedding_styles, cultural_specialties, availability,
         created_at, updated_at
       ) VALUES (
+        ${serviceId},
         ${finalVendorId},
         ${finalTitle},
         ${description || ''},
