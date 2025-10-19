@@ -353,7 +353,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   // Ref for scroll container
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
-  const totalSteps = 5; // 1=Basic Info, 2=Pricing, 3=Contact & Features, 4=Images & Tags, 5=Category-Specific Fields
+  const totalSteps = 6; // 1=Basic Info, 2=Pricing, 3=Features, 4=DSS Details, 5=Images & Tags, 6=Category-Specific Fields
 
   // Load categories on mount
   useEffect(() => {
@@ -1394,10 +1394,261 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                   </motion.div>
                 )}
 
-                {/* Step 4: Images & Tags */}
+                {/* Step 4: DSS Details (Dynamic Service System) */}
                 {currentStep === 4 && (
                   <motion.div
                     key="step4"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="space-y-6"
+                  >
+                    <div className="text-center mb-6">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2 flex items-center justify-center gap-2">
+                        <Sparkles className="h-6 w-6 text-rose-600" />
+                        Service Details & Experience
+                      </h3>
+                      <p className="text-gray-600">Tell us about your expertise and service offerings</p>
+                    </div>
+
+                    <div className="space-y-8">
+                      {/* Years in Business */}
+                      <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-6 rounded-2xl border border-purple-100">
+                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <Star className="h-5 w-5 text-purple-600" />
+                          Years in Business
+                        </label>
+                        <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-purple-200">
+                          ⭐ How long have you been providing wedding services? This builds trust with clients.
+                        </p>
+                        <input
+                          type="number"
+                          value={formData.years_in_business}
+                          onChange={(e) => setFormData(prev => ({ ...prev, years_in_business: e.target.value }))}
+                          className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-lg"
+                          placeholder="e.g., 5"
+                          min="0"
+                          max="100"
+                        />
+                      </div>
+
+                      {/* Service Tier */}
+                      <div className="bg-gradient-to-r from-amber-50 to-yellow-50 p-6 rounded-2xl border border-amber-100">
+                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <Sparkles className="h-5 w-5 text-amber-600" />
+                          Service Tier
+                        </label>
+                        <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-amber-200">
+                          💎 Select your service level. This helps clients find services that match their expectations.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {[
+                            { value: 'Basic', icon: '⚡', description: 'Essential services with quality results', color: 'blue' },
+                            { value: 'Premium', icon: '✨', description: 'Enhanced services with extra features', color: 'purple' },
+                            { value: 'Luxury', icon: '💎', description: 'Top-tier services with premium experience', color: 'amber' }
+                          ].map((tier) => (
+                            <label key={tier.value} className="relative cursor-pointer group">
+                              <input
+                                type="radio"
+                                name="service_tier"
+                                value={tier.value}
+                                checked={formData.service_tier === tier.value}
+                                onChange={(e) => setFormData(prev => ({ ...prev, service_tier: e.target.value as 'Basic' | 'Premium' | 'Luxury' }))}
+                                className="sr-only"
+                                aria-label={tier.value}
+                              />
+                              <div className={`p-5 rounded-2xl border-2 transition-all duration-300 transform ${
+                                formData.service_tier === tier.value
+                                  ? `border-${tier.color}-500 bg-${tier.color}-50 shadow-xl scale-[1.02] ring-2 ring-${tier.color}-200`
+                                  : 'border-gray-200 bg-white/80 hover:border-amber-300 hover:shadow-lg hover:scale-[1.01]'
+                              }`}>
+                                <div className="text-center">
+                                  <div className="text-3xl mb-2">{tier.icon}</div>
+                                  <div className="text-lg font-bold text-gray-900 mb-1">{tier.value}</div>
+                                  <div className="text-sm text-gray-600">{tier.description}</div>
+                                </div>
+                                {formData.service_tier === tier.value && (
+                                  <div className="absolute -top-2 -right-2 bg-amber-500 text-white rounded-full p-1">
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </div>
+                                )}
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Wedding Styles */}
+                      <div className="bg-gradient-to-r from-rose-50 to-pink-50 p-6 rounded-2xl border border-rose-100">
+                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <Sparkles className="h-5 w-5 text-rose-600" />
+                          Wedding Styles You Specialize In
+                        </label>
+                        <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-rose-200">
+                          💐 Select all wedding styles you're experienced with. This helps couples find the perfect match.
+                        </p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {[
+                            { value: 'Traditional', icon: '👰' },
+                            { value: 'Modern', icon: '✨' },
+                            { value: 'Rustic', icon: '🌾' },
+                            { value: 'Beach', icon: '🏖️' },
+                            { value: 'Garden', icon: '🌸' },
+                            { value: 'Vintage', icon: '🕰️' },
+                            { value: 'Bohemian', icon: '🌼' },
+                            { value: 'Luxury', icon: '💎' },
+                            { value: 'Minimalist', icon: '⚪' }
+                          ].map((style) => (
+                            <label key={style.value} className="relative cursor-pointer group">
+                              <input
+                                type="checkbox"
+                                checked={formData.wedding_styles.includes(style.value)}
+                                onChange={(e) => {
+                                  const styles = e.target.checked
+                                    ? [...formData.wedding_styles, style.value]
+                                    : formData.wedding_styles.filter(s => s !== style.value);
+                                  setFormData(prev => ({ ...prev, wedding_styles: styles }));
+                                }}
+                                className="sr-only"
+                                aria-label={style.value}
+                              />
+                              <div className={`p-4 rounded-xl border-2 transition-all ${
+                                formData.wedding_styles.includes(style.value)
+                                  ? 'border-rose-500 bg-rose-50 shadow-lg scale-[1.02]'
+                                  : 'border-gray-200 bg-white/80 hover:border-rose-300 hover:shadow-md'
+                              }`}>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-2xl">{style.icon}</span>
+                                  <span className="text-sm font-medium text-gray-900">{style.value}</span>
+                                </div>
+                                {formData.wedding_styles.includes(style.value) && (
+                                  <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-rose-600" />
+                                )}
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Cultural Specialties */}
+                      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-2xl border border-indigo-100">
+                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <Globe className="h-5 w-5 text-indigo-600" />
+                          Cultural Specialties
+                        </label>
+                        <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-indigo-200">
+                          🌏 Select cultural wedding traditions you're experienced with.
+                        </p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {[
+                            { value: 'Filipino', icon: '🇵🇭' },
+                            { value: 'Chinese', icon: '🇨🇳' },
+                            { value: 'Indian', icon: '🇮🇳' },
+                            { value: 'Korean', icon: '🇰🇷' },
+                            { value: 'Japanese', icon: '🇯🇵' },
+                            { value: 'Western', icon: '🇺🇸' },
+                            { value: 'Catholic', icon: '⛪' },
+                            { value: 'Muslim', icon: '🕌' },
+                            { value: 'Multi-cultural', icon: '🌍' }
+                          ].map((specialty) => (
+                            <label key={specialty.value} className="relative cursor-pointer group">
+                              <input
+                                type="checkbox"
+                                checked={formData.cultural_specialties.includes(specialty.value)}
+                                onChange={(e) => {
+                                  const specialties = e.target.checked
+                                    ? [...formData.cultural_specialties, specialty.value]
+                                    : formData.cultural_specialties.filter(s => s !== specialty.value);
+                                  setFormData(prev => ({ ...prev, cultural_specialties: specialties }));
+                                }}
+                                className="sr-only"
+                                aria-label={specialty.value}
+                              />
+                              <div className={`p-4 rounded-xl border-2 transition-all ${
+                                formData.cultural_specialties.includes(specialty.value)
+                                  ? 'border-indigo-500 bg-indigo-50 shadow-lg scale-[1.02]'
+                                  : 'border-gray-200 bg-white/80 hover:border-indigo-300 hover:shadow-md'
+                              }`}>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-2xl">{specialty.icon}</span>
+                                  <span className="text-sm font-medium text-gray-900">{specialty.value}</span>
+                                </div>
+                                {formData.cultural_specialties.includes(specialty.value) && (
+                                  <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-indigo-600" />
+                                )}
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Availability Preferences */}
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
+                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <CheckCircle2 className="h-5 w-5 text-green-600" />
+                          Availability Preferences
+                        </label>
+                        <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-green-200">
+                          📅 When are you typically available to provide services?
+                        </p>
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-3 p-4 bg-white/70 rounded-xl hover:bg-white transition-colors cursor-pointer border border-white">
+                            <input
+                              type="checkbox"
+                              checked={formData.availability.weekdays}
+                              onChange={(e) => setFormData(prev => ({
+                                ...prev,
+                                availability: { ...prev.availability, weekdays: e.target.checked }
+                              }))}
+                              className="w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-2 focus:ring-green-500"
+                            />
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">Weekdays (Monday - Friday)</div>
+                              <div className="text-sm text-gray-600">Available for weekday events</div>
+                            </div>
+                          </label>
+
+                          <label className="flex items-center gap-3 p-4 bg-white/70 rounded-xl hover:bg-white transition-colors cursor-pointer border border-white">
+                            <input
+                              type="checkbox"
+                              checked={formData.availability.weekends}
+                              onChange={(e) => setFormData(prev => ({
+                                ...prev,
+                                availability: { ...prev.availability, weekends: e.target.checked }
+                              }))}
+                              className="w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-2 focus:ring-green-500"
+                            />
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">Weekends (Saturday - Sunday)</div>
+                              <div className="text-sm text-gray-600">Available for weekend celebrations</div>
+                            </div>
+                          </label>
+
+                          <label className="flex items-center gap-3 p-4 bg-white/70 rounded-xl hover:bg-white transition-colors cursor-pointer border border-white">
+                            <input
+                              type="checkbox"
+                              checked={formData.availability.holidays}
+                              onChange={(e) => setFormData(prev => ({
+                                ...prev,
+                                availability: { ...prev.availability, holidays: e.target.checked }
+                              }))}
+                              className="w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-2 focus:ring-green-500"
+                            />
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">Holidays & Special Dates</div>
+                              <div className="text-sm text-gray-600">Available during holidays and special occasions</div>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Step 5: Images & Tags */}
+                {currentStep === 5 && (
+                  <motion.div
+                    key="step5"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
@@ -1532,10 +1783,10 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                   </motion.div>
                 )}
 
-                {/* Step 5: Category-Specific Fields (Dynamic) */}
-                {currentStep === 5 && (
+                {/* Step 6: Category-Specific Fields (Dynamic) */}
+                {currentStep === 6 && (
                   <motion.div
-                    key="step5"
+                    key="step6"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
