@@ -228,7 +228,7 @@ router.post('/', async (req, res) => {
         ${category},
         ${price ? parseFloat(price) : null},
         ${location || ''},
-        ${JSON.stringify(Array.isArray(images) ? images : [])},
+        ${Array.isArray(images) ? images : []},
         ${Boolean(featured)},
         ${Boolean(is_active)},
         ${years_in_business ? parseInt(years_in_business) : null},
