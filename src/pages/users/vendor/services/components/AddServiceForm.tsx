@@ -533,12 +533,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         }
         break;
       case 3:
-        if (formData.contact_info.email && !/\S+@\S+\.\S+/.test(formData.contact_info.email)) {
-          newErrors.email = 'Invalid email format';
-        }
-        if (formData.contact_info.website && !formData.contact_info.website.startsWith('http')) {
-          newErrors.website = 'Website must start with http:// or https://';
-        }
+        // Step 3 is now Service Items & Equipment - no validation needed
         break;
     }
 
@@ -1292,7 +1287,7 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                   </motion.div>
                 )}
 
-                {/* Step 3: Contact & Features */}
+                {/* Step 3: Service Items & Equipment */}
                 {currentStep === 3 && (
                   <motion.div
                     key="step3"
@@ -1302,83 +1297,8 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                     className="space-y-6"
                   >
                     <div className="text-center mb-6">
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">Contact & Features</h3>
-                      <p className="text-gray-600">Add contact details and service features</p>
-                    </div>
-
-                    {/* Contact Information */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-gray-900">Contact Information</h4>
-                        {vendorProfile && (formData.contact_info.phone || formData.contact_info.email || formData.contact_info.website) && (
-                          <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
-                            <CheckCircle2 size={14} />
-                            Auto-filled from profile
-                          </div>
-                        )}
-                      </div>
-                      {vendorProfile && (
-                        <p className="text-sm text-gray-600">
-                          Contact info has been pre-filled from your vendor profile. You can edit if needed.
-                        </p>
-                      )}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                          <input
-                            type="tel"
-                            value={formData.contact_info.phone}
-                            onChange={(e) => setFormData(prev => ({
-                              ...prev,
-                              contact_info: { ...prev.contact_info, phone: e.target.value }
-                            }))}
-                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all"
-                            placeholder="Phone number"
-                          />
-                        </div>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                          <input
-                            type="email"
-                            value={formData.contact_info.email}
-                            onChange={(e) => setFormData(prev => ({
-                              ...prev,
-                              contact_info: { ...prev.contact_info, email: e.target.value }
-                            }))}
-                            className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all ${
-                              errors.email ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                            }`}
-                            placeholder="Email address"
-                          />
-                          {errors.email && (
-                            <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-                              <AlertCircle size={14} />
-                              {errors.email}
-                            </p>
-                          )}
-                        </div>
-                        <div className="relative">
-                          <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                          <input
-                            type="url"
-                            value={formData.contact_info.website}
-                            onChange={(e) => setFormData(prev => ({
-                              ...prev,
-                              contact_info: { ...prev.contact_info, website: e.target.value }
-                            }))}
-                            className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all ${
-                              errors.website ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                            }`}
-                            placeholder="Website URL"
-                          />
-                          {errors.website && (
-                            <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-                              <AlertCircle size={14} />
-                              {errors.website}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">Service Items & Equipment</h3>
+                      <p className="text-gray-600">List what's included in your service</p>
                     </div>
 
                     {/* Service Items & Equipment List */}
