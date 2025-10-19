@@ -683,7 +683,6 @@ export function IntelligentWeddingPlanner({
                 type="range"
                 min="20"
                 max="500"
-                step="5"
                 value={preferences.guestCount}
                 onChange={(e) => updatePreferences({ guestCount: parseInt(e.target.value) })}
                 onInput={(e) => updatePreferences({ guestCount: parseInt((e.target as HTMLInputElement).value) })}
