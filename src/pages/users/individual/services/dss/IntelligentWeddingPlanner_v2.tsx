@@ -683,12 +683,13 @@ export function IntelligentWeddingPlanner({
                 type="range"
                 min="20"
                 max="500"
-                step="1"
+                step="5"
                 value={preferences.guestCount}
                 onChange={(e) => updatePreferences({ guestCount: parseInt(e.target.value) })}
+                onInput={(e) => updatePreferences({ guestCount: parseInt((e.target as HTMLInputElement).value) })}
                 aria-label="Guest count slider"
                 title="Adjust guest count"
-                className="relative w-full h-12 appearance-none cursor-grab active:cursor-grabbing bg-transparent z-10
+                className="relative w-full h-12 appearance-none cursor-grab active:cursor-grabbing bg-transparent z-20
                   [&::-webkit-slider-thumb]:appearance-none
                   [&::-webkit-slider-thumb]:w-8
                   [&::-webkit-slider-thumb]:h-8
@@ -702,7 +703,6 @@ export function IntelligentWeddingPlanner({
                   [&::-webkit-slider-thumb]:hover:scale-110
                   [&::-webkit-slider-thumb]:active:cursor-grabbing
                   [&::-webkit-slider-thumb]:active:scale-105
-                  [&::-webkit-slider-thumb]:transition-all
                   [&::-moz-range-thumb]:w-8
                   [&::-moz-range-thumb]:h-8
                   [&::-moz-range-thumb]:rounded-full
@@ -715,7 +715,6 @@ export function IntelligentWeddingPlanner({
                   [&::-moz-range-thumb]:hover:scale-110
                   [&::-moz-range-thumb]:active:cursor-grabbing
                   [&::-moz-range-thumb]:active:scale-105
-                  [&::-moz-range-thumb]:transition-all
                   [&::-webkit-slider-runnable-track]:h-4
                   [&::-webkit-slider-runnable-track]:bg-transparent
                   [&::-webkit-slider-runnable-track]:rounded-lg
