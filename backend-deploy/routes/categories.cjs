@@ -1,13 +1,7 @@
 const express = require('express');
+const { sql } = require('../config/database.cjs');
+
 const router = express.Router();
-
-// This will be replaced with database connection
-let db;
-
-function initializeRouter(database) {
-  db = database;
-  return router;
-}
 
 // ============================================================================
 // SERVICE CATEGORIES ENDPOINTS
@@ -18,20 +12,20 @@ router.get('/', async (req, res) => {
   try {
     console.log('📂 [API] GET /api/categories called');
     
-    const result = await db.query(`
+    const result = await sql`
       SELECT 
         id, name, display_name, description, icon, sort_order
       FROM service_categories 
       WHERE is_active = true
       ORDER BY sort_order ASC, display_name ASC
-    `);
+    `;
     
-    console.log(`✅ [API] Found ${result.rows.length} active categories`);
+    console.log(`✅ [API] Found ${result.length} active categories`);
     
     res.json({
       success: true,
-      categories: result.rows,
-      total: result.rows.length
+      categories: result,
+      total: result.length
     });
   } catch (error) {
     console.error('❌ [API] Error fetching categories:', error);
@@ -49,25 +43,25 @@ router.get('/:categoryId', async (req, res) => {
     const { categoryId } = req.params;
     console.log(`📂 [API] GET /api/categories/${categoryId} called`);
     
-    const result = await db.query(`
+    const result = await sql`
       SELECT 
         id, name, display_name, description, icon, sort_order
       FROM service_categories 
-      WHERE id = $1 AND is_active = true
-    `, [categoryId]);
+      WHERE id = ${categoryId} AND is_active = true
+    `;
     
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Category not found'
       });
     }
     
-    console.log(`✅ [API] Found category: ${result.rows[0].display_name}`);
+    console.log(`✅ [API] Found category: ${result[0].display_name}`);
     
     res.json({
       success: true,
-      category: result.rows[0]
+      category: result[0]
     });
   } catch (error) {
     console.error('❌ [API] Error fetching category:', error);
@@ -89,22 +83,22 @@ router.get('/:categoryId/features', async (req, res) => {
     const { categoryId } = req.params;
     console.log(`✨ [API] GET /api/categories/${categoryId}/features called`);
     
-    const result = await db.query(`
+    const result = await sql`
       SELECT 
         id, name, description, icon, is_common, sort_order
       FROM service_features 
-      WHERE (category_id = $1 OR category_id IS NULL) 
+      WHERE (category_id = ${categoryId} OR category_id IS NULL) 
         AND is_active = true
       ORDER BY is_common DESC, sort_order ASC, name ASC
-    `, [categoryId]);
+    `;
     
-    console.log(`✅ [API] Found ${result.rows.length} features for category`);
+    console.log(`✅ [API] Found ${result.length} features for category`);
     
     res.json({
       success: true,
       categoryId,
-      features: result.rows,
-      total: result.rows.length
+      features: result,
+      total: result.length
     });
   } catch (error) {
     console.error('❌ [API] Error fetching features:', error);
@@ -121,20 +115,20 @@ router.get('/features/common', async (req, res) => {
   try {
     console.log('✨ [API] GET /api/features/common called');
     
-    const result = await db.query(`
+    const result = await sql`
       SELECT 
         id, name, description, icon, sort_order
       FROM service_features 
       WHERE is_common = true AND is_active = true
       ORDER BY sort_order ASC, name ASC
-    `);
+    `;
     
-    console.log(`✅ [API] Found ${result.rows.length} common features`);
+    console.log(`✅ [API] Found ${result.length} common features`);
     
     res.json({
       success: true,
-      features: result.rows,
-      total: result.rows.length
+      features: result,
+      total: result.length
     });
   } catch (error) {
     console.error('❌ [API] Error fetching common features:', error);
@@ -155,19 +149,19 @@ router.get('/price-ranges', async (req, res) => {
   try {
     console.log('💰 [API] GET /api/price-ranges called');
     
-    const result = await db.query(`
+    const result = await sql`
       SELECT 
         id, range_text, label, description, min_amount, max_amount, sort_order
       FROM price_ranges 
       WHERE is_active = true
       ORDER BY sort_order ASC
-    `);
+    `;
     
-    console.log(`✅ [API] Found ${result.rows.length} price ranges`);
+    console.log(`✅ [API] Found ${result.length} price ranges`);
     
     res.json({
       success: true,
-      priceRanges: result.rows.map(row => ({
+      priceRanges: result.map(row => ({
         id: row.id,
         value: row.range_text,
         label: row.label,
@@ -175,7 +169,7 @@ router.get('/price-ranges', async (req, res) => {
         minAmount: row.min_amount,
         maxAmount: row.max_amount
       })),
-      total: result.rows.length
+      total: result.length
     });
   } catch (error) {
     console.error('❌ [API] Error fetching price ranges:', error);
@@ -187,4 +181,4 @@ router.get('/price-ranges', async (req, res) => {
   }
 });
 
-module.exports = { router, initializeRouter };
+module.exports = router;

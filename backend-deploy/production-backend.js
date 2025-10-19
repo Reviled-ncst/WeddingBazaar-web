@@ -23,6 +23,7 @@ const bookingsTestRoutes = require('./routes/bookings-test.cjs');
 const adminRoutes = require('./routes/admin.cjs'); // Old admin routes
 const adminUserRoutes = require('./routes/admin/index.cjs'); // New modular admin routes
 const dssRoutes = require('./routes/dss.cjs'); // Decision Support System routes
+const categoryRoutes = require('./routes/categories.cjs'); // Dynamic categories system
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -172,6 +173,7 @@ app.use('/api/payments', paymentsRoutes);
 app.use('/api/receipts', receiptsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/debug', debugRoutes);
+app.use('/api/categories', categoryRoutes); // Dynamic categories system
 
 // Admin routes - New modular user management system
 app.use('/api/admin', adminUserRoutes); // User management, stats, etc.
@@ -229,7 +231,8 @@ app.listen(PORT, () => {
   console.log('   💬 Conversations: GET /api/conversations/:userId');
   console.log('   🛠️  Services: GET /api/services/vendor/:vendorId');
   console.log('   🏪 Vendors: GET /api/vendors/featured');
-  console.log('   📅 Vendor Off-Days: GET /api/vendors/:vendorId/off-days, POST /api/vendors/:vendorId/off-days');
+  console.log('   � Categories: GET /api/categories, GET /api/categories/:id/features');
+  console.log('   �📅 Vendor Off-Days: GET /api/vendors/:vendorId/off-days, POST /api/vendors/:vendorId/off-days');
   console.log('   📅 Bookings: GET /api/bookings/vendor/:vendorId');
   console.log('   🔔 Notifications: GET /api/notifications/vendor/:vendorId');
   console.log('   🐛 Debug: GET /api/debug/users');
