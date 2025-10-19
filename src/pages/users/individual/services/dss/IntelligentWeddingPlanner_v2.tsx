@@ -683,9 +683,10 @@ export function IntelligentWeddingPlanner({
                 type="range"
                 min="20"
                 max="500"
+                step="any"
                 value={preferences.guestCount}
-                onChange={(e) => updatePreferences({ guestCount: parseInt(e.target.value) })}
-                onInput={(e) => updatePreferences({ guestCount: parseInt((e.target as HTMLInputElement).value) })}
+                onChange={(e) => updatePreferences({ guestCount: Math.round(parseFloat(e.target.value)) })}
+                onInput={(e) => updatePreferences({ guestCount: Math.round(parseFloat((e.target as HTMLInputElement).value)) })}
                 aria-label="Guest count slider"
                 title="Adjust guest count"
                 className="relative w-full h-12 appearance-none cursor-grab active:cursor-grabbing bg-transparent z-20
