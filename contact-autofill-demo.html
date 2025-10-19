@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Info Auto-Population Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-slide-down {
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        .animate-pulse-custom {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-pink-50 via-white to-rose-50 min-h-screen p-8">
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-4">
+                📞 Contact Info Auto-Population Demo
+            </h1>
+            <p class="text-lg text-gray-600">
+                Watch how contact information automatically fills from vendor profile
+            </p>
+        </div>
+
+        <!-- Vendor Profile Card -->
+        <div class="bg-white rounded-3xl shadow-xl p-8 mb-8 border-2 border-green-200">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Vendor Profile Data</h2>
+                <span class="bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium">
+                    ✅ Loaded from Database
+                </span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="profileData">
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl">
+                    <div class="text-sm text-gray-600 mb-2">📱 Phone</div>
+                    <div class="font-semibold text-gray-900" id="profilePhone">+63 917 123 4567</div>
+                </div>
+                <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl">
+                    <div class="text-sm text-gray-600 mb-2">📧 Email</div>
+                    <div class="font-semibold text-gray-900" id="profileEmail">vendor@example.com</div>
+                </div>
+                <div class="bg-gradient-to-br from-rose-50 to-rose-100 p-4 rounded-xl">
+                    <div class="text-sm text-gray-600 mb-2">🌐 Website</div>
+                    <div class="font-semibold text-gray-900" id="profileWebsite">https://vendor.com</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Animation Arrow -->
+        <div class="text-center mb-8 animate-pulse-custom">
+            <div class="text-4xl">⬇️</div>
+            <div class="text-sm text-gray-600 mt-2 font-medium">Auto-Population in Progress...</div>
+        </div>
+
+        <!-- Add Service Form (Step 3) -->
+        <div class="bg-white rounded-3xl shadow-2xl p-8 border-2 border-rose-200">
+            <div class="mb-8">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-10 h-10 bg-rose-600 text-white rounded-full flex items-center justify-center font-bold">
+                        3
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-900">Contact & Features</h3>
+                        <p class="text-gray-600">Add contact details and service features</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Information Section -->
+            <div class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-lg font-semibold text-gray-900">Contact Information</h4>
+                    <div class="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-full text-sm font-medium animate-slide-down">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        Auto-filled from profile
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-xl">
+                    <p class="text-sm text-gray-700">
+                        ℹ️ Contact info has been pre-filled from your vendor profile. You can edit if needed.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Phone Input -->
+                    <div class="relative">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                        <div class="relative">
+                            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                            </svg>
+                            <input 
+                                type="tel" 
+                                id="formPhone"
+                                value="+63 917 123 4567"
+                                class="w-full pl-10 pr-4 py-3 border-2 border-green-200 bg-green-50 rounded-xl focus:ring-4 focus:ring-rose-500/20 focus:border-rose-500 transition-all text-gray-900 font-medium"
+                                readonly
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Email Input -->
+                    <div class="relative">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                        <div class="relative">
+                            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            <input 
+                                type="email" 
+                                id="formEmail"
+                                value="vendor@example.com"
+                                class="w-full pl-10 pr-4 py-3 border-2 border-green-200 bg-green-50 rounded-xl focus:ring-4 focus:ring-rose-500/20 focus:border-rose-500 transition-all text-gray-900 font-medium"
+                                readonly
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Website Input -->
+                    <div class="relative">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Website URL</label>
+                        <div class="relative">
+                            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                            </svg>
+                            <input 
+                                type="url" 
+                                id="formWebsite"
+                                value="https://vendor.com"
+                                class="w-full pl-10 pr-4 py-3 border-2 border-green-200 bg-green-50 rounded-xl focus:ring-4 focus:ring-rose-500/20 focus:border-rose-500 transition-all text-gray-900 font-medium"
+                                readonly
+                            >
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Benefits Section -->
+        <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+                <div class="text-3xl mb-4">⚡</div>
+                <h3 class="font-bold text-gray-900 mb-2">Saves Time</h3>
+                <p class="text-sm text-gray-600">No need to type contact info for every service you create</p>
+            </div>
+            <div class="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+                <div class="text-3xl mb-4">✅</div>
+                <h3 class="font-bold text-gray-900 mb-2">Consistency</h3>
+                <p class="text-sm text-gray-600">All services use the same contact info from your profile</p>
+            </div>
+            <div class="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+                <div class="text-3xl mb-4">🔒</div>
+                <h3 class="font-bold text-gray-900 mb-2">No Errors</h3>
+                <p class="text-sm text-gray-600">Eliminates typos and ensures valid contact information</p>
+            </div>
+        </div>
+
+        <!-- Test Scenarios -->
+        <div class="mt-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-8 border-2 border-gray-300">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">🧪 Test Different Scenarios</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button onclick="loadProfile('complete')" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors">
+                    Complete Profile
+                </button>
+                <button onclick="loadProfile('partial')" class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors">
+                    Partial Profile (Email Only)
+                </button>
+                <button onclick="loadProfile('empty')" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors">
+                    Empty Profile
+                </button>
+                <button onclick="loadProfile('snake_case')" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors">
+                    Snake Case Fields
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const profiles = {
+            complete: {
+                phone: '+63 917 123 4567',
+                email: 'vendor@example.com',
+                website: 'https://vendor.com'
+            },
+            partial: {
+                phone: '',
+                email: 'partial@vendor.com',
+                website: ''
+            },
+            empty: {
+                phone: '',
+                email: '',
+                website: ''
+            },
+            snake_case: {
+                contact_phone: '+63 918 234 5678',
+                contact_email: 'contact@vendor.ph',
+                website_url: 'https://vendor.ph'
+            }
+        };
+
+        function loadProfile(type) {
+            const profile = profiles[type];
+            
+            // Update profile display
+            document.getElementById('profilePhone').textContent = 
+                profile.phone || profile.contact_phone || '(not set)';
+            document.getElementById('profileEmail').textContent = 
+                profile.email || profile.contact_email || '(not set)';
+            document.getElementById('profileWebsite').textContent = 
+                profile.website || profile.website_url || '(not set)';
+            
+            // Simulate auto-population with animation
+            setTimeout(() => {
+                document.getElementById('formPhone').value = 
+                    profile.phone || profile.contact_phone || '';
+                document.getElementById('formEmail').value = 
+                    profile.email || profile.contact_email || '';
+                document.getElementById('formWebsite').value = 
+                    profile.website || profile.website_url || '';
+                
+                // Highlight fields that were filled
+                ['formPhone', 'formEmail', 'formWebsite'].forEach(id => {
+                    const input = document.getElementById(id);
+                    if (input.value) {
+                        input.classList.add('border-green-400', 'bg-green-50');
+                    } else {
+                        input.classList.remove('border-green-400', 'bg-green-50');
+                        input.classList.add('border-gray-200', 'bg-white');
+                    }
+                });
+            }, 300);
+        }
+    </script>
+</body>
+</html>
