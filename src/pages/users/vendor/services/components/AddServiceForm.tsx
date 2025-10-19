@@ -1682,22 +1682,43 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                     <div className="text-center mb-6">
                       <h3 className="text-xl font-semibold text-gray-900 mb-2">
                         {formData.category ? `${categories.find(c => c.name === formData.category)?.display_name || formData.category} Details` : 'Category-Specific Details'}
+                                e.currentTarget.value = '';
+                              }>
+                            } fields...' : categoryFields.length > 0 ? 'Provide specific details for your service category' : 'No additional fields required for this category'}
+                          }}
+                        /> </div>
+                    </div>
+                  </motion.div>
+                )}
+v className="w-16 h-16 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                {/* Step 5: Category-Specific Fields (Dynamic) */}">Loading category-specific fields...</p>
+                {currentStep === 5 && (
+                  <motion.divtegoryFields.length > 0 ? (
+                    key="step5" className="space-y-6">
+                    initial={{ opacity: 0, x: 20 }}                        {categoryFields.map((field) => (
+                    animate={{ opacity: 1, x: 0 }}eld.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
+                    exit={{ opacity: 0, x: -20 }} mb-3">
+                    className="space-y-6"
+                  >pan>}
+                    <div className="text-center mb-6"></label>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        {formData.category ? `${categories.find(c => c.name === formData.category)?.display_name || formData.category} Details` : 'Category-Specific Details'}sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg">
                       </h3>
                       <p className="text-gray-600">
                         {loadingFields ? 'Loading fields...' : categoryFields.length > 0 ? 'Provide specific details for your service category' : 'No additional fields required for this category'}
                       </p>
                     </div>
-
+ield_type === 'text' && (
                     {loadingFields ? (
                       <div className="flex flex-col items-center justify-center py-12">
-                        <div className="w-16 h-16 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                        <p className="text-gray-600">Loading category-specific fields...</p>
-                      </div>
-                    ) : categoryFields.length > 0 ? (
+                        <div className="w-16 h-16 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mb-4"></div>-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"
+                        <p className="text-gray-600">Loading category-specific fields...</p>aceholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}
+                      </div>/>
+                    ) : categoryFields.length > 0 ? (                            )}
                       <div className="space-y-6">
-                        {categoryFields.map((field) => (
-                          <div key={field.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
-                            <label className="block text-lg font-semibold text-gray-800 mb-3">
+                        {categoryFields.map((field) => (&& (
+                          <div key={field.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">rea
+                            <label className="block text-lg font-semibold text-gray-800 mb-3">w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base resize-none"
                               {field.field_label}
                               {field.is_required && <span className="text-red-500 ml-1">*</span>}
                             </label>
@@ -1706,38 +1727,38 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                                 💡 {field.help_text}
                               </p>
                             )}
-
+e="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"
                             {/* Render field based on type */}
                             {field.field_type === 'text' && (
                               <input
                                 type="text"
-                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"
-                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}
-                              />
+                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"ield.options.length > 0 && (
+                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}t
+                              />field_label}
                             )}
 
-                            {field.field_type === 'textarea' && (
-                              <textarea
-                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base resize-none"
+                            {field.field_type === 'textarea' && (<option value="">Select an option</option>
+                              <textarea  {field.options.map((option) => (
+                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base resize-none"                                  <option key={option.value} value={option.value}>
                                 rows={4}
-                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}
+                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}ption>
                               />
                             )}
 
                             {field.field_type === 'number' && (
-                              <input
+                              <input&& field.options.length > 0 && (
                                 type="number"
-                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"
-                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}
-                              />
-                            )}
-
-                            {field.field_type === 'select' && field.options.length > 0 && (
+                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"((option) => (
+                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}y={option.value} className="flex items-center gap-3 p-3 bg-white/70 rounded-lg hover:bg-white transition-colors cursor-pointer">
+                              /> <input
+                            )}ype="checkbox"
+        value={option.value}
+                            {field.field_type === 'select' && field.options.length > 0 && (                                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                               <select
                                 title={field.field_label}
-                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"
+                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"m text-gray-900">{option.label}</div>
                               >
-                                <option value="">Select an option</option>
+                                <option value="">Select an option</option>iv className="text-sm text-gray-600">{option.description}</div>
                                 {field.options.map((option) => (
                                   <option key={option.value} value={option.value}>
                                     {option.label}
@@ -1746,27 +1767,27 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                               </select>
                             )}
 
-                            {field.field_type === 'multiselect' && field.options.length > 0 && (
+                            {field.field_type === 'multiselect' && field.options.length > 0 && (ssName="flex items-center gap-3 p-4 bg-white/70 rounded-lg hover:bg-white transition-colors cursor-pointer">
                               <div className="space-y-2">
-                                {field.options.map((option) => (
-                                  <label key={option.value} className="flex items-center gap-3 p-3 bg-white/70 rounded-lg hover:bg-white transition-colors cursor-pointer">
+                                {field.options.map((option) => (eckbox"
+                                  <label key={option.value} className="flex items-center gap-3 p-3 bg-white/70 rounded-lg hover:bg-white transition-colors cursor-pointer">lassName="w-6 h-6 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                                     <input
-                                      type="checkbox"
-                                      value={option.value}
+                                      type="checkbox"  <span className="text-gray-700">{field.help_text || field.field_label}</span>
+                                      value={option.value}                              </label>
                                       className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                                     />
                                     <div>
                                       <div className="font-medium text-gray-900">{option.label}</div>
                                       {option.description && (
-                                        <div className="text-sm text-gray-600">{option.description}</div>
-                                      )}
-                                    </div>
+                                        <div className="text-sm text-gray-600">{option.description}</div>me="text-center py-12">
+                                      )}mx-auto mb-4">
+                                    </div>2 className="h-8 w-8 text-green-600" />
                                   </label>
-                                ))}
-                              </div>
-                            )}
-
-                            {field.field_type === 'checkbox' && (
+                                ))}sName="text-lg font-semibold text-gray-900 mb-2">All Set!</h4>
+                              </div>className="text-gray-600">
+                            )}ormData.category 
+   ? 'No additional category-specific fields required for this service type.'
+                            {field.field_type === 'checkbox' && (f additional fields are needed.'}
                               <label className="flex items-center gap-3 p-4 bg-white/70 rounded-lg hover:bg-white transition-colors cursor-pointer">
                                 <input
                                   type="checkbox"
@@ -1775,33 +1796,12 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                                 <span className="text-gray-700">{field.help_text || field.field_label}</span>
                               </label>
                             )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12">
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <CheckCircle2 className="h-8 w-8 text-green-600" />
-                        </div>
-                        <h4 className="text-lg font-semibold text-gray-900 mb-2">All Set!</h4>
-                        <p className="text-gray-600">
-                          {formData.category 
-                            ? 'No additional category-specific fields required for this service type.'
-                            : 'Select a category to see if additional fields are needed.'}
-                        </p>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Error Display */}
-            {errors.submit && (
-              <div className="px-6 py-3 bg-red-50 border-t border-red-200">
-                <div className="text-red-700 text-sm flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  {errors.submit}
+                          </div>y */}
+                        ))}& (
+                      </div>ssName="px-6 py-3 bg-red-50 border-t border-red-200">
+                    ) : ("text-red-700 text-sm flex items-center gap-2">
+                      <div className="text-center py-12"><AlertTriangle className="h-4 w-4" />
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">}
                 </div>
               </div>
             )}
