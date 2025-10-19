@@ -666,30 +666,25 @@ export function IntelligentWeddingPlanner({
                 {preferences.guestCount >= 500 ? '500+' : preferences.guestCount}
               </span>
             </div>
-            <div className="relative px-3 py-2">
-              {/* Background track */}
-              <div className="absolute top-1/2 -translate-y-1/2 left-3 right-3 h-4 bg-gray-200 rounded-lg" />
-              
-              {/* Filled track */}
-              <div 
-                className="absolute top-1/2 -translate-y-1/2 left-3 h-4 bg-gradient-to-r from-pink-400 to-pink-600 rounded-lg pointer-events-none"
-                style={{ 
-                  width: `calc((100% - 24px) * ${(preferences.guestCount - 20) / (500 - 20)})` 
-                }}
-              />
-              
-              {/* Slider input */}
+            <div className="relative px-3 py-2">              
+              {/* Slider input - uses step="1" for smooth integer dragging */}
               <input
                 type="range"
                 min="20"
                 max="500"
-                step="any"
+                step="1"
                 value={preferences.guestCount}
-                onChange={(e) => updatePreferences({ guestCount: Math.round(parseFloat(e.target.value)) })}
-                onInput={(e) => updatePreferences({ guestCount: Math.round(parseFloat((e.target as HTMLInputElement).value)) })}
+                onChange={(e) => updatePreferences({ guestCount: parseInt(e.target.value) })}
                 aria-label="Guest count slider"
                 title="Adjust guest count"
-                className="relative w-full h-12 appearance-none cursor-grab active:cursor-grabbing bg-transparent z-20
+                style={{
+                  background: `linear-gradient(to right, 
+                    rgb(244 114 182) 0%, 
+                    rgb(219 39 119) ${((preferences.guestCount - 20) / (500 - 20)) * 100}%, 
+                    rgb(229 231 235) ${((preferences.guestCount - 20) / (500 - 20)) * 100}%, 
+                    rgb(229 231 235) 100%)`
+                }}
+                className="relative w-full h-4 appearance-none cursor-grab active:cursor-grabbing rounded-lg z-20
                   [&::-webkit-slider-thumb]:appearance-none
                   [&::-webkit-slider-thumb]:w-8
                   [&::-webkit-slider-thumb]:h-8
@@ -700,9 +695,8 @@ export function IntelligentWeddingPlanner({
                   [&::-webkit-slider-thumb]:cursor-grab
                   [&::-webkit-slider-thumb]:shadow-xl
                   [&::-webkit-slider-thumb]:hover:border-pink-600
-                  [&::-webkit-slider-thumb]:hover:scale-110
                   [&::-webkit-slider-thumb]:active:cursor-grabbing
-                  [&::-webkit-slider-thumb]:active:scale-105
+                  [&::-moz-range-thumb]:appearance-none
                   [&::-moz-range-thumb]:w-8
                   [&::-moz-range-thumb]:h-8
                   [&::-moz-range-thumb]:rounded-full
@@ -712,9 +706,7 @@ export function IntelligentWeddingPlanner({
                   [&::-moz-range-thumb]:cursor-grab
                   [&::-moz-range-thumb]:shadow-xl
                   [&::-moz-range-thumb]:hover:border-pink-600
-                  [&::-moz-range-thumb]:hover:scale-110
                   [&::-moz-range-thumb]:active:cursor-grabbing
-                  [&::-moz-range-thumb]:active:scale-105
                   [&::-webkit-slider-runnable-track]:h-4
                   [&::-webkit-slider-runnable-track]:bg-transparent
                   [&::-webkit-slider-runnable-track]:rounded-lg
