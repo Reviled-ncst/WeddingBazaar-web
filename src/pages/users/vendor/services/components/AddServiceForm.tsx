@@ -350,6 +350,9 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [loadingFields, setLoadingFields] = useState(false);
 
+  // Ref for scroll container
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
   const totalSteps = 5; // 1=Basic Info, 2=Pricing, 3=Contact & Features, 4=Images & Tags, 5=Category-Specific Fields
 
   // Load categories on mount
@@ -398,6 +401,13 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     
     loadFields();
   }, [formData.category]);
+
+  // Scroll to top whenever step changes
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentStep]);
 
   // Initialize form data when editing OR when vendor profile is available
   useEffect(() => {
@@ -753,16 +763,24 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     handleImageUpload(files);
   };
 
-  // Step navigation
+  // Step navigation with scroll to top
   const nextStep = () => {
     if (validateStep(currentStep) && currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
+      // Scroll to top of form content
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   };
 
   const prevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+      // Scroll to top of form content
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   };
 
@@ -842,7 +860,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
 
           {/* Form Content */}
           <div className="flex flex-col flex-1 min-h-0">
-            <div className="flex-1 overflow-y-auto p-6">
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6">
               <AnimatePresence mode="wait">
                 {/* Step 1: Basic Information */}
                 {currentStep === 1 && (
