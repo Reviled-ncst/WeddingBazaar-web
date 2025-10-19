@@ -53,6 +53,8 @@ app.use(express.urlencoded({ extended: true }));
 // Import route modules
 const verificationRoutes = require('./routes/verification.cjs');
 const adminRoutes = require('./routes/admin/index.cjs');
+const bookingItemsRoutes = require('./routes/booking-items.js');
+const groupChatRoutes = require('./routes/group-chat.js');
 
 // Make db available to routes
 app.set('db', db);
@@ -60,6 +62,8 @@ app.set('db', db);
 // Register API routes
 app.use('/api/admin', adminRoutes);
 app.use('/api/verification', verificationRoutes);
+app.use('/api', bookingItemsRoutes);
+app.use('/api', groupChatRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
