@@ -147,25 +147,7 @@ interface AddServiceFormProps {
   isLoading?: boolean;
 }
 
-// Service categories with display names and database-compatible values
-const SERVICE_CATEGORIES = [
-  { display: 'Photographer & Videographer', value: 'Photography' },
-  { display: 'Wedding Planner', value: 'Planning' },
-  { display: 'Florist', value: 'Florist' },
-  { display: 'Hair & Makeup Artists', value: 'Beauty' },
-  { display: 'Caterer', value: 'Catering' },
-  { display: 'DJ/Band', value: 'Music' },
-  { display: 'Officiant', value: 'Officiant' },
-  { display: 'Venue Coordinator', value: 'Venue' },
-  { display: 'Event Rentals', value: 'Rentals' },
-  { display: 'Cake Designer', value: 'Cake' },
-  { display: 'Dress Designer/Tailor', value: 'Fashion' },
-  { display: 'Security & Guest Management', value: 'Security' },
-  { display: 'Sounds & Lights', value: 'AV_Equipment' },
-  { display: 'Stationery Designer', value: 'Stationery' },
-  { display: 'Transportation Services', value: 'Transport' }
-];
-
+// Price range options for services
 const PRICE_RANGES = [
   { 
     value: '₱10,000 - ₱25,000', 
@@ -188,87 +170,6 @@ const PRICE_RANGES = [
     description: 'Exclusive, top-tier services'
   }
 ];
-
-// DSS-specific constants (will be moved to database)
-const WEDDING_STYLES = [
-  'Traditional', 'Modern', 'Rustic', 'Vintage', 'Bohemian',
-  'Beach', 'Garden', 'Industrial', 'Glamorous', 'Minimalist',
-  'Classic', 'Romantic', 'Destination', 'Cultural', 'Themed'
-];
-
-const CULTURAL_SPECIALTIES = [
-  'Filipino', 'Chinese', 'Indian', 'Muslim', 'Christian',
-  'Jewish', 'Korean', 'Japanese', 'Spanish', 'American',
-  'Mixed Cultural', 'International', 'Non-Religious'
-];
-
-const SEASONS = ['Spring', 'Summer', 'Fall', 'Winter', 'All Seasons'];
-
-// Category-specific field configurations (will be moved to database)
-const CATEGORY_FIELDS: Record<string, {
-  subcategories?: string[];
-  specificFields?: string[];
-  cuisineTypes?: string[];
-  dietaryOptions?: string[];
-  serviceStyles?: string[];
-  photographyStyles?: string[];
-  musicGenres?: string[];
-}> = {
-  'Catering': {
-    subcategories: ['Full Service', 'Buffet Style', 'Plated Service', 'Food Truck', 'Dessert Bar'],
-    cuisineTypes: [
-      'Filipino', 'Chinese', 'Japanese', 'Korean', 'Italian',
-      'French', 'Mexican', 'Indian', 'Thai', 'Mediterranean',
-      'American', 'Fusion', 'International Buffet'
-    ],
-    dietaryOptions: [
-      'Vegetarian', 'Vegan', 'Gluten-Free', 'Halal', 'Kosher',
-      'Nut-Free', 'Dairy-Free', 'Organic', 'Farm-to-Table'
-    ],
-    serviceStyles: [
-      'Buffet', 'Plated Service', 'Family Style', 'Cocktail Reception',
-      'Food Stations', 'BBQ', 'Live Cooking Stations'
-    ]
-  },
-  'Photography': {
-    subcategories: ['Photography Only', 'Videography Only', 'Photo & Video Package', 'Drone Coverage'],
-    photographyStyles: [
-      'Candid', 'Traditional', 'Photojournalistic', 'Fine Art',
-      'Editorial', 'Vintage', 'Dramatic', 'Natural Light',
-      'Black & White', 'Film Photography', 'Drone Photography'
-    ]
-  },
-  'Venue': {
-    subcategories: ['Indoor', 'Outdoor', 'Beach', 'Garden', 'Ballroom', 'Historic', 'Modern'],
-    specificFields: ['capacity', 'parking', 'accommodation', 'catering_included']
-  },
-  'Music': {
-    subcategories: ['DJ', 'Live Band', 'Solo Artist', 'String Quartet', 'Acoustic'],
-    musicGenres: [
-      'Pop', 'Rock', 'Jazz', 'Classical', 'R&B',
-      'Country', 'EDM', 'Latin', 'Filipino', 'Acoustic',
-      'Indie', 'Top 40', 'Oldies', 'Mixed Genre'
-    ]
-  },
-  'Planning': {
-    subcategories: ['Full Planning', 'Partial Planning', 'Day-of Coordination', 'Destination Wedding'],
-    specificFields: ['team_size', 'planning_tools', 'vendor_network']
-  },
-  'Florist': {
-    subcategories: ['Bouquets', 'Ceremony Flowers', 'Reception Centerpieces', 'Full Floral Design'],
-    specificFields: ['flower_types', 'seasonal_availability', 'delivery_setup']
-  },
-  'Beauty': {
-    subcategories: ['Bridal Makeup', 'Hair Styling', 'Full Package', 'Trials', 'Entourage Service'],
-    specificFields: ['artist_count', 'products_used', 'trial_included']
-  },
-  'Rentals': {
-    subcategories: ['Tables & Chairs', 'Linens', 'Lighting', 'Tents', 'Decor', 'Audio Visual'],
-    specificFields: ['inventory', 'delivery_setup', 'breakdown_included']
-  }
-};
-
-
 
 // Item/Equipment examples for different service categories to help vendors
 const getCategoryExamples = (category: string): string[] => {
@@ -363,12 +264,6 @@ const getCategoryExamples = (category: string): string[] => {
     'Backup equipment available',
     'Professional consultation'
   ];
-};
-
-// Helper function to get display name from database value
-const getCategoryDisplayName = (value: string): string => {
-  const category = SERVICE_CATEGORIES.find(cat => cat.value === value);
-  return category ? category.display : value;
 };
 
 export const AddServiceForm: React.FC<AddServiceFormProps> = ({
@@ -822,6 +717,12 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     }));
   };
 
+  // Helper function to get display name from category name
+  const getCategoryDisplayName = (categoryName: string): string => {
+    const category = categories.find(cat => cat.name === categoryName);
+    return category ? category.display_name : categoryName;
+  };
+
   // Handle drag and drop
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -990,18 +891,11 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                           } ${loadingCategories ? 'opacity-50 cursor-wait' : ''}`}
                         >
                           <option value="">{loadingCategories ? 'Loading...' : 'Select a category'}</option>
-                          {categories.length > 0 ? (
-                            categories.map(cat => (
-                              <option key={cat.id} value={cat.name}>
-                                {cat.display_name}
-                              </option>
-                            ))
-                          ) : !loadingCategories ? (
-                            // Fallback to hardcoded categories if API fails
-                            SERVICE_CATEGORIES.map(category => (
-                              <option key={category.value} value={category.value}>{category.display}</option>
-                            ))
-                          ) : null}
+                          {categories.map(cat => (
+                            <option key={cat.id} value={cat.name}>
+                              {cat.display_name}
+                            </option>
+                          ))}
                         </select>
                         {errors.category && (
                           <p className="mt-2 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-2 rounded-lg">
@@ -1009,10 +903,15 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                             {errors.category}
                           </p>
                         )}
-                        {categories.length > 0 && (
+                        {categories.length > 0 ? (
                           <p className="mt-2 text-xs text-green-600 flex items-center gap-1">
                             <CheckCircle2 size={12} />
-                            ✅ Loaded {categories.length} categories from database
+                            ✅ Loaded {categories.length} categories from API
+                          </p>
+                        ) : !loadingCategories && (
+                          <p className="mt-2 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-2 rounded-lg">
+                            <AlertCircle size={14} />
+                            ❌ Failed to load categories from database. Please refresh the page.
                           </p>
                         )}
                       </div>
@@ -1041,11 +940,6 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                                   <option key={sub.id} value={sub.name}>
                                     {sub.display_name}
                                   </option>
-                                ));
-                              } else if (CATEGORY_FIELDS[formData.category]?.subcategories) {
-                                // Fallback to hardcoded subcategories
-                                return CATEGORY_FIELDS[formData.category].subcategories!.map(sub => (
-                                  <option key={sub} value={sub}>{sub}</option>
                                 ));
                               }
                               return null;
@@ -1682,43 +1576,22 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                     <div className="text-center mb-6">
                       <h3 className="text-xl font-semibold text-gray-900 mb-2">
                         {formData.category ? `${categories.find(c => c.name === formData.category)?.display_name || formData.category} Details` : 'Category-Specific Details'}
-                                e.currentTarget.value = '';
-                              }>
-                            } fields...' : categoryFields.length > 0 ? 'Provide specific details for your service category' : 'No additional fields required for this category'}
-                          }}
-                        /> </div>
-                    </div>
-                  </motion.div>
-                )}
-v className="w-16 h-16 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                {/* Step 5: Category-Specific Fields (Dynamic) */}">Loading category-specific fields...</p>
-                {currentStep === 5 && (
-                  <motion.divtegoryFields.length > 0 ? (
-                    key="step5" className="space-y-6">
-                    initial={{ opacity: 0, x: 20 }}                        {categoryFields.map((field) => (
-                    animate={{ opacity: 1, x: 0 }}eld.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
-                    exit={{ opacity: 0, x: -20 }} mb-3">
-                    className="space-y-6"
-                  >pan>}
-                    <div className="text-center mb-6"></label>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                        {formData.category ? `${categories.find(c => c.name === formData.category)?.display_name || formData.category} Details` : 'Category-Specific Details'}sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg">
                       </h3>
                       <p className="text-gray-600">
                         {loadingFields ? 'Loading fields...' : categoryFields.length > 0 ? 'Provide specific details for your service category' : 'No additional fields required for this category'}
                       </p>
                     </div>
-ield_type === 'text' && (
+
                     {loadingFields ? (
                       <div className="flex flex-col items-center justify-center py-12">
-                        <div className="w-16 h-16 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mb-4"></div>-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"
-                        <p className="text-gray-600">Loading category-specific fields...</p>aceholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}
-                      </div>/>
-                    ) : categoryFields.length > 0 ? (                            )}
+                        <div className="w-16 h-16 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                        <p className="text-gray-600">Loading category-specific fields...</p>
+                      </div>
+                    ) : categoryFields.length > 0 ? (
                       <div className="space-y-6">
-                        {categoryFields.map((field) => (&& (
-                          <div key={field.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">rea
-                            <label className="block text-lg font-semibold text-gray-800 mb-3">w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base resize-none"
+                        {categoryFields.map((field) => (
+                          <div key={field.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
+                            <label className="block text-lg font-semibold text-gray-800 mb-3">
                               {field.field_label}
                               {field.is_required && <span className="text-red-500 ml-1">*</span>}
                             </label>
@@ -1727,38 +1600,38 @@ ield_type === 'text' && (
                                 💡 {field.help_text}
                               </p>
                             )}
-e="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"
+
                             {/* Render field based on type */}
                             {field.field_type === 'text' && (
                               <input
                                 type="text"
-                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"ield.options.length > 0 && (
-                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}t
-                              />field_label}
+                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"
+                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}
+                              />
                             )}
 
-                            {field.field_type === 'textarea' && (<option value="">Select an option</option>
-                              <textarea  {field.options.map((option) => (
-                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base resize-none"                                  <option key={option.value} value={option.value}>
+                            {field.field_type === 'textarea' && (
+                              <textarea
+                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base resize-none"
                                 rows={4}
-                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}ption>
+                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}
                               />
                             )}
 
                             {field.field_type === 'number' && (
-                              <input&& field.options.length > 0 && (
+                              <input
                                 type="number"
-                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"((option) => (
-                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}y={option.value} className="flex items-center gap-3 p-3 bg-white/70 rounded-lg hover:bg-white transition-colors cursor-pointer">
-                              /> <input
-                            )}ype="checkbox"
-        value={option.value}
-                            {field.field_type === 'select' && field.options.length > 0 && (                                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"
+                                placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}
+                              />
+                            )}
+
+                            {field.field_type === 'select' && field.options.length > 0 && (
                               <select
                                 title={field.field_label}
-                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"m text-gray-900">{option.label}</div>
+                                className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg"
                               >
-                                <option value="">Select an option</option>iv className="text-sm text-gray-600">{option.description}</div>
+                                <option value="">Select an option</option>
                                 {field.options.map((option) => (
                                   <option key={option.value} value={option.value}>
                                     {option.label}
@@ -1767,27 +1640,27 @@ e="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-x
                               </select>
                             )}
 
-                            {field.field_type === 'multiselect' && field.options.length > 0 && (ssName="flex items-center gap-3 p-4 bg-white/70 rounded-lg hover:bg-white transition-colors cursor-pointer">
+                            {field.field_type === 'multiselect' && field.options.length > 0 && (
                               <div className="space-y-2">
-                                {field.options.map((option) => (eckbox"
-                                  <label key={option.value} className="flex items-center gap-3 p-3 bg-white/70 rounded-lg hover:bg-white transition-colors cursor-pointer">lassName="w-6 h-6 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                {field.options.map((option) => (
+                                  <label key={option.value} className="flex items-center gap-3 p-3 bg-white/70 rounded-lg hover:bg-white transition-colors cursor-pointer">
                                     <input
-                                      type="checkbox"  <span className="text-gray-700">{field.help_text || field.field_label}</span>
-                                      value={option.value}                              </label>
+                                      type="checkbox"
+                                      value={option.value}
                                       className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                                     />
                                     <div>
                                       <div className="font-medium text-gray-900">{option.label}</div>
                                       {option.description && (
-                                        <div className="text-sm text-gray-600">{option.description}</div>me="text-center py-12">
-                                      )}mx-auto mb-4">
-                                    </div>2 className="h-8 w-8 text-green-600" />
+                                        <div className="text-sm text-gray-600">{option.description}</div>
+                                      )}
+                                    </div>
                                   </label>
-                                ))}sName="text-lg font-semibold text-gray-900 mb-2">All Set!</h4>
-                              </div>className="text-gray-600">
-                            )}ormData.category 
-   ? 'No additional category-specific fields required for this service type.'
-                            {field.field_type === 'checkbox' && (f additional fields are needed.'}
+                                ))}
+                              </div>
+                            )}
+
+                            {field.field_type === 'checkbox' && (
                               <label className="flex items-center gap-3 p-4 bg-white/70 rounded-lg hover:bg-white transition-colors cursor-pointer">
                                 <input
                                   type="checkbox"
@@ -1796,12 +1669,33 @@ e="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-x
                                 <span className="text-gray-700">{field.help_text || field.field_label}</span>
                               </label>
                             )}
-                          </div>y */}
-                        ))}& (
-                      </div>ssName="px-6 py-3 bg-red-50 border-t border-red-200">
-                    ) : ("text-red-700 text-sm flex items-center gap-2">
-                      <div className="text-center py-12"><AlertTriangle className="h-4 w-4" />
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <CheckCircle2 className="h-8 w-8 text-green-600" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-2">All Set!</h4>
+                        <p className="text-gray-600">
+                          {formData.category 
+                            ? 'No additional category-specific fields required for this service type.'
+                            : 'Select a category to see if additional fields are needed.'}
+                        </p>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Error Display */}
+            {errors.submit && (
+              <div className="px-6 py-3 bg-red-50 border-t border-red-200">
+                <div className="text-red-700 text-sm flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  {errors.submit}
                 </div>
               </div>
             )}
