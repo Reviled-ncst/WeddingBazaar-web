@@ -1814,31 +1814,189 @@ app.post('/api/dss/recommendations', async (req, res) => {
 // ============================================================================
 
 // GET /api/categories - Get all service categories
+// ============ DYNAMIC CATEGORIES API ============
+// GET /api/categories - Get all categories with subcategories
 app.get('/api/categories', async (req, res) => {
     try {
         console.log('📂 [API] GET /api/categories called');
         
-        const result = await db.query(`
-            SELECT 
-                id, name, display_name, description, icon, sort_order
-            FROM service_categories 
-            WHERE is_active = true
-            ORDER BY sort_order ASC, display_name ASC
-        `);
-        
-        console.log(`✅ [API] Found ${result.rows.length} active categories`);
-        
-        res.json({
-            success: true,
-            categories: result.rows,
-            total: result.rows.length
-        });
+        // Try new schema first (categories + subcategories tables)
+        try {
+            const result = await db.query(`
+                SELECT 
+                    c.id,
+                    c.name,
+                    c.display_name,
+                    c.description,
+                    c.icon,
+                    c.sort_order,
+                    COALESCE(
+                        json_agg(
+                            json_build_object(
+                                'id', s.id,
+                                'name', s.name,
+                                'display_name', s.display_name,
+                                'description', s.description,
+                                'sort_order', s.sort_order
+                            ) ORDER BY s.sort_order
+                        ) FILTER (WHERE s.id IS NOT NULL),
+                        '[]'
+                    ) as subcategories
+                FROM categories c
+                LEFT JOIN subcategories s ON c.id = s.category_id AND s.is_active = true
+                WHERE c.is_active = true
+                GROUP BY c.id, c.name, c.display_name, c.description, c.icon, c.sort_order
+                ORDER BY c.sort_order, c.display_name
+            `);
+            
+            console.log(`✅ [API] Found ${result.rows.length} categories with subcategories (new schema)`);
+            
+            return res.json({
+                success: true,
+                count: result.rows.length,
+                categories: result.rows,
+                schema: 'new'
+            });
+        } catch (newSchemaError) {
+            console.log('⚠️ [API] New schema not available, falling back to service_categories');
+            
+            // Fallback to old schema (service_categories)
+            const result = await db.query(`
+                SELECT 
+                    id, name, display_name, description, icon, sort_order
+                FROM service_categories 
+                WHERE is_active = true
+                ORDER BY sort_order ASC, display_name ASC
+            `);
+            
+            // Add empty subcategories array for consistency
+            const categoriesWithSubs = result.rows.map(cat => ({
+                ...cat,
+                subcategories: []
+            }));
+            
+            console.log(`✅ [API] Found ${result.rows.length} categories (old schema)`);
+            
+            return res.json({
+                success: true,
+                count: result.rows.length,
+                categories: categoriesWithSubs,
+                schema: 'legacy'
+            });
+        }
     } catch (error) {
         console.error('❌ [API] Error fetching categories:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to fetch categories',
             message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+
+// GET /api/categories/:categoryId/fields - Get dynamic fields for a category
+app.get('/api/categories/:categoryId/fields', async (req, res) => {
+    try {
+        const { categoryId } = req.params;
+        console.log(`📋 [API] GET /api/categories/${categoryId}/fields called`);
+        
+        const result = await db.query(`
+            SELECT 
+                cf.id,
+                cf.field_name,
+                cf.field_label,
+                cf.field_type,
+                cf.is_required,
+                cf.help_text,
+                cf.sort_order,
+                COALESCE(
+                    json_agg(
+                        json_build_object(
+                            'value', cfo.option_value,
+                            'label', cfo.option_label,
+                            'description', cfo.description,
+                            'sort_order', cfo.sort_order
+                        ) ORDER BY cfo.sort_order
+                    ) FILTER (WHERE cfo.id IS NOT NULL),
+                    '[]'
+                ) as options
+            FROM category_fields cf
+            LEFT JOIN category_field_options cfo ON cf.id = cfo.field_id AND cfo.is_active = true
+            WHERE cf.category_id = $1
+            GROUP BY cf.id, cf.field_name, cf.field_label, cf.field_type, cf.is_required, cf.help_text, cf.sort_order
+            ORDER BY cf.sort_order
+        `, [categoryId]);
+        
+        console.log(`✅ [API] Found ${result.rows.length} fields for category ${categoryId}`);
+        
+        res.json({
+            success: true,
+            count: result.rows.length,
+            fields: result.rows
+        });
+    } catch (error) {
+        console.error('❌ [API] Error fetching category fields:', error);
+        // Return empty fields array instead of error for graceful degradation
+        res.json({
+            success: true,
+            count: 0,
+            fields: [],
+            note: 'Category fields table not available'
+        });
+    }
+});
+
+// GET /api/categories/by-name/:categoryName/fields - Get fields by category name
+app.get('/api/categories/by-name/:categoryName/fields', async (req, res) => {
+    try {
+        const { categoryName } = req.params;
+        console.log(`📋 [API] GET /api/categories/by-name/${categoryName}/fields called`);
+        
+        const result = await db.query(`
+            SELECT 
+                cf.id,
+                cf.field_name,
+                cf.field_label,
+                cf.field_type,
+                cf.is_required,
+                cf.help_text,
+                cf.sort_order,
+                COALESCE(
+                    json_agg(
+                        json_build_object(
+                            'value', cfo.option_value,
+                            'label', cfo.option_label,
+                            'description', cfo.description,
+                            'sort_order', cfo.sort_order
+                        ) ORDER BY cfo.sort_order
+                    ) FILTER (WHERE cfo.id IS NOT NULL),
+                    '[]'
+                ) as options
+            FROM categories c
+            JOIN category_fields cf ON c.id = cf.category_id
+            LEFT JOIN category_field_options cfo ON cf.id = cfo.field_id AND cfo.is_active = true
+            WHERE c.name = $1 AND c.is_active = true
+            GROUP BY cf.id, cf.field_name, cf.field_label, cf.field_type, cf.is_required, cf.help_text, cf.sort_order
+            ORDER BY cf.sort_order
+        `, [categoryName]);
+        
+        console.log(`✅ [API] Found ${result.rows.length} fields for category ${categoryName}`);
+        
+        res.json({
+            success: true,
+            count: result.rows.length,
+            categoryName,
+            fields: result.rows
+        });
+    } catch (error) {
+        console.error('❌ [API] Error fetching category fields by name:', error);
+        // Return empty fields array instead of error for graceful degradation
+        res.json({
+            success: true,
+            count: 0,
+            categoryName,
+            fields: [],
+            note: 'Category fields table not available'
         });
     }
 });
