@@ -1,0 +1,66 @@
+name: Database Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration_type:
+        description: 'Migration type'
+        required: true
+        type: choice
+        options:
+          - categories
+          - subcategories
+          - full
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  run-migration:
+    name: Run Database Migration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run migration script
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "🔄 Running ${{ inputs.migration_type }} migration on ${{ inputs.environment }}..."
+          node database/run-category-migration.mjs
+
+      - name: Verify migration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "✅ Verifying migration..."
+          node database/verify-migration.mjs
+
+      - name: Create migration report
+        run: |
+          echo "📊 Migration Report" > migration-report.md
+          echo "==================" >> migration-report.md
+          echo "Type: ${{ inputs.migration_type }}" >> migration-report.md
+          echo "Environment: ${{ inputs.environment }}" >> migration-report.md
+          echo "Timestamp: $(date)" >> migration-report.md
+          echo "Status: ✅ Success" >> migration-report.md
+
+      - name: Upload migration report
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-report
+          path: migration-report.md
