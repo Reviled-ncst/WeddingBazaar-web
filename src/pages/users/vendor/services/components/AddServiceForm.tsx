@@ -17,10 +17,13 @@ import {
   AlertTriangle,
   Camera,
   Sparkles,
-  Loader2
+  Loader2,
+  Calendar
 } from 'lucide-react';
 import { LocationPicker } from '../../../../../shared/components/forms/LocationPicker';
 import { categoryService, Category, CategoryField } from '../../../../../services/api/categoryService';
+import { AvailabilityCalendar } from './AvailabilityCalendar';
+import { analytics } from '../../../../../utils/analytics';
 
 // Service interface based on the actual database schema
 interface Service {
@@ -343,6 +346,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   // Dynamic categories state
   const [categories, setCategories] = useState<Category[]>([]);
@@ -1478,28 +1482,101 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                         </div>
                       </div>
 
-                      {/* Wedding Styles */}
+                      {/* Wedding Styles - Enhanced with validation and tooltips */}
                       <div className="bg-gradient-to-r from-rose-50 to-pink-50 p-6 rounded-2xl border border-rose-100">
-                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                          <Sparkles className="h-5 w-5 text-rose-600" />
-                          Wedding Styles You Specialize In
-                        </label>
-                        <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-rose-200">
-                          💐 Select all wedding styles you're experienced with. This helps couples find the perfect match.
-                        </p>
+                        <div className="flex items-center justify-between mb-3">
+                          <label className="flex items-center gap-2">
+                            <Sparkles className="h-5 w-5 text-rose-600" />
+                            <span className="text-lg font-semibold text-gray-800">Wedding Styles You Specialize In</span>
+                            <span className="text-xs text-gray-500 ml-2">
+                              ({formData.wedding_styles.length} selected)
+                            </span>
+                          </label>
+                          {formData.wedding_styles.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setFormData(prev => ({ ...prev, wedding_styles: [] }))}
+                              className="text-xs text-rose-600 hover:text-rose-700 underline"
+                            >
+                              Clear all
+                            </button>
+                          )}
+                        </div>
+                        
+                        <div className="mb-4 space-y-2">
+                          <div className="flex items-start gap-2 text-sm text-gray-600 bg-white/50 p-3 rounded-lg border border-rose-200">
+                            <span>💐</span>
+                            <p>Select all wedding styles you're experienced with. This helps couples find vendors who match their wedding vision.</p>
+                          </div>
+                          
+                          {formData.wedding_styles.length === 0 && (
+                            <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <p>Recommended: Select at least 2-3 wedding styles to show your versatility to potential clients.</p>
+                            </div>
+                          )}
+                          
+                          {formData.wedding_styles.length >= 4 && (
+                            <div className="flex items-start gap-2 text-sm text-green-700 bg-green-50 p-3 rounded-lg border border-green-200">
+                              <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <p>Excellent! Your versatility in wedding styles will attract diverse couples.</p>
+                            </div>
+                          )}
+                        </div>
+
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                           {[
-                            { value: 'Traditional', icon: '👰' },
-                            { value: 'Modern', icon: '✨' },
-                            { value: 'Rustic', icon: '🌾' },
-                            { value: 'Beach', icon: '🏖️' },
-                            { value: 'Garden', icon: '🌸' },
-                            { value: 'Vintage', icon: '🕰️' },
-                            { value: 'Bohemian', icon: '🌼' },
-                            { value: 'Luxury', icon: '💎' },
-                            { value: 'Minimalist', icon: '⚪' }
+                            { 
+                              value: 'Traditional', 
+                              icon: '👰',
+                              tooltip: 'Classic, formal weddings with timeless elegance and traditional ceremonies'
+                            },
+                            { 
+                              value: 'Modern', 
+                              icon: '✨',
+                              tooltip: 'Contemporary weddings with clean lines, minimalist decor, and innovative concepts'
+                            },
+                            { 
+                              value: 'Rustic', 
+                              icon: '🌾',
+                              tooltip: 'Country-inspired weddings with natural elements, barn venues, and earthy tones'
+                            },
+                            { 
+                              value: 'Beach', 
+                              icon: '🏖️',
+                              tooltip: 'Seaside ceremonies with nautical themes, sandy shores, and ocean views'
+                            },
+                            { 
+                              value: 'Garden', 
+                              icon: '🌸',
+                              tooltip: 'Outdoor weddings surrounded by flowers, greenery, and natural beauty'
+                            },
+                            { 
+                              value: 'Vintage', 
+                              icon: '🕰️',
+                              tooltip: 'Retro-inspired weddings with antique decor, classic fashion, and nostalgic elements'
+                            },
+                            { 
+                              value: 'Bohemian', 
+                              icon: '🌼',
+                              tooltip: 'Free-spirited weddings with eclectic decor, relaxed vibes, and artistic touches'
+                            },
+                            { 
+                              value: 'Luxury', 
+                              icon: '💎',
+                              tooltip: 'Opulent celebrations with premium services, lavish decor, and extravagant details'
+                            },
+                            { 
+                              value: 'Minimalist', 
+                              icon: '⚪',
+                              tooltip: 'Simple, elegant weddings focused on essential elements and sophisticated simplicity'
+                            }
                           ].map((style) => (
-                            <label key={style.value} className="relative cursor-pointer group">
+                            <label 
+                              key={style.value} 
+                              className="relative cursor-pointer group"
+                              title={style.tooltip}
+                            >
                               <input
                                 type="checkbox"
                                 checked={formData.wedding_styles.includes(style.value)}
@@ -1508,11 +1585,19 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                                     ? [...formData.wedding_styles, style.value]
                                     : formData.wedding_styles.filter(s => s !== style.value);
                                   setFormData(prev => ({ ...prev, wedding_styles: styles }));
+                                  
+                                  // Enhanced analytics tracking
+                                  analytics.trackWeddingStyle({
+                                    style: style.value,
+                                    action: e.target.checked ? 'added' : 'removed',
+                                    totalSelected: styles.length,
+                                    serviceCategory: formData.category,
+                                  });
                                 }}
                                 className="sr-only"
-                                aria-label={style.value}
+                                aria-label={`${style.value} - ${style.tooltip}`}
                               />
-                              <div className={`p-4 rounded-xl border-2 transition-all ${
+                              <div className={`p-4 rounded-xl border-2 transition-all relative ${
                                 formData.wedding_styles.includes(style.value)
                                   ? 'border-rose-500 bg-rose-50 shadow-lg scale-[1.02]'
                                   : 'border-gray-200 bg-white/80 hover:border-rose-300 hover:shadow-md'
@@ -1524,34 +1609,113 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                                 {formData.wedding_styles.includes(style.value) && (
                                   <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-rose-600" />
                                 )}
+                                
+                                {/* Tooltip on hover */}
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-normal w-48 text-center z-10">
+                                  {style.tooltip}
+                                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                                </div>
                               </div>
                             </label>
                           ))}
                         </div>
                       </div>
 
-                      {/* Cultural Specialties */}
+                      {/* Cultural Specialties - Enhanced with validation and tooltips */}
                       <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-2xl border border-indigo-100">
-                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                          <Globe className="h-5 w-5 text-indigo-600" />
-                          Cultural Specialties
-                        </label>
-                        <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-indigo-200">
-                          🌏 Select cultural wedding traditions you're experienced with.
-                        </p>
+                        <div className="flex items-center justify-between mb-3">
+                          <label className="flex items-center gap-2">
+                            <Globe className="h-5 w-5 text-indigo-600" />
+                            <span className="text-lg font-semibold text-gray-800">Cultural Specialties</span>
+                            <span className="text-xs text-gray-500 ml-2">
+                              ({formData.cultural_specialties.length} selected)
+                            </span>
+                          </label>
+                          {formData.cultural_specialties.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setFormData(prev => ({ ...prev, cultural_specialties: [] }))}
+                              className="text-xs text-indigo-600 hover:text-indigo-700 underline"
+                            >
+                              Clear all
+                            </button>
+                          )}
+                        </div>
+                        
+                        <div className="mb-4 space-y-2">
+                          <div className="flex items-start gap-2 text-sm text-gray-600 bg-white/50 p-3 rounded-lg border border-indigo-200">
+                            <span>🌏</span>
+                            <p>Select cultural wedding traditions you're experienced with. This helps couples find vendors who understand their cultural requirements.</p>
+                          </div>
+                          
+                          {formData.cultural_specialties.length === 0 && (
+                            <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <p>Recommended: Select at least one cultural specialty to increase your visibility to couples planning traditional or cultural weddings.</p>
+                            </div>
+                          )}
+                          
+                          {formData.cultural_specialties.length >= 5 && (
+                            <div className="flex items-start gap-2 text-sm text-green-700 bg-green-50 p-3 rounded-lg border border-green-200">
+                              <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <p>Great! Your diverse cultural expertise will appeal to a wide range of couples.</p>
+                            </div>
+                          )}
+                        </div>
+
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                           {[
-                            { value: 'Filipino', icon: '🇵🇭' },
-                            { value: 'Chinese', icon: '🇨🇳' },
-                            { value: 'Indian', icon: '🇮🇳' },
-                            { value: 'Korean', icon: '🇰🇷' },
-                            { value: 'Japanese', icon: '🇯🇵' },
-                            { value: 'Western', icon: '🇺🇸' },
-                            { value: 'Catholic', icon: '⛪' },
-                            { value: 'Muslim', icon: '🕌' },
-                            { value: 'Multi-cultural', icon: '🌍' }
+                            { 
+                              value: 'Filipino', 
+                              icon: '🇵🇭',
+                              tooltip: 'Traditional Filipino weddings with barong, sponsors, and cultural ceremonies'
+                            },
+                            { 
+                              value: 'Chinese', 
+                              icon: '🇨🇳',
+                              tooltip: 'Chinese tea ceremonies, red decorations, and traditional customs'
+                            },
+                            { 
+                              value: 'Indian', 
+                              icon: '🇮🇳',
+                              tooltip: 'Hindu, Sikh, or Muslim Indian weddings with vibrant colors and multiple-day celebrations'
+                            },
+                            { 
+                              value: 'Korean', 
+                              icon: '🇰🇷',
+                              tooltip: 'Korean Pyebaek ceremony, hanbok attire, and traditional rituals'
+                            },
+                            { 
+                              value: 'Japanese', 
+                              icon: '🇯🇵',
+                              tooltip: 'Shinto ceremonies, kimono attire, and sake sharing traditions'
+                            },
+                            { 
+                              value: 'Western', 
+                              icon: '🇺🇸',
+                              tooltip: 'Traditional Western church or garden weddings with classic ceremonies'
+                            },
+                            { 
+                              value: 'Catholic', 
+                              icon: '⛪',
+                              tooltip: 'Catholic church weddings with full mass and religious traditions'
+                            },
+                            { 
+                              value: 'Muslim', 
+                              icon: '🕌',
+                              tooltip: 'Islamic Nikah ceremonies with separate celebrations and halal requirements'
+                            },
+                            { 
+                              value: 'Multi-cultural', 
+                              icon: '🌍',
+                              tooltip: 'Fusion weddings blending multiple cultural traditions and customs'
+                            }
                           ].map((specialty) => (
-                            <label key={specialty.value} className="relative cursor-pointer group">
+                            <label 
+                              key={specialty.value} 
+                              className="relative cursor-pointer group"
+                              title={specialty.tooltip}
+                            >
                               <input
                                 type="checkbox"
                                 checked={formData.cultural_specialties.includes(specialty.value)}
@@ -1560,11 +1724,19 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                                     ? [...formData.cultural_specialties, specialty.value]
                                     : formData.cultural_specialties.filter(s => s !== specialty.value);
                                   setFormData(prev => ({ ...prev, cultural_specialties: specialties }));
+                                  
+                                  // Enhanced analytics tracking
+                                  analytics.trackCulturalSpecialty({
+                                    specialty: specialty.value,
+                                    action: e.target.checked ? 'added' : 'removed',
+                                    totalSelected: specialties.length,
+                                    serviceCategory: formData.category,
+                                  });
                                 }}
                                 className="sr-only"
-                                aria-label={specialty.value}
+                                aria-label={`${specialty.value} - ${specialty.tooltip}`}
                               />
-                              <div className={`p-4 rounded-xl border-2 transition-all ${
+                              <div className={`p-4 rounded-xl border-2 transition-all relative ${
                                 formData.cultural_specialties.includes(specialty.value)
                                   ? 'border-indigo-500 bg-indigo-50 shadow-lg scale-[1.02]'
                                   : 'border-gray-200 bg-white/80 hover:border-indigo-300 hover:shadow-md'
@@ -1576,6 +1748,12 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                                 {formData.cultural_specialties.includes(specialty.value) && (
                                   <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-indigo-600" />
                                 )}
+                                
+                                {/* Tooltip on hover */}
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-normal w-48 text-center z-10">
+                                  {specialty.tooltip}
+                                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                                </div>
                               </div>
                             </label>
                           ))}
@@ -1639,6 +1817,21 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                               <div className="text-sm text-gray-600">Available during holidays and special occasions</div>
                             </div>
                           </label>
+                        </div>
+
+                        {/* Manage Full Calendar Button */}
+                        <div className="mt-6 pt-6 border-t border-green-200">
+                          <button
+                            type="button"
+                            onClick={() => setShowCalendar(true)}
+                            className="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white py-3 px-6 rounded-xl hover:from-pink-600 hover:to-purple-700 transition-all flex items-center justify-center gap-2 font-medium shadow-lg hover:shadow-xl"
+                          >
+                            <Calendar className="h-5 w-5" />
+                            📅 Manage Full Availability Calendar
+                          </button>
+                          <p className="text-xs text-gray-600 text-center mt-2">
+                            Block specific dates (vacations, holidays, already booked dates)
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -1970,6 +2163,14 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Availability Calendar Modal */}
+      {showCalendar && (
+        <AvailabilityCalendar
+          vendorId={parseInt(vendorId)}
+          onClose={() => setShowCalendar(false)}
+        />
+      )}
     </AnimatePresence>
   );
 };
