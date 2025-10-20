@@ -166,11 +166,10 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/vendor-profile', vendorProfileRoutes);
 app.use('/api/couple-profile', coupleProfileRoutes);
-app.use('/api/vendors', vendorOffDaysRoutes);
-app.use('/api/bookings', bookingRoutes);
-app.use('/api/bookings-test', bookingsTestRoutes);
-app.use('/api/payments', paymentsRoutes);
-app.use('/api/receipts', receiptsRoutes);
+app.use('/api/vendors', vendorOffDaysRoutes);  app.use('/api/bookings', bookingRoutes);
+  app.use('/api/bookings-test', bookingsTestRoutes);
+  app.use('/api/payment', paymentsRoutes);  // Changed from /api/payments to /api/payment
+  app.use('/api/receipts', receiptsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/categories', categoryRoutes); // Dynamic categories system
