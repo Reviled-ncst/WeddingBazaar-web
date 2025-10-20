@@ -822,48 +822,28 @@ router.patch('/:bookingId/status', async (req, res) => {
       });
     }
     
-    // Handle status mapping for enhanced payment workflow
-    // This works around database constraints while providing full functionality
-    let actualStatus = status;
+    // FIXED: Database allows quote_sent, quote_accepted, deposit_paid, fully_paid directly
+    // Store notes for additional context
     let statusNote = vendor_notes || null;
     
     if (status === 'quote_sent') {
-      actualStatus = 'request';
       statusNote = `QUOTE_SENT: ${vendor_notes || 'Quote has been sent to client'}`;
     } else if (status === 'quote_accepted') {
-      actualStatus = 'request';
       statusNote = `QUOTE_ACCEPTED: ${vendor_notes || 'Quote accepted by couple - ready for payment'}`;
     } else if (status === 'deposit_paid') {
-      actualStatus = 'request';
       statusNote = `DEPOSIT_PAID: ${vendor_notes || 'Deposit payment received'}`;
     } else if (status === 'fully_paid') {
-      actualStatus = 'request';
       statusNote = `FULLY_PAID: ${vendor_notes || 'Full payment received'}`;
     }
     
     const booking = await sql`
       UPDATE bookings 
-      SET status = ${actualStatus}, 
+      SET status = ${status}, 
           notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
       RETURNING *
     `;
-    
-    // Return the expected response format for enhanced statuses
-    if (booking.length > 0 && ['quote_sent', 'quote_accepted', 'deposit_paid', 'fully_paid'].includes(status)) {
-      console.log(`✅ Booking status updated: ${bookingId} -> ${status} (stored as ${actualStatus})`);
-      
-      res.json({
-        success: true,
-        booking: {
-          ...booking[0],
-          status: status // Return the actual status the frontend expects
-        },
-        timestamp: new Date().toISOString()
-      });
-      return;
-    }
     
     if (booking.length === 0) {
       return res.status(404).json({
@@ -916,27 +896,23 @@ router.put('/:bookingId/update-status', async (req, res) => {
       });
     }
     
-    // Handle status mapping for enhanced payment workflow (PUT endpoint)
-    let actualStatus = status;
+    // FIXED: Database allows quote_sent, quote_accepted, deposit_paid, fully_paid directly
+    // Store notes for additional context
     let statusNote = vendor_notes || null;
     
     if (status === 'quote_sent') {
-      actualStatus = 'request';
       statusNote = `QUOTE_SENT: ${vendor_notes || 'Quote has been sent to client'}`;
     } else if (status === 'quote_accepted') {
-      actualStatus = 'request';
       statusNote = `QUOTE_ACCEPTED: ${vendor_notes || 'Quote accepted by couple - ready for payment'}`;
     } else if (status === 'deposit_paid') {
-      actualStatus = 'request';
       statusNote = `DEPOSIT_PAID: ${vendor_notes || 'Deposit payment received'}`;
     } else if (status === 'fully_paid') {
-      actualStatus = 'request';
       statusNote = `FULLY_PAID: ${vendor_notes || 'Full payment received'}`;
     }
     
     const booking = await sql`
       UPDATE bookings 
-      SET status = ${actualStatus}, 
+      SET status = ${status}, 
           notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
@@ -951,13 +927,13 @@ router.put('/:bookingId/update-status', async (req, res) => {
       });
     }
     
-    console.log(`✅ [PUT] Booking status updated: ${bookingId} -> ${status} (stored as ${actualStatus})`);
+    console.log(`✅ [PUT] Booking status updated: ${bookingId} -> ${status}`);
     
     // Return response in format that frontend expects
     const response = {
       success: true,
       id: booking[0].id,
-      status: status, // Return the requested status to frontend
+      status: status,
       updated_at: booking[0].updated_at,
       vendor_notes: booking[0].notes, // Map notes field to vendor_notes
       timestamp: new Date().toISOString()
@@ -988,7 +964,7 @@ router.put('/:bookingId/update-status', async (req, res) => {
 
 // Accept Quote endpoint - Changes status from quote_sent to quote_accepted
 router.put('/:bookingId/accept-quote', async (req, res) => {
-  console.log('✅ [AcceptQuote] Processing quote acceptance for booking:', req.params.bookingId);
+  console.log('✅ [AcceptQuote-PUT] Processing quote acceptance for booking:', req.params.bookingId);
   
   try {
     const { bookingId } = req.params;
@@ -1018,30 +994,33 @@ router.put('/:bookingId/accept-quote', async (req, res) => {
       });
     }
     
-    // Update booking status to quote_accepted (use request status with special notes)
+    // FIXED: Database DOES allow 'quote_accepted' status directly!
+    const statusNote = `QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`;
+    
+    // Update booking status to quote_accepted (database allows this!)
     const updatedBooking = await sql`
       UPDATE bookings 
-      SET status = 'request',
-          notes = ${`QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`},
+      SET status = 'quote_accepted',
+          notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
       RETURNING *
     `;
     
-    console.log(`✅ [AcceptQuote] Quote accepted for booking ${bookingId}`);
+    console.log(`✅ [AcceptQuote-PUT] Quote accepted for booking ${bookingId}`);
     
     res.json({
       success: true,
       booking: {
         ...updatedBooking[0],
-        status: 'quote_accepted' // Return this status to frontend
+        status: 'quote_accepted'
       },
       message: 'Quote accepted successfully. You can now proceed with payment.',
       timestamp: new Date().toISOString()
     });
     
   } catch (error) {
-    console.error('❌ [AcceptQuote] Error accepting quote:', error);
+    console.error('❌ [AcceptQuote-PUT] Error accepting quote:', error);
     res.status(500).json({
       success: false,  
       error: error.message,
@@ -1071,11 +1050,15 @@ router.patch('/:bookingId/accept-quote', async (req, res) => {
       });
     }
     
-    // Update booking to quote_accepted status
+    // FIXED: Database DOES allow 'quote_accepted' status directly!
+    // Store notes for additional context
+    const statusNote = `QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`;
+    
+    // Update booking status to quote_accepted (database allows this!)
     const updatedBooking = await sql`
       UPDATE bookings 
       SET status = 'quote_accepted',
-          notes = ${`QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`},
+          notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
       RETURNING *
@@ -1083,9 +1066,14 @@ router.patch('/:bookingId/accept-quote', async (req, res) => {
     
     console.log(`✅ [AcceptQuote-PATCH] Quote accepted for booking ${bookingId}`);
     
+    // Return response with quote_accepted status for frontend
     res.json({
       success: true,
-      booking: updatedBooking[0],
+      booking: {
+        ...updatedBooking[0],
+        status: 'quote_accepted',
+        vendor_notes: acceptance_notes || 'Quote accepted by couple'
+      },
       message: 'Quote accepted successfully. You can now proceed with deposit payment.',
       timestamp: new Date().toISOString()
     });
@@ -1121,11 +1109,14 @@ router.post('/:bookingId/accept-quote', async (req, res) => {
       });
     }
     
-    // Update booking to quote_accepted status
+    // FIXED: Database DOES allow 'quote_accepted' status directly!
+    const statusNote = `QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`;
+    
+    // Update booking to quote_accepted status (database allows this!)
     const updatedBooking = await sql`
       UPDATE bookings 
       SET status = 'quote_accepted',
-          notes = ${`QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`},
+          notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
       RETURNING *
@@ -1190,28 +1181,24 @@ router.put('/:bookingId/process-payment', async (req, res) => {
     
     const booking = existingBooking[0];
     
-    // Determine new status based on payment type (use request status with special notes for consistency)
-    let newStatus = 'request';
+    // FIXED: Database allows deposit_paid and fully_paid statuses directly
+    let newStatus = '';
     let statusNote = '';
-    let frontendStatus = '';
     
     if (payment_type === 'downpayment') {
-      newStatus = 'request';
-      frontendStatus = 'deposit_paid';
+      newStatus = 'deposit_paid';
       statusNote = `DEPOSIT_PAID: ₱${amount} downpayment received via ${payment_method || 'online payment'}`;
       if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
       if (payment_notes) statusNote += ` - ${payment_notes}`;
       
     } else if (payment_type === 'full_payment') {
-      newStatus = 'request';
-      frontendStatus = 'fully_paid';
+      newStatus = 'fully_paid';
       statusNote = `FULLY_PAID: ₱${amount} full payment received via ${payment_method || 'online payment'}`;
       if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
       if (payment_notes) statusNote += ` - ${payment_notes}`;
       
     } else if (payment_type === 'remaining_balance') {
-      newStatus = 'request';
-      frontendStatus = 'fully_paid';
+      newStatus = 'fully_paid';
       statusNote = `BALANCE_PAID: ₱${amount} remaining balance received via ${payment_method || 'online payment'}`;
       if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
       if (payment_notes) statusNote += ` - ${payment_notes}`;
@@ -1227,13 +1214,12 @@ router.put('/:bookingId/process-payment', async (req, res) => {
       RETURNING *
     `;
     
-    console.log(`💳 [ProcessPayment] Payment processed: ${bookingId} -> ${frontendStatus} (₱${amount})`);
+    console.log(`💳 [ProcessPayment] Payment processed: ${bookingId} -> ${newStatus} (₱${amount})`);
     
     res.json({
       success: true,
       booking: {
         ...updatedBooking[0],
-        status: frontendStatus, // Return payment status to frontend
         payment_type,
         amount_paid: amount,
         transaction_id,
