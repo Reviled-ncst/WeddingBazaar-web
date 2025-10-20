@@ -4,9 +4,9 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from 'dotenv';
 
-// Force deployment trigger - Services endpoints ready for production  
-// Database has 80+ services ready to be served via API endpoints
-// DEPLOYMENT TRIGGER: 2025-09-26 04:45 - All services endpoints must be live
+// Force deployment trigger - Accept Quote endpoint MUST be deployed
+// CRITICAL: Backend must have /api/bookings/:id/accept-quote endpoint  
+// DEPLOYMENT TRIGGER: 2025-10-21 16:35 - Accept quote and itemized quotes fix
 import { db, testDatabaseConnection } from '../backend/database/connection';
 import { vendorService } from '../backend/services/vendorService';
 import { BookingService } from '../backend/services/bookingService';
