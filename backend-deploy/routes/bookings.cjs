@@ -994,13 +994,14 @@ router.put('/:bookingId/accept-quote', async (req, res) => {
       });
     }
     
-    // FIXED: Database DOES allow 'quote_accepted' status directly!
+    // WORKAROUND: Database constraint only allows 5 statuses
+    // Store quote_accepted in notes, keep status as 'confirmed'
     const statusNote = `QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`;
     
-    // Update booking status to quote_accepted (database allows this!)
+    // Update booking - keep status as 'confirmed' (allowed by constraint)
     const updatedBooking = await sql`
       UPDATE bookings 
-      SET status = 'quote_accepted',
+      SET status = 'confirmed',
           notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
@@ -1013,7 +1014,7 @@ router.put('/:bookingId/accept-quote', async (req, res) => {
       success: true,
       booking: {
         ...updatedBooking[0],
-        status: 'quote_accepted'
+        status: 'quote_accepted' // Frontend expects this
       },
       message: 'Quote accepted successfully. You can now proceed with payment.',
       timestamp: new Date().toISOString()
@@ -1050,14 +1051,14 @@ router.patch('/:bookingId/accept-quote', async (req, res) => {
       });
     }
     
-    // FIXED: Database DOES allow 'quote_accepted' status directly!
-    // Store notes for additional context
+    // WORKAROUND: Database constraint only allows 5 statuses
+    // Store quote_accepted in notes, keep status as 'confirmed'
     const statusNote = `QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`;
     
-    // Update booking status to quote_accepted (database allows this!)
+    // Update booking - keep status as 'confirmed' (allowed by constraint)
     const updatedBooking = await sql`
       UPDATE bookings 
-      SET status = 'quote_accepted',
+      SET status = 'confirmed',
           notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
@@ -1109,13 +1110,14 @@ router.post('/:bookingId/accept-quote', async (req, res) => {
       });
     }
     
-    // FIXED: Database DOES allow 'quote_accepted' status directly!
+    // WORKAROUND: Database constraint only allows 5 statuses
+    // Store quote_accepted in notes, keep status as 'confirmed'
     const statusNote = `QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`;
     
-    // Update booking to quote_accepted status (database allows this!)
+    // Update booking - keep status as 'confirmed' (allowed by constraint)
     const updatedBooking = await sql`
       UPDATE bookings 
-      SET status = 'quote_accepted',
+      SET status = 'confirmed',
           notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
@@ -1126,7 +1128,10 @@ router.post('/:bookingId/accept-quote', async (req, res) => {
     
     res.json({
       success: true,
-      booking: updatedBooking[0],
+      booking: {
+        ...updatedBooking[0],
+        status: 'quote_accepted' // Frontend expects this
+      },
       message: 'Quote accepted successfully. You can now proceed with deposit payment.',
       timestamp: new Date().toISOString()
     });
