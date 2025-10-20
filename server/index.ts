@@ -21,16 +21,12 @@ import { otpService } from '../backend/services/otpService';
 import { BookingStatus } from '../src/shared/types/comprehensive-booking.types';
 import vendorRoutes from '../backend/api/vendors/routes';
 import bookingRoutes from '../backend/api/bookings/routes';
-import enhancedBookingRoutes from '../backend/api/bookings/enhanced_routes';
+// NOTE: enhanced_routes removed - implemented inline below to avoid gitignore issues
 import messagingRoutes from '../backend/api/messaging/routes';
 import subscriptionRoutes from '../backend/api/subscriptions/routes';
 import paymentRoutes from '../backend/api/payment/routes';
 import dssRoutes from '../backend/api/dss/routes';
 import adminRoutes from '../backend/src/api/admin/index';
-
-// Debug imports
-console.log('📦 Enhanced booking routes import type:', typeof enhancedBookingRoutes);
-console.log('📦 Enhanced booking routes:', enhancedBookingRoutes ? 'Loaded' : 'Failed');
 
 // Load environment variables
 config();
@@ -331,7 +327,134 @@ app.use('/api/admin', adminRoutes);
 // Core API routes
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/dss', dssRoutes);
-app.use('/api/bookings/enhanced', enhancedBookingRoutes);
+
+// ============================================================================
+// ENHANCED BOOKINGS ROUTE (Inline - includes vendor_notes field)
+// ============================================================================
+app.get('/api/bookings/enhanced', async (req, res) => {
+  try {
+    const {
+      coupleId,
+      vendorId,
+      status,
+      page = '1',
+      limit = '50',
+      sortBy = 'created_at',
+      sortOrder = 'desc'
+    } = req.query;
+
+    console.log('📡 [EnhancedBookings] GET request:', { coupleId, vendorId, status });
+
+    // Build WHERE clause
+    const conditions: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (coupleId) {
+      conditions.push(`b.couple_id = $${paramIndex++}`);
+      values.push(coupleId);
+    }
+
+    if (vendorId) {
+      conditions.push(`b.vendor_id = $${paramIndex++}`);
+      values.push(vendorId);
+    }
+
+    if (status) {
+      conditions.push(`b.status = $${paramIndex++}`);
+      values.push(status);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    // Calculate pagination
+    const pageNum = parseInt(page as string, 10) || 1;
+    const limitNum = parseInt(limit as string, 10) || 50;
+    const offset = (pageNum - 1) * limitNum;
+
+    // Main query - SELECT ALL FIELDS including vendor_notes
+    const query = `
+      SELECT 
+        b.id,
+        b.service_id,
+        b.service_name,
+        b.vendor_id,
+        b.couple_id,
+        b.couple_name,
+        b.event_date,
+        b.event_time,
+        b.event_end_time,
+        b.event_location,
+        b.venue_details,
+        b.guest_count,
+        b.service_type,
+        b.budget_range,
+        b.special_requests,
+        b.contact_phone,
+        b.contact_email,
+        b.contact_person,
+        b.preferred_contact_method,
+        b.status,
+        b.total_amount,
+        b.deposit_amount,
+        b.notes,
+        b.vendor_notes,
+        b.response_message,
+        b.booking_reference,
+        b.created_at,
+        b.updated_at,
+        vp.business_name as vendor_name,
+        vp.business_type as vendor_category,
+        vp.featured_image_url as vendor_image,
+        vp.average_rating as vendor_rating
+      FROM bookings b
+      LEFT JOIN vendor_profiles vp ON b.vendor_id = vp.user_id
+      ${whereClause}
+      ORDER BY b.${sortBy as string} ${sortOrder === 'asc' ? 'ASC' : 'DESC'}
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+    `;
+
+    values.push(limitNum, offset);
+
+    const result = await db.query(query, values);
+
+    // Count total
+    const countQuery = `SELECT COUNT(*) as total FROM bookings b ${whereClause}`;
+    const countValues = values.slice(0, -2);
+    const countResult = await db.query(countQuery, countValues);
+    const total = parseInt(countResult.rows[0]?.total || '0', 10);
+
+    console.log('✅ [EnhancedBookings] Query success:', {
+      bookings: result.rows.length,
+      total,
+      has_vendor_notes: result.rows.filter((b: any) => b.vendor_notes).length
+    });
+
+    res.json({
+      success: true,
+      bookings: result.rows,
+      count: result.rows.length,
+      total,
+      pagination: {
+        current_page: pageNum,
+        total_pages: Math.ceil(total / limitNum),
+        total_items: total,
+        per_page: limitNum,
+        hasNext: pageNum * limitNum < total,
+        hasPrev: pageNum > 1
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [EnhancedBookings] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch bookings',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/conversations', messagingRoutes);
 app.use('/api/payment', paymentRoutes);
