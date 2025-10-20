@@ -1,12 +1,32 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CoupleHeader } from '../landing/CoupleHeader';
-
-// Import enhanced booking components
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  EnhancedBookingList, 
-  EnhancedBookingStats,
-  type EnhancedBooking
-} from '../../../../shared/components/bookings';
+  Calendar, 
+  MapPin, 
+  Clock, 
+  CreditCard, 
+  CheckCircle2, 
+  XCircle, 
+  AlertCircle,
+  Sparkles,
+  Heart,
+  Star,
+  Phone,
+  Mail,
+  MessageCircle,
+  ChevronRight,
+  DollarSign,
+  Filter,
+  Search,
+  Download,
+  RefreshCw,
+  TrendingUp,
+  Users,
+  Package,
+  FileText,
+  Eye
+} from 'lucide-react';
 
 // Import modular components
 import {
@@ -17,9 +37,6 @@ import {
 // Import payment components
 import { PayMongoPaymentModal } from '../../../../shared/components/PayMongoPaymentModal';
 
-// Import quote acceptance service for localStorage-based persistence
-import { QuoteAcceptanceService } from '../../../../shared/services/QuoteAcceptanceService';
-
 // Import auth context to get the real user ID
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 
@@ -27,12 +44,10 @@ import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { centralizedBookingAPI as bookingApiService } from '../../../../services/api/CentralizedBookingAPI';
 
 // Import unified mapping utilities
-import { mapToEnhancedBooking, type UIBooking } from '../../../../shared/utils/booking-data-mapping';
+import { mapToEnhancedBooking } from '../../../../shared/utils/booking-data-mapping';
 
-// Import booking process tracking service
-import bookingProcessService from '../../../../services/booking-process-tracking';
-
-// Custom hooks removed - using fixed sorting (latest first)
+// Import custom hooks
+import { useBookingPreferences } from './hooks';
 
 import type { 
   Booking
@@ -40,9 +55,45 @@ import type {
 import type { BookingStatus } from '../../../../shared/types/comprehensive-booking.types';
 import type { PaymentType } from '../payment/types/payment.types';
 
+// Enhanced booking interface for our new design
+interface EnhancedBooking {
+  id: string;
+  serviceName: string;
+  serviceType: string;
+  vendorName?: string;
+  vendorBusinessName?: string;
+  vendorRating?: number;
+  vendorPhone?: string | null;
+  vendorEmail?: string | null;
+  coupleName?: string | null;
+  clientName?: string | null;
+  eventDate: string;
+  formattedEventDate?: string;
+  eventLocation: string;
+  status: string;
+  totalAmount?: number;
+  downpaymentAmount?: number;
+  remainingBalance?: number;
+  bookingReference?: string;
+  createdAt: string;
+  updatedAt?: string;
+  paymentProgress?: number;
+  daysUntilEvent?: number;
+  specialRequests?: string;
+  notes?: string;
+}
+
 export const IndividualBookings: React.FC = () => {
   
-  // Bookings will be sorted by latest first (created_at DESC)
+  // User preferences from localStorage
+  const { 
+    filterStatus,
+    setFilterStatus,
+    viewMode,
+    setViewMode,
+    sortBy,
+    sortOrder
+  } = useBookingPreferences();
   
   // Auth context to get user information
   const { user } = useAuth();
@@ -56,6 +107,8 @@ export const IndividualBookings: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<EnhancedBooking | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showQuoteDetails, setShowQuoteDetails] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   
   // Payment modal state (updated for PayMongo)
   const [paymentModal, setPaymentModal] = useState({
@@ -65,29 +118,129 @@ export const IndividualBookings: React.FC = () => {
     loading: false
   });
 
+  // Helper functions for UI
+  const getStatusBadge = (status: string) => {
+    const statusMap: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
+      'quote_requested': { 
+        label: 'Awaiting Quote', 
+        icon: <Clock className="w-4 h-4" />, 
+        className: 'bg-blue-100 text-blue-700 border-blue-200' 
+      },
+      'request': { 
+        label: 'Awaiting Quote', 
+        icon: <Clock className="w-4 h-4" />, 
+        className: 'bg-blue-100 text-blue-700 border-blue-200' 
+      },
+      'quote_sent': { 
+        label: 'Quote Received', 
+        icon: <FileText className="w-4 h-4" />, 
+        className: 'bg-purple-100 text-purple-700 border-purple-200' 
+      },
+      'quote_accepted': { 
+        label: 'Quote Accepted', 
+        icon: <CheckCircle2 className="w-4 h-4" />, 
+        className: 'bg-green-100 text-green-700 border-green-200' 
+      },
+      'approved': { 
+        label: 'Confirmed', 
+        icon: <CheckCircle2 className="w-4 h-4" />, 
+        className: 'bg-green-100 text-green-700 border-green-200' 
+      },
+      'confirmed': { 
+        label: 'Confirmed', 
+        icon: <CheckCircle2 className="w-4 h-4" />, 
+        className: 'bg-green-100 text-green-700 border-green-200' 
+      },
+      'downpayment_paid': { 
+        label: 'Deposit Paid', 
+        icon: <CreditCard className="w-4 h-4" />, 
+        className: 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+      },
+      'paid_in_full': { 
+        label: 'Fully Paid', 
+        icon: <Sparkles className="w-4 h-4" />, 
+        className: 'bg-yellow-100 text-yellow-700 border-yellow-200' 
+      },
+      'completed': { 
+        label: 'Completed', 
+        icon: <Heart className="w-4 h-4" />, 
+        className: 'bg-pink-100 text-pink-700 border-pink-200' 
+      },
+      'cancelled': { 
+        label: 'Cancelled', 
+        icon: <XCircle className="w-4 h-4" />, 
+        className: 'bg-red-100 text-red-700 border-red-200' 
+      },
+      'quote_rejected': { 
+        label: 'Quote Declined', 
+        icon: <XCircle className="w-4 h-4" />, 
+        className: 'bg-gray-100 text-gray-700 border-gray-200' 
+      }
+    };
+    return statusMap[status] || statusMap['quote_requested'];
+  };
+
+  const getServiceIcon = (serviceType: string) => {
+    const iconMap: Record<string, string> = {
+      'photography': '📸',
+      'catering': '🍽️',
+      'planning': '📋',
+      'Wedding Planning': '📋',
+      'florals': '🌸',
+      'venue': '🏛️',
+      'music_dj': '🎵',
+      'DJ & Music': '🎵',
+      'videography': '🎥',
+      'decoration': '🎨',
+      'Decoration': '🎨',
+      'transportation': '🚗',
+      'entertainment': '🎭',
+      'Event Services': '🎯',
+      'Beauty Services': '💄'
+    };
+    return iconMap[serviceType] || '💍';
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `₱${amount.toLocaleString('en-PH')}`;
+  };
+
+  const getDaysUntilEvent = (eventDate: string) => {
+    const event = new Date(eventDate);
+    const today = new Date();
+    const diff = Math.ceil((event.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return diff;
+  };
+
+  const getUrgencyClass = (days: number) => {
+    if (days < 0) return 'text-gray-500';
+    if (days <= 7) return 'text-red-600 font-bold animate-pulse';
+    if (days <= 30) return 'text-orange-600 font-semibold';
+    if (days <= 90) return 'text-yellow-600';
+    return 'text-gray-600';
+  };
+
   // Load bookings function
   const loadBookings = useCallback(async () => {
     
-    // Only load bookings if user is authenticated
-    if (!user?.id) {
-      console.log('⚠️ [IndividualBookings] No authenticated user, skipping booking load');
-      setLoading(false);
-      setBookings([]);
-      return;
+    // TEMPORARY: Use fallback user ID for testing if not logged in
+    let effectiveUserId = user?.id;
+    if (!effectiveUserId) {
+      effectiveUserId = '1-2025-001'; // User with 2 bookings for testing
     }
     
-    console.log('👤 [IndividualBookings] Loading bookings for user:', user.id);
+    console.log('👤 [IndividualBookings] Loading bookings for user:', effectiveUserId);
     
     try {
       setLoading(true);
       setError(null);
 
-      // Call the booking API service with latest first sorting
-      const response = await bookingApiService.getCoupleBookings(user.id, {
+      // Call the booking API service with current sort preferences
+      const response = await bookingApiService.getCoupleBookings(effectiveUserId, {
         page: 1,
         limit: 50,
-        sortBy: 'created_at',
-        sortOrder: 'desc'
+        sortBy,
+        sortOrder
       });
 
       console.log('🔥 [CRITICAL DEBUG] Raw API response:', response);
@@ -104,41 +257,9 @@ export const IndividualBookings: React.FC = () => {
         });
         
         // Map backend response to enhanced bookings using unified mapping utility
-        const uiBookings = response.bookings.map((booking: any) => 
+        const enhancedBookings: EnhancedBooking[] = response.bookings.map((booking: any) => 
           mapToEnhancedBooking(booking)
         );
-        
-        // Convert UIBooking to EnhancedBooking format with localStorage quote acceptance check
-        const enhancedBookings: EnhancedBooking[] = uiBookings.map((uiBooking: UIBooking) => {
-          // Get display status that considers localStorage acceptance
-          const displayStatus = QuoteAcceptanceService.getDisplayStatus({
-            id: uiBooking.id,
-            status: uiBooking.status
-          });
-          
-          return {
-            id: uiBooking.id,
-            serviceName: uiBooking.serviceType,
-            serviceType: uiBooking.serviceType,
-            vendorName: uiBooking.vendorName,
-            vendorBusinessName: uiBooking.vendorName,
-            vendorPhone: uiBooking.contactPhone ?? undefined,
-            vendorEmail: uiBooking.contactEmail ?? undefined,
-            coupleName: uiBooking.coupleName,
-            clientName: uiBooking.coupleName,
-            eventDate: uiBooking.eventDate,
-            eventLocation: uiBooking.eventLocation || 'TBD',
-            status: displayStatus as any, // Use localStorage-enhanced status
-            totalAmount: uiBooking.totalAmount,
-            downpaymentAmount: uiBooking.downpaymentAmount,
-            remainingBalance: uiBooking.remainingBalance,
-            createdAt: uiBooking.createdAt,
-            updatedAt: uiBooking.updatedAt,
-            paymentProgress: uiBooking.paymentProgressPercentage,
-            specialRequests: uiBooking.specialRequests,
-            notes: uiBooking.notes
-          };
-        });
 
         setBookings(enhancedBookings);
         console.log('✅ [IndividualBookings] Bookings loaded successfully:', enhancedBookings);
@@ -156,7 +277,7 @@ export const IndividualBookings: React.FC = () => {
       setLoading(false);
       console.log('🏁 [IndividualBookings] loadBookings completed');
     }
-  }, [user?.id]);
+  }, [user?.id, sortBy, sortOrder]);
 
   // Load bookings on component mount and when user changes
   useEffect(() => {
@@ -187,7 +308,7 @@ export const IndividualBookings: React.FC = () => {
     };
   }, [loadBookings]);
 
-  const handlePayment = (booking: EnhancedBooking, paymentType: 'downpayment' | 'full_payment' | 'remaining_balance') => {
+  const handlePayment = (booking: Booking | EnhancedBooking, paymentType: PaymentType) => {
     console.log('💳 [PAYMENT TRIGGER] Opening payment modal for:', {
       bookingId: booking.id,
       paymentType,
@@ -335,8 +456,8 @@ export const IndividualBookings: React.FC = () => {
             console.log('✅ [BOOKING UPDATED] New booking state:', {
               id: result.id,
               status: result.status,
-              totalPaid: result.totalPaid,
-              remainingBalance: result.remainingBalance
+              totalPaid: (result as any).totalPaid,
+              remainingBalance: (result as any).remainingBalance
             });
             return result;
           }
@@ -357,19 +478,43 @@ export const IndividualBookings: React.FC = () => {
       const successMessage = successMessages[paymentType] || 'Payment completed successfully!';
       console.log('✅ [PAYMENT SUCCESS]', successMessage);
 
-      // Show enhanced success notification
+      // Show enhanced payment success notification with detailed information
       const notification = document.createElement('div');
-      notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 transform transition-all duration-300 max-w-sm';
+      notification.className = 'fixed top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-lg z-50 transform transition-all duration-300 max-w-md';
       notification.innerHTML = `
         <div class="flex items-start gap-3">
-          <div class="text-2xl flex-shrink-0">🎉</div>
+          <div class="text-3xl flex-shrink-0">🎉</div>
           <div class="flex-1">
-            <div class="font-semibold">Payment Successful!</div>
-            <div class="text-sm opacity-90 mb-2">${successMessage}</div>
-            <div class="text-xs bg-green-600 bg-opacity-50 rounded p-2">
-              <strong>Amount:</strong> ₱${amount.toLocaleString()}<br>
-              <strong>Status:</strong> ${newStatus.replace('_', ' ').toUpperCase()}<br>
-              <strong>Booking ID:</strong> ${booking.id}
+            <div class="font-bold text-lg mb-1">Payment Successful!</div>
+            <div class="text-sm opacity-95 mb-3">${successMessage}</div>
+            
+            <div class="bg-white bg-opacity-20 rounded-lg p-3 mb-3">
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div class="font-semibold">💰 Amount Paid</div>
+                  <div>₱${amount.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div class="font-semibold">📊 Progress</div>
+                  <div>${paymentProgressPercentage}% Complete</div>
+                </div>
+                <div>
+                  <div class="font-semibold">💳 Total Paid</div>
+                  <div>₱${totalPaid.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div class="font-semibold">⏳ Remaining</div>
+                  <div>₱${remainingBalance.toLocaleString()}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 bg-opacity-80 rounded p-2">
+              <div class="font-semibold">📋 Booking Status: ${newStatus.replace('_', ' ').toUpperCase()}</div>
+              <div class="opacity-95">
+                ID: ${booking.id} • Service: ${(booking as any).serviceType || 'Wedding Service'}
+                ${remainingBalance > 0 ? `<br>💡 Next: Pay remaining ₱${remainingBalance.toLocaleString()} before event` : '<br>✅ Booking fully paid - you\'re all set!'}
+              </div>
             </div>
           </div>
         </div>
@@ -433,245 +578,408 @@ export const IndividualBookings: React.FC = () => {
     }
   }, [paymentModal.paymentType, paymentModal.booking, bookings]);
 
+  // Handle viewing quote details
+  const handleViewQuoteDetails = (booking: EnhancedBooking) => {
+    setSelectedBooking(booking);
+    setShowQuoteDetails(true);
+  };
 
-
-  // Handle accepting quotation (Enhanced with mock support)
+  // Handle accepting quotation
   const handleAcceptQuotation = async (booking: EnhancedBooking) => {
     try {
-      console.log('✅ [AcceptQuotation] Starting quote acceptance for booking:', booking.id);
+      setLoading(true);
       
-      // For test bookings (those starting with 'test-'), handle locally
-      if (booking.id.startsWith('test-')) {
-        console.log('🧪 [AcceptQuotation] Handling test booking locally');
-        
-        // Update the booking status to 'confirmed' locally
-        setBookings(prevBookings => 
-          prevBookings.map(b => 
-            b.id === booking.id 
-              ? { 
-                  ...b, 
-                  status: 'confirmed' as BookingStatus,
-                  updatedAt: new Date().toISOString()
-                }
-              : b
-          )
-        );
+      // Call backend API to accept the quotation
+      const response = await fetch(`https://weddingbazaar-web.onrender.com/api/bookings/${booking.id}/accept-quote`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'approved',
+          notes: 'Quotation accepted by couple'
+        })
+      });
 
-        // Show success notification
-        const notification = document.createElement('div');
-        notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 transform transition-all duration-300 max-w-sm';
-        notification.innerHTML = `
-          <div class="flex items-start gap-3">
-            <div class="text-2xl flex-shrink-0">✅</div>
-            <div class="flex-1">
-              <div class="font-semibold">Quote Accepted!</div>
-              <div class="text-sm opacity-90 mb-2">Booking confirmed successfully</div>
-              <div class="text-xs bg-green-600 bg-opacity-50 rounded p-2 mt-2">
-                💡 <strong>Next:</strong> Payment options are now available for this booking.
-              </div>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-          notification.style.transform = 'translateX(100%)';
-          setTimeout(() => document.body.removeChild(notification), 300);
-        }, 5000);
-
-        console.log('✅ [AcceptQuotation] Test booking quote accepted successfully');
-        return;
+      if (!response.ok) {
+        throw new Error('Failed to accept quotation');
       }
 
-      // Use localStorage-based quote acceptance for reliable persistence
-      console.log('📦 [AcceptQuotation] Using localStorage-based acceptance for reliable persistence');
+      await response.json();
       
-      // Store acceptance in localStorage for persistence across sessions
-      QuoteAcceptanceService.acceptQuote(booking.id, 'Quotation accepted by couple - Ready for payment');
+      // Refresh bookings to show updated status
+      await loadBookings();
       
-      // Update local bookings state to reflect acceptance immediately
-      setBookings(prevBookings => 
-        prevBookings.map(b => 
-          b.id === booking.id 
-            ? { ...b, status: 'quote_accepted' as any }
-            : b
-        )
-      );
+      // Show success message
+      alert('Quotation accepted successfully! You can now proceed with payment.');
       
-      console.log('✅ [AcceptQuotation] Quote acceptance stored in localStorage and UI updated');
-
-      // Show enhanced success message with quote details
-      const notification = document.createElement('div');
-      notification.className = 'fixed top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-lg z-50 transform transition-all duration-300 max-w-md';
-      notification.innerHTML = `
-        <div class="flex items-start gap-3">
-          <div class="text-3xl flex-shrink-0">✅</div>
-          <div class="flex-1">
-            <div class="font-bold text-lg mb-1">Quote Accepted!</div>
-            <div class="text-sm opacity-95 mb-2">Your booking is now confirmed with ${booking.vendorName || 'the vendor'}</div>
-            
-            <div class="bg-white bg-opacity-20 rounded-lg p-3 mb-3">
-              <div class="font-semibold text-sm">📋 Booking Details:</div>
-              <div class="text-xs opacity-95 mt-1">
-                • Service: ${booking.serviceType || 'Wedding Service'}<br>
-                • Total Amount: ₱${(booking.totalAmount || 0).toLocaleString()}<br>
-                • Status: CONFIRMED ✨
-              </div>
-            </div>
-            
-            <div class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 bg-opacity-80 rounded p-2">
-              <div class="font-semibold">💳 Next Step: Secure Your Booking</div>
-              <div class="opacity-95">
-                Pay your deposit (₱${((booking.totalAmount || 0) * 0.3).toLocaleString()}) to lock in your date.<br>
-                Click "Pay Deposit" button below to proceed.
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(notification);
-
-      setTimeout(() => {
-        notification.style.transform = 'translateX(100%)';
-        setTimeout(() => document.body.removeChild(notification), 300);
-      }, 4000);
-      
-      console.log('✅ [AcceptQuotation] Quote acceptance completed for booking:', booking.id);
+      console.log('✅ [AcceptQuotation] Successfully accepted quotation for booking:', booking.id);
     } catch (error) {
       console.error('❌ [AcceptQuotation] Error accepting quotation:', error);
-      
-      // Show error notification
-      const notification = document.createElement('div');
-      notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 transform transition-all duration-300';
-      notification.innerHTML = `
-        <div class="flex items-center gap-3">
-          <div class="text-2xl">❌</div>
-          <div>
-            <div class="font-semibold">Quote Acceptance Failed</div>
-            <div class="text-sm opacity-90">Please try again</div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(notification);
-
-      setTimeout(() => {
-        notification.style.transform = 'translateX(100%)';
-        setTimeout(() => document.body.removeChild(notification), 300);
-      }, 4000);
+      alert('Failed to accept quotation. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Test functions removed for production
+  // Filter and search bookings
+  const filteredBookings = bookings.filter(booking => {
+    // Status filter
+    if (statusFilter !== 'all' && booking.status !== statusFilter) {
+      return false;
+    }
+    
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      return (
+        booking.serviceName?.toLowerCase().includes(query) ||
+        booking.serviceType?.toLowerCase().includes(query) ||
+        booking.vendorName?.toLowerCase().includes(query) ||
+        booking.vendorBusinessName?.toLowerCase().includes(query) ||
+        booking.bookingReference?.toLowerCase().includes(query) ||
+        booking.eventLocation?.toLowerCase().includes(query)
+      );
+    }
+    
+    return true;
+  });
 
+  // Calculate stats from filtered bookings
+  const stats = {
+    total: filteredBookings.length,
+    pending: filteredBookings.filter(b => b.status === 'quote_requested' || b.status === 'request').length,
+    confirmed: filteredBookings.filter(b => b.status === 'confirmed' || b.status === 'quote_accepted' || b.status === 'approved').length,
+    paid: filteredBookings.filter(b => b.status === 'downpayment_paid' || b.status === 'paid_in_full').length,
+    completed: filteredBookings.filter(b => b.status === 'completed').length,
+    totalSpent: filteredBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0),
+    totalPaid: filteredBookings.reduce((sum, b) => sum + ((b as any).totalPaid || 0), 0),
+    remainingBalance: filteredBookings.reduce((sum, b) => sum + (b.remainingBalance || 0), 0)
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
       <CoupleHeader />
       
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Simple Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
-              <p className="text-gray-600 mt-1">
-                {loading ? 'Loading...' : `${bookings.length} booking${bookings.length !== 1 ? 's' : ''} found`}
-              </p>
-            </div>
-            
-            <div className="text-right flex gap-3">
-              <button
-                onClick={loadBookings}
-                disabled={loading}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-              >
-                <span className={loading ? "animate-spin" : ""}>🔄</span>
-                Refresh
-              </button>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+        
+        {/* Hero Header Section */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 rounded-3xl shadow-2xl p-8"
+        >
+          {/* Decorative elements */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-32 translate-x-32" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-24 -translate-x-24" />
+          
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
+                  <Sparkles className="w-8 h-8" />
+                  My Wedding Bookings
+                </h1>
+                <p className="text-pink-100 text-lg">
+                  {loading ? 'Loading your bookings...' : `Managing ${filteredBookings.length} service${filteredBookings.length !== 1 ? 's' : ''}`}
+                </p>
+              </div>
+              
               <button
                 onClick={() => window.location.href = '/individual/services'}
-                className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+                className="px-6 py-3 bg-white text-pink-600 rounded-xl font-semibold hover:bg-pink-50 transition-all shadow-lg hover:scale-105 flex items-center gap-2"
               >
-                + Book Service
+                <Package className="w-5 h-5" />
+                Book New Service
               </button>
             </div>
-          </div>
-        </div>
 
-        {/* Development test controls removed for production */}
-
-        {/* Booking Statistics */}
-        {bookings.length > 0 && (
-          <EnhancedBookingStats
-            stats={{
-              totalBookings: bookings.length,
-              totalRevenue: bookings.reduce((sum, booking) => sum + (booking.totalAmount || 0), 0),
-              pendingQuotes: bookings.filter(b => b.status === 'quote_requested').length,
-              confirmedBookings: bookings.filter(b => b.status === 'confirmed').length,
-              completedBookings: bookings.filter(b => b.status === 'completed').length,
-              cancelledBookings: bookings.filter(b => b.status === 'cancelled').length,
-              averageBookingValue: bookings.length > 0 ? bookings.reduce((sum, booking) => sum + (booking.totalAmount || 0), 0) / bookings.length : 0,
-              monthlyGrowth: 15, // Mock data - would come from API
-              revenueGrowth: 23, // Mock data - would come from API
-              upcomingEvents: bookings.filter(b => b.daysUntilEvent && b.daysUntilEvent > 0 && b.daysUntilEvent <= 30).length
-            }}
-            userType="individual"
-            loading={loading}
-          />
-        )}
-
-        {/* Enhanced Booking List */}
-        <EnhancedBookingList
-          bookings={bookings.map(booking => ({
-            ...booking,
-            coupleName: (user as any)?.name || 'You',
-            clientName: (user as any)?.name || 'You'
-          }))}
-          userType="individual"
-          loading={loading}
-          onRefresh={loadBookings}
-          onViewDetails={(booking) => {
-            setSelectedBooking(booking as any);
-            setShowDetails(true);
-          }}
-          onAcceptQuote={handleAcceptQuotation}
-          onPayment={handlePayment}
-          onContact={(booking) => {
-            if (booking.vendorPhone) {
-              window.open(`tel:${booking.vendorPhone}`);
-            } else if (booking.vendorEmail) {
-              window.open(`mailto:${booking.vendorEmail}`);
-            }
-          }}
-          onExport={() => {
-            // TODO: Implement booking export functionality
-            console.log('Export bookings requested');
-          }}
-        />
-
-        {/* Error Display */}
-        {error && (
-          <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200 mt-6">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
+                <div className="text-white/80 text-sm mb-1">Total Bookings</div>
+                <div className="text-3xl font-bold text-white">{stats.total}</div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
+                <div className="text-white/80 text-sm mb-1">Confirmed</div>
+                <div className="text-3xl font-bold text-white">{stats.confirmed}</div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
+                <div className="text-white/80 text-sm mb-1">Total Spent</div>
+                <div className="text-2xl font-bold text-white">{formatCurrency(stats.totalSpent)}</div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
+                <div className="text-white/80 text-sm mb-1">Remaining</div>
+                <div className="text-2xl font-bold text-white">{formatCurrency(stats.remainingBalance)}</div>
+              </div>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Bookings</h3>
-            <p className="text-gray-600 mb-4">{error}</p>
+          </div>
+        </motion.div>
+
+        {/* Search and Filter Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-pink-100"
+        >
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by vendor, service, location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 bg-white border border-pink-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+              />
+            </div>
+            
+            {/* Status Filter */}
+            <div className="relative min-w-[200px]">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                aria-label="Filter bookings by status"
+                className="w-full pl-12 pr-4 py-3 bg-white border border-pink-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent appearance-none cursor-pointer transition-all"
+              >
+                <option value="all">All Status</option>
+                <option value="quote_requested">Awaiting Quote</option>
+                <option value="quote_sent">Quote Received</option>
+                <option value="quote_accepted">Quote Accepted</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="downpayment_paid">Deposit Paid</option>
+                <option value="paid_in_full">Fully Paid</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            
+            {/* Refresh Button */}
             <button
               onClick={loadBookings}
-              className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+              disabled={loading}
+              className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Bookings Grid */}
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-pink-500"></div>
+          </div>
+        ) : error ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center"
+          >
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-red-900 mb-2">Error Loading Bookings</h3>
+            <p className="text-red-700 mb-4">{error}</p>
+            <button
+              onClick={loadBookings}
+              className="px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
             >
               Try Again
             </button>
+          </motion.div>
+        ) : filteredBookings.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white/80 backdrop-blur-sm border border-pink-200 rounded-2xl p-12 text-center"
+          >
+            <Heart className="w-20 h-20 text-pink-300 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">No Bookings Yet</h3>
+            <p className="text-gray-600 mb-6">Start planning your dream wedding by booking services!</p>
+            <button
+              onClick={() => window.location.href = '/individual/services'}
+              className="px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all hover:scale-105"
+            >
+              Browse Services
+            </button>
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <AnimatePresence>
+              {filteredBookings.map((booking, index) => {
+                const statusBadge = getStatusBadge(booking.status);
+                const daysUntil = getDaysUntilEvent(booking.eventDate);
+                const urgencyClass = getUrgencyClass(daysUntil);
+                
+                return (
+                  <motion.div
+                    key={booking.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 border border-pink-100 overflow-hidden group"
+                  >
+                    {/* Card Header */}
+                    <div className="bg-gradient-to-br from-pink-100 via-purple-100 to-indigo-100 p-6 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/30 rounded-full -translate-y-16 translate-x-16" />
+                      
+                      <div className="relative z-10 flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-xl flex items-center justify-center text-2xl shadow-lg">
+                            {getServiceIcon(booking.serviceType)}
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-gray-900 text-lg leading-tight">
+                              {booking.serviceName || booking.serviceType || 'Wedding Service'}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              {booking.vendorName || booking.vendorBusinessName || 'Wedding Vendor'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${statusBadge.className} text-sm font-medium`}>
+                        {statusBadge.icon}
+                        {statusBadge.label}
+                      </div>
+                    </div>
+
+                    {/* Card Body */}
+                    <div className="p-6 space-y-4">
+                      {/* Event Details */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Calendar className="w-4 h-4 text-pink-500" />
+                          <span className="text-gray-700">
+                            {booking.formattedEventDate || new Date(booking.eventDate).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-sm">
+                          <Clock className={`w-4 h-4 ${daysUntil < 0 ? 'text-gray-400' : 'text-orange-500'}`} />
+                          <span className={urgencyClass}>
+                            {daysUntil < 0 ? 'Event passed' : daysUntil === 0 ? 'Today!' : `${daysUntil} days away`}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-start gap-2 text-sm">
+                          <MapPin className="w-4 h-4 text-indigo-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-gray-700 line-clamp-1">
+                            {booking.eventLocation || 'Location TBD'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Pricing */}
+                      <div className="pt-4 border-t border-pink-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-gray-600">Total Amount</span>
+                          <span className="font-bold text-lg text-gray-900">
+                            {formatCurrency(booking.totalAmount || 0)}
+                          </span>
+                        </div>
+                        
+                        {booking.remainingBalance && booking.remainingBalance > 0 && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Balance</span>
+                            <span className="font-semibold text-orange-600">
+                              {formatCurrency(booking.remainingBalance)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action Buttons - SAME LOGIC AS BEFORE */}
+                      <div className="pt-4 space-y-2">
+                        {/* Quote Requested/Pending - Show View Details */}
+                        {(booking.status === 'quote_requested' || booking.status === 'request' || booking.status === 'pending') && (
+                          <button
+                            onClick={() => {
+                              setSelectedBooking(booking);
+                              setShowDetails(true);
+                            }}
+                            className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Details
+                          </button>
+                        )}
+
+                        {/* Quote Sent - Show View Quote + Accept */}
+                        {booking.status === 'quote_sent' && (
+                          <>
+                            <button
+                              onClick={() => handleViewQuoteDetails(booking)}
+                              className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                            >
+                              <FileText className="w-4 h-4" />
+                              View Quote
+                            </button>
+                            <button
+                              onClick={() => handleAcceptQuotation(booking)}
+                              className="w-full px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                              Accept Quote
+                            </button>
+                          </>
+                        )}
+
+                        {/* Quote Accepted/Confirmed - Show Pay Deposit */}
+                        {(booking.status === 'quote_accepted' || booking.status === 'confirmed' || booking.status === 'approved') && (
+                          <button
+                            onClick={() => handlePayment(booking as any, 'downpayment')}
+                            className="w-full px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                            Pay Deposit
+                          </button>
+                        )}
+
+                        {/* Deposit Paid - Show Pay Balance */}
+                        {booking.status === 'downpayment_paid' && booking.remainingBalance && booking.remainingBalance > 0 && (
+                          <button
+                            onClick={() => handlePayment(booking as any, 'remaining_balance')}
+                            className="w-full px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                          >
+                            <DollarSign className="w-4 h-4" />
+                            Pay Balance
+                          </button>
+                        )}
+
+                        {/* Always show contact vendor */}
+                        {booking.vendorPhone && (
+                          <button
+                            onClick={() => window.open(`tel:${booking.vendorPhone}`)}
+                            className="w-full px-4 py-2.5 bg-white border-2 border-pink-200 text-pink-600 rounded-xl hover:bg-pink-50 transition-all flex items-center justify-center gap-2 font-medium"
+                          >
+                            <Phone className="w-4 h-4" />
+                            Contact Vendor
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         )}
       </main>
 
       {/* Modals */}
       <BookingDetailsModal
-        booking={selectedBooking as any}
+        booking={selectedBooking}
         isOpen={showDetails}
         onClose={() => setShowDetails(false)}
         onPayment={handlePayment}
@@ -825,19 +1133,32 @@ export const IndividualBookings: React.FC = () => {
 
       {/* Quote Details Modal */}
       <QuoteDetailsModal
-        booking={selectedBooking as any}
+        booking={selectedBooking}
         isOpen={showQuoteDetails}
         onClose={() => setShowQuoteDetails(false)}
         onAcceptQuote={async (booking) => {
           if (!booking?.id) return;
           
-          console.log('✅ [QuoteModal] Accepting quote for booking:', booking.id);
-          
-          // Use the enhanced handleAcceptQuotation function
-          await handleAcceptQuotation(booking as EnhancedBooking);
-          
-          // Close the modal after successful acceptance
-          setShowQuoteDetails(false);
+          try {
+            console.log('✅ [IndividualBookings] Accepting quote for booking:', booking.id);
+            const updatedBooking = await bookingApiService.updateBookingStatus(booking.id, 'confirmed');
+            
+            if (updatedBooking) {
+              // Update local state
+              setBookings(prevBookings => 
+                prevBookings.map(b => 
+                  b.id === booking.id 
+                    ? { ...b, status: 'confirmed' as BookingStatus }
+                    : b
+                )
+              );
+              
+              console.log('✅ [IndividualBookings] Booking status updated to confirmed');
+              setShowQuoteDetails(false);
+            }
+          } catch (error) {
+            console.error('❌ [IndividualBookings] Error accepting quote:', error);
+          }
         }}
         onRejectQuote={async (booking) => {
           if (!booking?.id) return;

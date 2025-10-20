@@ -25,6 +25,11 @@ import { IntelligentWeddingPlanner } from './dss/IntelligentWeddingPlanner_v2';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 import type { Service as BookingService } from '../../../../modules/services/types';
 
+// Debug flag - set to false in production for better performance
+const DEBUG = false;
+const log = (...args: any[]) => DEBUG && console.log(...args);
+const logError = (...args: any[]) => console.error(...args); // Always log errors
+
 // Helper function to convert Service to BookingService format
 const convertToBookingService = (service: Service): BookingService => {
   // Map string category to ServiceCategory
@@ -489,8 +494,23 @@ export function Services() {
               usingVendorRatingAsFallback: !service.vendor_rating && !!vendor?.rating,
               imageCount: serviceImages.length,
               
+              // 🔥 DSS FIELDS DEBUG
+              dssFields: {
+                years_in_business: service.years_in_business,
+                service_tier: service.service_tier,
+                wedding_styles: service.wedding_styles,
+                cultural_specialties: service.cultural_specialties,
+                availability: service.availability
+              },
+              
               note: '⚠️ API field "vendor_rating" actually contains PER-SERVICE rating (not vendor overall rating)'
             });
+
+            // Calculate attractive price range
+            const basePrice = parseFloat(service.price) || 0;
+            const priceRangeText = basePrice > 0 
+              ? `₱${(basePrice * 0.8).toLocaleString('en-PH', { maximumFractionDigits: 0 })} - ₱${(basePrice * 1.2).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`
+              : 'Contact for pricing';
 
             return {
               id: service.id,
@@ -503,8 +523,8 @@ export function Services() {
               vendorName: vendor?.name || generatedVendorName,
               vendorImage: generateVendorImage(),
               description: service.description || `Professional ${service.category.toLowerCase()} services for your special day.`,
-              price: parseFloat(service.price) || 0,
-              priceRange: `₱${parseFloat(service.price || 0).toLocaleString()}`,
+              price: basePrice,
+              priceRange: priceRangeText,
               // Use real vendor location if available, otherwise use generated
               location: vendor?.location || generatedLocation,
               // Use real vendor rating data if available, otherwise default to 0
@@ -515,7 +535,7 @@ export function Services() {
               gallery: serviceImages,
               features: generateServiceFeatures(service.category, service.description),
               is_active: service.is_active !== false,
-              availability: service.is_active !== false,
+              availability: service.availability || (service.is_active !== false ? 'available' : 'unavailable'),
               featured: service.featured === true,
               created_at: service.created_at || new Date().toISOString(),
               updated_at: service.updated_at || new Date().toISOString(),
@@ -524,7 +544,13 @@ export function Services() {
                 phone: vendor?.phone || generatedContactInfo.phone,
                 email: vendor?.email || generatedContactInfo.email,
                 website: vendor?.website || generatedContactInfo.website
-              }
+              },
+              
+              // 🔥 DSS FIELDS - Dynamic Service Scoring (FIXED!)
+              years_in_business: service.years_in_business ? parseInt(service.years_in_business) : undefined,
+              service_tier: service.service_tier || undefined,
+              wedding_styles: service.wedding_styles || [],
+              cultural_specialties: service.cultural_specialties || []
             };
           }).filter(Boolean); // Remove null values from services without real images
 
@@ -995,7 +1021,7 @@ Best regards`;
                   whileHover={{ 
                     scale: 1.05,
                     boxShadow: showFilters 
-                      ? "0 20px 25px -5px rgba(236, 72, 153, 0.3)"
+                      ? "0 20px 25px -5px rgba(236, 72, 153, 0.4)"
                       : "0 10px 15px -3px rgba(236, 72, 153, 0.2)"
                   }}
                   whileTap={{ scale: 0.95 }}
@@ -1433,6 +1459,110 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
                   </span>
                 ))}
               </div>
+              {/* DSS Fields Display - List View - ENHANCED DESIGN */}
+              {(service.years_in_business || service.service_tier || service.availability || (service.wedding_styles && service.wedding_styles.length > 0) || (service.cultural_specialties && service.cultural_specialties.length > 0)) && (
+                <div className="bg-gradient-to-r from-pink-50/50 via-purple-50/50 to-blue-50/50 rounded-xl p-4 mb-4 border border-pink-100/50">
+                  <div className="grid grid-cols-2 gap-4 mb-3">
+                    {service.years_in_business && (
+                      <div className="flex items-center gap-3 bg-white rounded-lg p-2.5 shadow-sm">
+                        <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg">
+                          <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 font-medium">Experience</div>
+                          <div className="text-sm font-bold text-gray-900">{service.years_in_business} years</div>
+                        </div>
+                      </div>
+                    )}
+                    {service.service_tier && (
+                      <div className="flex items-center gap-3 bg-white rounded-lg p-2.5 shadow-sm">
+                        <div className={`p-2 rounded-lg ${
+                          service.service_tier === 'premium' 
+                            ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
+                            : service.service_tier === 'standard' 
+                            ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
+                            : 'bg-gradient-to-br from-gray-500 to-gray-600'
+                        }`}>
+                          <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 font-medium">Tier</div>
+                          <div className={`text-sm font-bold capitalize ${
+                            service.service_tier === 'premium' ? 'text-purple-600' :
+                            service.service_tier === 'standard' ? 'text-blue-600' :
+                            'text-gray-600'
+                          }`}>{service.service_tier}</div>
+                        </div>
+                      </div>
+                    )}
+                    {service.availability && (
+                      <div className="flex items-center gap-3 bg-white rounded-lg p-2.5 shadow-sm col-span-2 md:col-span-1">
+                        <div className={`p-2 rounded-lg ${
+                          service.availability.toLowerCase() === 'available' 
+                            ? 'bg-gradient-to-br from-green-500 to-emerald-600'
+                            : service.availability.toLowerCase() === 'limited'
+                            ? 'bg-gradient-to-br from-yellow-500 to-orange-500'
+                            : 'bg-gradient-to-br from-red-500 to-rose-600'
+                        }`}>
+                          <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 font-medium">Availability</div>
+                          <div className={`text-sm font-bold ${
+                            service.availability.toLowerCase() === 'available' ? 'text-green-600' :
+                            service.availability.toLowerCase() === 'limited' ? 'text-yellow-600' :
+                            'text-red-600'
+                          }`}>{service.availability}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {service.wedding_styles && service.wedding_styles.length > 0 && (
+                    <div className="mb-2">
+                      <div className="text-xs text-gray-600 font-semibold mb-2 flex items-center gap-1">
+                        <span>💕</span> Wedding Styles
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {service.wedding_styles.slice(0, 4).map((style, idx) => (
+                          <span key={idx} className="text-xs bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3 py-1.5 rounded-full font-semibold shadow-sm">
+                            {style}
+                          </span>
+                        ))}
+                        {service.wedding_styles.length > 4 && (
+                          <span className="text-xs bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full font-semibold">
+                            +{service.wedding_styles.length - 4} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {service.cultural_specialties && service.cultural_specialties.length > 0 && (
+                    <div>
+                      <div className="text-xs text-gray-600 font-semibold mb-2 flex items-center gap-1">
+                        <span>🌍</span> Cultural Specialties
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {service.cultural_specialties.slice(0, 3).map((specialty, idx) => (
+                          <span key={idx} className="text-xs bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 py-1.5 rounded-full font-semibold shadow-sm">
+                            {specialty}
+                          </span>
+                        ))}
+                        {service.cultural_specialties.length > 3 && (
+                          <span className="text-xs bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full font-semibold">
+                            +{service.cultural_specialties.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex gap-3">
               <button
@@ -1568,8 +1698,83 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
               </span>
             ))}
           </div>
+          {/* DSS Fields Display - Grid View - ENHANCED DESIGN */}
+          {(service.years_in_business || service.service_tier || service.availability || (service.wedding_styles && service.wedding_styles.length > 0)) && (
+            <div className="space-y-2.5 mb-4 pb-4 border-t border-gray-100 pt-3">
+              {service.years_in_business && (
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-sm">
+                    <svg className="h-3.5 w-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <span className="text-xs font-medium text-gray-700">{service.years_in_business} years experience</span>
+                </div>
+              )}
+              {service.service_tier && (
+                <div className="inline-flex items-center gap-1.5">
+                  <div className={`px-2.5 py-1 rounded-full font-semibold text-xs shadow-sm ${
+                    service.service_tier === 'premium' 
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' 
+                      : service.service_tier === 'standard' 
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                      : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white'
+                  }`}>
+                    ✨ {service.service_tier.charAt(0).toUpperCase() + service.service_tier.slice(1)}
+                  </div>
+                </div>
+              )}
+              {service.availability && (
+                <div className="flex items-center gap-2">
+                  <div className={`p-1.5 rounded-lg shadow-sm ${
+                    service.availability.toLowerCase() === 'available' 
+                      ? 'bg-gradient-to-br from-green-50 to-green-100'
+                      : service.availability.toLowerCase() === 'limited'
+                      ? 'bg-gradient-to-br from-yellow-50 to-yellow-100'
+                      : 'bg-gradient-to-br from-red-50 to-red-100'
+                  }`}>
+                    <svg className={`h-3.5 w-3.5 ${
+                      service.availability.toLowerCase() === 'available' 
+                        ? 'text-green-600'
+                        : service.availability.toLowerCase() === 'limited'
+                        ? 'text-yellow-600'
+                        : 'text-red-600'
+                    }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <span className={`text-xs font-medium ${
+                    service.availability.toLowerCase() === 'available' 
+                      ? 'text-green-700'
+                      : service.availability.toLowerCase() === 'limited'
+                      ? 'text-yellow-700'
+                      : 'text-red-700'
+                  }`}>
+                    {service.availability}
+                  </span>
+                </div>
+              )}
+              {service.wedding_styles && service.wedding_styles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {service.wedding_styles.slice(0, 2).map((style, idx) => (
+                    <span key={idx} className="text-xs bg-gradient-to-r from-pink-50 to-rose-50 text-pink-700 font-medium px-2 py-1 rounded-full border border-pink-100">
+                      {style}
+                    </span>
+                  ))}
+                  {service.wedding_styles.length > 2 && (
+                    <span className="text-xs bg-gray-100 text-gray-600 font-medium px-2 py-1 rounded-full">
+                      +{service.wedding_styles.length - 2}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-center justify-between">
-            <span className="font-semibold text-pink-600">{service.priceRange}</span>
+            <div className="flex flex-col">
+              <span className="text-xs text-gray-500 mb-0.5">Starting from</span>
+              <span className="font-bold text-pink-600 text-base">{service.priceRange}</span>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={(e) => {
@@ -1591,18 +1796,6 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
                   title="Call vendor"
                 >
                   <Phone className="h-5 w-5" />
-                </button>
-              )}
-              {onShare && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onShare(service);
-                  }}
-                  className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                  title="Share service"
-                >
-                  <Globe className="h-5 w-5" />
                 </button>
               )}
             </div>
@@ -1744,6 +1937,123 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
                 ))}
               </div>
             </div>
+            
+            {/* DSS Fields - Detailed View */}
+            <div className="mb-8 bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl p-6">
+              <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Service Details
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {service.years_in_business && (
+                  <div className="bg-white rounded-xl p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 mb-1">Years in Business</div>
+                        <div className="text-2xl font-bold text-blue-600">{service.years_in_business}</div>
+                        <div className="text-xs text-gray-500">Years of excellence</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {service.service_tier && (
+                  <div className="bg-white rounded-xl p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        service.service_tier === 'premium' ? 'bg-purple-100' :
+                        service.service_tier === 'standard' ? 'bg-blue-100' :
+                        'bg-gray-100'
+                      }`}>
+                        <svg className={`h-5 w-5 ${
+                          service.service_tier === 'premium' ? 'text-purple-600' :
+                          service.service_tier === 'standard' ? 'text-blue-600' :
+                          'text-gray-600'
+                        }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 mb-1">Service Tier</div>
+                        <div className={`text-xl font-bold capitalize ${
+                          service.service_tier === 'premium' ? 'text-purple-600' :
+                          service.service_tier === 'standard' ? 'text-blue-600' :
+                          'text-gray-600'
+                        }`}>
+                          {service.service_tier}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {service.service_tier === 'premium' ? 'Top-tier service' :
+                           service.service_tier === 'standard' ? 'Quality service' :
+                           'Essential service'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {service.availability && (
+                  <div className="bg-white rounded-xl p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 mb-1">Availability</div>
+                        <div className="text-lg font-semibold text-green-600">{service.availability}</div>
+                        <div className="text-xs text-gray-500">Current status</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {service.wedding_styles && service.wedding_styles.length > 0 && (
+                <div className="mt-4 bg-white rounded-xl p-4 shadow-sm">
+                  <div className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <svg className="h-4 w-4 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    Wedding Styles Specialization
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {service.wedding_styles.map((style, idx) => (
+                      <span key={idx} className="px-3 py-1.5 bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 rounded-full text-sm font-medium">
+                        {style}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {service.cultural_specialties && service.cultural_specialties.length > 0 && (
+                <div className="mt-4 bg-white rounded-xl p-4 shadow-sm">
+                  <div className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Cultural Specialties
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {service.cultural_specialties.map((specialty, idx) => (
+                      <span key={idx} className="px-3 py-1.5 bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-700 rounded-full text-sm font-medium">
+                        {specialty}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="mb-8">
               <h4 className="font-semibold text-gray-900 mb-2">Gallery</h4>
               <div className="flex gap-2 overflow-x-auto">
@@ -1882,7 +2192,6 @@ const generateContactInfo = (vendorId: string) => {
   
   return { phone, email, website };
 };
-
 
 
 

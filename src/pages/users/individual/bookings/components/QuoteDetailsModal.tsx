@@ -97,7 +97,89 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
     setError(null);
     
     try {
-      // First check if booking already has mock quote data from our simulation
+      // � DEBUG: Log the entire booking object to see what fields we have
+      console.log('🔍 [QuoteModal] Full booking object:', booking);
+      console.log('🔍 [QuoteModal] Booking keys:', Object.keys(booking));
+      console.log('🔍 [QuoteModal] booking.vendorNotes:', (booking as any)?.vendorNotes);
+      console.log('🔍 [QuoteModal] booking.vendor_notes:', (booking as any)?.vendor_notes);
+      console.log('🔍 [QuoteModal] booking.serviceItems:', (booking as any)?.serviceItems);
+      console.log('🔍 [QuoteModal] booking.service_items:', (booking as any)?.service_items);
+      
+      // �🔧 PRIORITY 1: Check if booking has vendor_notes with real quote data
+      const vendorNotes = (booking as any)?.vendorNotes || (booking as any)?.vendor_notes;
+      
+      console.log('🔍 [QuoteModal] Extracted vendorNotes value:', vendorNotes);
+      console.log('🔍 [QuoteModal] vendorNotes type:', typeof vendorNotes);
+      
+      if (vendorNotes) {
+        console.log('📋 [QuoteModal] Found vendor_notes, attempting to parse quote data...');
+        try {
+          const parsedQuote = typeof vendorNotes === 'string' ? JSON.parse(vendorNotes) : vendorNotes;
+          console.log('✅ [QuoteModal] Successfully parsed vendor_notes:', parsedQuote);
+          
+          // Transform vendor's quote data to QuoteData interface
+          if (parsedQuote.serviceItems && Array.isArray(parsedQuote.serviceItems)) {
+            const transformedQuoteData: QuoteData = {
+              quoteNumber: parsedQuote.quoteNumber || `QT-${booking.id?.slice(-6)?.toUpperCase() || '000001'}`,
+              issueDate: new Date(parsedQuote.timestamp || booking.createdAt || Date.now()).toLocaleDateString(),
+              validUntil: parsedQuote.validUntil || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+              serviceItems: parsedQuote.serviceItems.map((item: any, index: number) => ({
+                id: item.id || index + 1,
+                service: item.name || item.service,
+                description: item.description || '',
+                quantity: item.quantity || 1,
+                unitPrice: item.unitPrice || 0,
+                total: item.total || (item.unitPrice * item.quantity)
+              })),
+              additionalCosts: parsedQuote.additionalCosts || [],
+              paymentTerms: {
+                downpayment: parsedQuote.pricing?.downpayment || booking.downpaymentAmount,
+                downpaymentPercentage: parsedQuote.paymentTerms?.downpayment || 30,
+                finalPayment: parsedQuote.pricing?.balance || booking.remainingBalance,
+                paymentSchedule: parsedQuote.paymentSchedule || [
+                  {
+                    stage: 'Booking Confirmation',
+                    percentage: parsedQuote.paymentTerms?.downpayment || 30,
+                    amount: parsedQuote.pricing?.downpayment || booking.downpaymentAmount || 0
+                  },
+                  {
+                    stage: 'Final Payment',
+                    percentage: parsedQuote.paymentTerms?.balance || 70,
+                    amount: parsedQuote.pricing?.balance || booking.remainingBalance || 0
+                  }
+                ],
+                paymentMethods: parsedQuote.paymentMethods || ['Bank Transfer', 'GCash', 'PayMaya', 'Cash']
+              },
+              inclusions: parsedQuote.inclusions || [],
+              exclusions: parsedQuote.exclusions || [],
+              termsAndConditions: parsedQuote.terms || [parsedQuote.message || ''],
+              vendorContact: {
+                name: booking.vendorName || 'Vendor',
+                email: booking.vendorEmail || 'vendor@example.com',
+                phone: booking.vendorPhone || '+63 912 345 6789',
+                businessAddress: booking.eventLocation || 'Metro Manila'
+              }
+            };
+            
+            console.log('✅ [QuoteModal] Transformed quote data with', transformedQuoteData.serviceItems.length, 'service items');
+            setQuoteData(transformedQuoteData);
+            setLoading(false);
+            return;
+          }
+        } catch (parseError) {
+          console.error('⚠️ [QuoteModal] Failed to parse vendor_notes:', parseError);
+          console.error('⚠️ [QuoteModal] Raw vendor_notes value:', vendorNotes);
+          // Continue to next fallback
+        }
+      } else {
+        console.warn('⚠️ [QuoteModal] No vendor_notes found in booking!');
+        console.warn('⚠️ [QuoteModal] This means either:');
+        console.warn('   1. Backend did not store vendor_notes when quote was sent');
+        console.warn('   2. Backend did not return vendor_notes in API response');
+        console.warn('   3. Data mapper did not include vendor_notes in booking object');
+      }
+      
+      // Second fallback: Check if booking already has mock quote data from our simulation
       if ((booking as any)?.quoteData) {
         console.log('📋 [QuoteModal] Using mock quote data from booking:', (booking as any).quoteData);
         const mockData = (booking as any).quoteData;
@@ -352,42 +434,54 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
             </div>
           </div>
 
-          {/* Service Breakdown */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Service Breakdown</h3>
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Service</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-900">Qty</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-900">Unit Price</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-900">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {quoteDetails.serviceItems.map((item: ServiceItem) => (
-                    <tr key={item.id} className="border-t border-gray-100">
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="font-medium text-gray-900">{item.service}</p>
-                          <p className="text-sm text-gray-600">{item.description}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center text-gray-700">{item.quantity}</td>
-                      <td className="px-4 py-3 text-right text-gray-700">₱{item.unitPrice.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-900">₱{item.total.toLocaleString()}</td>
+          {/* Service Breakdown - ENHANCED VISIBILITY */}
+          <div className="mb-8 bg-gradient-to-r from-pink-50 to-purple-50 p-6 rounded-xl border-2 border-pink-200">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <DollarSign className="w-6 h-6 text-pink-600" />
+              Service Breakdown
+            </h3>
+            
+            {quoteDetails.serviceItems && quoteDetails.serviceItems.length > 0 ? (
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-md">
+                <table className="w-full">
+                  <thead className="bg-gradient-to-r from-pink-100 to-purple-100">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-bold text-gray-900">Service</th>
+                      <th className="px-4 py-3 text-center text-sm font-bold text-gray-900">Qty</th>
+                      <th className="px-4 py-3 text-right text-sm font-bold text-gray-900">Unit Price</th>
+                      <th className="px-4 py-3 text-right text-sm font-bold text-gray-900">Total</th>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-gray-50">
-                  <tr>
-                    <td colSpan={3} className="px-4 py-3 text-right font-medium text-gray-900">Subtotal:</td>
-                    <td className="px-4 py-3 text-right font-bold text-gray-900">₱{subtotal.toLocaleString()}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {quoteDetails.serviceItems.map((item: ServiceItem) => (
+                      <tr key={item.id} className="border-t border-gray-100 hover:bg-pink-50 transition-colors">
+                        <td className="px-4 py-4">
+                          <div>
+                            <p className="font-bold text-gray-900 text-base">{item.service}</p>
+                            <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-center text-gray-700 font-semibold">{item.quantity}</td>
+                        <td className="px-4 py-4 text-right text-gray-700 font-semibold">₱{item.unitPrice.toLocaleString()}</td>
+                        <td className="px-4 py-4 text-right font-bold text-pink-600 text-lg">₱{item.total.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gradient-to-r from-green-50 to-emerald-50 border-t-2 border-green-300">
+                    <tr>
+                      <td colSpan={3} className="px-4 py-4 text-right font-bold text-gray-900 text-lg">Subtotal:</td>
+                      <td className="px-4 py-4 text-right font-bold text-green-600 text-xl">₱{subtotal.toLocaleString()}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ) : (
+              <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-6 text-center">
+                <AlertCircle className="w-12 h-12 text-yellow-600 mx-auto mb-3" />
+                <p className="text-gray-700 font-medium">No service items found in this quote</p>
+                <p className="text-sm text-gray-600 mt-2">Please contact the vendor for detailed pricing breakdown</p>
+              </div>
+            )}
           </div>
 
           {/* Optional Add-ons */}

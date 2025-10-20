@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useUnifiedMessaging } from '../../../../shared/contexts/UnifiedMessagingContext';
 import { InstructionDialog, weddingPlanningInstructions, quickStartInstructions } from '../../../../shared/components/InstructionDialog';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
+import { centralizedBookingAPI as bookingApiService } from '../../../../services/api/CentralizedBookingAPI';
 import {
   Logo,
   Navigation,
@@ -17,10 +19,11 @@ export const CoupleHeader: React.FC = () => {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
   const [instructionType, setInstructionType] = useState<'full' | 'quick'>('full');
-  const [notificationCount] = useState(3);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   // Hooks
-  const { isFloatingChatOpen, setFloatingChatOpen } = useUnifiedMessaging();
+  const { user } = useAuth();
+  const { setFloatingChatOpen } = useUnifiedMessaging();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -36,6 +39,59 @@ export const CoupleHeader: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Fetch pending bookings count for notification badge
+  useEffect(() => {
+    const fetchNotificationCount = async () => {
+      if (!user?.id) {
+        console.log('⚠️ [CoupleHeader] No authenticated user, notification count = 0');
+        setNotificationCount(0);
+        return;
+      }
+
+      try {
+        console.log('🔔 [CoupleHeader] Fetching notification count for user:', user.id);
+        
+        // Fetch all bookings to count pending actions
+        const response = await bookingApiService.getCoupleBookings(user.id, {
+          page: 1,
+          limit: 100,
+          sortBy: 'created_at',
+          sortOrder: 'desc'
+        });
+
+        if (response.bookings && response.bookings.length > 0) {
+          // Count bookings that require action from the couple
+          // Pending statuses: quote_sent (needs review), contract_sent (needs signing), etc.
+          const pendingCount = response.bookings.filter((booking: any) => 
+            booking.status === 'quote_sent' || 
+            booking.status === 'contract_sent' ||
+            booking.status === 'downpayment_requested' ||
+            booking.status === 'final_payment_due'
+          ).length;
+
+          console.log('✅ [CoupleHeader] Notification count calculated:', {
+            total: response.bookings.length,
+            pending: pendingCount
+          });
+
+          setNotificationCount(pendingCount);
+        } else {
+          console.log('📭 [CoupleHeader] No bookings found');
+          setNotificationCount(0);
+        }
+      } catch (error) {
+        console.error('❌ [CoupleHeader] Error fetching notification count:', error);
+        setNotificationCount(0);
+      }
+    };
+
+    // Fetch immediately and then every 2 minutes
+    fetchNotificationCount();
+    const interval = setInterval(fetchNotificationCount, 120000); // 2 minutes
+
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   // Event handlers
   const handleInstructionOpen = (type: 'full' | 'quick') => {

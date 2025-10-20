@@ -263,11 +263,11 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
                     </div>
                     <div>
                       <span className="text-gray-600">Location:</span>
-                      <span className="ml-2 font-medium">{booking.eventLocation || 'TBD'}</span>
+                      <span className="ml-2 font-medium">{booking.eventLocation || 'Location not provided'}</span>
                     </div>
                     <div>
                       <span className="text-gray-600">Guests:</span>
-                      <span className="ml-2 font-medium">{booking.guestCount || 'TBD'}</span>
+                      <span className="ml-2 font-medium">{booking.guestCount || 'Not specified'}</span>
                     </div>
                     <div>
                       <span className="text-gray-600">Budget Range:</span>

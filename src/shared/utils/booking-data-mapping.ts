@@ -29,6 +29,7 @@ export interface DatabaseBooking {
   total_amount: string; // Numeric as string from DB
   deposit_amount: string; // Numeric as string from DB
   notes?: string;
+  vendor_notes?: string; // Quote data stored by vendor
   response_message?: string;
   created_at: string;
   updated_at: string;
@@ -63,9 +64,13 @@ export interface UIBooking {
   coupleName: string;
   contactEmail: string;
   contactPhone?: string;
+  contactPerson?: string;
+  serviceId?: string;
+  serviceName?: string;
   serviceType: string;
   eventDate: string;
   eventTime?: string;
+  eventEndTime?: string;
   eventLocation?: string;
   eventAddress?: {
     street?: string;
@@ -73,6 +78,7 @@ export interface UIBooking {
     province?: string;
     coordinates?: { lat: number; lng: number };
   };
+  venueDetails?: string;
   guestCount?: number;
   specialRequests?: string;
   status: BookingStatus;
@@ -84,7 +90,21 @@ export interface UIBooking {
   remainingBalance: number;
   budgetRange?: string;
   preferredContactMethod: string;
+  bookingReference?: string;
   notes?: string;
+  vendorNotes?: string; // Quote data stored by vendor when quote is sent (JSON string)
+  quoteData?: any; // Parsed quote JSON from notes
+  hasQuote?: boolean;
+  // 🔥 CRITICAL: Parsed serviceItems for itemized quote display
+  serviceItems?: Array<{
+    id: string | number;
+    name: string;
+    description?: string;
+    category?: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }>;
   cancelledAt?: string;
   cancelledReason?: string;
   createdAt: string;
@@ -96,6 +116,9 @@ export interface UIBooking {
     totalPaid: string;
     remainingBalance: string;
     downpaymentAmount: string;
+    eventDate: string;
+    eventTime?: string;
+    eventEndTime?: string;
   };
   responseMessage?: string;
 }
@@ -185,6 +208,14 @@ export function mapApiBookingToUI(apiBooking: ApiBooking, additionalData?: Parti
       totalPaid: formatPHP(totalPaid),
       remainingBalance: formatPHP(apiBooking.remainingBalance),
       downpaymentAmount: formatPHP(apiBooking.downPayment),
+      eventDate: new Date(apiBooking.eventDate).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }),
+      eventTime: undefined,
+      eventEndTime: undefined,
     },
     // Merge any additional data provided
     ...additionalData
@@ -193,13 +224,73 @@ export function mapApiBookingToUI(apiBooking: ApiBooking, additionalData?: Parti
 
 /**
  * Maps database booking to UI format (for direct database queries)
+ * NOW WITH FULL FIELD SUPPORT AND QUOTE PARSING
  */
 export function mapDatabaseBookingToUI(dbBooking: DatabaseBooking): UIBooking {
+  console.log('🔄 [BookingMapping] Mapping database booking:', {
+    id: dbBooking.id,
+    status: dbBooking.status,
+    total_amount: dbBooking.total_amount,
+    has_notes: !!dbBooking.notes,
+    notes_preview: dbBooking.notes?.substring(0, 50)
+  });
+
   const totalAmount = parseFloat(dbBooking.total_amount || '0');
   const depositAmount = parseFloat(dbBooking.deposit_amount || '0');
   const totalPaid = depositAmount; // Assume only deposit is paid initially
   const remainingBalance = totalAmount - totalPaid;
   const paymentProgressPercentage = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
+
+  // Parse quote from notes if exists
+  let quoteData = null;
+  let hasQuote = false;
+  let displayStatus = dbBooking.status;
+  
+  if (dbBooking.notes && dbBooking.notes.includes('QUOTE_SENT:')) {
+    try {
+      const jsonStart = dbBooking.notes.indexOf('{');
+      const jsonEnd = dbBooking.notes.lastIndexOf('}') + 1;
+      if (jsonStart !== -1 && jsonEnd > jsonStart) {
+        const quoteJson = dbBooking.notes.substring(jsonStart, jsonEnd);
+        quoteData = JSON.parse(quoteJson);
+        hasQuote = true;
+        // If status is still 'request' but has quote, show as quote_sent
+        if (displayStatus === 'request') {
+          displayStatus = 'quote_sent';
+        }
+        console.log('✅ [BookingMapping] Quote parsed successfully:', {
+          quoteNumber: quoteData.quoteNumber,
+          total: quoteData.pricing?.total
+        });
+      }
+    } catch (error) {
+      console.error('❌ [BookingMapping] Failed to parse quote JSON:', error);
+    }
+  }
+
+  // Format event date and time
+  const formattedEventDate = new Date(dbBooking.event_date).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const formattedEventTime = dbBooking.event_time 
+    ? new Date(`2000-01-01T${dbBooking.event_time}`).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      })
+    : undefined;
+
+  const formattedEventEndTime = (dbBooking as any).event_end_time 
+    ? new Date(`2000-01-01T${(dbBooking as any).event_end_time}`).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      })
+    : undefined;
 
   return {
     id: dbBooking.id.toString(),
@@ -207,29 +298,68 @@ export function mapDatabaseBookingToUI(dbBooking: DatabaseBooking): UIBooking {
     vendorName: dbBooking.vendor_name || 'Unknown Vendor',
     coupleId: dbBooking.couple_id,
     coupleName: dbBooking.couple_name,
-    contactEmail: '', // Not in database
+    contactEmail: (dbBooking as any).contact_email || dbBooking.couple_name || '',
     contactPhone: dbBooking.contact_phone,
+    contactPerson: (dbBooking as any).contact_person,
+    serviceId: dbBooking.service_id,
+    serviceName: (dbBooking as any).service_name,
     serviceType: dbBooking.service_type || 'Unknown Service',
     eventDate: dbBooking.event_date,
     eventTime: dbBooking.event_time,
-    eventLocation: dbBooking.event_location,
+    eventEndTime: (dbBooking as any).event_end_time,
+    eventLocation: dbBooking.event_location || 'TBD',
+    venueDetails: (dbBooking as any).venue_details,
     guestCount: dbBooking.guest_count,
     specialRequests: dbBooking.special_requests,
-    status: STATUS_MAPPING[dbBooking.status as keyof typeof STATUS_MAPPING] || dbBooking.status as any,
-    totalAmount,
-    downpaymentAmount: depositAmount,
+    status: STATUS_MAPPING[displayStatus as keyof typeof STATUS_MAPPING] || displayStatus as any,
+    quoteData,
+    hasQuote,
+    totalAmount: quoteData?.pricing?.total || totalAmount,
+    downpaymentAmount: quoteData?.pricing?.downpayment || depositAmount,
     totalPaid,
-    remainingBalance,
+    remainingBalance: quoteData?.pricing?.balance || remainingBalance,
     budgetRange: dbBooking.budget_range,
     preferredContactMethod: dbBooking.preferred_contact_method || 'email',
+    bookingReference: (dbBooking as any).booking_reference || `WB-${dbBooking.id.toString().slice(-6)}`,
+    notes: dbBooking.notes,
+    vendorNotes: (dbBooking as any).vendor_notes, // Quote data from vendor
+    
+    // Parse serviceItems from vendor_notes for easier access
+    serviceItems: (() => {
+      const vendorNotes = (dbBooking as any).vendor_notes;
+      if (vendorNotes) {
+        try {
+          const parsed = typeof vendorNotes === 'string' ? JSON.parse(vendorNotes) : vendorNotes;
+          if (parsed.serviceItems && Array.isArray(parsed.serviceItems)) {
+            return parsed.serviceItems.map((item: any) => ({
+              id: item.id,
+              name: item.name || item.service,
+              description: item.description,
+              category: item.category,
+              quantity: item.quantity || 1,
+              unitPrice: item.unitPrice || item.unit_price || 0,
+              total: item.total || (item.unitPrice * item.quantity)
+            }));
+          }
+        } catch (error) {
+          console.error('❌ [Mapping] Failed to parse vendor_notes serviceItems:', error);
+        }
+      }
+      return undefined;
+    })(),
+    
+    responseMessage: dbBooking.response_message,
     createdAt: dbBooking.created_at,
     updatedAt: dbBooking.updated_at,
     paymentProgressPercentage,
     formatted: {
-      totalAmount: formatPHP(totalAmount),
+      totalAmount: formatPHP(quoteData?.pricing?.total || totalAmount),
       totalPaid: formatPHP(totalPaid),
-      remainingBalance: formatPHP(remainingBalance),
-      downpaymentAmount: formatPHP(depositAmount),
+      remainingBalance: formatPHP(quoteData?.pricing?.balance || remainingBalance),
+      downpaymentAmount: formatPHP(quoteData?.pricing?.downpayment || depositAmount),
+      eventDate: formattedEventDate,
+      eventTime: formattedEventTime,
+      eventEndTime: formattedEventEndTime,
     }
   };
 }
@@ -374,20 +504,30 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
     source: booking.amount ? 'amount' : booking.final_price ? 'final_price' : totalAmount > 0 ? 'fallback' : 'other'
   });
 
-  // Enhanced service name and type mapping
+  // Enhanced service name and type mapping with 'other' handling
   const serviceName = booking.service_name || booking.serviceName || 'Wedding Service';
-  
-  // Check response message for more context if available
   const responseMessage = booking.response_message || '';
-  const inferredServiceType = booking.service_type || booking.serviceType || 
+  const rawServiceType = booking.service_type || booking.serviceType || '';
+
+  // Check response message for more context if available
+  // DO NOT USE 'other' as a valid service type - treat it as empty
+  const serviceTypeFromData = (rawServiceType && rawServiceType !== 'other') ? rawServiceType : '';
+
+  const inferredServiceType = serviceTypeFromData ||
+    // Try to infer from response message
     (responseMessage.includes('Hair') || responseMessage.includes('Makeup') ? 'Beauty Services' :
+     responseMessage.includes('DJ') || responseMessage.includes('Music') ? 'DJ & Music' :
+     responseMessage.includes('Photo') ? 'Photography' :
+     responseMessage.includes('Planning') ? 'Wedding Planning' :
+     responseMessage.includes('Decoration') || responseMessage.includes('Floral') ? 'Decoration' :
+     // Try to infer from service name
      serviceName.includes('Hair') || serviceName.includes('Makeup') ? 'Beauty Services' :
-     serviceName.includes('Cake') ? 'Catering' :
+     serviceName.includes('Cake') || serviceName.includes('Catering') ? 'Catering' :
      serviceName.includes('Photo') ? 'Photography' :
-     serviceName.includes('DJ') || serviceName.includes('Music') ? 'Music' :
-     serviceName.includes('Planning') ? 'Wedding Planning' :
-     serviceName.includes('Decoration') ? 'Decoration' :
-     'Wedding Service');
+     serviceName.includes('DJ') || serviceName.includes('Music') || serviceName.includes('Sound') ? 'DJ & Music' :
+     serviceName.includes('Planning') || serviceName.includes('Coordinator') ? 'Wedding Planning' :
+     serviceName.includes('Decoration') || serviceName.includes('Floral') ? 'Decoration' :
+     '');  // Empty string - will be filled by vendor mapping below
 
   // Enhanced vendor name mapping with fallback lookup
   let vendorName = booking.vendor_name || booking.vendorName;
@@ -403,6 +543,65 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
     vendorName = vendorIdToName[booking.vendor_id] || `Vendor ${booking.vendor_id}`;
   }
   vendorName = vendorName || 'Wedding Vendor';
+
+  // ENHANCED: Map vendors to services when service type is still unknown or 'other'
+  let finalServiceType = inferredServiceType;
+
+  if (!finalServiceType || finalServiceType === 'Wedding Service' || finalServiceType === 'other') {
+    const vendorServiceMap: Record<string, string> = {
+      // Known vendors with 'other' or missing service type
+      'Test Business': 'Event Services',
+      'Premium Event Services': 'Event Planning',
+      'Beltran Sound Systems': 'DJ & Music',
+      'Perfect Weddings Co.': 'Wedding Planning',
+      'Creative Designs Studio': 'Decoration & Design',
+      'Elite Wedding Planners': 'Wedding Planning',
+      'asdlkjsalkdj': 'Event Services',
+      'sadasdas': 'Event Services',
+    };
+    
+    // First check exact vendor name match
+    finalServiceType = vendorServiceMap[vendorName];
+    
+    // Then check vendor name contains keywords
+    if (!finalServiceType) {
+      const keywordMap: Record<string, string> = {
+        'Sound': 'DJ & Music',
+        'DJ': 'DJ & Music',
+        'Music': 'DJ & Music',
+        'Audio': 'DJ & Music',
+        'Photo': 'Photography',
+        'Video': 'Videography',
+        'Planning': 'Wedding Planning',
+        'Planner': 'Wedding Planning',
+        'Coordinator': 'Wedding Planning',
+        'Catering': 'Catering',
+        'Cake': 'Catering',
+        'Decoration': 'Decoration',
+        'Floral': 'Decoration',
+        'Flowers': 'Decoration',
+        'Beauty': 'Beauty Services',
+        'Makeup': 'Beauty Services',
+        'Hair': 'Beauty Services'
+      };
+
+      for (const [keyword, serviceType] of Object.entries(keywordMap)) {
+        if (vendorName.toLowerCase().includes(keyword.toLowerCase())) {
+          finalServiceType = serviceType;
+          console.log(`🔧 [SERVICE INFERENCE] Vendor "${vendorName}" contains "${keyword}" → "${serviceType}"`);
+          break;
+        }
+      }
+    }
+    
+    // Ultimate fallback
+    if (!finalServiceType) {
+      finalServiceType = 'Event Services';
+      console.warn(`⚠️ [SERVICE INFERENCE] Could not determine service for vendor "${vendorName}", using "Event Services"`);
+    } else {
+      console.log(`✅ [SERVICE INFERENCE] Mapped vendor "${vendorName}" to service "${finalServiceType}"`);
+    }
+  }
 
   // Enhanced status processing - check notes field for backend's enhanced status system
   let processedStatus = booking.status;
@@ -426,6 +625,42 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
     hasNotes: !!booking.notes,
     notesPrefix: booking.notes?.substring(0, 20) + '...'
   });
+
+  // 🔥 CRITICAL: Parse serviceItems from vendor_notes for itemized quote display
+  let serviceItems = undefined;
+  let vendorNotes = booking.vendor_notes || booking.vendorNotes;
+  
+  if (vendorNotes) {
+    console.log('📋 [mapComprehensiveBookingToUI] Found vendor_notes for booking', booking.id, {
+      length: vendorNotes.length,
+      preview: vendorNotes.substring(0, 100)
+    });
+    
+    try {
+      const parsed = typeof vendorNotes === 'string' ? JSON.parse(vendorNotes) : vendorNotes;
+      console.log('✅ [mapComprehensiveBookingToUI] Parsed vendor_notes:', {
+        hasServiceItems: !!parsed.serviceItems,
+        itemCount: parsed.serviceItems?.length
+      });
+      
+      if (parsed.serviceItems && Array.isArray(parsed.serviceItems)) {
+        serviceItems = parsed.serviceItems.map((item: any) => ({
+          id: item.id,
+          name: item.name || item.service,
+          description: item.description,
+          category: item.category,
+          quantity: item.quantity || 1,
+          unitPrice: item.unitPrice || item.unit_price || 0,
+          total: item.total || (item.unitPrice * item.quantity)
+        }));
+        console.log('✅ [mapComprehensiveBookingToUI] Mapped', serviceItems.length, 'service items');
+      }
+    } catch (error) {
+      console.error('❌ [mapComprehensiveBookingToUI] Failed to parse vendor_notes:', error);
+    }
+  } else {
+    console.warn('⚠️ [mapComprehensiveBookingToUI] No vendor_notes found for booking', booking.id);
+  }
 
   const mapped = {
     id: booking.id?.toString() || '',
@@ -453,11 +688,24 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
     updatedAt: booking.updated_at || booking.updatedAt || '',
     paymentProgressPercentage,
     paymentCount: 0,
+    
+    // 🔥 CRITICAL: Include vendor_notes and parsed serviceItems
+    vendorNotes,
+    serviceItems,
+    
     formatted: {
       totalAmount: formatPHP(totalAmount),
       totalPaid: formatPHP(totalPaid),
       remainingBalance: formatPHP(Math.max(totalAmount - totalPaid, 0)),
       downpaymentAmount: formatPHP(Number(booking.downpayment_amount) || Number(booking.downPayment) || Math.round(totalAmount * 0.3)),
+      eventDate: new Date(booking.event_date || booking.eventDate).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }),
+      eventTime: undefined,
+      eventEndTime: undefined,
     },
     responseMessage: booking.vendor_response || booking.responseMessage,
     quoteAmount: booking.quoted_price || booking.quoteAmount,
@@ -519,6 +767,14 @@ export function mapVendorBookingToUI(apiBooking: any): UIBooking {
       remainingBalance: remainingBalance > 0 ? formatPHP(remainingBalance) : '₱0',
       downpaymentAmount: (apiBooking.downpayment_amount || apiBooking.downPayment || apiBooking.deposit) ? 
         formatPHP(apiBooking.downpayment_amount || apiBooking.downPayment || apiBooking.deposit) : '₱0',
+      eventDate: new Date(apiBooking.event_date || apiBooking.eventDate || apiBooking.bookingDate).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }),
+      eventTime: undefined,
+      eventEndTime: undefined,
     },
     responseMessage: apiBooking.vendor_response || apiBooking.responseMessage,
     quoteAmount: apiBooking.quoted_price || apiBooking.quoteAmount || apiBooking.amount,

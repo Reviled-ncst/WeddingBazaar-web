@@ -261,9 +261,21 @@ export interface Booking {
   total_paid: number;
   remaining_balance?: number;
   
+  // Itemized services (parsed from vendor_notes or stored separately)
+  service_items?: Array<{
+    id: string | number;
+    name: string;
+    description?: string;
+    category?: string;
+    quantity: number;
+    unit_price: number;
+    total: number;
+  }>;
+  
   // Status and workflow
   status: BookingStatus;
   vendor_response?: string;
+  vendor_notes?: string; // JSON string containing detailed quote data with serviceItems
   response_date?: string; // ISO date string
   confirmation_date?: string; // ISO date string
   completion_date?: string; // ISO date string

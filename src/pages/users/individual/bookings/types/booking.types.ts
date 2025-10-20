@@ -57,8 +57,21 @@ export interface Booking {
   downpaymentAmount?: number | null;
   remainingBalance?: number | null;
   totalPaid?: number | null;
+  
+  // Itemized services (parsed from vendor_notes for easier access)
+  serviceItems?: Array<{
+    id: string | number;
+    name: string;
+    description?: string;
+    category?: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }>;
+  
   status: BookingStatus;
   responseMessage?: string | null; // vendor_response
+  vendorNotes?: string | null; // JSON string containing detailed quote data with serviceItems
   paymentProgressPercentage?: number; // computed from totalPaid/totalAmount
   formatted?: {
     totalAmount?: string;

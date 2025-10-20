@@ -13,7 +13,6 @@ import {
   Edit,
   CheckCircle,
   DollarSign,
-  Camera,
   Download,
   AlertTriangle,
   Info,
@@ -23,7 +22,9 @@ import {
   Gift,
   Bookmark,
   Zap,
-  Settings
+  Settings,
+  Package,
+  Receipt
 } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
 
@@ -37,6 +38,7 @@ interface VendorBooking {
   serviceType: string;
   eventDate: string;
   eventTime?: string;
+  eventEndTime?: string;
   eventLocation?: string;
   guestCount?: number;
   specialRequests?: string;
@@ -52,10 +54,19 @@ interface VendorBooking {
   preferredContactMethod?: string;
   budgetRange?: string;
   responseMessage?: string;
+  contactPerson?: string;
+  estimatedCostMin?: number;
+  estimatedCostMax?: number;
+  depositAmount?: number;
+  downpaymentAmount?: number;
+  quoteSentDate?: string;
+  paymentStatus?: string;
+  vendorNotes?: string;
   formatted?: {
     totalAmount?: string;
     totalPaid?: string;
     remainingBalance?: string;
+    downpaymentAmount?: string;
   };
 }
 
@@ -96,11 +107,17 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
 
   // Utility function to get display-friendly couple name with real user data mapping
   const getDisplayCoupleName = (booking: VendorBooking): string => {
+    // PRIORITY 1: Use contact person name directly (from booking form)
+    if (booking.contactPerson && booking.contactPerson.trim() !== '' && booking.contactPerson !== 'Unknown') {
+      return booking.contactPerson;
+    }
+
+    // PRIORITY 2: Use couple name if available
     if (booking.coupleName && booking.coupleName !== 'Unknown Couple') {
       return booking.coupleName;
     }
     
-    // Map known couple IDs to their actual names from the users database  
+    // PRIORITY 3: Map known couple IDs to their actual names from the users database  
     if (booking.coupleId) {
       const coupleIdNameMap: Record<string, string> = {
         '1-2025-001': 'Couple1 One',
@@ -143,13 +160,7 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
       return `Couple ${booking.coupleId}`;
     }
     
-    // Try to generate from email
-    if (booking.contactEmail && booking.contactEmail !== 'no-email@example.com') {
-      const emailName = booking.contactEmail.split('@')[0];
-      const cleanName = emailName.replace(/[._-]/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
-      return cleanName.includes('test') ? 'Wedding Client' : cleanName;
-    }
-    
+    // FALLBACK: Use generic name (DO NOT extract from email - could be vendor's email!)
     return 'Wedding Client';
   };
 
@@ -166,19 +177,6 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
 
   const config = statusConfig[booking.status as keyof typeof statusConfig] || statusConfig.draft;
   const StatusIcon = config.icon;
-
-  // Payment Progress Component
-  const PaymentProgress = ({ totalPaid, totalAmount }: { totalPaid: number; totalAmount: number }) => {
-    const percentage = Math.min((totalPaid / totalAmount) * 100, 100);
-    return (
-      <div className="w-full bg-gray-200 rounded-full h-3">
-        <div 
-          className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300"
-          style={{ width: `${percentage}%` }}
-        ></div>
-      </div>
-    );
-  };
 
   const getVendorActions = () => {
     const actions = [];
@@ -240,93 +238,106 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
   const vendorActions = getVendorActions();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[95vh] overflow-y-auto">
-        {/* Header */}
-        <div className="border-b border-gray-200 p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-4">
-              <div className={cn("p-3 rounded-xl", config.color)}>
-                <StatusIcon className="w-6 h-6" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-gradient-to-br from-white via-rose-50/30 to-pink-50/30 rounded-3xl max-w-6xl w-full max-h-[95vh] overflow-hidden shadow-2xl border border-gray-100">
+        {/* Premium Header */}
+        <div className="bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 p-8 relative overflow-hidden">
+          <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
+          <div className="relative z-10 flex items-start justify-between">
+            <div className="flex items-start gap-5">
+              <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border border-white/30">
+                <StatusIcon className="w-8 h-8 text-white" />
               </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+              <div className="text-white">
+                <h2 className="text-3xl font-black tracking-tight mb-2">
                   {displayCoupleName}
                 </h2>
-                <p className="text-lg text-rose-600 font-medium">{booking.serviceType}</p>
-                <div className="flex items-center gap-4 mt-2">
-                  <span className={cn("px-3 py-1 rounded-lg text-sm font-medium", config.color)}>
+                <p className="text-xl text-white/90 font-semibold mb-3">{booking.serviceType}</p>
+                <div className="flex items-center gap-3">
+                  <span className="px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-sm font-bold border border-white/30">
                     {config.label}
                   </span>
-                  <span className="text-sm text-gray-500">
-                    Booking #{String(booking.id).slice(-8).toUpperCase()}
+                  <span className="text-sm text-white/80 font-medium">
+                    ID: {String(booking.id).slice(-8).toUpperCase()}
                   </span>
                 </div>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-3 hover:bg-white/20 backdrop-blur-sm rounded-xl transition-all duration-200 border border-white/20 hover:border-white/40"
               title="Close modal"
               aria-label="Close booking details"
             >
-              <X className="w-6 h-6" />
+              <X className="w-6 h-6 text-white" />
             </button>
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="border-b border-gray-200 px-6">
-          <nav className="flex space-x-8">
+        {/* Modern Tab Navigation */}
+        <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-8 sticky top-0 z-20">
+          <nav className="flex space-x-1">
             <button
               onClick={() => setActiveTab('client')}
               className={cn(
-                "py-4 px-1 border-b-2 font-medium text-sm",
+                "py-4 px-6 font-bold text-sm relative transition-all duration-200",
                 activeTab === 'client'
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "text-pink-600"
+                  : "text-gray-500 hover:text-gray-700"
               )}
             >
               Client Information
+              {activeTab === 'client' && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-pink-500 rounded-t-full"></div>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('event')}
               className={cn(
-                "py-4 px-1 border-b-2 font-medium text-sm",
+                "py-4 px-6 font-bold text-sm relative transition-all duration-200",
                 activeTab === 'event'
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "text-pink-600"
+                  : "text-gray-500 hover:text-gray-700"
               )}
             >
               Event Details
+              {activeTab === 'event' && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-pink-500 rounded-t-full"></div>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('business')}
               className={cn(
-                "py-4 px-1 border-b-2 font-medium text-sm",
+                "py-4 px-6 font-bold text-sm relative transition-all duration-200",
                 activeTab === 'business'
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "text-pink-600"
+                  : "text-gray-500 hover:text-gray-700"
               )}
             >
-              Business & Payment
+              Quote & Pricing
+              {activeTab === 'business' && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-pink-500 rounded-t-full"></div>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('actions')}
               className={cn(
-                "py-4 px-1 border-b-2 font-medium text-sm",
+                "py-4 px-6 font-bold text-sm relative transition-all duration-200",
                 activeTab === 'actions'
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "text-pink-600"
+                  : "text-gray-500 hover:text-gray-700"
               )}
             >
               Actions
+              {activeTab === 'actions' && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-pink-500 rounded-t-full"></div>
+              )}
             </button>
           </nav>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
+        {/* Content Area with Scroll */}
+        <div className="p-8 max-h-[calc(95vh-240px)] overflow-y-auto">
           {/* Enhanced Client Information Tab */}
           {activeTab === 'client' && (
             <div className="space-y-6">
@@ -667,47 +678,120 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
               <div className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-xl p-6 border border-rose-200">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-rose-500" />
-                  Event Schedule
+                  Event Schedule & Timing
                 </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 p-4 bg-white rounded-lg border border-rose-100">
                       <Calendar className="w-5 h-5 text-rose-500" />
                       <div>
                         <p className="text-sm text-gray-600">Event Date</p>
-                        <p className="text-xl font-bold text-gray-900">{booking.eventDate}</p>
+                        <p className="text-xl font-bold text-gray-900">
+                          {new Date(booking.eventDate).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
                       </div>
                     </div>
                     
                     {booking.eventTime && (
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 p-4 bg-white rounded-lg border border-blue-100">
                         <Clock className="w-5 h-5 text-blue-500" />
                         <div>
-                          <p className="text-sm text-gray-600">Event Time</p>
+                          <p className="text-sm text-gray-600">Start Time</p>
                           <p className="text-lg font-semibold text-gray-900">{booking.eventTime}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {booking.eventEndTime && (
+                      <div className="flex items-center gap-3 p-4 bg-white rounded-lg border border-purple-100">
+                        <Clock className="w-5 h-5 text-purple-500" />
+                        <div>
+                          <p className="text-sm text-gray-600">End Time</p>
+                          <p className="text-lg font-semibold text-gray-900">{booking.eventEndTime}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Duration Calculation */}
+                    {booking.eventTime && booking.eventEndTime && (
+                      <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-200">
+                        <Timer className="w-5 h-5 text-indigo-500" />
+                        <div>
+                          <p className="text-sm text-gray-600">Duration</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {(() => {
+                              const start = new Date(`2000-01-01 ${booking.eventTime}`);
+                              const end = new Date(`2000-01-01 ${booking.eventEndTime}`);
+                              const diffMs = end.getTime() - start.getTime();
+                              const diffHrs = Math.floor(diffMs / 3600000);
+                              const diffMins = Math.floor((diffMs % 3600000) / 60000);
+                              return `${diffHrs}h ${diffMins}m`;
+                            })()}
+                          </p>
                         </div>
                       </div>
                     )}
                   </div>
                   
                   <div className="space-y-4">
-                    {booking.eventLocation && (
-                      <div className="flex items-start gap-3">
+                    {booking.eventLocation ? (
+                      <div className="flex items-start gap-3 p-4 bg-white rounded-lg border border-purple-100">
                         <MapPin className="w-5 h-5 text-purple-500 mt-1" />
                         <div>
                           <p className="text-sm text-gray-600">Event Location</p>
                           <p className="font-medium text-gray-900">{booking.eventLocation}</p>
+                          <button 
+                            onClick={() => {
+                              const address = encodeURIComponent(booking.eventLocation || 'Philippines');
+                              window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+                            }}
+                            className="mt-2 text-sm text-purple-600 hover:text-purple-700 font-medium transition-colors"
+                          >
+                            View on Map →
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <MapPin className="w-5 h-5 text-gray-400 mt-1" />
+                        <div>
+                          <p className="text-sm text-gray-600">Event Location</p>
+                          <p className="text-gray-500 italic">Location to be confirmed</p>
                         </div>
                       </div>
                     )}
                     
-                    {booking.guestCount && (
-                      <div className="flex items-center gap-3">
+                    {booking.guestCount ? (
+                      <div className="flex items-center gap-3 p-4 bg-white rounded-lg border border-green-100">
                         <User className="w-5 h-5 text-green-500" />
                         <div>
                           <p className="text-sm text-gray-600">Guest Count</p>
                           <p className="font-medium text-gray-900">{booking.guestCount} guests</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <User className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-gray-600">Guest Count</p>
+                          <p className="text-gray-500 italic">To be determined</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Contact Person */}
+                    {booking.contactPerson && (
+                      <div className="flex items-center gap-3 p-4 bg-white rounded-lg border border-yellow-100">
+                        <User className="w-5 h-5 text-yellow-600" />
+                        <div>
+                          <p className="text-sm text-gray-600">Contact Person</p>
+                          <p className="font-medium text-gray-900">{booking.contactPerson}</p>
                         </div>
                       </div>
                     )}
@@ -843,21 +927,429 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
 
           {/* Business & Payment Tab */}
           {activeTab === 'business' && (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <DollarSign className="h-8 w-8 text-green-500" />
+            <div className="space-y-6">
+              {/* Quote & Pricing Information */}
+              <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl p-6 border border-emerald-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-emerald-600" />
+                  Quote & Pricing Details
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Budget Range */}
+                  {booking.budgetRange && booking.budgetRange !== 'To be discussed' && (
+                    <div className="bg-white rounded-lg p-4 border border-emerald-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Target className="w-4 h-4 text-orange-500" />
+                        <p className="text-sm text-gray-600">Client Budget Range</p>
+                      </div>
+                      <p className="text-lg font-bold text-gray-900">{booking.budgetRange}</p>
+                    </div>
+                  )}
+
+                  {/* Estimated Cost Range - Only show if both values exist and > 0 */}
+                  {booking.estimatedCostMin && booking.estimatedCostMax && booking.estimatedCostMin > 0 && booking.estimatedCostMax > 0 && (
+                    <div className="bg-white rounded-lg p-4 border border-blue-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-4 h-4 text-blue-500" />
+                        <p className="text-sm text-gray-600">Estimated Cost Range</p>
+                      </div>
+                      <p className="text-lg font-bold text-gray-900">
+                        ₱{booking.estimatedCostMin.toLocaleString()} - ₱{booking.estimatedCostMax.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Quote Amount */}
+                  {booking.quoteAmount && booking.quoteAmount > 0 && (
+                    <div className="bg-white rounded-lg p-4 border border-purple-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-4 h-4 text-purple-500" />
+                        <p className="text-sm text-gray-600">Quote Amount</p>
+                      </div>
+                      <p className="text-lg font-bold text-purple-700">
+                        ₱{booking.quoteAmount.toLocaleString()}
+                      </p>
+                      {booking.quoteSentDate && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Sent: {new Date(booking.quoteSentDate).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Total Amount */}
+                  {booking.totalAmount && booking.totalAmount > 0 && (
+                    <div className="bg-gradient-to-r from-emerald-100 to-green-100 rounded-lg p-4 border-2 border-emerald-300">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-4 h-4 text-emerald-700" />
+                        <p className="text-sm font-medium text-emerald-700">Total Service Amount</p>
+                      </div>
+                      <p className="text-2xl font-bold text-emerald-800">
+                        {booking.formatted?.totalAmount || `₱${booking.totalAmount.toLocaleString()}`}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Deposit Amount */}
+                  {booking.depositAmount && booking.depositAmount > 0 && (
+                    <div className="bg-white rounded-lg p-4 border border-yellow-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-4 h-4 text-yellow-600" />
+                        <p className="text-sm text-gray-600">Required Deposit</p>
+                      </div>
+                      <p className="text-lg font-bold text-yellow-700">
+                        ₱{booking.depositAmount.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Downpayment Amount */}
+                  {booking.downpaymentAmount && booking.downpaymentAmount > 0 && (
+                    <div className="bg-white rounded-lg p-4 border border-indigo-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-4 h-4 text-indigo-500" />
+                        <p className="text-sm text-gray-600">Downpayment</p>
+                      </div>
+                      <p className="text-lg font-bold text-indigo-700">
+                        {booking.formatted?.downpaymentAmount || `₱${booking.downpaymentAmount.toLocaleString()}`}
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Payment Processing Only</h3>
-                <p className="text-gray-600 max-w-md">
-                  This section is reserved for payment processing functionality. 
-                  Payment collection and processing will be handled by the client's payment system.
-                </p>
-                <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-sm text-green-700 font-medium">
-                    💡 Vendors can send quotes and track booking status, but actual payments are processed separately.
-                  </p>
+                
+                {/* Show message if no quote has been sent yet */}
+                {!booking.vendorNotes && !booking.totalAmount && (
+                  <div className="mt-6 p-6 bg-blue-50 rounded-xl border border-blue-200">
+                    <div className="flex items-start gap-3">
+                      <Info className="w-5 h-5 text-blue-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-blue-900 mb-1">No Quote Sent Yet</h4>
+                        <p className="text-sm text-blue-700 leading-relaxed">
+                          Send a detailed quote to the client to provide pricing information and service details. 
+                          Use the "Send Quote" button in the Actions tab to create and send a professional quote.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Progress */}
+              {booking.totalAmount && booking.totalAmount > 0 && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-blue-600" />
+                    Payment Progress
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    {/* Payment Progress Bar */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-sm font-medium text-gray-700">Payment Status</p>
+                        <p className="text-sm font-bold text-blue-600">
+                          {Math.min((booking.totalPaid / booking.totalAmount) * 100, 100).toFixed(0)}% Complete
+                        </p>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-4">
+                        <div 
+                          className={cn(
+                            "bg-gradient-to-r from-blue-500 to-emerald-500 h-4 rounded-full transition-all duration-300",
+                            booking.totalPaid === 0 ? "w-0" :
+                            (booking.totalPaid / booking.totalAmount) >= 1 ? "w-full" :
+                            (booking.totalPaid / booking.totalAmount) >= 0.75 ? "w-3/4" :
+                            (booking.totalPaid / booking.totalAmount) >= 0.50 ? "w-1/2" :
+                            (booking.totalPaid / booking.totalAmount) >= 0.25 ? "w-1/4" :
+                            "w-1/12"
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Payment Breakdown */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-white rounded-lg p-4 border border-blue-100">
+                        <p className="text-sm text-gray-600 mb-1">Total Paid</p>
+                        <p className="text-xl font-bold text-emerald-600">
+                          {booking.formatted?.totalPaid || `₱${booking.totalPaid.toLocaleString()}`}
+                        </p>
+                      </div>
+                      
+                      <div className="bg-white rounded-lg p-4 border border-orange-100">
+                        <p className="text-sm text-gray-600 mb-1">Remaining Balance</p>
+                        <p className="text-xl font-bold text-orange-600">
+                          {booking.formatted?.remainingBalance || `₱${(booking.totalAmount - booking.totalPaid).toLocaleString()}`}
+                        </p>
+                      </div>
+                      
+                      <div className="bg-white rounded-lg p-4 border border-gray-200">
+                        <p className="text-sm text-gray-600 mb-1">Payment Status</p>
+                        <p className="text-lg font-semibold text-gray-900 capitalize">
+                          {booking.paymentStatus || 'Pending'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              )}
+
+              {/* Vendor Notes & Terms - Professional Quote Display */}
+              {booking.vendorNotes && (
+                <div className="space-y-4">
+                  {(() => {
+                    try {
+                      const quoteData = JSON.parse(booking.vendorNotes);
+                      
+                      return (
+                        <div className="space-y-4">
+                          {/* Professional Quote Header Card */}
+                          <div className="bg-gradient-to-br from-rose-500 via-pink-500 to-rose-600 rounded-2xl p-8 text-white shadow-xl">
+                            <div className="flex justify-between items-start mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                                  <Receipt className="w-8 h-8 text-white" />
+                                </div>
+                                <div>
+                                  <p className="text-sm text-rose-100 font-medium">Quote Reference</p>
+                                  <h4 className="text-3xl font-bold tracking-tight">#{quoteData.quoteNumber}</h4>
+                                </div>
+                              </div>
+                              <div className="text-right bg-white/20 backdrop-blur-sm rounded-xl p-4">
+                                <p className="text-xs text-rose-100 mb-1">Valid Until</p>
+                                <p className="text-lg font-bold">{new Date(quoteData.validUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                              </div>
+                            </div>
+                            {quoteData.message && (
+                              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                                <p className="text-white/95 leading-relaxed">{quoteData.message}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Service Items - Modern Card Design */}
+                          {quoteData.serviceItems && quoteData.serviceItems.length > 0 && (
+                            <div className="bg-white rounded-2xl border-2 border-gray-100 shadow-sm overflow-hidden">
+                              <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="bg-pink-100 rounded-lg p-2">
+                                      <Package className="w-5 h-5 text-pink-600" />
+                                    </div>
+                                    <h4 className="text-lg font-bold text-gray-900">Service Items</h4>
+                                  </div>
+                                  <span className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm font-semibold">
+                                    {quoteData.serviceItems.length} {quoteData.serviceItems.length === 1 ? 'item' : 'items'}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <div className="divide-y divide-gray-100">
+                                {quoteData.serviceItems.map((item: any, index: number) => (
+                                  <div key={item.id || index} className="p-6 hover:bg-gray-50/50 transition-colors group">
+                                    <div className="flex justify-between items-start gap-6">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-start gap-3 mb-2">
+                                          <span className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-pink-100 to-rose-100 rounded-lg flex items-center justify-center text-sm font-bold text-pink-700">
+                                            {index + 1}
+                                          </span>
+                                          <div className="flex-1 min-w-0">
+                                            <h5 className="font-bold text-gray-900 text-lg mb-1 group-hover:text-pink-600 transition-colors">{item.name}</h5>
+                                            <p className="text-sm text-gray-600 leading-relaxed">{item.description}</p>
+                                          </div>
+                                        </div>
+                                        {item.category && (
+                                          <div className="ml-11">
+                                            <span className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-pink-50 to-rose-50 text-pink-700 text-xs font-semibold rounded-full border border-pink-200">
+                                              {item.category}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="text-right flex-shrink-0">
+                                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200">
+                                          <p className="text-xs text-gray-500 mb-1">Quantity</p>
+                                          <p className="text-lg font-bold text-gray-900 mb-2">×{item.quantity}</p>
+                                          <div className="border-t border-gray-200 pt-2">
+                                            <p className="text-2xl font-black text-gray-900">₱{item.total?.toLocaleString()}</p>
+                                            <p className="text-xs text-gray-500 mt-1">₱{item.unitPrice?.toLocaleString()} each</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Pricing Summary - Premium Design */}
+                          {quoteData.pricing && (
+                            <div className="bg-gradient-to-br from-emerald-50 via-green-50 to-emerald-100 rounded-2xl p-6 border-2 border-emerald-200 shadow-sm">
+                              <div className="flex items-center gap-3 mb-6">
+                                <div className="bg-emerald-500 rounded-xl p-2.5">
+                                  <DollarSign className="w-6 h-6 text-white" />
+                                </div>
+                                <h4 className="text-xl font-bold text-gray-900">Pricing Breakdown</h4>
+                              </div>
+                              
+                              <div className="space-y-3">
+                                <div className="flex justify-between items-center p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-emerald-100">
+                                  <span className="text-gray-700 font-medium">Subtotal</span>
+                                  <span className="text-xl font-bold text-gray-900">₱{quoteData.pricing.subtotal?.toLocaleString()}</span>
+                                </div>
+                                
+                                {quoteData.pricing.tax > 0 && (
+                                  <div className="flex justify-between items-center p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-emerald-100">
+                                    <span className="text-gray-700 font-medium">Tax (12%)</span>
+                                    <span className="text-xl font-bold text-gray-900">₱{quoteData.pricing.tax?.toLocaleString()}</span>
+                                  </div>
+                                )}
+                                
+                                <div className="flex justify-between items-center p-6 bg-gradient-to-r from-emerald-600 to-green-600 rounded-xl shadow-lg">
+                                  <span className="text-white text-lg font-bold">Total Amount</span>
+                                  <span className="text-white text-3xl font-black tracking-tight">₱{quoteData.pricing.total?.toLocaleString()}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Payment Terms - Elegant Split Design */}
+                          {quoteData.paymentTerms && quoteData.pricing && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="bg-white rounded-2xl border-2 border-amber-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                <div className="bg-gradient-to-r from-amber-500 to-yellow-500 px-5 py-3">
+                                  <p className="text-white text-sm font-semibold">Downpayment Required</p>
+                                </div>
+                                <div className="p-6">
+                                  <div className="flex items-baseline gap-2 mb-2">
+                                    <p className="text-4xl font-black text-amber-600">₱{quoteData.pricing.downpayment?.toLocaleString()}</p>
+                                    <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">
+                                      {quoteData.paymentTerms.downpayment}%
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-gray-600">Due upon booking confirmation</p>
+                                </div>
+                              </div>
+                              
+                              <div className="bg-white rounded-2xl border-2 border-blue-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                <div className="bg-gradient-to-r from-blue-500 to-indigo-500 px-5 py-3">
+                                  <p className="text-white text-sm font-semibold">Remaining Balance</p>
+                                </div>
+                                <div className="p-6">
+                                  <div className="flex items-baseline gap-2 mb-2">
+                                    <p className="text-4xl font-black text-blue-600">₱{quoteData.pricing.balance?.toLocaleString()}</p>
+                                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
+                                      {quoteData.paymentTerms.balance}%
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-gray-600">Due before service delivery</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Terms & Conditions - Professional Notice */}
+                          {quoteData.terms && quoteData.terms.trim() !== '' && (
+                            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border-2 border-amber-200 overflow-hidden shadow-sm">
+                              <div className="bg-gradient-to-r from-amber-100 to-orange-100 px-6 py-4 border-b border-amber-200">
+                                <div className="flex items-center gap-3">
+                                  <div className="bg-amber-500 rounded-lg p-2">
+                                    <AlertTriangle className="w-5 h-5 text-white" />
+                                  </div>
+                                  <h4 className="text-lg font-bold text-gray-900">Terms & Conditions</h4>
+                                </div>
+                              </div>
+                              <div className="p-6">
+                                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-5 border border-amber-100">
+                                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-sm">{quoteData.terms}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Quote Metadata - Footer */}
+                          <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-4 border border-gray-200">
+                            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+                              <Clock className="w-4 h-4" />
+                              <span>Quote generated on</span>
+                              <span className="font-semibold text-gray-900">
+                                {new Date(quoteData.timestamp).toLocaleDateString('en-US', {
+                                  month: 'long',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    } catch (error) {
+                      // Fallback for non-JSON vendor notes
+                      return (
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 overflow-hidden">
+                          <div className="bg-gradient-to-r from-blue-100 to-indigo-100 px-6 py-4 border-b border-blue-200">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-blue-500 rounded-lg p-2">
+                                <FileText className="w-5 h-5 text-white" />
+                              </div>
+                              <h4 className="text-lg font-bold text-gray-900">Vendor Notes</h4>
+                            </div>
+                          </div>
+                          <div className="p-6">
+                            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-5 border border-blue-100">
+                              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{booking.vendorNotes}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                  })()}
+                </div>
+              )}
+
+              {/* Business Information Note */}
+              <div className="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl p-6 border border-yellow-200">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-yellow-600 mt-1" />
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-2">Payment Processing Information</h4>
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      All payment processing is handled through the Wedding Bazaar platform. 
+                      Vendors can send quotes and track booking status, but actual payment collection 
+                      is managed by the client's payment system. For payment-related inquiries, 
+                      please refer clients to their booking dashboard or contact platform support.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Actions for Business Tab */}
+              <div className="flex flex-wrap gap-3">
+                {booking.status === 'quote_requested' && onSendQuote && (
+                  <button
+                    onClick={() => onSendQuote(booking)}
+                    className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg hover:from-emerald-700 hover:to-green-700 transition-all flex items-center gap-2 font-semibold shadow-md hover:shadow-lg"
+                  >
+                    <Send className="w-5 h-5" />
+                    Send Quote
+                  </button>
+                )}
+                {booking.status === 'quote_sent' && onSendQuote && (
+                  <button
+                    onClick={() => onSendQuote(booking)}
+                    className="px-6 py-3 bg-white border-2 border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 transition-all flex items-center gap-2 font-semibold"
+                  >
+                    <Edit className="w-5 h-5" />
+                    Edit Quote
+                  </button>
+                )}
+                <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2">
+                  <Download className="w-4 h-4" />
+                  Export Quote
+                </button>
               </div>
             </div>
           )}
@@ -1017,7 +1509,7 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
                 </div>
               </div>
 
-              {/* Status History */}
+              {/* Status History - LATEST FIRST */}
               <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Clock className="w-5 h-5 text-indigo-500" />
@@ -1025,7 +1517,76 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
                 </h3>
                 
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
+                  {/* Show timeline in REVERSE order - Latest events first */}
+                  
+                  {/* 4. LATEST - Booking Confirmed (if applicable) */}
+                  {booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed' ? (
+                    <div className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-green-500 shadow-sm">
+                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                      <div className="flex-1">
+                        <p className="font-bold text-gray-900">Booking Confirmed</p>
+                        <p className="text-sm text-green-600 font-medium">Service scheduled</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 opacity-50">
+                      <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-500">Booking Confirmed</p>
+                        <p className="text-sm text-gray-400">Pending</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* 3. Quote Sent (if applicable) */}
+                  {booking.status === 'quote_sent' || booking.status === 'quote_accepted' || booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed' ? (
+                    <div className={cn(
+                      "flex items-center gap-3 p-3 bg-white rounded-lg border shadow-sm",
+                      booking.status === 'quote_sent' ? "border-2 border-blue-500" : "border-gray-200"
+                    )}>
+                      <div className={cn(
+                        "w-3 h-3 rounded-full",
+                        booking.status === 'quote_sent' ? "bg-blue-500 animate-pulse" : "bg-blue-500"
+                      )}></div>
+                      <div className="flex-1">
+                        <p className={cn(
+                          "font-medium text-gray-900",
+                          booking.status === 'quote_sent' && "font-bold"
+                        )}>Quote Sent</p>
+                        <p className="text-sm text-blue-600">Waiting for client response</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 opacity-50">
+                      <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-500">Quote Sent</p>
+                        <p className="text-sm text-gray-400">Pending</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* 2. Quote Requested */}
+                  {booking.status === 'quote_requested' || booking.status === 'request' ? (
+                    <div className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-purple-500 shadow-sm">
+                      <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse"></div>
+                      <div className="flex-1">
+                        <p className="font-bold text-gray-900">Quote Requested</p>
+                        <p className="text-sm text-purple-600 font-medium">Waiting for vendor quote</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                      <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">Quote Requested</p>
+                        <p className="text-sm text-gray-600">Completed</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* 1. OLDEST - Booking Request Received (always at bottom) */}
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">Booking Request Received</p>
@@ -1039,39 +1600,6 @@ export const VendorBookingDetailsModal: React.FC<VendorBookingDetailsModalProps>
                           minute: '2-digit'
                         })}
                       </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
-                    <div className={cn(
-                      "w-3 h-3 rounded-full",
-                      booking.status === 'quote_requested' ? "bg-blue-500" : "bg-gray-300"
-                    )}></div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">Quote Requested</p>
-                      <p className="text-sm text-gray-600">Waiting for vendor quote</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
-                    <div className={cn(
-                      "w-3 h-3 rounded-full",
-                      booking.status === 'quote_sent' ? "bg-blue-500" : "bg-gray-300"
-                    )}></div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">Quote Sent</p>
-                      <p className="text-sm text-gray-600">Waiting for client response</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
-                    <div className={cn(
-                      "w-3 h-3 rounded-full",
-                      booking.status === 'confirmed' ? "bg-green-500" : "bg-gray-300"
-                    )}></div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">Booking Confirmed</p>
-                      <p className="text-sm text-gray-600">Service scheduled</p>
                     </div>
                   </div>
                 </div>

@@ -60,6 +60,9 @@ interface EnhancedBooking extends Booking {
   formattedEventDate?: string;
   formattedEventTime?: string;
   daysUntilEvent?: number;
+  budgetRange?: string;
+  preferredContactMethod?: string;
+  responseMessage?: string;
 }
 
 interface BookingDetailsModalProps {
@@ -407,17 +410,25 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   <div className="flex-1">
                     <p className="text-sm text-gray-600">Event Location</p>
                     <p className="font-semibold">{booking.eventLocation}</p>
-                    {booking.eventCoordinates && (
-                      <button
-                        onClick={() => setShowMapModal(true)}
-                        title="View event location on map"
-                        aria-label="View event location on map"
-                        className="mt-2 flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
-                      >
-                        <Map className="w-4 h-4" />
-                        View on Map
-                      </button>
-                    )}
+                    {/* Always show View on Map button - uses Google Maps search */}
+                    <button
+                      onClick={() => {
+                        if (booking.eventCoordinates) {
+                          // If coordinates available, use map modal
+                          setShowMapModal(true);
+                        } else {
+                          // Otherwise, open Google Maps search with location text
+                          const address = encodeURIComponent(booking.eventLocation || 'Philippines');
+                          window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+                        }
+                      }}
+                      title="View event location on map"
+                      aria-label="View event location on map"
+                      className="mt-2 flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
+                    >
+                      <Map className="w-4 h-4" />
+                      View on Map
+                    </button>
                   </div>
                 </div>
                 
@@ -427,6 +438,26 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     <div>
                       <p className="text-sm text-gray-600">Guest Count</p>
                       <p className="font-semibold">{booking.guestCount} guests</p>
+                    </div>
+                  </div>
+                )}
+                
+                {booking.formattedEventTime && (
+                  <div className="flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-indigo-500" />
+                    <div>
+                      <p className="text-sm text-gray-600">Event Time</p>
+                      <p className="font-semibold">{booking.formattedEventTime}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {booking.budgetRange && (
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="w-5 h-5 text-green-500" />
+                    <div>
+                      <p className="text-sm text-gray-600">Budget Range</p>
+                      <p className="font-semibold">{booking.budgetRange}</p>
                     </div>
                   </div>
                 )}
@@ -444,6 +475,51 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200">
                 <p className="text-sm text-gray-600 mb-2 font-medium">Special Requests</p>
                 <p className="text-gray-800">{booking.specialRequests}</p>
+              </div>
+            )}
+            
+            {/* Communication History Section */}
+            {(booking.responseMessage || booking.preferredContactMethod) && (
+              <div className="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-blue-500" />
+                  Communication & Updates
+                </h3>
+                
+                <div className="space-y-4">
+                  {booking.responseMessage && (
+                    <div className="bg-white rounded-lg p-4 border-l-4 border-blue-500">
+                      <div className="flex items-start gap-3">
+                        <FileText className="w-5 h-5 text-blue-600 mt-1" />
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-600 font-medium mb-2">Latest Vendor Response</p>
+                          <p className="text-gray-800 leading-relaxed">{booking.responseMessage}</p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            {booking.updatedAt && new Date(booking.updatedAt).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {booking.preferredContactMethod && (
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <p className="text-sm text-gray-600 mb-2">Preferred Contact Method</p>
+                      <div className="flex items-center gap-2">
+                        {booking.preferredContactMethod === 'phone' && <Phone className="w-4 h-4 text-green-600" />}
+                        {booking.preferredContactMethod === 'email' && <Mail className="w-4 h-4 text-blue-600" />}
+                        {booking.preferredContactMethod === 'sms' && <MessageSquare className="w-4 h-4 text-purple-600" />}
+                        <span className="font-medium capitalize">{booking.preferredContactMethod}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
