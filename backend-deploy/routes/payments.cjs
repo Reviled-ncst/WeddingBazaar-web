@@ -217,8 +217,8 @@ router.get('/source/:sourceId', async (req, res) => {
   }
 });
 
-// Create Payment Intent for Card Payments
-router.post('/create-payment-intent', async (req, res) => {
+// Create Payment Intent Handler (shared by both routes)
+const createPaymentIntentHandler = async (req, res) => {
   console.log('💳 [CREATE-INTENT] Processing card payment intent creation...');
   console.log('💳 [CREATE-INTENT] Request body:', JSON.stringify(req.body, null, 2));
   
@@ -309,7 +309,13 @@ router.post('/create-payment-intent', async (req, res) => {
       details: error.stack
     });
   }
-});
+};
+
+// Create Payment Intent for Card Payments (full endpoint name)
+router.post('/create-payment-intent', createPaymentIntentHandler);
+
+// Alias route for frontend compatibility (shorter endpoint name)
+router.post('/create-intent', createPaymentIntentHandler);
 
 // Create PayMongo Payment Method (for Card Payments)
 router.post('/create-payment-method', async (req, res) => {
