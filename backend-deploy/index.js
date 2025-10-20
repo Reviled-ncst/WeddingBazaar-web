@@ -73,6 +73,12 @@ app.get('/api/ping', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
+// ========== PAYMENT ROUTES - Real PayMongo Integration ==========
+// Import and register payment routes
+const paymentRoutes = require('./routes/payments.cjs');
+app.use('/api/payment', paymentRoutes);
+console.log('✅ Payment routes registered at /api/payment/*');
+// ================================================================
 // CRITICAL ENDPOINTS - Fixed and working
 app.get('/api/vendors', async (req, res) => {
     try {
