@@ -19,6 +19,30 @@ console.log('💳 [PAYMENT SERVICE] Initializing PayMongo integration...');
 console.log('💳 [PAYMENT SERVICE] Secret Key:', PAYMONGO_SECRET_KEY ? '✅ Available' : '❌ Missing');
 console.log('💳 [PAYMENT SERVICE] Public Key:', PAYMONGO_PUBLIC_KEY ? '✅ Available' : '❌ Missing');
 
+// Health check endpoint for payment service
+router.get('/health', (req, res) => {
+  console.log('🏥 [PAYMENT HEALTH] Payment service health check requested');
+  
+  const isConfigured = !!(PAYMONGO_SECRET_KEY && PAYMONGO_PUBLIC_KEY);
+  const isTestMode = PAYMONGO_SECRET_KEY?.startsWith('sk_test_');
+  
+  res.json({
+    status: 'healthy',
+    paymongo_configured: isConfigured,
+    test_mode: isTestMode,
+    endpoints: [
+      'POST /api/payment/create-source',
+      'POST /api/payment/create-intent',
+      'POST /api/payment/process',
+      'POST /api/payment/webhook',
+      'GET /api/payment/health'
+    ],
+    timestamp: new Date().toISOString()
+  });
+  
+  console.log(`🏥 [PAYMENT HEALTH] Status: ${isConfigured ? '✅ Configured' : '❌ Not Configured'}`);
+});
+
 // Helper function to create PayMongo auth header
 function getPayMongoAuthHeader() {
   if (!PAYMONGO_SECRET_KEY) {
@@ -287,49 +311,160 @@ router.post('/create-payment-intent', async (req, res) => {
   }
 });
 
-// Get Payment Intent Status
-router.get('/payment-intent/:intentId', async (req, res) => {
-  console.log('💳 [GET-INTENT] Getting payment intent status:', req.params.intentId);
+// Create PayMongo Payment Method (for Card Payments)
+router.post('/create-payment-method', async (req, res) => {
+  console.log('💳 [CREATE-PAYMENT-METHOD] Creating PayMongo payment method...');
+  console.log('💳 [CREATE-PAYMENT-METHOD] Request body:', JSON.stringify(req.body, null, 2));
   
   try {
-    const { intentId } = req.params;
+    const { type, details, billing } = req.body;
     
-    const response = await fetch(`${PAYMONGO_API_URL}/payment_intents/${intentId}`, {
-      method: 'GET',
+    // Validate required fields
+    if (!type || !details) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: type and details'
+      });
+    }
+    
+    console.log(`💳 [CREATE-PAYMENT-METHOD] Creating ${type} payment method`);
+    
+    // Prepare PayMongo payment method data
+    const paymentMethodData = {
+      data: {
+        attributes: {
+          type: type,
+          details: details,
+          billing: billing || {}
+        }
+      }
+    };
+    
+    console.log('💳 [CREATE-PAYMENT-METHOD] PayMongo API request:', JSON.stringify(paymentMethodData, null, 2));
+    
+    // Call PayMongo API
+    const response = await fetch(`${PAYMONGO_API_URL}/payment_methods`, {
+      method: 'POST',
       headers: {
         'Authorization': getPayMongoAuthHeader(),
         'Content-Type': 'application/json',
         'Accept': 'application/json'
-      }
+      },
+      body: JSON.stringify(paymentMethodData)
     });
     
     const responseData = await response.json();
     
+    console.log('💳 [CREATE-PAYMENT-METHOD] PayMongo API response status:', response.status);
+    console.log('💳 [CREATE-PAYMENT-METHOD] PayMongo API response:', JSON.stringify(responseData, null, 2));
+    
     if (!response.ok) {
-      console.error('❌ [GET-INTENT] PayMongo API error:', responseData);
+      console.error('❌ [CREATE-PAYMENT-METHOD] PayMongo API error:', responseData);
       return res.status(response.status).json({
         success: false,
-        error: responseData.errors?.[0]?.detail || 'PayMongo API error'
+        error: responseData.errors?.[0]?.detail || 'PayMongo API error',
+        details: responseData
+      });
+    }
+    
+    const paymentMethod = responseData.data;
+    
+    console.log(`✅ [CREATE-PAYMENT-METHOD] Payment method created successfully: ${paymentMethod.id}`);
+    
+    res.json({
+      success: true,
+      data: paymentMethod,
+      payment_method_id: paymentMethod.id,
+      type: paymentMethod.attributes.type,
+      details: paymentMethod.attributes.details
+    });
+    
+  } catch (error) {
+    console.error('❌ [CREATE-PAYMENT-METHOD] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Internal server error',
+      details: error.stack
+    });
+  }
+});
+
+// Attach Payment Method to Payment Intent
+router.post('/attach-intent', async (req, res) => {
+  console.log('💳 [ATTACH-INTENT] Attaching payment method to intent...');
+  console.log('💳 [ATTACH-INTENT] Request body:', JSON.stringify(req.body, null, 2));
+  
+  try {
+    const { payment_intent_id, payment_method_id, client_key, return_url } = req.body;
+    
+    // Validate required fields
+    if (!payment_intent_id || !payment_method_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: payment_intent_id and payment_method_id'
+      });
+    }
+    
+    console.log(`💳 [ATTACH-INTENT] Attaching payment method ${payment_method_id} to intent ${payment_intent_id}`);
+    
+    // Prepare attachment data
+    const attachmentData = {
+      data: {
+        attributes: {
+          payment_method: payment_method_id,
+          return_url: return_url || `${process.env.FRONTEND_URL || 'https://weddingbazaarph.web.app'}/payment/complete`,
+          client_key: client_key
+        }
+      }
+    };
+    
+    console.log('💳 [ATTACH-INTENT] PayMongo API request:', JSON.stringify(attachmentData, null, 2));
+    
+    // Call PayMongo API to attach payment method to intent
+    const response = await fetch(`${PAYMONGO_API_URL}/payment_intents/${payment_intent_id}/attach`, {
+      method: 'POST',
+      headers: {
+        'Authorization': getPayMongoAuthHeader(),
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(attachmentData)
+    });
+    
+    const responseData = await response.json();
+    
+    console.log('💳 [ATTACH-INTENT] PayMongo API response status:', response.status);
+    console.log('💳 [ATTACH-INTENT] PayMongo API response:', JSON.stringify(responseData, null, 2));
+    
+    if (!response.ok) {
+      console.error('❌ [ATTACH-INTENT] PayMongo API error:', responseData);
+      return res.status(response.status).json({
+        success: false,
+        error: responseData.errors?.[0]?.detail || 'PayMongo API error',
+        details: responseData
       });
     }
     
     const intent = responseData.data;
     
-    console.log(`✅ [GET-INTENT] Payment intent status: ${intent.attributes.status}`);
+    console.log(`✅ [ATTACH-INTENT] Payment method attached successfully. Status: ${intent.attributes.status}`);
     
     res.json({
       success: true,
       data: intent,
+      payment_intent_id: intent.id,
       status: intent.attributes.status,
       amount: intent.attributes.amount,
-      currency: intent.attributes.currency
+      currency: intent.attributes.currency,
+      next_action: intent.attributes.next_action
     });
     
   } catch (error) {
-    console.error('❌ [GET-INTENT] Error:', error);
+    console.error('❌ [ATTACH-INTENT] Error:', error);
     res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error'
+      error: error.message || 'Internal server error',
+      details: error.stack
     });
   }
 });

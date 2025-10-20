@@ -17,7 +17,7 @@ class PayMongoService {
     };
   }
 
-  // Create Card Payment (Simulated for Demo)
+  // Create Card Payment (REAL PayMongo Integration with Backend Receipt Generation)
   async createCardPayment(bookingId: string, amount: number, paymentType: string, cardDetails: {
     number: string;
     expiry: string;
@@ -25,33 +25,141 @@ class PayMongoService {
     name: string;
   }): Promise<PaymentResult> {
     try {
-      console.log('💳 [CARD PAYMENT] Starting card payment simulation...');
-      console.log('💳 [CARD PAYMENT] Booking:', bookingId);
-      console.log('💳 [CARD PAYMENT] Amount:', amount);
-      console.log('💳 [CARD PAYMENT] Card ending in:', cardDetails.number.slice(-4));
+      console.log('💳 [CARD PAYMENT - REAL] Processing REAL card payment with PayMongo...');
+      console.log('💳 [CARD PAYMENT - REAL] Booking:', bookingId);
+      console.log('💳 [CARD PAYMENT - REAL] Amount:', amount);
+      console.log('💳 [CARD PAYMENT - REAL] Card ending in:', cardDetails.number.slice(-4));
       
-      // Simulate processing delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Step 1: Create PayMongo Payment Intent
+      console.log('💳 [STEP 1] Creating PayMongo payment intent...');
+      const intentResponse = await fetch(`${this.baseUrl}/api/payment/create-intent`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          amount: Math.round(amount * 100), // Convert to centavos
+          currency: 'PHP',
+          description: `Wedding Bazaar - Booking ${bookingId} - ${paymentType}`,
+          payment_method_allowed: ['card'],
+          metadata: {
+            booking_id: bookingId,
+            payment_type: paymentType
+          }
+        })
+      });
+
+      if (!intentResponse.ok) {
+        const errorData = await intentResponse.json();
+        console.error('❌ [STEP 1] Payment intent creation failed:', errorData);
+        throw new Error(errorData.error || 'Failed to create payment intent');
+      }
+
+      const intentData = await intentResponse.json();
+      const paymentIntentId = intentData.payment_intent_id;
+      const clientKey = intentData.client_key;
       
-      // Simulate payment success
-      const paymentId = `card_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log('✅ [STEP 1] Payment intent created:', paymentIntentId);
+
+      // Step 2: Create PayMongo Payment Method
+      console.log('💳 [STEP 2] Creating PayMongo payment method...');
+      const [expMonth, expYear] = cardDetails.expiry.split('/');
       
-      console.log('✅ [CARD PAYMENT] Payment simulation completed successfully');
-      console.log('💳 [CARD PAYMENT] Transaction ID:', paymentId);
+      const paymentMethodResponse = await fetch(`${this.baseUrl}/api/payment/create-payment-method`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          type: 'card',
+          details: {
+            card_number: cardDetails.number.replace(/\s/g, ''),
+            exp_month: parseInt(expMonth),
+            exp_year: parseInt('20' + expYear),
+            cvc: cardDetails.cvc
+          },
+          billing: {
+            name: cardDetails.name
+          }
+        })
+      });
+
+      if (!paymentMethodResponse.ok) {
+        const errorData = await paymentMethodResponse.json();
+        console.error('❌ [STEP 2] Payment method creation failed:', errorData);
+        throw new Error(errorData.error || 'Invalid card details');
+      }
+
+      const paymentMethodData = await paymentMethodResponse.json();
+      const paymentMethodId = paymentMethodData.payment_method_id;
+      
+      console.log('✅ [STEP 2] Payment method created:', paymentMethodId);
+
+      // Step 3: Attach Payment Method to Intent
+      console.log('💳 [STEP 3] Attaching payment method to intent...');
+      const attachResponse = await fetch(`${this.baseUrl}/api/payment/attach-intent`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          payment_intent_id: paymentIntentId,
+          payment_method_id: paymentMethodId,
+          client_key: clientKey
+        })
+      });
+
+      if (!attachResponse.ok) {
+        const errorData = await attachResponse.json();
+        console.error('❌ [STEP 3] Payment attachment failed:', errorData);
+        throw new Error(errorData.error || 'Payment failed');
+      }
+
+      const attachData = await attachResponse.json();
+      const paymentStatus = attachData.status;
+      
+      console.log('✅ [STEP 3] Payment processed, status:', paymentStatus);
+
+      // Step 4: Process payment and create receipt in backend
+      console.log('💳 [STEP 4] Creating receipt in backend...');
+      const receiptResponse = await fetch(`${this.baseUrl}/api/payment/process`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          bookingId: bookingId,
+          paymentType: paymentType,
+          paymentMethod: 'card',
+          amount: Math.round(amount * 100),
+          paymentReference: paymentIntentId,
+          metadata: {
+            cardLast4: cardDetails.number.slice(-4),
+            cardHolder: cardDetails.name,
+            paymongo_payment_id: paymentIntentId,
+            paymongo_payment_method_id: paymentMethodId
+          }
+        })
+      });
+
+      if (!receiptResponse.ok) {
+        const errorData = await receiptResponse.json();
+        console.warn('⚠️ [STEP 4] Receipt creation failed, but payment succeeded:', errorData);
+        // Payment succeeded but receipt failed - still return success
+      }
+
+      const receiptData = await receiptResponse.json();
+      
+      console.log('✅ [CARD PAYMENT - REAL] Payment completed successfully!');
+      console.log('🧾 [CARD PAYMENT - REAL] Receipt created:', receiptData.data?.receipt?.receipt_number);
 
       return {
         success: true,
-        paymentId: paymentId,
+        paymentId: paymentIntentId,
+        receiptNumber: receiptData.data?.receipt?.receipt_number,
+        receiptData: receiptData.data?.receipt,
         paymentIntent: {
-          id: paymentId,
+          id: paymentIntentId,
           status: 'succeeded',
-          amount: amount * 100, // in centavos
+          amount: amount * 100,
           currency: 'PHP'
         },
         requiresAction: false
       };
     } catch (error) {
-      console.error('Card payment creation error:', error);
+      console.error('❌ [CARD PAYMENT - REAL] Error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Card payment failed'
