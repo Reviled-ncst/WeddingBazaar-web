@@ -55,6 +55,7 @@ const verificationRoutes = require('./routes/verification.cjs');
 const adminRoutes = require('./routes/admin/index.cjs');
 const bookingItemsRoutes = require('./routes/booking-items.js');
 const groupChatRoutes = require('./routes/group-chat.js');
+const bookingsRoutes = require('./routes/bookings.cjs'); // Modular bookings routes
 
 // Make db available to routes
 app.set('db', db);
@@ -62,6 +63,7 @@ app.set('db', db);
 // Register API routes
 app.use('/api/admin', adminRoutes);
 app.use('/api/verification', verificationRoutes);
+app.use('/api/bookings', bookingsRoutes); // Use modular bookings routes
 app.use('/api', bookingItemsRoutes);
 app.use('/api', groupChatRoutes);
 
@@ -854,76 +856,6 @@ app.get('/api/bookings/enhanced', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch enhanced bookings',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-// 🔥 CRITICAL: Accept quote endpoint (POST method for compatibility)
-app.post('/api/bookings/:bookingId/accept-quote', async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    console.log('💰 [BookingAction] POST Accept quote for booking:', bookingId);
-    
-    const result = await db.query(
-      `UPDATE bookings SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-      ['quote_accepted', bookingId]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Booking not found'
-      });
-    }
-    
-    const updatedBooking = result.rows[0];
-    
-    res.json({
-      success: true,
-      booking: updatedBooking,
-      message: 'Quote accepted successfully. You can now proceed with deposit payment.'
-    });
-  } catch (error) {
-    console.error('Error accepting quote:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to accept quote',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-// 🔥 CRITICAL: Accept quote endpoint (PATCH method for RESTful standard)
-app.patch('/api/bookings/:bookingId/accept-quote', async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    console.log('💰 [BookingAction] PATCH Accept quote for booking:', bookingId);
-    
-    const result = await db.query(
-      `UPDATE bookings SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-      ['quote_accepted', bookingId]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Booking not found'
-      });
-    }
-    
-    const updatedBooking = result.rows[0];
-    
-    res.json({
-      success: true,
-      booking: updatedBooking,
-      message: 'Quote accepted successfully. You can now proceed with deposit payment.'
-    });
-  } catch (error) {
-    console.error('Error accepting quote:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to accept quote',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }

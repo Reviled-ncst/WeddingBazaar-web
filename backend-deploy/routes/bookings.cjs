@@ -1050,6 +1050,106 @@ router.put('/:bookingId/accept-quote', async (req, res) => {
   }
 });
 
+// PATCH method support for accept-quote (RESTful standard)
+router.patch('/:bookingId/accept-quote', async (req, res) => {
+  console.log('✅ [AcceptQuote-PATCH] Processing quote acceptance for booking:', req.params.bookingId);
+  
+  try {
+    const { bookingId } = req.params;
+    const { acceptance_notes } = req.body;
+    
+    // Check if booking exists
+    const existingBooking = await sql`
+      SELECT * FROM bookings WHERE id = ${bookingId}
+    `;
+    
+    if (existingBooking.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Update booking to quote_accepted status
+    const updatedBooking = await sql`
+      UPDATE bookings 
+      SET status = 'quote_accepted',
+          notes = ${`QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`},
+          updated_at = NOW()
+      WHERE id = ${bookingId}
+      RETURNING *
+    `;
+    
+    console.log(`✅ [AcceptQuote-PATCH] Quote accepted for booking ${bookingId}`);
+    
+    res.json({
+      success: true,
+      booking: updatedBooking[0],
+      message: 'Quote accepted successfully. You can now proceed with deposit payment.',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [AcceptQuote-PATCH] Error accepting quote:', error);
+    res.status(500).json({
+      success: false,  
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// POST method support for accept-quote (backwards compatibility)
+router.post('/:bookingId/accept-quote', async (req, res) => {
+  console.log('✅ [AcceptQuote-POST] Processing quote acceptance for booking:', req.params.bookingId);
+  
+  try {
+    const { bookingId } = req.params;
+    const { acceptance_notes } = req.body;
+    
+    // Check if booking exists
+    const existingBooking = await sql`
+      SELECT * FROM bookings WHERE id = ${bookingId}
+    `;
+    
+    if (existingBooking.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Update booking to quote_accepted status
+    const updatedBooking = await sql`
+      UPDATE bookings 
+      SET status = 'quote_accepted',
+          notes = ${`QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`},
+          updated_at = NOW()
+      WHERE id = ${bookingId}
+      RETURNING *
+    `;
+    
+    console.log(`✅ [AcceptQuote-POST] Quote accepted for booking ${bookingId}`);
+    
+    res.json({
+      success: true,
+      booking: updatedBooking[0],
+      message: 'Quote accepted successfully. You can now proceed with deposit payment.',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [AcceptQuote-POST] Error accepting quote:', error);
+    res.status(500).json({
+      success: false,  
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Process Payment endpoint - Handles downpayment and full payment
 router.put('/:bookingId/process-payment', async (req, res) => {
   console.log('💳 [ProcessPayment] Processing payment for booking:', req.params.bookingId, req.body);
