@@ -685,6 +685,13 @@ app.get('/api/setup/database', async (req, res) => {
   }
 });
 
+// ============================================================================
+// RECEIPT ROUTES - Added 2025-01-10
+// ============================================================================
+const receiptsRoutes = require('./routes/receipts.cjs');
+app.use('/api/receipts', receiptsRoutes);
+console.log('✅ Receipt routes registered at /api/receipts/*');
+
 // Start server
 app.listen(PORT, async () => {
   console.log('🚀 Wedding Bazaar Backend running on port ' + PORT);
@@ -696,6 +703,11 @@ app.listen(PORT, async () => {
   console.log('   PUT    /api/services/:id      - Update service');
   console.log('   DELETE /api/services/:id      - Delete service');
   console.log('   GET    /api/services/vendor/:vendorId - Get vendor services');
+  console.log('🧾 Receipt endpoints ready:');
+  console.log('   GET    /api/receipts/couple/:coupleId   - Get couple receipts');
+  console.log('   GET    /api/receipts/vendor/:vendorId   - Get vendor receipts');
+  console.log('   GET    /api/receipts/booking/:bookingId - Get booking receipts');
+  console.log('   POST   /api/receipts/create             - Create receipt');
   
   // Test database connection
   await testConnection();

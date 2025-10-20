@@ -163,6 +163,49 @@ router.get('/:receiptId', async (req, res) => {
   }
 });
 
+// Get receipts for a specific booking
+router.get('/booking/:bookingId', async (req, res) => {
+  console.log('🧾 Getting receipts for booking:', req.params.bookingId);
+  
+  try {
+    const { bookingId } = req.params;
+    
+    const receipts = await sql`
+      SELECT 
+        r.*,
+        v.business_name as vendor_name,
+        v.business_type as vendor_category,
+        v.rating as vendor_rating,
+        v.location as vendor_location,
+        CONCAT('₱', TO_CHAR(r.amount_paid::DECIMAL / 100, 'FM999,999,999.00')) as amount_paid_formatted,
+        CONCAT('₱', TO_CHAR(r.total_amount::DECIMAL / 100, 'FM999,999,999.00')) as total_amount_formatted,
+        CONCAT('₱', TO_CHAR(r.tax_amount::DECIMAL / 100, 'FM999,999,999.00')) as tax_amount_formatted
+      FROM receipts r
+      LEFT JOIN vendors v ON r.vendor_id = v.id
+      WHERE r.booking_id = ${bookingId}
+      ORDER BY r.created_at DESC
+    `;
+    
+    console.log(`✅ Found ${receipts.length} receipts for booking ${bookingId}`);
+    
+    res.json({
+      success: true,
+      receipts: receipts,
+      count: receipts.length,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Booking receipts error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch receipts',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Create new receipt (for payment processing)
 router.post('/create', async (req, res) => {
   console.log('🧾 Creating new receipt:', req.body);
