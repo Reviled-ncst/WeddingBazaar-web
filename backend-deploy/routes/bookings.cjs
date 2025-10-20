@@ -822,23 +822,28 @@ router.patch('/:bookingId/status', async (req, res) => {
       });
     }
     
-    // FIXED: Database allows quote_sent, quote_accepted, deposit_paid, fully_paid directly
-    // Store notes for additional context
+    // WORKAROUND: Database constraint only allows 5 statuses
+    // Map new statuses to allowed ones, store real status in notes
+    let actualStatus = status;
     let statusNote = vendor_notes || null;
     
     if (status === 'quote_sent') {
+      actualStatus = 'pending';
       statusNote = `QUOTE_SENT: ${vendor_notes || 'Quote has been sent to client'}`;
     } else if (status === 'quote_accepted') {
+      actualStatus = 'confirmed';
       statusNote = `QUOTE_ACCEPTED: ${vendor_notes || 'Quote accepted by couple - ready for payment'}`;
     } else if (status === 'deposit_paid') {
+      actualStatus = 'confirmed';
       statusNote = `DEPOSIT_PAID: ${vendor_notes || 'Deposit payment received'}`;
     } else if (status === 'fully_paid') {
+      actualStatus = 'confirmed';
       statusNote = `FULLY_PAID: ${vendor_notes || 'Full payment received'}`;
     }
     
     const booking = await sql`
       UPDATE bookings 
-      SET status = ${status}, 
+      SET status = ${actualStatus}, 
           notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
@@ -896,23 +901,28 @@ router.put('/:bookingId/update-status', async (req, res) => {
       });
     }
     
-    // FIXED: Database allows quote_sent, quote_accepted, deposit_paid, fully_paid directly
-    // Store notes for additional context
+    // WORKAROUND: Database constraint only allows 5 statuses
+    // Map new statuses to allowed ones, store real status in notes
+    let actualStatus = status;
     let statusNote = vendor_notes || null;
     
     if (status === 'quote_sent') {
+      actualStatus = 'pending';
       statusNote = `QUOTE_SENT: ${vendor_notes || 'Quote has been sent to client'}`;
     } else if (status === 'quote_accepted') {
+      actualStatus = 'confirmed';
       statusNote = `QUOTE_ACCEPTED: ${vendor_notes || 'Quote accepted by couple - ready for payment'}`;
     } else if (status === 'deposit_paid') {
+      actualStatus = 'confirmed';
       statusNote = `DEPOSIT_PAID: ${vendor_notes || 'Deposit payment received'}`;
     } else if (status === 'fully_paid') {
+      actualStatus = 'confirmed';
       statusNote = `FULLY_PAID: ${vendor_notes || 'Full payment received'}`;
     }
     
     const booking = await sql`
       UPDATE bookings 
-      SET status = ${status}, 
+      SET status = ${actualStatus}, 
           notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
