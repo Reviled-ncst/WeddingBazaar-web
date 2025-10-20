@@ -75,7 +75,8 @@ class PayMongoService {
             cvc: cardDetails.cvc
           },
           billing: {
-            name: cardDetails.name
+            name: cardDetails.name,
+            email: 'payment@weddingbazaar.com' // PayMongo requires email for card payments
           }
         })
       });
