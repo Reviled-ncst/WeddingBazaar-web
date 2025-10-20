@@ -589,8 +589,13 @@ export const IndividualBookings: React.FC = () => {
     try {
       setLoading(true);
       
+      console.log('🔄 [AcceptQuotation] Starting accept quote for booking:', booking.id);
+      
       // Call backend API to accept the quotation
-      const response = await fetch(`https://weddingbazaar-web.onrender.com/api/bookings/${booking.id}/accept-quote`, {
+      const url = `https://weddingbazaar-web.onrender.com/api/bookings/${booking.id}/accept-quote`;
+      console.log('📡 [AcceptQuotation] Calling:', url);
+      
+      const response = await fetch(url, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -601,11 +606,16 @@ export const IndividualBookings: React.FC = () => {
         })
       });
 
+      console.log('📊 [AcceptQuotation] Response status:', response.status, response.statusText);
+      
       if (!response.ok) {
-        throw new Error('Failed to accept quotation');
+        const errorText = await response.text();
+        console.error('❌ [AcceptQuotation] Error response:', errorText);
+        throw new Error(`Failed to accept quotation: ${response.status} ${response.statusText}`);
       }
 
-      await response.json();
+      const result = await response.json();
+      console.log('✅ [AcceptQuotation] Success response:', result);
       
       // Refresh bookings to show updated status
       await loadBookings();
@@ -616,6 +626,10 @@ export const IndividualBookings: React.FC = () => {
       console.log('✅ [AcceptQuotation] Successfully accepted quotation for booking:', booking.id);
     } catch (error) {
       console.error('❌ [AcceptQuotation] Error accepting quotation:', error);
+      if (error instanceof Error) {
+        console.error('❌ [AcceptQuotation] Error message:', error.message);
+        console.error('❌ [AcceptQuotation] Error stack:', error.stack);
+      }
       alert('Failed to accept quotation. Please try again.');
     } finally {
       setLoading(false);
