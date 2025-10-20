@@ -1331,6 +1331,154 @@ router.get('/:bookingId/payment-status', async (req, res) => {
   }
 });
 
+// Direct cancellation (for 'request' or 'quote_requested' status only)
+router.post('/:bookingId/cancel', async (req, res) => {
+  console.log('🚫 [CANCEL-BOOKING] Processing direct cancellation...');
+  
+  try {
+    const { bookingId } = req.params;
+    const { userId, reason } = req.body;
+    
+    console.log(`🚫 [CANCEL-BOOKING] Booking ID: ${bookingId}, User ID: ${userId}`);
+    
+    // Get booking details
+    const bookings = await sql`
+      SELECT * FROM bookings WHERE id = ${bookingId}
+    `;
+    
+    if (bookings.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+    
+    const booking = bookings[0];
+    
+    // Security: Verify user owns this booking
+    if (booking.user_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: You can only cancel your own bookings'
+      });
+    }
+    
+    // Only allow direct cancellation for request/quote_requested status
+    const allowedStatuses = ['request', 'quote_requested'];
+    if (!allowedStatuses.includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot directly cancel booking with status: ${booking.status}. Please use cancellation request instead.`,
+        requiresApproval: true
+      });
+    }
+    
+    // Perform cancellation
+    await sql`
+      UPDATE bookings 
+      SET 
+        status = 'cancelled',
+        notes = ${reason ? `CANCELLED: ${reason}` : 'CANCELLED: User cancelled during request phase'},
+        updated_at = NOW()
+      WHERE id = ${bookingId}
+    `;
+    
+    console.log(`✅ [CANCEL-BOOKING] Booking ${bookingId} cancelled successfully`);
+    
+    res.json({
+      success: true,
+      message: 'Booking cancelled successfully',
+      bookingId: bookingId,
+      newStatus: 'cancelled'
+    });
+    
+  } catch (error) {
+    console.error('❌ [CANCEL-BOOKING] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to cancel booking'
+    });
+  }
+});
+
+// Request cancellation (for bookings with payments or confirmed status)
+router.post('/:bookingId/request-cancellation', async (req, res) => {
+  console.log('📝 [REQUEST-CANCELLATION] Processing cancellation request...');
+  
+  try {
+    const { bookingId } = req.params;
+    const { userId, reason } = req.body;
+    
+    console.log(`📝 [REQUEST-CANCELLATION] Booking ID: ${bookingId}, User ID: ${userId}`);
+    
+    // Get booking details
+    const bookings = await sql`
+      SELECT * FROM bookings WHERE id = ${bookingId}
+    `;
+    
+    if (bookings.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+    
+    const booking = bookings[0];
+    
+    // Security: Verify user owns this booking
+    if (booking.user_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: You can only request cancellation for your own bookings'
+      });
+    }
+    
+    // Cannot request cancellation if already cancelled or completed
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({
+        success: false,
+        error: 'Booking is already cancelled'
+      });
+    }
+    
+    if (booking.status === 'completed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot cancel a completed booking'
+      });
+    }
+    
+    // Update booking to pending_cancellation status
+    await sql`
+      UPDATE bookings 
+      SET 
+        status = 'pending_cancellation',
+        notes = ${reason ? `CANCELLATION_REQUESTED: ${reason}` : 'CANCELLATION_REQUESTED: Client requested cancellation'},
+        updated_at = NOW()
+      WHERE id = ${bookingId}
+    `;
+    
+    console.log(`✅ [REQUEST-CANCELLATION] Cancellation request submitted for booking ${bookingId}`);
+    
+    // TODO: Send notification to vendor and admin
+    
+    res.json({
+      success: true,
+      message: 'Cancellation request submitted successfully. The vendor and admin will review your request.',
+      bookingId: bookingId,
+      newStatus: 'pending_cancellation',
+      requiresApproval: true
+    });
+    
+  } catch (error) {
+    console.error('❌ [REQUEST-CANCELLATION] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to submit cancellation request'
+    });
+  }
+});
+
 module.exports = router;
 
 // Force deploy - workaround fix

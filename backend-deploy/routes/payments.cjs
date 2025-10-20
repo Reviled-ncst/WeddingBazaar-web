@@ -833,4 +833,71 @@ router.get('/health', (req, res) => {
   });
 });
 
+// Get receipts for a booking
+router.get('/receipts/:bookingId', async (req, res) => {
+  console.log('📄 [GET-RECEIPTS] Fetching receipts for booking...');
+  
+  try {
+    const { bookingId } = req.params;
+    
+    console.log(`📄 [GET-RECEIPTS] Booking ID: ${bookingId}`);
+    
+    // Get receipts from database
+    const receipts = await sql`
+      SELECT 
+        r.*,
+        b.vendor_id,
+        b.service_type,
+        b.event_date,
+        v.business_name as vendor_name
+      FROM receipts r
+      LEFT JOIN bookings b ON r.booking_id = b.id
+      LEFT JOIN vendors v ON b.vendor_id = v.id
+      WHERE r.booking_id = ${bookingId}
+      ORDER BY r.created_at DESC
+    `;
+    
+    console.log(`📄 [GET-RECEIPTS] Found ${receipts.length} receipt(s)`);
+    
+    if (receipts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No receipts found for this booking'
+      });
+    }
+    
+    res.json({
+      success: true,
+      receipts: receipts.map(r => ({
+        id: r.id,
+        bookingId: r.booking_id,
+        receiptNumber: r.receipt_number,
+        paymentType: r.payment_type,
+        amount: r.amount,
+        currency: r.currency,
+        paymentMethod: r.payment_method,
+        paymentIntentId: r.payment_intent_id,
+        paidBy: r.paid_by,
+        paidByName: r.paid_by_name,
+        paidByEmail: r.paid_by_email,
+        vendorId: r.vendor_id,
+        vendorName: r.vendor_name,
+        serviceType: r.service_type,
+        eventDate: r.event_date,
+        totalPaid: r.total_paid,
+        remainingBalance: r.remaining_balance,
+        notes: r.notes,
+        createdAt: r.created_at
+      }))
+    });
+    
+  } catch (error) {
+    console.error('❌ [GET-RECEIPTS] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch receipts'
+    });
+  }
+});
+
 module.exports = router;

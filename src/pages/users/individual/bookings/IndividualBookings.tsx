@@ -49,6 +49,15 @@ import { mapToEnhancedBooking } from '../../../../shared/utils/booking-data-mapp
 // Import custom hooks
 import { useBookingPreferences } from './hooks';
 
+// Import booking actions service
+import { 
+  getBookingReceipts, 
+  cancelBooking, 
+  requestCancellation, 
+  formatReceipt,
+  type Receipt 
+} from '../../../../shared/services/bookingActionsService';
+
 import type { 
   Booking
 } from './types/booking.types';
@@ -156,7 +165,22 @@ export const IndividualBookings: React.FC = () => {
         icon: <CreditCard className="w-4 h-4" />, 
         className: 'bg-emerald-100 text-emerald-700 border-emerald-200' 
       },
+      'deposit_paid': { 
+        label: 'Deposit Paid', 
+        icon: <CreditCard className="w-4 h-4" />, 
+        className: 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+      },
+      'downpayment': { 
+        label: 'Deposit Paid', 
+        icon: <CreditCard className="w-4 h-4" />, 
+        className: 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+      },
       'paid_in_full': { 
+        label: 'Fully Paid', 
+        icon: <Sparkles className="w-4 h-4" />, 
+        className: 'bg-yellow-100 text-yellow-700 border-yellow-200' 
+      },
+      'fully_paid': { 
         label: 'Fully Paid', 
         icon: <Sparkles className="w-4 h-4" />, 
         className: 'bg-yellow-100 text-yellow-700 border-yellow-200' 
@@ -327,6 +351,107 @@ export const IndividualBookings: React.FC = () => {
     console.log('💳 [PAYMENT MODAL] Payment modal state updated');
   };
 
+  // Handle viewing receipts
+  const handleViewReceipt = async (booking: EnhancedBooking) => {
+    console.log('📄 [VIEW-RECEIPT] Fetching receipt for booking:', booking.id);
+    
+    try {
+      const receipts = await getBookingReceipts(booking.id);
+      
+      if (receipts.length === 0) {
+        alert('No receipts found for this booking.');
+        return;
+      }
+      
+      // Show the most recent receipt
+      const latestReceipt = receipts[0];
+      const formattedReceipt = formatReceipt(latestReceipt);
+      
+      // Create a modal-like alert with the formatted receipt
+      const showReceipt = confirm(`${formattedReceipt}\n\nWould you like to download this receipt?`);
+      
+      if (showReceipt) {
+        // Create a downloadable text file
+        const blob = new Blob([formattedReceipt], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `receipt_${latestReceipt.receiptNumber}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        console.log('✅ [VIEW-RECEIPT] Receipt downloaded successfully');
+      }
+    } catch (error) {
+      console.error('❌ [VIEW-RECEIPT] Error fetching receipt:', error);
+      alert(`Failed to fetch receipt: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Handle booking cancellation
+  const handleCancelBooking = async (booking: EnhancedBooking) => {
+    if (!user?.id) {
+      alert('You must be logged in to cancel a booking');
+      return;
+    }
+
+    console.log('🚫 [CANCEL] Attempting to cancel booking:', booking.id);
+    console.log('🚫 [CANCEL] Booking status:', booking.status);
+
+    // Determine if this is a direct cancel or requires approval
+    const isDirectCancel = booking.status === 'request' || booking.status === 'quote_requested';
+    
+    const confirmMessage = isDirectCancel
+      ? `Are you sure you want to cancel this booking with ${booking.vendorName}?\n\nThis action cannot be undone.`
+      : `Request cancellation for this booking with ${booking.vendorName}?\n\nThis will require vendor or admin approval.\n\nNote: Refunds (if applicable) will be processed according to the vendor's cancellation policy.`;
+    
+    const reason = prompt(confirmMessage + '\n\nOptional: Please provide a reason for cancellation:');
+    
+    if (reason === null) {
+      // User clicked cancel
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      if (isDirectCancel) {
+        // Direct cancellation
+        console.log('🚫 [CANCEL] Performing direct cancellation...');
+        const result = await cancelBooking(booking.id, {
+          userId: user.id,
+          reason: reason || undefined
+        });
+        
+        alert(`✅ ${result.message}`);
+        console.log('✅ [CANCEL] Booking cancelled successfully:', result);
+        
+        // Refresh bookings
+        await loadBookings();
+      } else {
+        // Cancellation request
+        console.log('📝 [CANCEL] Submitting cancellation request...');
+        const result = await requestCancellation(booking.id, {
+          userId: user.id,
+          reason: reason || undefined
+        });
+        
+        alert(`✅ ${result.message}`);
+        console.log('✅ [CANCEL] Cancellation request submitted:', result);
+        
+        // Refresh bookings
+        await loadBookings();
+      }
+    } catch (error) {
+      console.error('❌ [CANCEL] Error:', error);
+      alert(`Failed to cancel booking: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Enhanced PayMongo payment success handler with proper status updates and comprehensive debugging
   const handlePayMongoPaymentSuccess = useCallback(async (paymentData: any) => {
     console.log('🎉 [PAYMENT SUCCESS TRIGGERED] Handler called with data:', paymentData);
@@ -442,6 +567,7 @@ export const IndividualBookings: React.FC = () => {
 
       console.log('🔄 [STATUS UPDATE] Will apply these changes:', updatedBooking);
 
+      // Update local React state optimistically (backend update happens later)
       setBookings(prev => {
         console.log('🔍 [BEFORE STATE UPDATE] Previous bookings:', prev.length);
         const bookingToUpdate = prev.find(b => b.id === booking.id);
@@ -525,6 +651,60 @@ export const IndividualBookings: React.FC = () => {
         notification.style.transform = 'translateX(100%)';
         setTimeout(() => document.body.removeChild(notification), 300);
       }, 6000);
+
+      // Update booking status in backend database
+      console.log('📡 [BACKEND UPDATE] Updating booking status in database...');
+      try {
+        const backendUrl = 'https://weddingbazaar-web.onrender.com/api/bookings';
+        const updateStatusUrl = `${backendUrl}/${booking.id}/status`;
+        
+        // Prepare backend status mapping
+        let backendStatus = newStatus;
+        let statusNote = '';
+        
+        if (newStatus === 'downpayment_paid') {
+          backendStatus = 'deposit_paid';
+          statusNote = `DEPOSIT_PAID: ₱${amount.toLocaleString()} paid via ${paymentData.method || 'card'} (Transaction ID: ${paymentData.transactionId})`;
+        } else if (newStatus === 'paid_in_full') {
+          backendStatus = 'fully_paid';
+          statusNote = `FULLY_PAID: ₱${amount.toLocaleString()} paid via ${paymentData.method || 'card'} (Transaction ID: ${paymentData.transactionId})`;
+        }
+        
+        console.log('📡 [BACKEND UPDATE] Sending status update:', {
+          url: updateStatusUrl,
+          status: backendStatus,
+          note: statusNote
+        });
+        
+        const updateResponse = await fetch(updateStatusUrl, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            status: backendStatus,
+            vendor_notes: statusNote
+          })
+        });
+        
+        if (updateResponse.ok) {
+          const updateData = await updateResponse.json();
+          console.log('✅ [BACKEND UPDATE] Booking status updated in database:', updateData);
+          
+          // Reload bookings from backend to get fresh data
+          console.log('🔄 [RELOAD BOOKINGS] Fetching latest booking data...');
+          setTimeout(() => {
+            loadBookings();
+          }, 500); // Small delay to ensure backend has committed the changes
+        } else {
+          const errorData = await updateResponse.json();
+          console.warn('⚠️ [BACKEND UPDATE] Failed to update booking status:', errorData);
+          // Don't throw - UI update already succeeded
+        }
+      } catch (backendError) {
+        console.error('❌ [BACKEND UPDATE] Error updating booking in backend:', backendError);
+        // Don't throw - UI update already succeeded
+      }
 
       // For test bookings, we might want to persist this to localStorage or backend
       if (booking.id.startsWith('test-')) {
@@ -968,6 +1148,28 @@ export const IndividualBookings: React.FC = () => {
                           >
                             <DollarSign className="w-4 h-4" />
                             Pay Balance
+                          </button>
+                        )}
+
+                        {/* View Receipt Button - Show for paid bookings */}
+                        {(booking.status === 'deposit_paid' || booking.status === 'downpayment_paid' || booking.status === 'downpayment' || booking.status === 'fully_paid' || booking.status === 'paid_in_full' || booking.status === 'completed') && (
+                          <button
+                            onClick={() => handleViewReceipt(booking)}
+                            className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                          >
+                            <FileText className="w-4 h-4" />
+                            View Receipt
+                          </button>
+                        )}
+
+                        {/* Cancel Button - Different logic based on status */}
+                        {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                          <button
+                            onClick={() => handleCancelBooking(booking)}
+                            className="w-full px-4 py-2.5 bg-white border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition-all flex items-center justify-center gap-2 font-medium"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            {(booking.status === 'request' || booking.status === 'quote_requested') ? 'Cancel Booking' : 'Request Cancellation'}
                           </button>
                         )}
 
