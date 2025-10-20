@@ -56,6 +56,7 @@ const adminRoutes = require('./routes/admin/index.cjs');
 const bookingItemsRoutes = require('./routes/booking-items.js');
 const groupChatRoutes = require('./routes/group-chat.js');
 const bookingsRoutes = require('./routes/bookings.cjs'); // Modular bookings routes
+const paymentsRoutes = require('./routes/payments.cjs'); // PayMongo payment routes
 
 // Make db available to routes
 app.set('db', db);
@@ -64,6 +65,7 @@ app.set('db', db);
 app.use('/api/admin', adminRoutes);
 app.use('/api/verification', verificationRoutes);
 app.use('/api/bookings', bookingsRoutes); // Use modular bookings routes
+app.use('/api/payment', paymentsRoutes); // PayMongo payment endpoints
 app.use('/api', bookingItemsRoutes);
 app.use('/api', groupChatRoutes);
 
