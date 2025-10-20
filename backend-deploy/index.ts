@@ -773,6 +773,162 @@ app.get('/api/bookings/couple/:coupleId', async (req, res) => {
   }
 });
 
+// 🔥 CRITICAL: Enhanced bookings endpoint with vendor_notes support
+app.get('/api/bookings/enhanced', async (req, res) => {
+  try {
+    const { coupleId, vendorId, page = 1, limit = 50 } = req.query;
+    console.log('📊 [Enhanced Bookings] Query:', { coupleId, vendorId, page, limit });
+
+    let query = `
+      SELECT 
+        b.*,
+        b.vendor_notes,
+        b.notes as booking_notes,
+        b.couple_id,
+        b.vendor_id,
+        b.service_id,
+        b.service_name,
+        b.vendor_name,
+        b.couple_name,
+        b.event_date,
+        b.event_time,
+        b.event_end_time,
+        b.event_location,
+        b.venue_details,
+        b.guest_count,
+        b.budget_range,
+        b.service_type,
+        b.special_requests,
+        b.contact_phone,
+        b.contact_email,
+        b.contact_person,
+        b.preferred_contact_method,
+        b.status,
+        b.quoted_price,
+        b.downpayment_amount,
+        b.total_paid,
+        b.response_message,
+        b.created_at,
+        b.updated_at
+      FROM bookings b
+      WHERE 1=1
+    `;
+
+    const params: any[] = [];
+    let paramCount = 0;
+
+    if (coupleId) {
+      paramCount++;
+      query += ` AND b.couple_id = $${paramCount}`;
+      params.push(coupleId);
+    }
+
+    if (vendorId) {
+      paramCount++;
+      query += ` AND b.vendor_id = $${paramCount}`;
+      params.push(vendorId);
+    }
+
+    query += ' ORDER BY b.created_at DESC';
+
+    const offset = (Number(page) - 1) * Number(limit);
+    paramCount++;
+    query += ` LIMIT $${paramCount}`;
+    params.push(limit);
+
+    paramCount++;
+    query += ` OFFSET $${paramCount}`;
+    params.push(offset);
+
+    const result = await db.query(query, params);
+
+    res.json({
+      success: true,
+      bookings: result.rows,
+      count: result.rows.length,
+      page: Number(page),
+      limit: Number(limit)
+    });
+  } catch (error) {
+    console.error('❌ [Enhanced Bookings] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch enhanced bookings',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// 🔥 CRITICAL: Accept quote endpoint (POST method for compatibility)
+app.post('/api/bookings/:bookingId/accept-quote', async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    console.log('💰 [BookingAction] POST Accept quote for booking:', bookingId);
+    
+    const result = await db.query(
+      `UPDATE bookings SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+      ['quote_accepted', bookingId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+    
+    const updatedBooking = result.rows[0];
+    
+    res.json({
+      success: true,
+      booking: updatedBooking,
+      message: 'Quote accepted successfully. You can now proceed with deposit payment.'
+    });
+  } catch (error) {
+    console.error('Error accepting quote:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to accept quote',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// 🔥 CRITICAL: Accept quote endpoint (PATCH method for RESTful standard)
+app.patch('/api/bookings/:bookingId/accept-quote', async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    console.log('💰 [BookingAction] PATCH Accept quote for booking:', bookingId);
+    
+    const result = await db.query(
+      `UPDATE bookings SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+      ['quote_accepted', bookingId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+    
+    const updatedBooking = result.rows[0];
+    
+    res.json({
+      success: true,
+      booking: updatedBooking,
+      message: 'Quote accepted successfully. You can now proceed with deposit payment.'
+    });
+  } catch (error) {
+    console.error('Error accepting quote:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to accept quote',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // =============================================================================
 // ADMIN ENDPOINTS - DATABASE FIXES
 // =============================================================================
