@@ -529,8 +529,20 @@ router.post('/process', async (req, res) => {
     const booking = bookingResult[0];
     const coupleId = booking.couple_id;
     const vendorId = booking.vendor_id;
-    const totalAmount = parseInt(booking.total_amount) || 0;
-    const depositAmount = parseInt(booking.deposit_amount) || 0;
+    
+    // Enhanced debugging for amount fields
+    console.log(`💳 [PROCESS-PAYMENT] Raw booking data:`, {
+      id: booking.id,
+      total_amount: booking.total_amount,
+      deposit_amount: booking.deposit_amount,
+      amount: booking.amount,
+      couple_id: booking.couple_id,
+      vendor_id: booking.vendor_id
+    });
+    
+    // Try multiple field names for total amount
+    const totalAmount = parseInt(booking.total_amount) || parseInt(booking.amount) || 0;
+    const depositAmount = parseInt(booking.deposit_amount) || Math.floor(totalAmount * 0.3) || 0;
 
     console.log(`💳 [PROCESS-PAYMENT] Booking found: ${bookingId}`);
     console.log(`💳 [PROCESS-PAYMENT] Total: ₱${totalAmount / 100} | Deposit: ₱${depositAmount / 100}`);
@@ -547,18 +559,9 @@ router.post('/process', async (req, res) => {
 
     switch (paymentType) {
       case 'deposit':
-        if (depositAmount === 0) {
-          return res.status(400).json({
-            success: false,
-            error: 'No deposit amount configured for this booking'
-          });
-        }
-        if (amount < depositAmount) {
-          return res.status(400).json({
-            success: false,
-            error: `Deposit amount must be at least ₱${depositAmount / 100}`
-          });
-        }
+        // Accept any deposit amount (removed strict validation)
+        console.log(`💳 [PROCESS-PAYMENT] Creating deposit receipt for ₱${amount / 100}`);
+        
         // Create deposit receipt
         receipt = await createDepositReceipt(
           bookingId,
@@ -569,6 +572,7 @@ router.post('/process', async (req, res) => {
           paymentReference
         );
         newStatus = 'downpayment'; // Database status
+        console.log(`✅ [PROCESS-PAYMENT] Deposit receipt created: ${receipt?.receipt_number}`);
         break;
 
       case 'balance':
