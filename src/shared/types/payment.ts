@@ -80,6 +80,8 @@ export interface PaymentResult {
   sourceId?: string;
   requiresAction?: boolean;
   clientSecret?: string;
+  receiptNumber?: string;
+  receiptData?: any;
   transferInstructions?: {
     bankName: string;
     accountName: string;
