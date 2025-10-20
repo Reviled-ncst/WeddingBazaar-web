@@ -1,5 +1,12 @@
 const express = require('express');
 const { sql } = require('../config/database.cjs');
+const {
+  createDepositReceipt,
+  createBalanceReceipt,
+  createFullPaymentReceipt,
+  getBookingReceipts,
+  calculateTotalPaid
+} = require('../helpers/receiptGenerator.cjs');
 
 const router = express.Router();
 
@@ -327,6 +334,197 @@ router.get('/payment-intent/:intentId', async (req, res) => {
   }
 });
 
+// Process Payment (Deposit, Balance, or Full Payment)
+router.post('/process', async (req, res) => {
+  console.log('💳 [PROCESS-PAYMENT] Processing payment...');
+  console.log('💳 [PROCESS-PAYMENT] Request body:', JSON.stringify(req.body, null, 2));
+
+  try {
+    const {
+      bookingId,
+      paymentType, // 'deposit', 'balance', 'full'
+      paymentMethod, // 'gcash', 'maya', 'card', etc.
+      amount, // in centavos
+      paymentReference, // PayMongo transaction ID
+      metadata = {}
+    } = req.body;
+
+    // Validate required fields
+    if (!bookingId || !paymentType || !amount) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: bookingId, paymentType, and amount'
+      });
+    }
+
+    // Validate payment type
+    const validPaymentTypes = ['deposit', 'balance', 'full'];
+    if (!validPaymentTypes.includes(paymentType)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid payment type. Must be one of: ${validPaymentTypes.join(', ')}`
+      });
+    }
+
+    // Get booking details
+    const bookingResult = await sql`
+      SELECT 
+        b.*,
+        b.couple_id,
+        b.vendor_id,
+        b.total_amount,
+        b.deposit_amount
+      FROM bookings b
+      WHERE b.id = ${bookingId}
+    `;
+
+    if (bookingResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+
+    const booking = bookingResult[0];
+    const coupleId = booking.couple_id;
+    const vendorId = booking.vendor_id;
+    const totalAmount = parseInt(booking.total_amount) || 0;
+    const depositAmount = parseInt(booking.deposit_amount) || 0;
+
+    console.log(`💳 [PROCESS-PAYMENT] Booking found: ${bookingId}`);
+    console.log(`💳 [PROCESS-PAYMENT] Total: ₱${totalAmount / 100} | Deposit: ₱${depositAmount / 100}`);
+
+    // Calculate amounts already paid
+    const totalPaid = await calculateTotalPaid(bookingId);
+    const remainingBalance = totalAmount - totalPaid;
+
+    console.log(`💰 [PROCESS-PAYMENT] Already paid: ₱${totalPaid / 100} | Remaining: ₱${remainingBalance / 100}`);
+
+    // Validate payment amount based on type
+    let newStatus = booking.status;
+    let receipt = null;
+
+    switch (paymentType) {
+      case 'deposit':
+        if (depositAmount === 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'No deposit amount configured for this booking'
+          });
+        }
+        if (amount < depositAmount) {
+          return res.status(400).json({
+            success: false,
+            error: `Deposit amount must be at least ₱${depositAmount / 100}`
+          });
+        }
+        // Create deposit receipt
+        receipt = await createDepositReceipt(
+          bookingId,
+          coupleId,
+          vendorId,
+          amount,
+          paymentMethod,
+          paymentReference
+        );
+        newStatus = 'downpayment'; // Database status
+        break;
+
+      case 'balance':
+        if (totalPaid === 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'Cannot pay balance without deposit payment'
+          });
+        }
+        if (amount < remainingBalance) {
+          return res.status(400).json({
+            success: false,
+            error: `Balance payment must be at least ₱${remainingBalance / 100}`
+          });
+        }
+        // Create balance receipt
+        receipt = await createBalanceReceipt(
+          bookingId,
+          coupleId,
+          vendorId,
+          amount,
+          totalAmount,
+          paymentMethod,
+          paymentReference
+        );
+        newStatus = 'fully_paid'; // Database status
+        break;
+
+      case 'full':
+        if (amount < totalAmount) {
+          return res.status(400).json({
+            success: false,
+            error: `Full payment must be ₱${totalAmount / 100}`
+          });
+        }
+        // Create full payment receipt
+        receipt = await createFullPaymentReceipt(
+          bookingId,
+          coupleId,
+          vendorId,
+          amount,
+          paymentMethod,
+          paymentReference
+        );
+        newStatus = 'fully_paid'; // Database status
+        break;
+
+      default:
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid payment type'
+        });
+    }
+
+    // Update booking status
+    const updatedBooking = await sql`
+      UPDATE bookings
+      SET 
+        status = ${newStatus},
+        notes = ${`${paymentType.toUpperCase()}_PAID: Payment of ₱${amount / 100} received via ${paymentMethod}`},
+        updated_at = NOW()
+      WHERE id = ${bookingId}
+      RETURNING *
+    `;
+
+    console.log(`✅ [PROCESS-PAYMENT] Payment processed successfully`);
+    console.log(`✅ [PROCESS-PAYMENT] Receipt: ${receipt.receipt_number}`);
+    console.log(`✅ [PROCESS-PAYMENT] Status: ${booking.status} -> ${newStatus}`);
+
+    res.json({
+      success: true,
+      message: 'Payment processed successfully',
+      data: {
+        booking: updatedBooking[0],
+        receipt: receipt,
+        payment: {
+          type: paymentType,
+          amount: amount,
+          method: paymentMethod,
+          reference: paymentReference,
+          status: 'completed'
+        }
+      },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ [PROCESS-PAYMENT] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Payment processing failed',
+      details: error.stack,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // PayMongo Webhook Handler
 router.post('/webhook', async (req, res) => {
   console.log('🎣 [WEBHOOK] PayMongo webhook received');
@@ -341,23 +539,125 @@ router.post('/webhook', async (req, res) => {
     }
     
     const eventType = data.attributes?.type;
+    const eventData = data.attributes?.data;
     console.log(`🎣 [WEBHOOK] Event type: ${eventType}`);
     
     // Handle different webhook events
     switch (eventType) {
       case 'source.chargeable':
-        console.log('💰 [WEBHOOK] Source became chargeable:', data.attributes.data.id);
-        // TODO: Create payment from chargeable source
+        console.log('💰 [WEBHOOK] Source became chargeable:', eventData?.id);
+        // Source is ready to be charged - this happens before actual payment
         break;
         
       case 'payment.paid':
-        console.log('✅ [WEBHOOK] Payment completed:', data.attributes.data.id);
-        // TODO: Update booking status to paid
+        console.log('✅ [WEBHOOK] Payment completed:', eventData?.id);
+        
+        // Extract payment details from webhook
+        const paymentAmount = eventData?.attributes?.amount;
+        const paymentMethod = eventData?.attributes?.source?.type || 'unknown';
+        const paymentReference = eventData?.id;
+        const metadata = eventData?.attributes?.metadata || {};
+        const bookingId = metadata.booking_id;
+        
+        if (bookingId) {
+          console.log(`💰 [WEBHOOK] Processing payment for booking: ${bookingId}`);
+          
+          // Get booking details
+          const bookingResult = await sql`
+            SELECT * FROM bookings WHERE id = ${bookingId}
+          `;
+          
+          if (bookingResult.length > 0) {
+            const booking = bookingResult[0];
+            const paymentType = metadata.payment_type || 'deposit'; // default to deposit
+            
+            // Determine payment type based on amount and booking state
+            let receiptType = paymentType;
+            const totalPaid = await calculateTotalPaid(bookingId);
+            const totalAmount = parseInt(booking.total_amount) || 0;
+            const depositAmount = parseInt(booking.deposit_amount) || 0;
+            
+            if (paymentAmount >= totalAmount && totalPaid === 0) {
+              receiptType = 'full';
+            } else if (paymentAmount >= (totalAmount - totalPaid)) {
+              receiptType = 'balance';
+            } else {
+              receiptType = 'deposit';
+            }
+            
+            // Create receipt based on payment type
+            let receipt;
+            let newStatus;
+            
+            if (receiptType === 'deposit') {
+              receipt = await createDepositReceipt(
+                bookingId,
+                booking.couple_id,
+                booking.vendor_id,
+                paymentAmount,
+                paymentMethod,
+                paymentReference
+              );
+              newStatus = 'downpayment';
+            } else if (receiptType === 'balance') {
+              receipt = await createBalanceReceipt(
+                bookingId,
+                booking.couple_id,
+                booking.vendor_id,
+                paymentAmount,
+                totalAmount,
+                paymentMethod,
+                paymentReference
+              );
+              newStatus = 'fully_paid';
+            } else {
+              receipt = await createFullPaymentReceipt(
+                bookingId,
+                booking.couple_id,
+                booking.vendor_id,
+                paymentAmount,
+                paymentMethod,
+                paymentReference
+              );
+              newStatus = 'fully_paid';
+            }
+            
+            // Update booking status
+            await sql`
+              UPDATE bookings
+              SET 
+                status = ${newStatus},
+                notes = ${`PAYMENT_RECEIVED: ₱${paymentAmount / 100} via ${paymentMethod} - Receipt: ${receipt.receipt_number}`},
+                updated_at = NOW()
+              WHERE id = ${bookingId}
+            `;
+            
+            console.log(`✅ [WEBHOOK] Receipt created: ${receipt.receipt_number}`);
+            console.log(`✅ [WEBHOOK] Booking ${bookingId} status updated to: ${newStatus}`);
+          } else {
+            console.warn(`⚠️ [WEBHOOK] Booking not found: ${bookingId}`);
+          }
+        } else {
+          console.warn('⚠️ [WEBHOOK] No booking_id in payment metadata');
+        }
         break;
         
       case 'payment.failed':
-        console.log('❌ [WEBHOOK] Payment failed:', data.attributes.data.id);
-        // TODO: Update booking status to failed
+        console.log('❌ [WEBHOOK] Payment failed:', eventData?.id);
+        const failedMetadata = eventData?.attributes?.metadata || {};
+        const failedBookingId = failedMetadata.booking_id;
+        
+        if (failedBookingId) {
+          // Update booking with failed payment note
+          await sql`
+            UPDATE bookings
+            SET 
+              notes = ${`PAYMENT_FAILED: Payment attempt failed - ${eventData?.id}`},
+              updated_at = NOW()
+            WHERE id = ${failedBookingId}
+          `;
+          console.log(`❌ [WEBHOOK] Booking ${failedBookingId} marked with failed payment`);
+        }
         break;
         
       default:
@@ -369,7 +669,8 @@ router.post('/webhook', async (req, res) => {
     
   } catch (error) {
     console.error('❌ [WEBHOOK] Error processing webhook:', error);
-    res.status(500).json({ error: 'Webhook processing failed' });
+    // Still return 200 so PayMongo doesn't retry
+    res.json({ received: true, error: error.message });
   }
 });
 
