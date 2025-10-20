@@ -822,23 +822,26 @@ router.patch('/:bookingId/status', async (req, res) => {
       });
     }
     
-    // WORKAROUND: Database constraint only allows 5 statuses
-    // Map new statuses to allowed ones, store real status in notes
+    // WORKAROUND: Database allows: request, approved, downpayment, fully_paid, completed, declined, cancelled
+    // Map requested statuses to allowed database statuses, store real status in notes
     let actualStatus = status;
     let statusNote = vendor_notes || null;
     
     if (status === 'quote_sent') {
-      actualStatus = 'pending';
+      actualStatus = 'request';
       statusNote = `QUOTE_SENT: ${vendor_notes || 'Quote has been sent to client'}`;
     } else if (status === 'quote_accepted') {
-      actualStatus = 'confirmed';
+      actualStatus = 'approved';
       statusNote = `QUOTE_ACCEPTED: ${vendor_notes || 'Quote accepted by couple - ready for payment'}`;
     } else if (status === 'deposit_paid') {
-      actualStatus = 'confirmed';
+      actualStatus = 'downpayment';
       statusNote = `DEPOSIT_PAID: ${vendor_notes || 'Deposit payment received'}`;
-    } else if (status === 'fully_paid') {
-      actualStatus = 'confirmed';
-      statusNote = `FULLY_PAID: ${vendor_notes || 'Full payment received'}`;
+    } else if (status === 'confirmed') {
+      actualStatus = 'approved';
+      statusNote = vendor_notes;
+    } else if (status === 'pending') {
+      actualStatus = 'request';
+      statusNote = vendor_notes;
     }
     
     const booking = await sql`
@@ -901,23 +904,26 @@ router.put('/:bookingId/update-status', async (req, res) => {
       });
     }
     
-    // WORKAROUND: Database constraint only allows 5 statuses
-    // Map new statuses to allowed ones, store real status in notes
+    // WORKAROUND: Database allows: request, approved, downpayment, fully_paid, completed, declined, cancelled
+    // Map requested statuses to allowed database statuses, store real status in notes
     let actualStatus = status;
     let statusNote = vendor_notes || null;
     
     if (status === 'quote_sent') {
-      actualStatus = 'pending';
+      actualStatus = 'request';
       statusNote = `QUOTE_SENT: ${vendor_notes || 'Quote has been sent to client'}`;
     } else if (status === 'quote_accepted') {
-      actualStatus = 'confirmed';
+      actualStatus = 'approved';
       statusNote = `QUOTE_ACCEPTED: ${vendor_notes || 'Quote accepted by couple - ready for payment'}`;
     } else if (status === 'deposit_paid') {
-      actualStatus = 'confirmed';
+      actualStatus = 'downpayment';
       statusNote = `DEPOSIT_PAID: ${vendor_notes || 'Deposit payment received'}`;
-    } else if (status === 'fully_paid') {
-      actualStatus = 'confirmed';
-      statusNote = `FULLY_PAID: ${vendor_notes || 'Full payment received'}`;
+    } else if (status === 'confirmed') {
+      actualStatus = 'approved';
+      statusNote = vendor_notes;
+    } else if (status === 'pending') {
+      actualStatus = 'request';
+      statusNote = vendor_notes;
     }
     
     const booking = await sql`
@@ -1004,14 +1010,14 @@ router.put('/:bookingId/accept-quote', async (req, res) => {
       });
     }
     
-    // WORKAROUND: Database constraint only allows 5 statuses
-    // Store quote_accepted in notes, keep status as 'confirmed'
+    // WORKAROUND: Database allows: request, approved, downpayment, fully_paid, completed, declined, cancelled
+    // Store quote_accepted in notes, use 'approved' status (allowed by constraint)
     const statusNote = `QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`;
     
-    // Update booking - keep status as 'confirmed' (allowed by constraint)
+    // Update booking - use 'approved' (allowed by constraint)
     const updatedBooking = await sql`
       UPDATE bookings 
-      SET status = 'confirmed',
+      SET status = 'approved',
           notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
@@ -1061,14 +1067,14 @@ router.patch('/:bookingId/accept-quote', async (req, res) => {
       });
     }
     
-    // WORKAROUND: Database constraint only allows 5 statuses
-    // Store quote_accepted in notes, keep status as 'confirmed'
+    // WORKAROUND: Database allows: request, approved, downpayment, fully_paid, completed, declined, cancelled
+    // Store quote_accepted in notes, use 'approved' status (allowed by constraint)
     const statusNote = `QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`;
     
-    // Update booking - keep status as 'confirmed' (allowed by constraint)
+    // Update booking - use 'approved' (allowed by constraint)
     const updatedBooking = await sql`
       UPDATE bookings 
-      SET status = 'confirmed',
+      SET status = 'approved',
           notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
@@ -1120,14 +1126,14 @@ router.post('/:bookingId/accept-quote', async (req, res) => {
       });
     }
     
-    // WORKAROUND: Database constraint only allows 5 statuses
-    // Store quote_accepted in notes, keep status as 'confirmed'
+    // WORKAROUND: Database allows: request, approved, downpayment, fully_paid, completed, declined, cancelled
+    // Store quote_accepted in notes, use 'approved' status (allowed by constraint)
     const statusNote = `QUOTE_ACCEPTED: ${acceptance_notes || 'Quote accepted by couple'}`;
     
-    // Update booking - keep status as 'confirmed' (allowed by constraint)
+    // Update booking - use 'approved' (allowed by constraint)
     const updatedBooking = await sql`
       UPDATE bookings 
-      SET status = 'confirmed',
+      SET status = 'approved',
           notes = ${statusNote},
           updated_at = NOW()
       WHERE id = ${bookingId}
