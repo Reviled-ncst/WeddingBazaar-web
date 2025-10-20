@@ -46,61 +46,145 @@ interface BookingRequestModalProps {
 
 // 🚀 PERFORMANCE: Memoized Service Overview Component
 const ServiceOverview = memo(({ service }: { service: Service }) => {
+  // Calculate actual price range
+  const formatPriceRange = () => {
+    if (service.priceRange) return service.priceRange;
+    if (service.minimumPrice && service.maximumPrice) {
+      return `₱${service.minimumPrice.toLocaleString()} - ₱${service.maximumPrice.toLocaleString()}`;
+    }
+    if (service.basePrice) {
+      return `Starting at ₱${service.basePrice.toLocaleString()}`;
+    }
+    return 'Contact for pricing';
+  };
+
+  // Get features to display - prioritize actual features, fallback to package inclusions
+  // Filter out placeholder values like "OTHER"
+  const rawFeatures = service.features && service.features.length > 0 
+    ? service.features 
+    : service.packageInclusions && service.packageInclusions.length > 0
+    ? service.packageInclusions
+    : ['Professional Service', 'Custom Planning', 'Quality Guarantee'];
+  
+  const displayFeatures = rawFeatures.filter(feature => 
+    feature && 
+    feature.trim() !== '' && 
+    feature.toUpperCase() !== 'OTHER' &&
+    feature.toLowerCase() !== 'n/a' &&
+    feature !== '-'
+  );
+
   return (
-    <div className="mb-8 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 rounded-3xl p-8 text-white shadow-xl border border-pink-200/20">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
-        {/* Service Icon & Basic Info */}
-        <div className="flex items-center space-x-6">
-          <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg">
-            <Calendar className="h-10 w-10 text-white" />
-          </div>
-          <div>
-            <h3 className="text-3xl font-bold leading-tight">{service.name}</h3>
-            <p className="text-pink-100 text-xl">by {service.vendorName}</p>
+    <div className="mb-8 relative">
+      {/* Premium Badge if applicable */}
+      {service.isPremium && (
+        <div className="absolute -top-2 -right-2 z-10">
+          <div className="bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-2xl animate-pulse border-2 border-white/50 backdrop-blur-sm">
+            ⭐ Premium Service ✨
           </div>
         </div>
+      )}
+      
+      <div className="bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-700 rounded-3xl p-8 text-white shadow-2xl border-2 border-pink-200/30 backdrop-blur-xl relative overflow-hidden">
+        {/* Animated background patterns */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 left-0 w-64 h-64 bg-white rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl translate-x-1/3 translate-y-1/3"></div>
+        </div>
         
-        {/* Service Details */}
-        <div className="flex flex-col space-y-3">
-          <div className="flex items-center space-x-4">
-            <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium border border-white/10">
-              {service.category}
-            </span>
-            <span className="text-pink-100">•</span>
-            <span className="text-pink-100 font-semibold">{service.priceRange || 'Contact for pricing'}</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="flex text-yellow-300">
-                {[...Array(5)].map((_, i) => (
-                  <svg key={i} className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
+        <div className="relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            {/* Service Image & Basic Info */}
+            <div className="flex items-center space-x-6">
+              <div className="w-24 h-24 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-md rounded-3xl overflow-hidden shadow-2xl border-2 border-white/20 transform hover:scale-105 transition-transform duration-300 flex-shrink-0">
+                {service.image ? (
+                  <img 
+                    src={service.image} 
+                    alt={service.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to calendar icon if image fails to load
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.parentElement!.classList.add('flex', 'items-center', 'justify-center');
+                      const calendarIcon = document.createElement('div');
+                      calendarIcon.innerHTML = '<svg class="h-12 w-12 text-white drop-shadow-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>';
+                      e.currentTarget.parentElement!.appendChild(calendarIcon);
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Calendar className="h-12 w-12 text-white drop-shadow-lg" />
+                  </div>
+                )}
               </div>
-              <span className="text-pink-100 text-sm">{service.rating} ({service.reviewCount} reviews)</span>
+              <div className="flex-1">
+                <h3 className="text-3xl font-bold leading-tight mb-2 drop-shadow-lg">{service.name}</h3>
+                <p className="text-pink-100 text-lg font-medium flex items-center space-x-2">
+                  <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></span>
+                  <span>by {service.vendorName}</span>
+                </p>
+              </div>
+            </div>
+            
+            {/* Service Details */}
+            <div className="flex flex-col space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="bg-gradient-to-r from-white/30 to-white/20 backdrop-blur-md px-5 py-2.5 rounded-full text-sm font-bold border-2 border-white/20 shadow-lg uppercase tracking-wide">
+                  {service.category}
+                </span>
+                <span className="text-pink-100 font-bold text-lg">•</span>
+                <span className="text-white font-bold text-lg bg-gradient-to-r from-yellow-400/30 to-orange-400/30 px-4 py-2 rounded-full backdrop-blur-sm border border-yellow-200/30">
+                  {formatPriceRange()}
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/20">
+                <div className="flex text-yellow-300 drop-shadow-lg">
+                  {[...Array(5)].map((_, i) => (
+                    <svg key={i} className={cn("w-5 h-5 fill-current", i < Math.floor(service.rating) ? "text-yellow-300" : "text-white/30")} viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </div>
+                <span className="text-white font-bold text-sm">{service.rating.toFixed(1)}</span>
+                <span className="text-pink-100 text-sm">({service.reviewCount} reviews)</span>
+              </div>
+            </div>
+            
+            {/* What's Included - Enhanced */}
+            <div className="lg:col-span-1">
+              <div className="bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-md rounded-2xl p-6 border-2 border-white/20 shadow-xl">
+                <h4 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
+                  <CheckCircle className="h-6 w-6 text-green-300" />
+                  <span>What's Included</span>
+                </h4>
+                <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar">
+                  {displayFeatures.slice(0, 6).map((feature, index) => (
+                    <div 
+                      key={index} 
+                      className="flex items-start space-x-3 text-sm group hover:bg-white/10 p-2 rounded-lg transition-all duration-200"
+                    >
+                      <div className="mt-0.5">
+                        <div className="w-5 h-5 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      </div>
+                      <span className="text-pink-50 font-medium leading-relaxed flex-1">{feature}</span>
+                    </div>
+                  ))}
+                  {displayFeatures.length > 6 && (
+                    <div className="text-center pt-2">
+                      <span className="text-pink-200 text-xs font-semibold bg-white/10 px-3 py-1 rounded-full">
+                        +{displayFeatures.length - 6} more features
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-        
-        {/* Quick Service Highlights */}
-        <div className="lg:col-span-1 flex flex-col space-y-3">
-          <h4 className="text-lg font-semibold text-white/90 mb-2">What's Included:</h4>
-          <div className="grid grid-cols-1 gap-2">
-            {(service.features || ['Professional Service', 'Custom Planning', 'Quality Guarantee']).slice(0, 4).map((feature, index) => (
-              <div key={index} className="flex items-center space-x-2 text-sm">
-                <div className="w-2 h-2 bg-green-300 rounded-full"></div>
-                <span className="text-pink-100">{feature}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      
-      {/* Premium Badge if applicable */}
-      <div className="absolute top-6 right-6">
-        <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg animate-pulse">
-          ⭐ Premium Service
         </div>
       </div>
     </div>
@@ -290,18 +374,22 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
     const completedFields = [
       formData.eventDate,
       formData.contactPhone,
-      formData.eventLocation
+      formData.eventLocation, // Required field
+      formData.guestCount,
+      formData.budgetRange
     ].filter(Boolean).length;
     
     return {
       completed: completedFields,
-      total: 3,
-      percentage: Math.round((completedFields / 3) * 100),
+      total: 5,
+      percentage: Math.round((completedFields / 5) * 100),
       widthClass: completedFields === 0 ? "w-0" :
-                  completedFields === 1 ? "w-1/3" :
-                  completedFields === 2 ? "w-2/3" : "w-full"
+                  completedFields === 1 ? "w-1/5" :
+                  completedFields === 2 ? "w-2/5" :
+                  completedFields === 3 ? "w-3/5" :
+                  completedFields === 4 ? "w-4/5" : "w-full"
     };
-  }, [formData.eventDate, formData.contactPhone, formData.eventLocation]);
+  }, [formData.eventDate, formData.contactPhone, formData.eventLocation, formData.guestCount, formData.budgetRange]);
 
   // Enhanced form validation state
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
@@ -322,6 +410,23 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
       });
     }
   }, [isOpen, service?.vendorId, service?.id]);
+
+  // Prefill user data when modal opens
+  useEffect(() => {
+    if (isOpen && user) {
+      console.log('📝 [BookingModal] Prefilling user data from database');
+      const fullName = user.firstName && user.lastName 
+        ? `${user.firstName} ${user.lastName}`.trim() 
+        : user.firstName || user.lastName || '';
+      
+      setFormData(prev => ({
+        ...prev,
+        contactPerson: fullName || prev.contactPerson,
+        contactEmail: user.email || prev.contactEmail,
+        contactPhone: user.phone || prev.contactPhone
+      }));
+    }
+  }, [isOpen, user]);
 
   // 🚀 PERFORMANCE: Memoized existing booking check
   const checkExistingBooking = useCallback(async () => {
@@ -405,40 +510,71 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
 
   // 🚀 PERFORMANCE: Memoized form validation function
   const validateForm = useCallback((): boolean => {
+    console.log('🔍 [BookingModal] Running validation...');
     const errors: {[key: string]: string} = {};
     
     // Required field validation
-    if (!formData.eventDate) {
+    if (!formData.eventDate || formData.eventDate.trim() === '') {
+      console.log('   ❌ Event date missing');
       errors.eventDate = 'Event date is required';
     }
     
-    if (!formData.contactPhone) {
+    if (!formData.eventLocation || formData.eventLocation.trim() === '') {
+      console.log('   ❌ Event location missing');
+      errors.eventLocation = 'Event location is required to process your booking';
+    }
+    
+    if (!formData.contactPhone || formData.contactPhone.trim() === '') {
+      console.log('   ❌ Phone number missing');
       errors.contactPhone = 'Phone number is required';
-    } else if (!/^[\+]?[0-9\s\-\(\)]{10,}$/.test(formData.contactPhone)) {
-      errors.contactPhone = 'Please enter a valid phone number';
+    } else if (formData.contactPhone.trim().length < 10) {
+      console.log('   ❌ Phone number too short:', formData.contactPhone.trim().length);
+      errors.contactPhone = 'Phone number must be at least 10 characters';
     }
     
     if (formData.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactEmail)) {
+      console.log('   ❌ Invalid email format');
       errors.contactEmail = 'Please enter a valid email address';
     }
     
-    if (formData.guestCount && (parseInt(formData.guestCount) < 1 || parseInt(formData.guestCount) > 10000)) {
-      errors.guestCount = 'Guest count must be between 1 and 10,000';
+    if (!formData.guestCount || formData.guestCount.trim() === '') {
+      console.log('   ❌ Guest count missing');
+      errors.guestCount = 'Number of guests is required';
+    } else {
+      const guestCountNum = parseInt(formData.guestCount);
+      if (isNaN(guestCountNum) || guestCountNum < 1 || guestCountNum > 10000) {
+        console.log('   ❌ Guest count out of range:', guestCountNum);
+        errors.guestCount = 'Guest count must be between 1 and 10,000';
+      }
+    }
+    
+    if (!formData.budgetRange || formData.budgetRange.trim() === '') {
+      console.log('   ❌ Budget range missing');
+      errors.budgetRange = 'Budget range is required';
     }
     
     // Event date validation (must be in the future)
-    if (formData.eventDate) {
+    if (formData.eventDate && formData.eventDate.trim() !== '') {
       const eventDate = new Date(formData.eventDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
       if (eventDate < today) {
+        console.log('   ❌ Event date in the past');
         errors.eventDate = 'Event date must be in the future';
       }
     }
     
     setFormErrors(errors);
     const isValid = Object.keys(errors).length === 0;
+    
+    if (isValid) {
+      console.log('   ✅ Validation passed - all required fields present');
+    } else {
+      console.log('   ❌ Validation failed - errors:', Object.keys(errors));
+      console.log('      Error details:', errors);
+    }
+    
     return isValid;
   }, [formData]);
 
@@ -462,18 +598,37 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('📝 [BookingModal] Form submitted - validating fields...');
+    console.log('   Guest Count:', formData.guestCount);
+    console.log('   Budget Range:', formData.budgetRange);
+    console.log('   Event Date:', formData.eventDate);
+    console.log('   Contact Phone:', formData.contactPhone);
+    
     // Enhanced validation before showing confirmation
     if (!validateForm()) {
-      console.error('❌ [BookingModal] Form validation failed');
-      setErrorMessage('Please fix the errors in the form and try again.');
+      console.error('❌ [BookingModal] Form validation failed - showing errors');
+      console.error('   Current errors:', Object.keys(formErrors).length > 0 ? formErrors : 'Validation will set errors');
+      
+      setErrorMessage('⚠️ Please fill in all required fields (marked with *) before submitting.');
       setSubmitStatus('error');
+      
+      // Scroll to first error field
+      setTimeout(() => {
+        const firstErrorField = document.querySelector('[aria-invalid="true"]') || 
+                                document.querySelector('.border-red-300');
+        if (firstErrorField) {
+          firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      
       return;
     }
+    
+    console.log('✅ [BookingModal] Validation passed - showing confirmation modal');
     
     // Show custom confirmation modal instead of window.confirm
     setPendingFormData(formData);
     setShowConfirmModal(true);
-    console.log('� [BookingModal] Showing custom confirmation modal');
   };
 
   // Handle confirmation modal cancel action
@@ -710,13 +865,19 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
               serviceType: service.category,
               eventDate: submissionData.eventDate,
               eventTime: submissionData.eventTime || '10:00',
+              eventEndTime: submissionData.eventEndTime || undefined,
               eventLocation: submissionData.eventLocation,
+              venueDetails: submissionData.venueDetails || undefined,
               guestCount: submissionData.guestCount ? parseInt(submissionData.guestCount) : undefined,
               specialRequests: submissionData.specialRequests,
+              contactPerson: submissionData.contactPerson || undefined,
               contactPhone: submissionData.contactPhone,
               contactEmail: submissionData.contactEmail,
               preferredContactMethod: submissionData.preferredContactMethod || 'email',
-              budgetRange: submissionData.budgetRange
+              budgetRange: submissionData.budgetRange,
+              // Additional metadata
+              vendorName: service.vendorName,
+              coupleName: user?.displayName || user?.email || undefined
             };
             
             console.log('📤 [BookingModal] Booking payload:', bookingPayload);
@@ -762,13 +923,19 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
                 serviceType: service.category,
                 eventDate: submissionData.eventDate,
                 eventTime: submissionData.eventTime || '10:00',
+                eventEndTime: submissionData.eventEndTime || undefined,
                 eventLocation: submissionData.eventLocation,
+                venueDetails: submissionData.venueDetails || undefined,
                 guestCount: submissionData.guestCount ? parseInt(submissionData.guestCount) : undefined,
                 specialRequests: submissionData.specialRequests,
+                contactPerson: submissionData.contactPerson || undefined,
                 contactPhone: submissionData.contactPhone,
                 contactEmail: submissionData.contactEmail,
                 preferredContactMethod: submissionData.preferredContactMethod || 'email',
-                budgetRange: submissionData.budgetRange
+                budgetRange: submissionData.budgetRange,
+                // Additional metadata
+                vendorName: service.vendorName,
+                coupleName: user?.displayName || user?.email || undefined
               };
               
               const directResponse = await fetch(`${import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com'}/api/bookings/request`, {
@@ -1238,7 +1405,7 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
                 <h3 className="text-3xl font-bold text-gray-900">Request Booking</h3>
               </div>
               <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-white/50">
-                <p className="text-lg font-semibold text-gray-800">{service.name}</p>
+                               <p className="text-lg font-semibold text-gray-800">{service.name}</p>
                 <p className="text-gray-600 flex items-center space-x-2">
                   <span>by {service.vendorName}</span>
                   <span className="text-rose-500">•</span>
@@ -1542,7 +1709,7 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
                 <div className="group">
                   <label className="flex items-center space-x-2 text-sm font-bold text-gray-800 mb-4">
                     <Clock className="h-4 w-4 text-purple-600" />
-                    <span>Event Time</span>
+                    <span>Event Start Time</span>
                   </label>
                   <div className="relative">
                     <Clock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-400 h-5 w-5 group-focus-within:text-purple-600 transition-colors" />
@@ -1551,11 +1718,32 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
                       value={formData.eventTime}
                       onChange={(e) => handleInputChange('eventTime', e.target.value)}
                       className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm hover:shadow-md text-lg font-medium"
-                      title="Select event time"
-                      aria-label="Event time"
-                      placeholder="Select time"
+                      title="Select event start time"
+                      aria-label="Event start time"
+                      placeholder="Select start time"
                     />
                     <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none"></div>
+                  </div>
+                </div>
+
+                <div className="group">
+                  <label className="flex items-center space-x-2 text-sm font-bold text-gray-800 mb-4">
+                    <Clock className="h-4 w-4 text-indigo-600" />
+                    <span>Event End Time</span>
+                    <span className="text-xs text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <div className="relative">
+                    <Clock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-indigo-400 h-5 w-5 group-focus-within:text-indigo-600 transition-colors" />
+                    <input
+                      type="time"
+                      value={formData.eventEndTime}
+                      onChange={(e) => handleInputChange('eventEndTime', e.target.value)}
+                      className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-300 bg-white shadow-sm hover:shadow-md text-lg font-medium"
+                      title="Select event end time"
+                      aria-label="Event end time"
+                      placeholder="Select end time"
+                    />
+                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-500/5 to-purple-500/5 opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none"></div>
                   </div>
                 </div>
               </div>
@@ -1563,16 +1751,23 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
               <div className="mt-6">
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                   Event Location
+                  <span className="text-red-500 ml-1">*</span>
                 </label>
                 <LocationPicker
                   value={formData.eventLocation}
                   onChange={(location, locationData) => {
                     console.log('📍 [BookingModal] Location selected:', location, locationData);
-                    handleInputChange('eventLocation', location);
+                    handleInputChangeWithValidation('eventLocation', location);
                   }}
-                  placeholder="Search for venue or enter address"
+                  placeholder="Search for venue or enter address (required)"
                   className="w-full"
                 />
+                {formErrors.eventLocation && (
+                  <p className="mt-2 text-sm text-red-600 flex items-center space-x-1">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>{formErrors.eventLocation}</span>
+                  </p>
+                )}
               </div>
 
               <div className="mt-6">
@@ -1592,34 +1787,64 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Number of Guests
+                    <span className="text-red-500 ml-1">*</span>
                   </label>
                   <div className="relative">
-                    <Users className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <Users className={cn(
+                      "absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5",
+                      formErrors.guestCount ? "text-red-400" : "text-gray-400"
+                    )} />
                     <input
                       type="number"
                       value={formData.guestCount}
-                      onChange={(e) => handleInputChange('guestCount', e.target.value)}
+                      onChange={(e) => handleInputChangeWithValidation('guestCount', e.target.value)}
                       placeholder="e.g., 150"
                       min="1"
-                      className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-all duration-200 bg-white shadow-sm"
+                      max="10000"
+                      required
+                      className={cn(
+                        "w-full pl-12 pr-4 py-4 border-2 rounded-xl focus:ring-2 transition-all duration-200 bg-white shadow-sm",
+                        formErrors.guestCount 
+                          ? "border-red-300 focus:ring-red-500/20 focus:border-red-500" 
+                          : "border-gray-300 focus:ring-rose-500/20 focus:border-rose-500"
+                      )}
+                      aria-required="true"
+                      aria-invalid={formErrors.guestCount ? "true" : "false"}
+                      aria-describedby={formErrors.guestCount ? "guestCount-error" : undefined}
                     />
                   </div>
                   {formErrors.guestCount && (
-                    <p className="mt-2 text-sm text-red-600">{formErrors.guestCount}</p>
+                    <div id="guestCount-error" className="mt-2 flex items-center gap-2 text-sm text-red-600 font-medium">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <span>{formErrors.guestCount}</span>
+                    </div>
                   )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Budget Range
+                    <span className="text-red-500 ml-1">*</span>
                   </label>
                   <div className="relative">
-                    <Banknote className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <Banknote className={cn(
+                      "absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 pointer-events-none",
+                      formErrors.budgetRange ? "text-red-400" : "text-gray-400"
+                    )} />
                     <select
                       value={formData.budgetRange}
-                      onChange={(e) => handleInputChange('budgetRange', e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-all duration-200 bg-white shadow-sm"
+                      onChange={(e) => handleInputChangeWithValidation('budgetRange', e.target.value)}
+                      className={cn(
+                        "w-full pl-12 pr-4 py-4 border-2 rounded-xl focus:ring-2 transition-all duration-200 bg-white shadow-sm appearance-none cursor-pointer",
+                        formErrors.budgetRange 
+                          ? "border-red-300 focus:ring-red-500/20 focus:border-red-500" 
+                          : "border-gray-300 focus:ring-rose-500/20 focus:border-rose-500"
+                      )}
                       aria-label="Select budget range"
+                      required
+                      aria-required="true"
+                      aria-invalid={formErrors.budgetRange ? "true" : "false"}
+                      aria-describedby={formErrors.budgetRange ? "budgetRange-error" : undefined}
                     >
                       <option value="">Select budget range</option>
                       <option value="₱25,000-₱50,000">₱25,000 - ₱50,000</option>
@@ -1629,10 +1854,15 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
                       <option value="₱500,000+">₱500,000+</option>
                     </select>
                   </div>
+                  {formErrors.budgetRange && (
+                    <div id="budgetRange-error" className="mt-2 flex items-center gap-2 text-sm text-red-600 font-medium">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <span>{formErrors.budgetRange}</span>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-
+                </div>
               </div>
               
               {/* Right Column - Contact & Preferences */}
@@ -1722,11 +1952,10 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
                     )}
                     <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none"></div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    📱 We'll use this to confirm your booking details
-                  </p>
-                  {formErrors.contactPhone && (
-                    <p className="mt-2 text-sm text-red-600">{formErrors.contactPhone}</p>
+                  {!formErrors.contactPhone && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      📱 {user?.phone ? 'Using your registered phone number' : 'We\'ll use this to confirm your booking details'}
+                    </p>
                   )}
                 </div>
 
@@ -1988,11 +2217,16 @@ Example details that help vendors:
           serviceName: service.name,
           vendorName: service.vendorName,
           eventDate: pendingFormData?.eventDate || formData.eventDate,
+          eventTime: pendingFormData?.eventTime || formData.eventTime,
+          eventEndTime: pendingFormData?.eventEndTime || formData.eventEndTime,
           eventLocation: pendingFormData?.eventLocation || formData.eventLocation,
+          venueDetails: pendingFormData?.venueDetails || formData.venueDetails,
+          contactPerson: pendingFormData?.contactPerson || formData.contactPerson,
           contactPhone: pendingFormData?.contactPhone || formData.contactPhone,
           contactEmail: pendingFormData?.contactEmail || formData.contactEmail,
           eventType: 'Wedding', // Default to wedding for now
           guestCount: pendingFormData?.guestCount || formData.guestCount,
+          budgetRange: pendingFormData?.budgetRange || formData.budgetRange,
           additionalRequests: pendingFormData?.specialRequests || formData.specialRequests
         }}
       />

@@ -795,270 +795,367 @@ const DEFAULT_QUOTE_TEMPLATES: Record<string, QuoteTemplate> = {
   }
 };
 
-// PRESET QUOTE PACKAGES - BASIC, STANDARD, PREMIUM
-interface PresetPackage {
+// Helper function to get default features for a service category
+const getCategoryDefaultFeatures = (serviceType: string): string[] => {
+  const categoryFeatures: Record<string, string[]> = {
+    'Photographer & Videographer': [
+      'Professional wedding photography',
+      'HD videography coverage',
+      'Edited photos and videos',
+      'Online gallery access',
+      'Printed photo album',
+      'Drone footage (if applicable)',
+      'Pre-wedding consultation'
+    ],
+    'Caterer': [
+      'Full catering service',
+      'Menu planning and tasting',
+      'Professional waitstaff',
+      'Table setup and decoration',
+      'Food warming equipment',
+      'Cleanup service',
+      'Dietary accommodations'
+    ],
+    'DJ': [
+      'Professional sound system',
+      'Music selection and mixing',
+      'MC services',
+      'Lighting effects',
+      'Setup and breakdown',
+      'Consultation meeting',
+      'Backup equipment'
+    ],
+    'Wedding Planner': [
+      'Full planning coordination',
+      'Vendor management',
+      'Timeline creation',
+      'Budget management',
+      'On-site coordination',
+      'Setup supervision',
+      'Emergency management'
+    ],
+    'Florist': [
+      'Bridal bouquet',
+      'Ceremony flowers',
+      'Reception centerpieces',
+      'Boutonnieres',
+      'Corsages',
+      'Delivery and setup',
+      'Consultation'
+    ],
+    'default': [
+      'Professional service',
+      'Full wedding day coverage',
+      'Equipment and materials',
+      'Setup and breakdown',
+      'Consultation meeting',
+      'Quality guarantee'
+    ]
+  };
+
+  return categoryFeatures[serviceType] || categoryFeatures['default'];
+};
+
+// Helper function to get base price for a service category
+const getCategoryBasePrice = (serviceType: string): number => {
+  const categoryPrices: Record<string, number> = {
+    'Photographer & Videographer': 35000,
+    'Caterer': 300, // per person
+    'DJ': 35000,
+    'DJ/Band': 45000,
+    'Wedding Planner': 50000,
+    'Florist': 18000,
+    'Hair & Makeup Artists': 6000,
+    'Cake Designer': 12000,
+    'Dress Designer/Tailor': 35000,
+    'Event Rentals': 25000,
+    'Transportation Services': 18000,
+    'Officiant': 10000,
+    'Security & Guest Management': 30000,
+    'Sounds & Lights': 35000,
+    'Stationery Designer': 12000,
+    'Venue Coordinator': 40000,
+    'Wedding Planning': 60000,
+    'default': 25000
+  };
+
+  return categoryPrices[serviceType] || categoryPrices['default'];
+};
+
+// 🎯 SERVICE-BASED SMART PACKAGE SYSTEM - Uses actual service features
+interface SimplePackage {
+  id: string;
   name: string;
+  icon: string;
+  badge?: string;
   description: string;
-  items: string[]; // Array of item names to include from the template
-  estimatedTotal: number;
-  recommended: boolean;
+  bestFor: string;
+  basePrice: number;
+  features: string[];
 }
 
-const PRESET_PACKAGES: Record<string, Record<string, PresetPackage>> = {
-  'Photographer & Videographer': {
-    'Basic': {
-      name: 'Basic Photography & Video Package',
-      description: 'Essential wedding photography and videography coverage',
-      items: [
-        'Wedding Day Photography (8 hours)',
-        'Wedding Videography (6 hours)',
-        'Professional Photo Editing',
-        'Digital Photo Gallery'
-      ],
-      estimatedTotal: 18000,
-      recommended: false
-    },
-    'Standard': {
-      name: 'Standard Photography & Video Package',
-      description: 'Complete photography and videography with premium features',
-      items: [
-        'Wedding Day Photography (8 hours)',
-        'Wedding Videography (8 hours)',
-        'Engagement Photography',
-        'Professional Photo Editing',
-        'Wedding Video Editing',
-        'Digital Photo Gallery',
-        'Wedding Album Creation'
-      ],
-      estimatedTotal: 28000,
-      recommended: true
-    },
-    'Premium': {
-      name: 'Premium Photography & Video Package',
-      description: 'Comprehensive photography and videography experience',
-      items: [
-        'Wedding Day Photography (10 hours)',
-        'Wedding Videography (10 hours)',
-        'Engagement Photography',
-        'Professional Photo Editing',
-        'Wedding Video Editing',
-        'Digital Photo Gallery',
-        'Wedding Album Creation',
-        'Drone Photography',
-        '360 Degree Photography'
-      ],
-      estimatedTotal: 45000,
-      recommended: false
-    }
-  },
+// Get smart package recommendations based on ACTUAL service data and booking details
+const getSmartPackages = (
+  serviceType: string, 
+  guestCount?: number, 
+  budgetRange?: string,
+  serviceFeatures?: string[], // ACTUAL service features from database
+  servicePrice?: string // ACTUAL service price
+): SimplePackage[] => {
+  console.log('🎯 [getSmartPackages] Called with:', {
+    serviceType,
+    guestCount,
+    budgetRange,
+    featuresCount: serviceFeatures?.length || 0,
+    servicePrice,
+    rawFeatures: serviceFeatures
+  });
 
-  'Caterer': {
-    'Basic': {
-      name: 'Basic Catering Package',
-      description: 'Simple buffet service for intimate weddings',
-      items: [
-        'Wedding Catering',
-        'Basic Menu Selection',
-        'Service Staff'
-      ],
-      estimatedTotal: 15000,
-      recommended: false
-    },
-    'Standard': {
-      name: 'Standard Catering Package',
-      description: 'Complete catering with premium menu options',
-      items: [
-        'Wedding Catering',
-        'Cocktail Hour Catering',
-        'Reception Catering',
-        'Premium Menu Selection',
-        'Professional Service Staff'
-      ],
-      estimatedTotal: 25000,
-      recommended: true
-    },
-    'Premium': {
-      name: 'Premium Catering Package',
-      description: 'Luxury catering experience with full service',
-      items: [
-        'Wedding Catering',
-        'Cocktail Hour Catering',
-        'Reception Catering',
-        'Brunch/Lunch Catering',
-        'Wedding Cake Service',
-        'Premium Menu & Wine Pairing',
-        'Dedicated Catering Manager'
-      ],
-      estimatedTotal: 40000,
-      recommended: false
-    }
-  },
+  // Determine scale factor based on guest count
+  const scale = !guestCount ? 1 : 
+    guestCount < 50 ? 0.8 : 
+    guestCount < 100 ? 1.0 : 
+    guestCount < 150 ? 1.3 : 1.6;
 
-  'DJ': {
-    'Basic': {
-      name: 'Basic DJ Package',
-      description: 'Essential DJ services for ceremony and reception',
-      items: [
-        'DJ Services (6 hours)',
-        'Basic Sound System',
-        'Music Library'
-      ],
-      estimatedTotal: 25000,
-      recommended: false
-    },
-    'Standard': {
-      name: 'Standard DJ Package',
-      description: 'Complete DJ package with lighting and MC services',
-      items: [
-        'DJ Services (8 hours)',
-        'Professional Sound System',
-        'Basic Lighting Package',
-        'MC Services',
-        'Music Library'
-      ],
-      estimatedTotal: 35000,
-      recommended: true
-    },
-    'Premium': {
-      name: 'Premium DJ Package',
-      description: 'Full entertainment package with premium effects',
-      items: [
-        'DJ Services (10 hours)',
-        'Premium Sound System',
-        'Full Lighting Package',
-        'MC Services',
-        'Dance Floor Effects',
-        'Music Library',
-        'Sound Engineer'
-      ],
-      estimatedTotal: 50000,
-      recommended: false
-    }
-  },
+  // Adjust pricing based on budget range if provided
+  const budgetMultiplier = !budgetRange ? 1.0 :
+    budgetRange.includes('10,000-25,000') ? 0.7 :
+    budgetRange.includes('25,000-50,000') ? 1.0 :
+    budgetRange.includes('50,000-100,000') ? 1.4 :
+    budgetRange.includes('100,000+') ? 2.0 : 1.0;
+  
+  // Parse actual service price if available - this is CRITICAL
+  const actualPrice = servicePrice ? parseFloat(servicePrice.replace(/[^0-9.]/g, '')) || null : null;
+  console.log('💰 [getSmartPackages] Parsed service price:', actualPrice);
+  
+  // 🎯 CLEAN AND VALIDATE SERVICE FEATURES
+  // Filter out empty, null, or generic entries but be more lenient
+  const actualFeatures = serviceFeatures && serviceFeatures.length > 0 
+    ? serviceFeatures
+        .filter(f => f && typeof f === 'string' && f.trim() !== '')
+        .filter(f => {
+          const normalized = f.trim().toLowerCase();
+          // Only exclude truly generic entries
+          return normalized !== 'other' && 
+                 normalized !== 'n/a' && 
+                 normalized !== 'none' &&
+                 normalized !== 'tbd' &&
+                 !normalized.match(/^-+$/); // Just dashes
+        })
+    : null;
+  
+  console.log('✨ [getSmartPackages] Cleaned features:', actualFeatures);
 
-  'Wedding Planner': {
-    'Basic': {
-      name: 'Basic Planning Package',
-      description: 'Day-of coordination and essential planning services',
-      items: [
-        'Day-of Wedding Coordination',
-        'Timeline Management',
-        'Vendor Coordination'
-      ],
-      estimatedTotal: 20000,
-      recommended: false
-    },
-    'Standard': {
-      name: 'Standard Planning Package',
-      description: 'Partial planning with comprehensive coordination',
-      items: [
-        'Wedding Planning & Design',
-        'Day-of Wedding Coordination',
-        'Vendor Management',
-        'Timeline Management',
-        'Budget Planning'
-      ],
-      estimatedTotal: 35000,
-      recommended: true
-    },
-    'Premium': {
-      name: 'Premium Planning Package',
-      description: 'Full-service wedding planning from start to finish',
-      items: [
-        'Full Wedding Planning & Design',
-        'Day-of Wedding Coordination',
-        'Vendor Management',
-        'Timeline Management',
-        'Budget Planning',
-        'Venue Selection',
-        'Design Consultation'
-      ],
-      estimatedTotal: 60000,
-      recommended: false
-    }
-  },
-
-  'Florist': {
-    'Basic': {
-      name: 'Basic Floral Package',
-      description: 'Essential floral arrangements for ceremony and reception',
-      items: [
-        'Bridal Bouquet',
-        'Ceremony Decorations',
-        'Basic Centerpieces'
-      ],
-      estimatedTotal: 8000,
-      recommended: false
-    },
-    'Standard': {
-      name: 'Standard Floral Package',
-      description: 'Complete floral design with premium arrangements',
-      items: [
-        'Bridal Bouquet',
-        'Bridesmaids Bouquets',
-        'Ceremony Decorations',
-        'Reception Centerpieces',
-        'Boutonnières'
-      ],
-      estimatedTotal: 15000,
-      recommended: true
-    },
-    'Premium': {
-      name: 'Premium Floral Package',
-      description: 'Luxury floral experience with full venue transformation',
-      items: [
-        'Bridal Bouquet',
-        'Bridesmaids Bouquets',
-        'Ceremony Decorations',
-        'Reception Centerpieces',
-        'Boutonnières',
-        'Ceremony Arch',
-        'Venue Transformation'
-      ],
-      estimatedTotal: 25000,
-      recommended: false
-    }
-  },
-
-  'Wedding Planning': {
-    'Basic': {
-      name: 'Basic Wedding Planning Package',
-      description: 'Essential wedding planning and coordination services',
-      items: [
-        'Comprehensive Wedding Planning',
-        'Timeline & Schedule Management',
-        'Budget Planning & Tracking'
-      ],
-      estimatedTotal: 48000,
-      recommended: false
-    },
-    'Standard': {
-      name: 'Standard Wedding Planning Package',
-      description: 'Complete planning with design and vendor coordination',
-      items: [
-        'Comprehensive Wedding Planning',
-        'Wedding Design & Styling',
-        'Vendor Coordination & Management',
-        'Timeline & Schedule Management',
-        'Budget Planning & Tracking'
-      ],
-      estimatedTotal: 70000,
-      recommended: true
-    },
-    'Premium': {
-      name: 'Premium Wedding Planning Package',
-      description: 'Full-service luxury wedding planning experience',
-      items: [
-        'Comprehensive Wedding Planning',
-        'Wedding Design & Styling',
-        'Vendor Coordination & Management',
-        'Timeline & Schedule Management',
-        'Budget Planning & Tracking'
-      ],
-      estimatedTotal: 75000,
-      recommended: false
-    }
+  // 🎯 PRIORITY 1: Use actual price + actual features (BEST CASE)
+  if (actualPrice && actualPrice > 0 && actualFeatures && actualFeatures.length > 0) {
+    console.log('✅ [SmartPackages] BEST CASE - Using ACTUAL price AND features!');
+    
+    const baseServicePrice = actualPrice;
+    
+    // Split features into tiers based on count
+    const featureCount = actualFeatures.length;
+    const essentialCount = Math.max(1, Math.ceil(featureCount * 0.5)); // At least 1 feature
+    const completeCount = Math.max(2, Math.ceil(featureCount * 0.75)); // At least 2 features
+    
+    return [
+      {
+        id: 'essential',
+        name: '🥉 Essential Package',
+        icon: '📦',
+        description: 'Core services from your offering',
+        bestFor: `Perfect for intimate weddings${guestCount ? ` (${guestCount} guests)` : ''}`,
+        basePrice: Math.round(baseServicePrice * 0.6 * scale * budgetMultiplier),
+        features: actualFeatures.slice(0, essentialCount)
+      },
+      {
+        id: 'complete',
+        name: '🥈 Complete Package',
+        icon: '⭐',
+        badge: 'MOST POPULAR',
+        description: 'Full service with premium features',
+        bestFor: `Ideal for most weddings${guestCount ? ` (${guestCount} guests)` : ''}`,
+        basePrice: Math.round(baseServicePrice * scale * budgetMultiplier),
+        features: actualFeatures.slice(0, completeCount)
+      },
+      {
+        id: 'premium',
+        name: '🥇 Premium Package',
+        icon: '💎',
+        description: 'Complete service with all features',
+        bestFor: `For grand celebrations${guestCount ? ` (${guestCount} guests)` : ''}`,
+        basePrice: Math.round(baseServicePrice * 1.5 * scale * budgetMultiplier),
+        features: actualFeatures // All features included
+      }
+    ];
   }
+  
+  // 🎯 PRIORITY 2: Use actual price only (create generic feature list)
+  if (actualPrice && actualPrice > 0) {
+    console.log('⚙️ [SmartPackages] Using ACTUAL price with generated features');
+    
+    const baseServicePrice = actualPrice;
+    const categoryFeatures = getCategoryDefaultFeatures(serviceType);
+    
+    const featureCount = categoryFeatures.length;
+    const essentialCount = Math.max(3, Math.ceil(featureCount * 0.5));
+    const completeCount = Math.max(5, Math.ceil(featureCount * 0.75));
+    
+    return [
+      {
+        id: 'essential',
+        name: '🥉 Essential Package',
+        icon: '📦',
+        description: 'Core services for your wedding day',
+        bestFor: `Perfect for intimate weddings${guestCount ? ` (${guestCount} guests)` : ''}`,
+        basePrice: Math.round(baseServicePrice * 0.6 * scale * budgetMultiplier),
+        features: categoryFeatures.slice(0, essentialCount)
+      },
+      {
+        id: 'complete',
+        name: '🥈 Complete Package',
+        icon: '⭐',
+        badge: 'MOST POPULAR',
+        description: 'Everything you need for a memorable wedding',
+        bestFor: `Ideal for most weddings${guestCount ? ` (${guestCount} guests)` : ''}`,
+        basePrice: Math.round(baseServicePrice * scale * budgetMultiplier),
+        features: categoryFeatures.slice(0, completeCount)
+      },
+      {
+        id: 'premium',
+        name: '🥇 Premium Package',
+        icon: '💎',
+        description: 'Luxury service with all premium features',
+        bestFor: `For grand celebrations${guestCount ? ` (${guestCount} guests)` : ''}`,
+        basePrice: Math.round(baseServicePrice * 1.5 * scale * budgetMultiplier),
+        features: categoryFeatures
+      }
+    ];
+  }
+  
+  // 🎯 PRIORITY 3: Use actual features only (estimate price from budget/category)
+  if (actualFeatures && actualFeatures.length > 0) {
+    console.log('🔧 [SmartPackages] Using ACTUAL features with estimated pricing');
+    
+    const estimatedPrice = budgetRange ? (
+      budgetRange.includes('100,000+') ? 80000 :
+      budgetRange.includes('50,000-100,000') ? 40000 :
+      budgetRange.includes('25,000-50,000') ? 25000 : 15000
+    ) : getCategoryBasePrice(serviceType);
+    
+    const featureCount = actualFeatures.length;
+    const essentialCount = Math.max(1, Math.ceil(featureCount * 0.5));
+    const completeCount = Math.max(2, Math.ceil(featureCount * 0.75));
+    
+    return [
+      {
+        id: 'essential',
+        name: '🥉 Essential Package',
+        icon: '📦',
+        description: 'Core services from your offering',
+        bestFor: `Perfect for intimate weddings${guestCount ? ` (${guestCount} guests)` : ''}`,
+        basePrice: Math.round(estimatedPrice * 0.6 * scale * budgetMultiplier),
+        features: actualFeatures.slice(0, essentialCount)
+      },
+      {
+        id: 'complete',
+        name: '🥈 Complete Package',
+        icon: '⭐',
+        badge: 'MOST POPULAR',
+        description: 'Full service with premium features',
+        bestFor: `Ideal for most weddings${guestCount ? ` (${guestCount} guests)` : ''}`,
+        basePrice: Math.round(estimatedPrice * scale * budgetMultiplier),
+        features: actualFeatures.slice(0, completeCount)
+      },
+      {
+        id: 'premium',
+        name: '🥇 Premium Package',
+        icon: '💎',
+        description: 'Complete service with all features',
+        bestFor: `For grand celebrations${guestCount ? ` (${guestCount} guests)` : ''}`,
+        basePrice: Math.round(estimatedPrice * 1.5 * scale * budgetMultiplier),
+        features: actualFeatures
+      }
+    ];
+  }
+  
+  // 🔄 FALLBACK: Generic packages if no service data available
+  console.log('⚠️ [SmartPackages] FALLBACK - No service data, using category defaults');
+  
+  const basePrices: Record<string, number[]> = {
+    'Photographer & Videographer': [15000, 35000, 65000],
+    'Caterer': [200, 350, 600], // per person
+    'DJ': [20000, 35000, 55000],
+    'DJ/Band': [25000, 45000, 75000],
+    'Wedding Planner': [25000, 50000, 100000],
+    'Florist': [8000, 18000, 35000],
+    'Hair & Makeup Artists': [3000, 6000, 12000],
+    'Cake Designer': [5000, 12000, 25000],
+    'Dress Designer/Tailor': [15000, 35000, 70000],
+    'Event Rentals': [10000, 25000, 50000],
+    'Transportation Services': [8000, 18000, 35000],
+    'Officiant': [5000, 10000, 20000],
+    'Security & Guest Management': [15000, 30000, 50000],
+    'Sounds & Lights': [18000, 35000, 60000],
+    'Stationery Designer': [5000, 12000, 25000],
+    'Venue Coordinator': [20000, 40000, 70000],
+    'Wedding Planning': [30000, 60000, 120000],
+    'default': [10000, 25000, 50000]
+  };
+
+  const prices = basePrices[serviceType] || basePrices['default'];
+  const isCaterer = serviceType === 'Caterer';
+
+  return [
+    {
+      id: 'essential',
+      name: '🥉 Essential Package',
+      icon: '📦',
+      description: 'Core services for your wedding day',
+      bestFor: `Perfect for intimate weddings${guestCount ? ` (${guestCount} guests)` : ''}`,
+      basePrice: isCaterer && guestCount ? prices[0] * guestCount : Math.round(prices[0] * scale * budgetMultiplier),
+      features: [
+        'Professional service guarantee',
+        'Basic setup and coordination',
+        'Standard equipment/materials',
+        isCaterer ? `${guestCount || 50} guests included` : 'Core service hours',
+        'Email support'
+      ]
+    },
+    {
+      id: 'complete',
+      name: '🥈 Complete Package',
+      icon: '⭐',
+      badge: 'MOST POPULAR',
+      description: 'Everything you need for a memorable wedding',
+      bestFor: `Ideal for most weddings${guestCount ? ` (${guestCount} guests)` : ''}`,
+      basePrice: isCaterer && guestCount ? prices[1] * guestCount : Math.round(prices[1] * scale * budgetMultiplier),
+      features: [
+        'Premium professional service',
+        'Full setup and coordination',
+        'Premium equipment/materials',
+        isCaterer ? `${guestCount || 100} guests included` : 'Extended service hours',
+        'Priority support',
+        'Complimentary consultation'
+      ]
+    },
+    {
+      id: 'premium',
+      name: '🥇 Premium Package',
+      icon: '💎',
+      description: 'Luxury experience with premium features',
+      bestFor: `For grand celebrations${guestCount ? ` (${guestCount} guests)` : ''}`,
+      basePrice: isCaterer && guestCount ? prices[2] * guestCount : Math.round(prices[2] * scale * budgetMultiplier),
+      features: [
+        'Elite professional service',
+        'Complete setup and decoration',
+        'Top-tier equipment/materials',
+        isCaterer ? `${guestCount || 200} guests included` : 'Full day coverage',
+        'Dedicated coordinator',
+        '24/7 VIP support',
+        'Premium add-ons included'
+      ]
+    }
+  ];
 };
 
 export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
@@ -1272,10 +1369,55 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
     };
 
     try {
-      await onSendQuote(quoteData);
+      console.log('📤 [SendQuoteModal] Sending quote to backend API...');
+      console.log('   Booking ID:', booking.id);
+      console.log('   Quote Data:', quoteData);
+      
+      // 🔧 MODULAR BACKEND FIX: Use PATCH /api/bookings/:id/status endpoint
+      // The backend stores quote as status='quote_sent' with details in vendor_notes
+      const statusUpdatePayload = {
+        status: 'quote_sent',
+        vendor_notes: JSON.stringify(quoteData)
+      };
+      
+      console.log('📤 [SendQuoteModal] Sending status update:', statusUpdatePayload);
+      
+      // Call the backend API to save the quote via status update
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com'}/api/bookings/${booking.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(statusUpdatePayload)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [SendQuoteModal] Failed to send quote:', errorText);
+        throw new Error(`Failed to send quote: ${response.status} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ [SendQuoteModal] Quote sent successfully:', result);
+      
+      // Create a formatted result that includes the quote data
+      const formattedResult = {
+        ...result,
+        quote: quoteData,
+        booking: {
+          ...result.booking,
+          status: 'quote_sent',
+          quote: quoteData
+        }
+      };
+      
+      // Call the parent callback with the formatted result
+      await onSendQuote(formattedResult);
       onClose();
     } catch (error) {
-      console.error('Error sending quote:', error);
+      console.error('❌ [SendQuoteModal] Error sending quote:', error);
+      alert(`Failed to send quote: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again or contact support if the problem persists.`);
     } finally {
       setLoading(false);
     }
@@ -1315,49 +1457,43 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
   };
 
   // Function to load preset package (replaces current quote items)
-  const loadPresetPackage = (serviceType: string, packageType: 'Basic' | 'Standard' | 'Premium') => {
-    const presetPackage = PRESET_PACKAGES[serviceType]?.[packageType];
-    const template = DEFAULT_QUOTE_TEMPLATES[serviceType];
+  const loadPresetPackage = (packageId: 'essential' | 'complete' | 'premium') => {
+    const packages = getSmartPackages(
+      booking.serviceType, 
+      booking.guestCount, 
+      booking.budgetRange,
+      serviceData?.features, // Pass actual service features
+      serviceData?.price // Pass actual service price
+    );
+    const selectedPackage = packages.find(pkg => pkg.id === packageId);
     
-    if (!presetPackage || !template) {
-      console.error(`❌ [SendQuoteModal] Preset package or template not found for: ${serviceType} - ${packageType}`);
-      alert(`Preset package not available for ${serviceType} - ${packageType}`);
+    if (!selectedPackage) {
+      console.error(`❌ [SendQuoteModal] Package not found: ${packageId}`);
       return;
     }
 
-    console.log(`🎯 [SendQuoteModal] Loading preset package: ${presetPackage.name}`);
-    console.log(`📦 [SendQuoteModal] Current items before replace:`, quoteItems.length);
+    console.log(`🎯 [SendQuoteModal] Loading smart package: ${selectedPackage.name}`);
     
-    // Filter template items to only include those in the preset package
-    const presetItems = template.items.filter(templateItem => 
-      presetPackage.items.includes(templateItem.name)
-    );
-
-    console.log(`🔍 [SendQuoteModal] Found ${presetItems.length} items in preset package`);
-
-    // Convert to QuoteItems with vendor pricing
-    const newItems: QuoteItem[] = presetItems.map((templateItem, index) => ({
-      id: `preset-${packageType.toLowerCase()}-${Date.now()}-${index}`, // Add timestamp to ensure uniqueness
-      name: templateItem.name,
-      description: templateItem.description,
-      quantity: templateItem.quantity,
-      unitPrice: getVendorPrice(serviceType, templateItem.name, templateItem.unitPrice),
-      total: templateItem.quantity * getVendorPrice(serviceType, templateItem.name, templateItem.unitPrice),
-      category: templateItem.category
+    // Create quote items from package features
+    const newItems: QuoteItem[] = selectedPackage.features.map((feature, index) => ({
+      id: `${packageId}-${Date.now()}-${index}`,
+      name: feature,
+      description: `Included in ${selectedPackage.name}`,
+      quantity: 1,
+      unitPrice: Math.round(selectedPackage.basePrice / selectedPackage.features.length),
+      total: Math.round(selectedPackage.basePrice / selectedPackage.features.length),
+      category: booking.serviceType
     }));
 
-    console.log(`🔄 [SendQuoteModal] Replacing ${quoteItems.length} items with ${newItems.length} preset items`);
+    console.log(`🔄 [SendQuoteModal] Replacing with ${newItems.length} items from ${selectedPackage.name}`);
+    setQuoteItems([...newItems]);
     
-    // Force replace current items with preset package items
-    setQuoteItems([...newItems]); // Use spread operator to ensure new array reference
+    // Update quote message with package info
+    setQuoteMessage(`Thank you for your interest! I've prepared ${selectedPackage.name} for your ${booking.serviceType} needs. This package includes ${newItems.length} carefully selected services. Please review the breakdown below and let me know if you'd like any adjustments.`);
     
-    console.log(`✅ [SendQuoteModal] Successfully replaced with ${newItems.length} items from ${presetPackage.name}`);
-    
-    // Show success message
-    const actualTotal = newItems.reduce((sum, item) => sum + item.total, 0);
+    // Show clear success notification that emphasizes review step
     setTimeout(() => {
-      const message = `Successfully loaded ${presetPackage.name}!\n\nItems: ${newItems.length}\nExpected Total: ${formatPHP(presetPackage.estimatedTotal)}\nYour Total: ${formatPHP(actualTotal)}\n\nNote: Prices may vary based on your vendor rates.`;
-      alert(message);
+      alert(`✅ Package Loaded Successfully!\n\n${selectedPackage.name}\n${newItems.length} items • ${formatPHP(selectedPackage.basePrice)}\n\n⚠️ NEXT STEPS:\n1. Review the items below\n2. Customize pricing if needed\n3. Click "Send Quote to Client" when ready\n\n💡 The quote has NOT been sent yet.`);
     }, 100);
   };
 
@@ -1391,81 +1527,9 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
           {/* Quote Items Section */}
           <div className="flex-1 p-8 overflow-y-auto">
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-semibold text-gray-900">Service Breakdown</h3>
                 <div className="flex gap-3 flex-wrap">
-                  {/* Preset Package Selector */}
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-gray-700">🎯 Quick Package:</label>
-                    <select
-                      onChange={(e) => {
-                        console.log(`🎯 [Preset Selector] Selected: ${e.target.value}`);
-                        if (e.target.value) {
-                          const packageName = e.target.value;
-                          const currentItemCount = quoteItems.length;
-                          
-                          const confirmed = window.confirm(
-                            `Load ${packageName} package for ${booking.serviceType}?\n\nThis will REPLACE your current ${currentItemCount} quote items.\n\nClick OK to replace, Cancel to keep current items.`
-                          );
-                          
-                          if (confirmed) {
-                            console.log(`✅ [Preset Selector] User confirmed loading ${packageName} package`);
-                            loadPresetPackage(booking.serviceType, packageName as 'Basic' | 'Standard' | 'Premium');
-                          } else {
-                            console.log(`❌ [Preset Selector] User cancelled loading ${packageName} package`);
-                          }
-                        }
-                        e.target.value = ''; // Reset selector
-                      }}
-                      className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500"
-                      title="Select preset package for current service type"
-                      aria-label="Select preset package for current service type"
-                    >
-                      <option value="">Select preset package...</option>
-                      {PRESET_PACKAGES[booking.serviceType] ? 
-                        Object.entries(PRESET_PACKAGES[booking.serviceType]).map(([packageType, packageData]) => (
-                          <option key={packageType} value={packageType}>
-                            {packageData.name} - {formatPHP(packageData.estimatedTotal)}
-                            {packageData.recommended ? ' ⭐ Recommended' : ''}
-                          </option>
-                        )) : (
-                          <option disabled>No preset packages available for {booking.serviceType}</option>
-                        )
-                      }
-                    </select>
-                  </div>
-
-                  {/* Service Package Selector */}
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-gray-700">📦 Quick Add:</label>
-                    <select
-                      onChange={(e) => {
-                        if (e.target.value && e.target.value !== booking.serviceType) {
-                          const confirmed = window.confirm(
-                            `Add items from ${e.target.value} template? This will add to your current quote.`
-                          );
-                          if (confirmed) {
-                            loadTemplate(e.target.value);
-                          }
-                        }
-                        e.target.value = ''; // Reset selector
-                      }}
-                      className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500"
-                      title="Select additional service template to add to quote"
-                      aria-label="Select additional service template to add to quote"
-                    >
-                      <option value="">Select service template...</option>
-                      {Object.keys(DEFAULT_QUOTE_TEMPLATES)
-                        .filter(serviceType => serviceType !== booking.serviceType)
-                        .map(serviceType => (
-                          <option key={serviceType} value={serviceType}>
-                            {serviceType} Package
-                          </option>
-                        ))
-                      }
-                    </select>
-                  </div>
-                  
                   {onSavePricing && (
                     <button
                       onClick={() => setIsEditingPrices(!isEditingPrices)}
@@ -1486,6 +1550,123 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
                   </button>
                 </div>
               </div>
+
+              {/* 🎯 SMART PACKAGE SELECTOR - Shows if no items yet */}
+              {quoteItems.length === 0 && (
+                <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-2xl p-8 mb-8 border-2 border-blue-200 shadow-lg">
+                  <div className="text-center mb-6">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">🚀 Quick Start: Choose Your Package</h3>
+                    <p className="text-gray-600">Select a starting point and customize from there</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {getSmartPackages(
+                      booking.serviceType, 
+                      booking.guestCount, 
+                      booking.budgetRange,
+                      serviceData?.features, // Pass actual service features  
+                      serviceData?.price // Pass actual service price
+                    ).map((pkg) => (
+                      <button
+                        key={pkg.id}
+                        onClick={() => loadPresetPackage(pkg.id as 'essential' | 'complete' | 'premium')}
+                        className={`relative bg-white rounded-xl p-6 border-2 transition-all duration-300 hover:scale-105 hover:shadow-xl text-left ${
+                          pkg.badge 
+                            ? 'border-rose-400 shadow-lg ring-4 ring-rose-100' 
+                            : 'border-gray-200 hover:border-rose-300'
+                        }`}
+                      >
+                        {pkg.badge && (
+                          <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-rose-500 to-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                            {pkg.badge}
+                          </div>
+                        )}
+                        
+                        <div className="text-4xl mb-3 text-center">{pkg.icon}</div>
+                        <h4 className="font-bold text-lg text-gray-900 mb-2 text-center">{pkg.name}</h4>
+                        <p className="text-sm text-gray-600 mb-3 text-center">{pkg.description}</p>
+                        
+                        <div className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-lg p-3 mb-3">
+                          <div className="text-2xl font-bold text-rose-600 text-center">
+                            {formatPHP(pkg.basePrice)}
+                          </div>
+                          <div className="text-xs text-gray-500 text-center mt-1">{pkg.bestFor}</div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Key Features:</div>
+                          {pkg.features.slice(0, 4).map((feature, idx) => (
+                            <div key={idx} className="flex items-start gap-2 text-sm">
+                              <span className="text-green-500 mt-0.5">✓</span>
+                              <span className="text-gray-700">{feature}</span>
+                            </div>
+                          ))}
+                          {pkg.features.length > 4 && (
+                            <div className="text-xs text-gray-500 text-center mt-2">
+                              +{pkg.features.length - 4} more features
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <div className="bg-blue-50 text-blue-700 text-xs font-semibold py-2 px-3 rounded-lg text-center">
+                            👆 Click to Load for Review
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <div className="text-center mt-6 space-y-2">
+                    <p className="text-sm font-semibold text-gray-700">
+                      💡 How it works:
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      1️⃣ Click a package to load items • 2️⃣ Review and customize below • 3️⃣ Click "Send Quote" when ready
+                    </p>
+                    <p className="text-xs text-gray-500 bg-yellow-50 border border-yellow-200 rounded-lg py-2 px-4 inline-block">
+                      ⚠️ Selecting a package only loads the items for review - it does NOT send the quote
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Show template loader only if items exist */}
+              {quoteItems.length > 0 && (
+                <div className="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-200">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-blue-900 mb-1">📦 Add More Services</h4>
+                      <p className="text-sm text-blue-700">Add items from other service categories to create a complete package</p>
+                    </div>
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value && e.target.value !== booking.serviceType) {
+                          const confirmed = window.confirm(
+                            `Add items from ${e.target.value} template? This will add to your current quote.`
+                          );
+                          if (confirmed) {
+                            loadTemplate(e.target.value);
+                          }
+                        }
+                        e.target.value = ''; // Reset selector
+                      }}
+                      className="px-4 py-2 border-2 border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+                      title="Add services from other categories"
+                    >
+                      <option value="">Select service to add...</option>
+                      {Object.keys(DEFAULT_QUOTE_TEMPLATES)
+                        .filter(serviceType => serviceType !== booking.serviceType)
+                        .map(serviceType => (
+                          <option key={serviceType} value={serviceType}>
+                            {serviceType}
+                          </option>
+                        ))
+                      }
+                    </select>
+                  </div>
+                </div>
+              )}
 
               {isEditingPrices && onSavePricing && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -1708,7 +1889,8 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
                     ))}
                   </div>
                 </div>
-              )})}
+              );
+            })}
               
               {/* Service Type Summary Card */}
               {Object.keys(groupedItems).length > 1 && (
@@ -1731,11 +1913,12 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
                             <span className="text-xs text-blue-500">{categoryPercentage}% of total</span>
                           </div>
                           {/* Visual percentage bar */}
-                          <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                            <div 
-                              className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                          <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2 overflow-hidden">
+                            <div
+                              className="bg-blue-600 h-1.5 rounded-full"
                               style={{ width: `${categoryPercentage}%` }}
-                            ></div>
+                              
+                            />
                           </div>
                         </div>
                       );
@@ -1746,153 +1929,93 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
             </div>
           </div>
 
-          {/* Quote Summary Section */}
-          <div className="w-96 bg-gradient-to-b from-gray-50 to-rose-50 p-8 overflow-y-auto border-l border-gray-200">
-            <div className="space-y-6">
-              {/* Enhanced Pricing Summary with Category Breakdown */}
-              <div className="bg-white rounded-xl p-6 shadow-lg border border-rose-200">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">💰 Quote Summary</h3>
-                
-                {/* Category Subtotals */}
-                {Object.keys(groupedItems).length > 1 && (
-                  <div className="mb-4 pb-4 border-b border-gray-200">
-                    <h4 className="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide">Service Categories</h4>
-                    <div className="space-y-2">
-                      {Object.entries(groupedItems).map(([category, items]) => {
-                        const categoryTotal = items.reduce((sum, item) => sum + item.total, 0);
-                        return (
-                          <div key={category} className="flex justify-between text-sm">
-                            <span className="text-gray-600 truncate max-w-[200px]" title={category}>
-                              {category} ({items.length})
-                            </span>
-                            <span className="font-medium text-gray-800">{formatPHP(categoryTotal)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Main Totals */}
+          {/* Summary & Actions Section */}
+          <div className="w-full max-w-md p-8 bg-gray-50 border-l border-gray-200 hidden md:block">
+            <div className="sticky top-4">
+              {/* Wedding Details Card */}
+              <div className="bg-white rounded-2xl shadow-md p-6 mb-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Wedding Details</h4>
                 <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="font-semibold text-lg">{formatPHP(subtotal)}</span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Couple's Name:</span>
+                    <span className="font-semibold text-gray-900">{booking.coupleName}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tax (12%)</span>
-                    <span className="font-semibold text-lg">{formatPHP(tax)}</span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Event Date:</span>
+                    <span className="font-semibold text-gray-900">{new Date(booking.eventDate).toLocaleDateString()}</span>
                   </div>
-                  <div className="border-t border-gray-200 pt-3">
-                    <div className="flex justify-between text-xl font-bold">
-                      <span>Total Quote Amount</span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Service Type:</span>
+                    <span className="font-semibold text-gray-900">{booking.serviceType}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Guest Count:</span>
+                    <span className="font-semibold text-gray-900">{booking.guestCount || 0}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Budget Range:</span>
+                    <span className="font-semibold text-gray-900">{booking.budgetRange || 'Not specified'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quote Summary Card */}
+              <div className="bg-white rounded-2xl shadow-md p-6 mb-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Quote Summary</h4>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Subtotal:</span>
+                    <span className="font-semibold text-gray-900">{formatPHP(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Tax (12%):</span>
+                    <span className="font-semibold text-gray-900">{formatPHP(tax)}</span>
+                  </div>
+                  <div className="border-t border-gray-300 pt-3">
+                    <div className="flex justify-between text-lg font-bold">
+                      <span className="text-gray-900">Total:</span>
                       <span className="text-rose-600">{formatPHP(total)}</span>
                     </div>
-                  </div>
-                  
-                  {/* Payment Breakdown */}
-                  <div className="bg-rose-50 rounded-lg p-4 mt-4 border border-rose-200">
-                    <h4 className="font-semibold text-rose-800 mb-2 text-sm">💳 Payment Schedule</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-rose-700">Booking Deposit (30%)</span>
-                        <span className="font-medium text-rose-800">{formatPHP(total * 0.3)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-rose-700">Balance (Due on wedding day)</span>
-                        <span className="font-medium text-rose-800">{formatPHP(total * 0.7)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Terms */}
-              <div className="bg-white rounded-xl p-6 shadow-lg border border-rose-200">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Payment Terms</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Downpayment ({downpaymentPercentage}%)
-                    </label>
-                    <input
-                      type="range"
-                      min="10"
-                      max="50"
-                      value={downpaymentPercentage}
-                      onChange={(e) => setDownpaymentPercentage(parseInt(e.target.value))}
-                      className="w-full"
-                      aria-label="Downpayment percentage"
-                    />
-                    <div className="text-2xl font-bold text-rose-600 mt-2">
-                      {formatPHP(downpayment)}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Balance Due</label>
-                    <div className="text-xl font-semibold text-gray-900">
-                      {formatPHP(balance)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quote Details */}
-              <div className="bg-white rounded-xl p-6 shadow-lg border border-rose-200">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Quote Details</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Valid Until</label>
-                    <input
-                      type="date"
-                      value={validUntil}
-                      onChange={(e) => setValidUntil(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                      aria-label="Quote validity date"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Quote Message</label>
-                    <textarea
-                      value={quoteMessage}
-                      onChange={(e) => setQuoteMessage(e.target.value)}
-                      rows={6}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 resize-none text-sm"
-                      placeholder="Enter your personalized message to the couple..."
-                      aria-label="Quote message"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Terms & Conditions</label>
-                    <textarea
-                      value={terms}
-                      onChange={(e) => setTerms(e.target.value)}
-                      rows={8}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 resize-none text-xs"
-                      placeholder="Enter terms and conditions..."
-                      aria-label="Terms and conditions"
-                    />
                   </div>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="space-y-3">
+              <div className="flex flex-col gap-4">
+                {quoteItems.length > 0 && (
+                  <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 text-center">
+                    <p className="text-sm font-semibold text-green-800 mb-1">
+                      ✅ Quote Ready to Send
+                    </p>
+                    <p className="text-xs text-green-700">
+                      Review the details above, then click the button below to send this quote to {booking.coupleName}
+                    </p>
+                  </div>
+                )}
+                
                 <button
                   onClick={handleSendQuote}
-                  disabled={loading || quoteItems.length === 0}
-                  className="w-full bg-gradient-to-r from-rose-500 to-pink-600 text-white py-4 px-6 rounded-xl font-bold text-lg hover:from-rose-600 hover:to-pink-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transform hover:scale-105"
+                  disabled={quoteItems.length === 0 || loading}
+                  className={`w-full rounded-lg px-6 py-4 font-bold text-lg transition-all transform hover:scale-105 shadow-lg ${
+                    quoteItems.length === 0 || loading
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-rose-600 to-pink-600 text-white hover:from-rose-700 hover:to-pink-700'
+                  }`}
                 >
-                  {loading ? 'Sending Quote...' : `Send Quote (${formatPHP(total)})`}
+                  {loading ? '⏳ Sending Quote...' : quoteItems.length === 0 ? '⚠️ Add Items First' : '📤 SEND QUOTE TO CLIENT'}
                 </button>
+                
+                {quoteItems.length === 0 && (
+                  <p className="text-xs text-center text-gray-500">
+                    💡 Select a package above or add custom items to enable sending
+                  </p>
+                )}
                 
                 <button
                   onClick={onClose}
-                  className="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                  className="w-full bg-gray-100 text-gray-700 rounded-lg px-4 py-2 font-semibold hover:bg-gray-200 transition-colors"
                 >
-                  Cancel
+                  ❌ Cancel
                 </button>
               </div>
             </div>

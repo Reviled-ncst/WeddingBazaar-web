@@ -218,7 +218,7 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
               <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg font-bold text-gray-900 truncate leading-tight">
-                    {booking.serviceType || booking.serviceName || 'Wedding Service'}
+                    {booking.serviceName || booking.serviceType || 'Wedding Service'}
                   </h3>
                   <p className="text-gray-600 font-medium text-sm truncate">
                     {userType === 'vendor' 
@@ -266,14 +266,14 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
               <Calendar className="h-3 w-3 text-pink-600 drop-shadow-sm" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-gray-900 text-xs truncate">
+              <div className="font-semibold text-gray-900 text-xs leading-tight">
                 {booking.formattedEventDate || (booking.eventDate ? new Date(booking.eventDate).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'short',
                   day: 'numeric'
                 }) : 'TBD')}
               </div>
-              <div className="text-xs text-gray-500 truncate">
+              <div className="text-xs text-gray-500">
                 Event Date
               </div>
             </div>
@@ -284,7 +284,7 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
               <MapPin className="h-3 w-3 text-purple-600 drop-shadow-sm" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-gray-900 text-xs truncate">
+              <div className="font-semibold text-gray-900 text-xs leading-tight line-clamp-2">
                 {booking.eventLocation || 'Venue TBD'}
               </div>
               <div className="text-xs text-gray-500">Event Location</div>

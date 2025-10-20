@@ -94,18 +94,66 @@ console.log('🔗 Registering enhanced booking routes at /api/bookings/enhanced'
 // BOOKING ACTION ENDPOINTS - Must be registered BEFORE general booking routes
 // ============================================================================
 
-// Accept quote endpoint
+// Accept quote endpoint (LEGACY - Use PATCH /api/bookings/enhanced/:bookingId/accept-quote instead)
 app.post('/api/bookings/:bookingId/accept-quote', async (req, res) => {
   try {
     const { bookingId } = req.params;
     console.log('💰 [BookingAction] Accept quote for booking:', bookingId);
     
-    const updatedBooking = await bookingService.updateBookingStatus(bookingId, 'quote_accepted');
+    // Update booking status to 'quote_accepted' directly with database query
+    const result = await db.query(
+      `UPDATE bookings SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+      ['quote_accepted', bookingId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+    
+    const updatedBooking = result.rows[0];
     
     res.json({
       success: true,
       booking: updatedBooking,
-      message: 'Quote accepted successfully'
+      message: 'Quote accepted successfully. You can now proceed with deposit payment.'
+    });
+  } catch (error) {
+    console.error('Error accepting quote:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to accept quote',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// PATCH method for accepting quotes (PREFERRED)
+app.patch('/api/bookings/:bookingId/accept-quote', async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    console.log('💰 [BookingAction] PATCH Accept quote for booking:', bookingId);
+    
+    const result = await db.query(
+      `UPDATE bookings SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+      ['quote_accepted', bookingId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+    
+    const updatedBooking = result.rows[0];
+    
+    res.json({
+      success: true,
+      booking: updatedBooking,
+      message: 'Quote accepted successfully. You can now proceed with deposit payment.'
     });
   } catch (error) {
     console.error('Error accepting quote:', error);

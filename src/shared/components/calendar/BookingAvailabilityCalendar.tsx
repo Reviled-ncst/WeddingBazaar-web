@@ -223,6 +223,7 @@ export const BookingAvailabilityCalendar: React.FC<BookingAvailabilityCalendarPr
           
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => navigateMonth('prev')}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               title="Previous month"
@@ -235,6 +236,7 @@ export const BookingAvailabilityCalendar: React.FC<BookingAvailabilityCalendarPr
             </span>
             
             <button
+              type="button"
               onClick={() => navigateMonth('next')}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               title="Next month"
@@ -281,6 +283,7 @@ export const BookingAvailabilityCalendar: React.FC<BookingAvailabilityCalendarPr
             return (
               <motion.button
                 key={`${day.date}-${index}`}
+                type="button"
                 onClick={() => handleDateClick(day)}
                 disabled={day.isPast || !day.isCurrentMonth || !day.availability?.isAvailable}
                 whileHover={

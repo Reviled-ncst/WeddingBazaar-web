@@ -347,6 +347,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDragOver, setIsDragOver] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showCustomPricing, setShowCustomPricing] = useState(false);
 
   // Dynamic categories state
   const [categories, setCategories] = useState<Category[]>([]);
@@ -547,8 +548,18 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         if (!formData.location.trim()) newErrors.location = 'Service location is required';
         break;
       case 2:
-        if (formData.price && parseFloat(formData.price) < 0) {
+        if (!formData.price_range) {
+          newErrors.price_range = 'Please select a price range';
+        }
+        if (showCustomPricing && formData.price && parseFloat(formData.price) < 0) {
           newErrors.price = 'Price must be a positive number';
+        }
+        if (showCustomPricing && formData.max_price && parseFloat(formData.max_price) < 0) {
+          newErrors.max_price = 'Maximum price must be a positive number';
+        }
+        if (showCustomPricing && formData.price && formData.max_price && 
+            parseFloat(formData.price) > parseFloat(formData.max_price)) {
+          newErrors.max_price = 'Maximum price must be greater than minimum price';
         }
         break;
       case 3:
@@ -611,7 +622,15 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         price_range: formData.price_range,
         contact_info: formData.contact_info,
         tags: formData.tags.filter(t => t.trim()),
-        keywords: formData.keywords.trim()
+        keywords: formData.keywords.trim(),
+        // DSS Fields - Step 4
+        years_in_business: formData.years_in_business ? parseInt(formData.years_in_business) : null,
+        service_tier: formData.service_tier,
+        wedding_styles: formData.wedding_styles.length > 0 ? formData.wedding_styles : null,
+        cultural_specialties: formData.cultural_specialties.length > 0 ? formData.cultural_specialties : null,
+        availability: typeof formData.availability === 'object' 
+          ? JSON.stringify(formData.availability)
+          : formData.availability
       };
 
       console.log('📤 [AddServiceForm] Calling onSubmit with data:', serviceData);
@@ -1117,11 +1136,11 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                     </div>
 
                     <div className="space-y-8">
-                      {/* Price Range */}
+                      {/* Price Range - REQUIRED */}
                       <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
                         <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
                           <DollarSign className="h-5 w-5 text-green-600" />
-                          Price Range
+                          Price Range *
                         </label>
                         <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-green-200">
                           💰 Select the price range that best fits your service. This helps couples find options within their budget.
@@ -1171,70 +1190,113 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                             </label>
                           ))}
                         </div>
+                        {errors.price_range && (
+                          <p className="mt-3 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-3 rounded-lg border border-red-200">
+                            <AlertCircle size={16} />
+                            {errors.price_range}
+                          </p>
+                        )}
                       </div>
 
-                      {/* Specific Pricing */}
+                      {/* Custom Pricing - Optional with Toggle */}
                       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
-                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                          <span className="p-1 bg-blue-600 text-white rounded-full text-sm">₱</span>
-                          Specific Pricing (Optional)
-                        </label>
+                        <div className="flex items-center justify-between mb-4">
+                          <label className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                            <span className="p-1 bg-blue-600 text-white rounded-full text-sm">₱</span>
+                            Custom Price Range (Optional)
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setShowCustomPricing(!showCustomPricing)}
+                            className={`px-4 py-2 rounded-xl font-medium transition-all flex items-center gap-2 ${
+                              showCustomPricing
+                                ? 'bg-blue-500 text-white shadow-lg hover:bg-blue-600'
+                                : 'bg-white text-blue-600 border-2 border-blue-200 hover:border-blue-400'
+                            }`}
+                          >
+                            {showCustomPricing ? (
+                              <>
+                                <CheckCircle2 className="h-4 w-4" />
+                                Hide Custom Pricing
+                              </>
+                            ) : (
+                              <>
+                                <DollarSign className="h-4 w-4" />
+                                Set Custom Pricing
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        
                         <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-blue-200">
-                          💡 Provide specific minimum and maximum prices for your service. This helps couples understand your exact pricing range.
+                          💡 Want to be more specific? Set your exact minimum and maximum prices here. Otherwise, the general price range above will be used.
                         </p>
-                        <div className="bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Minimum Price */}
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Minimum Price
-                              </label>
-                              <div className="relative">
-                                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">₱</span>
-                                <input
-                                  type="number"
-                                  value={formData.price}
-                                  onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                                  className={`w-full pl-8 pr-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base ${
-                                    errors.price ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
-                                  }`}
-                                  placeholder="10,000"
-                                  min="0"
-                                  step="1000"
-                                />
+
+                        {showCustomPricing && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white"
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Minimum Price */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                                  Minimum Price
+                                  <span className="text-xs text-gray-500">(₱)</span>
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">₱</span>
+                                  <input
+                                    type="number"
+                                    value={formData.price}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                                    className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base bg-white"
+                                    placeholder="10,000"
+                                    min="0"
+                                    step="1000"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Maximum Price */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                                  Maximum Price
+                                  <span className="text-xs text-gray-500">(₱)</span>
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">₱</span>
+                                  <input
+                                    type="number"
+                                    value={formData.max_price || ''}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, max_price: e.target.value }))}
+                                    className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base bg-white"
+                                    placeholder="25,000"
+                                    min="0"
+                                    step="1000"
+                                  />
+                                </div>
                               </div>
                             </div>
                             
-                            {/* Maximum Price */}
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Maximum Price
-                              </label>
-                              <div className="relative">
-                                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">₱</span>
-                                <input
-                                  type="number"
-                                  value={formData.max_price || ''}
-                                  onChange={(e) => setFormData(prev => ({ ...prev, max_price: e.target.value }))}
-                                  className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base bg-white"
-                                  placeholder="25,000"
-                                  min="0"
-                                  step="1000"
-                                />
-                              </div>
+                            <div className="mt-3 text-xs text-gray-500 flex items-center gap-1 bg-blue-50 p-2 rounded-lg">
+                              <span>💡</span>
+                              <span>These custom values will override the general price range you selected above</span>
                             </div>
+                          </motion.div>
+                        )}
+                        
+                        {!showCustomPricing && (
+                          <div className="bg-gradient-to-r from-gray-50 to-slate-50 p-4 rounded-xl border border-gray-200 text-center">
+                            <p className="text-sm text-gray-600">
+                              📊 Currently using general price range: <span className="font-semibold text-gray-900">{formData.price_range}</span>
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Click "Set Custom Pricing" above to specify exact prices
+                            </p>
                           </div>
-                          
-                          <div className="mt-3 text-xs text-gray-500 flex items-center gap-1">
-                            <span>💡</span>
-                            <span>Leave empty if you prefer to provide custom quotes for each client</span>
-                          </div>
-                        </div>
-                        {errors.price && (
-                          <p className="mt-3 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-3 rounded-lg border border-red-200">
-                            <AlertCircle size={16} />
-                            {errors.price}
-                          </p>
                         )}
                       </div>
                     </div>
