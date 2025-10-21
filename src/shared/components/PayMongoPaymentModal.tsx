@@ -20,6 +20,7 @@ import { paymentWebhookHandler } from '../../services/paymentWebhookHandler';
 import bookingProcessService from '../../services/booking-process-tracking';
 import QRCodeDisplay from './payment/QRCodeDisplay';
 import type { PaymentWebhookData } from '../../services/paymentWebhookHandler';
+import { useAuth } from '../contexts/HybridAuthContext';
 
 // Local type definitions for payment state
 interface PayMongoPaymentIntent {
@@ -72,6 +73,7 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
   onPaymentSuccess,
   onPaymentError,
 }) => {
+  const { user } = useAuth(); // Get authenticated user
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'select' | 'card_form' | 'processing' | 'qr_code' | 'redirect' | 'bank_transfer_instructions' | 'success' | 'error'>('select');
@@ -371,7 +373,8 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
         number: cardForm.number.replace(/\s/g, ''), // Remove spaces
         expiry: cardForm.expiry,
         cvc: cardForm.cvc,
-        name: cardForm.name
+        name: cardForm.name,
+        email: user?.email // Pass authenticated user's email
       };
       
       // Use the specific card payment method that calls our backend
@@ -1547,7 +1550,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                     className="text-center py-12"
                   >
                     <motion.div
-                      initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ type: "spring", delay: 0.2 }}
                       className="w-20 h-20 mx-auto mb-6 bg-red-100 rounded-full flex items-center justify-center"

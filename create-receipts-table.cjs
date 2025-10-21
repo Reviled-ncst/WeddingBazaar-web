@@ -50,21 +50,15 @@ async function createReceiptsTable() {
     console.log('\n📋 2. CREATING RECEIPT VIEW');
     console.log('----------------------------');
     
-    // Create receipt view for formatted display
+    // Create simplified receipt view (just format amounts)
     await sql`
       CREATE OR REPLACE VIEW receipt_display AS
       SELECT 
         r.*,
-        v.business_name as vendor_name,
-        v.category as vendor_category,
-        b.service_name,
-        b.booking_date,
         CONCAT('₱', TO_CHAR(r.amount_paid::DECIMAL / 100, 'FM999,999,999.00')) as amount_paid_formatted,
         CONCAT('₱', TO_CHAR(r.total_amount::DECIMAL / 100, 'FM999,999,999.00')) as total_amount_formatted,
         CONCAT('₱', TO_CHAR(r.tax_amount::DECIMAL / 100, 'FM999,999,999.00')) as tax_amount_formatted
       FROM receipts r
-      LEFT JOIN vendors v ON r.vendor_id = v.id
-      LEFT JOIN bookings b ON r.booking_id = b.id
     `;
     
     console.log('✅ Receipt display view created');

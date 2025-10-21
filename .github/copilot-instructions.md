@@ -5,7 +5,9 @@
 ## Project Overview
 This is a Wedding Bazaar platform built with React, TypeScript, and Vite. The project is designed with micro frontends architecture in mind for scalability. The platform connects couples with wedding vendors and provides comprehensive wedding planning tools.
 
-## Current Folder Structure
+## Complete Project Structure
+
+### Frontend Source Code (`src/`)
 ```
 src/
 ├── pages/
@@ -22,8 +24,16 @@ src/
 │   │   │   ├── services/          # Service browsing and discovery
 │   │   │   │   ├── Services.tsx   # Service browsing page
 │   │   │   │   └── index.ts       # Export file
-│   │   │   ├── bookings/          # Booking management
-│   │   │   │   ├── IndividualBookings.tsx
+│   │   │   ├── bookings/          # Booking management (PAYMENT + RECEIPT + CANCEL)
+│   │   │   │   ├── IndividualBookings.tsx  # Main bookings page with actions
+│   │   │   │   ├── components/    # Booking-specific components
+│   │   │   │   │   ├── BookingDetailsModal.tsx
+│   │   │   │   │   ├── QuoteDetailsModal.tsx
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── hooks/         # Custom hooks
+│   │   │   │   │   └── useBookingPreferences.ts
+│   │   │   │   ├── types/         # TypeScript types
+│   │   │   │   │   └── booking.types.ts
 │   │   │   │   └── index.ts
 │   │   │   ├── messages/          # Messaging with vendors
 │   │   │   ├── profile/           # Profile management
@@ -54,16 +64,17 @@ src/
 │   │           ├── AdminLanding.tsx
 │   │           ├── AdminHeader.tsx
 │   │           └── index.ts
-│   └── shared/            # Shared page components
-│       ├── messenger/             # Messaging components
-│       │   ├── FloatingChat.tsx
-│       │   ├── FloatingChatButton.tsx
-│       │   ├── Messenger.tsx
-│       │   ├── useMessenger.ts
-│       │   ├── useMessagingService.ts
-│       │   ├── types.ts
-│       │   └── index.ts
-│       └── services/              # Shared service components
+│   ├── shared/            # Shared page components
+│   │   ├── messenger/             # Messaging components
+│   │   │   ├── FloatingChat.tsx
+│   │   │   ├── FloatingChatButton.tsx
+│   │   │   ├── Messenger.tsx
+│   │   │   ├── useMessenger.ts
+│   │   │   ├── useMessagingService.ts
+│   │   │   ├── types.ts
+│   │   │   └── index.ts
+│   │   └── services/              # Shared service components
+│   └── PayMongoTestPage.tsx      # Payment testing interface
 ├── shared/               # Global shared components, contexts, types
 │   ├── components/
 │   │   ├── layout/                # Headers, Footers, Navigation
@@ -78,18 +89,24 @@ src/
 │   │   │   ├── RegisterModal.tsx
 │   │   │   ├── Modal.tsx
 │   │   │   └── index.ts
-│   │   └── PayMongoPaymentModal.tsx # Payment processing modal
+│   │   └── PayMongoPaymentModal.tsx # Payment processing modal (REAL PAYMONGO)
 │   ├── contexts/                  # React contexts
 │   │   ├── AuthContext.tsx        # Authentication context
 │   │   ├── HybridAuthContext.tsx  # Hybrid auth with user data
 │   │   └── GlobalMessengerContext.tsx # Messaging context
 │   ├── services/                  # API service files
 │   │   ├── payment/
-│   │   │   └── paymongoService.ts # PayMongo integration
-│   │   └── bookingActionsService.ts # Receipt & cancellation
+│   │   │   └── paymongoService.ts # PayMongo integration (REAL API)
+│   │   └── bookingActionsService.ts # Receipt & cancellation services
+│   ├── utils/                     # Utility functions
+│   │   └── booking-data-mapping.ts # Booking data transformations
 │   └── types/                     # TypeScript type definitions
 │       ├── index.ts
-│       └── payment.ts             # Payment & receipt types
+│       ├── payment.ts             # Payment & receipt types
+│       └── comprehensive-booking.types.ts # Unified booking types
+├── services/             # API service layer
+│   └── api/
+│       └── CentralizedBookingAPI.ts # Centralized booking API calls
 ├── router/               # Application routing
 │   ├── AppRouter.tsx             # Main router configuration
 │   └── ProtectedRoute.tsx        # Route protection
@@ -97,6 +114,59 @@ src/
 │   └── cn.ts                     # Classname utility
 └── assets/              # Static assets
     └── react.svg
+```
+
+### Backend Deployment (`backend-deploy/`)
+```
+backend-deploy/
+├── config/
+│   └── database.cjs              # Neon PostgreSQL connection
+├── routes/
+│   ├── auth.cjs                  # Authentication endpoints
+│   ├── bookings.cjs              # Booking CRUD + Cancellation endpoints
+│   ├── payments.cjs              # PayMongo integration + Receipt endpoints
+│   ├── vendors.cjs               # Vendor management
+│   ├── services.cjs              # Service listings
+│   └── admin.cjs                 # Admin operations
+├── helpers/
+│   └── receiptGenerator.cjs      # Receipt generation logic
+├── middleware/
+│   └��─ auth.cjs                  # JWT authentication middleware
+├── production-backend.js         # Main Express server (DEPLOYMENT ENTRY)
+├── package.json                  # Backend dependencies
+└── .env                          # Environment variables (NOT COMMITTED)
+```
+
+### Database Scripts (Root Directory)
+```
+root/
+├── create-receipts-table.cjs     # Creates receipts table and views
+├── apply-database-fixes.cjs      # Database schema fixes
+├── check-database-schema.cjs     # Schema verification
+└── receipts-table-schema.sql     # SQL schema definitions
+```
+
+### Deployment Scripts (Root Directory)
+```
+root/
+├── deploy-frontend.ps1           # Firebase deployment script
+├── deploy-paymongo.ps1           # Backend + PayMongo deployment
+├── deploy-complete.ps1           # Full stack deployment
+└── monitor-payment-deployment.ps1 # Deployment monitoring
+```
+
+### Configuration Files
+```
+root/
+├── .env                          # Local environment variables
+├── .env.development              # Development environment
+├── .env.example                  # Template for environment setup
+├── firebase.json                 # Firebase hosting config
+├── .firebaserc                   # Firebase project config
+├── vite.config.ts                # Vite build configuration
+├── tsconfig.json                 # TypeScript configuration
+├── package.json                  # Frontend dependencies
+└── tailwind.config.js            # Tailwind CSS configuration
 ```
 
 ## Architecture Guidelines
@@ -460,24 +530,297 @@ src/
 ```
 
 ## API Integration Guidelines
-### Database Schema
-- **Users**: Authentication, profiles, preferences
-- **Vendors**: Business information, services, availability
-- **Services**: Categories, pricing, descriptions, media
-- **Bookings**: Reservations, status, payments, reviews
-- **Messages**: Real-time communication, file attachments
-- **Reviews**: Ratings, comments, moderation status
 
-### API Endpoints Structure
+### Complete Database Schema (Neon PostgreSQL)
+
+#### 1. **users** table
+```sql
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  full_name VARCHAR(255),
+  role VARCHAR(50) DEFAULT 'individual', -- 'individual', 'vendor', 'admin'
+  phone VARCHAR(20),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  last_login TIMESTAMP,
+  is_verified BOOLEAN DEFAULT FALSE,
+  profile_image_url TEXT
+);
 ```
-/api/auth/*           # Authentication endpoints
-/api/users/*          # User management
-/api/vendors/*        # Vendor operations
-/api/services/*       # Service discovery
-/api/bookings/*       # Booking management
-/api/messages/*       # Messaging system
-/api/reviews/*        # Review system
-/api/admin/*          # Admin operations
+
+#### 2. **vendors** table
+```sql
+CREATE TABLE vendors (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  business_name VARCHAR(255) NOT NULL,
+  business_type VARCHAR(100), -- 'Photography', 'Catering', 'Venue', etc.
+  description TEXT,
+  location VARCHAR(255),
+  phone VARCHAR(20),
+  email VARCHAR(255),
+  website VARCHAR(255),
+  rating DECIMAL(3,2) DEFAULT 0.0,
+  total_reviews INTEGER DEFAULT 0,
+  years_experience INTEGER,
+  specialties TEXT[], -- Array of specialty tags
+  portfolio_images TEXT[], -- Array of image URLs
+  is_verified BOOLEAN DEFAULT FALSE,
+  is_featured BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### 3. **services** table
+```sql
+CREATE TABLE services (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  vendor_id UUID REFERENCES vendors(id) ON DELETE CASCADE,
+  service_name VARCHAR(255) NOT NULL,
+  service_type VARCHAR(100), -- Category
+  description TEXT,
+  base_price DECIMAL(10,2),
+  price_range_min DECIMAL(10,2),
+  price_range_max DECIMAL(10,2),
+  inclusions TEXT[],
+  exclusions TEXT[],
+  images TEXT[],
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### 4. **bookings** table (ENHANCED WITH PAYMENT TRACKING)
+```sql
+CREATE TABLE bookings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  vendor_id UUID REFERENCES vendors(id) ON DELETE CASCADE,
+  service_id UUID REFERENCES services(id) ON DELETE SET NULL,
+  service_type VARCHAR(100),
+  event_date DATE NOT NULL,
+  event_location VARCHAR(255),
+  status VARCHAR(50) DEFAULT 'request', 
+  -- Statuses: 'request', 'quote_requested', 'quote_sent', 'quote_accepted', 
+  --           'quote_rejected', 'confirmed', 'deposit_paid', 'downpayment_paid',
+  --           'paid_in_full', 'fully_paid', 'completed', 'cancelled', 'pending_cancellation'
+  amount DECIMAL(10,2),
+  downpayment_amount DECIMAL(10,2),
+  remaining_balance DECIMAL(10,2),
+  booking_reference VARCHAR(50) UNIQUE,
+  notes TEXT,
+  special_requests TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### 5. **receipts** table (PAYMENT RECEIPTS - NEW)
+```sql
+CREATE TABLE receipts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
+  receipt_number VARCHAR(50) UNIQUE NOT NULL,
+  payment_type VARCHAR(50) NOT NULL, -- 'deposit', 'balance', 'full'
+  amount INTEGER NOT NULL, -- In centavos (₱100.00 = 10000)
+  currency VARCHAR(3) DEFAULT 'PHP',
+  payment_method VARCHAR(50), -- 'card', 'gcash', 'paymaya', 'grab_pay'
+  payment_intent_id VARCHAR(255), -- PayMongo payment intent ID
+  paid_by UUID REFERENCES users(id),
+  paid_by_name VARCHAR(255),
+  paid_by_email VARCHAR(255),
+  total_paid INTEGER, -- Running total in centavos
+  remaining_balance INTEGER, -- Remaining in centavos
+  notes TEXT,
+  metadata JSONB, -- Additional PayMongo data
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- View for formatted receipt display
+CREATE OR REPLACE VIEW receipt_display AS
+SELECT 
+  r.id,
+  r.booking_id,
+  r.receipt_number,
+  r.payment_type,
+  r.amount,
+  r.currency,
+  r.payment_method,
+  r.payment_intent_id,
+  r.paid_by,
+  r.paid_by_name,
+  r.paid_by_email,
+  r.total_paid,
+  r.remaining_balance,
+  r.notes,
+  r.created_at,
+  b.vendor_id,
+  b.service_type,
+  b.event_date,
+  v.business_name as vendor_name
+FROM receipts r
+LEFT JOIN bookings b ON r.booking_id = b.id
+LEFT JOIN vendors v ON b.vendor_id = v.id;
+```
+
+#### 6. **conversations** table (MESSAGING)
+```sql
+CREATE TABLE conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  vendor_id UUID REFERENCES vendors(id) ON DELETE CASCADE,
+  booking_id UUID REFERENCES bookings(id) ON DELETE SET NULL,
+  last_message TEXT,
+  last_message_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### 7. **messages** table
+```sql
+CREATE TABLE messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT FALSE,
+  attachments TEXT[],
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### 8. **reviews** table
+```sql
+CREATE TABLE reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
+  vendor_id UUID REFERENCES vendors(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  images TEXT[],
+  is_verified BOOLEAN DEFAULT FALSE,
+  vendor_response TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Complete API Endpoints Documentation
+
+#### Authentication Endpoints (`/api/auth`)
+```
+POST   /api/auth/register          # Register new user
+POST   /api/auth/login             # Login user (returns JWT token)
+POST   /api/auth/verify            # Verify JWT token
+POST   /api/auth/logout            # Logout user
+POST   /api/auth/refresh           # Refresh JWT token
+POST   /api/auth/forgot-password   # Request password reset
+POST   /api/auth/reset-password    # Reset password with token
+```
+
+#### User Endpoints (`/api/users`)
+```
+GET    /api/users/:id              # Get user profile
+PUT    /api/users/:id              # Update user profile
+DELETE /api/users/:id              # Delete user account
+GET    /api/users/:id/bookings     # Get user's bookings
+GET    /api/users/:id/reviews      # Get user's reviews
+```
+
+#### Vendor Endpoints (`/api/vendors`)
+```
+GET    /api/vendors                # Get all vendors (with filters)
+GET    /api/vendors/featured       # Get featured vendors
+GET    /api/vendors/:id            # Get vendor details
+POST   /api/vendors                # Create vendor profile
+PUT    /api/vendors/:id            # Update vendor profile
+DELETE /api/vendors/:id            # Delete vendor profile
+GET    /api/vendors/:id/services   # Get vendor's services
+GET    /api/vendors/:id/reviews    # Get vendor's reviews
+GET    /api/vendors/:id/portfolio  # Get vendor's portfolio
+```
+
+#### Service Endpoints (`/api/services`)
+```
+GET    /api/services               # Get all services (with filters)
+GET    /api/services/:id           # Get service details
+POST   /api/services               # Create service
+PUT    /api/services/:id           # Update service
+DELETE /api/services/:id           # Delete service
+GET    /api/services/categories    # Get service categories
+```
+
+#### Booking Endpoints (`/api/bookings`) ⭐ ENHANCED
+```
+GET    /api/bookings               # Get all bookings (admin)
+GET    /api/bookings/:id           # Get booking details
+POST   /api/bookings               # Create booking
+PUT    /api/bookings/:id           # Update booking
+DELETE /api/bookings/:id           # Delete booking
+GET    /api/bookings/user/:userId  # Get user's bookings
+GET    /api/bookings/vendor/:vendorId # Get vendor's bookings
+PUT    /api/bookings/:id/status    # Update booking status
+POST   /api/bookings/:id/quote     # Send quote to client
+POST   /api/bookings/:id/accept-quote # Accept quote
+POST   /api/bookings/:id/reject-quote # Reject quote
+
+# NEW: Cancellation Endpoints
+POST   /api/bookings/:id/cancel              # Direct cancellation (request status)
+POST   /api/bookings/:id/request-cancellation # Request cancellation (requires approval)
+```
+
+#### Payment Endpoints (`/api/payment`) ⭐ REAL PAYMONGO INTEGRATION
+```
+# PayMongo Payment Processing
+POST   /api/payment/create-source         # Create e-wallet payment source
+POST   /api/payment/create-intent         # Create payment intent
+POST   /api/payment/create-payment-method # Create payment method (card)
+POST   /api/payment/attach-intent         # Attach payment method to intent
+POST   /api/payment/process               # Process payment + create receipt
+POST   /api/payment/webhook               # PayMongo webhook handler
+GET    /api/payment/source/:sourceId      # Get payment source status
+GET    /api/payment/health                # Payment service health check
+
+# NEW: Receipt Endpoints
+GET    /api/payment/receipts/:bookingId   # Get all receipts for a booking
+```
+
+#### Message Endpoints (`/api/messages`)
+```
+GET    /api/messages/conversations        # Get user's conversations
+GET    /api/messages/conversation/:id     # Get conversation messages
+POST   /api/messages/conversation         # Create conversation
+POST   /api/messages                      # Send message
+PUT    /api/messages/:id/read             # Mark message as read
+DELETE /api/messages/:id                  # Delete message
+```
+
+#### Review Endpoints (`/api/reviews`)
+```
+GET    /api/reviews                # Get all reviews
+GET    /api/reviews/:id            # Get review details
+POST   /api/reviews                # Create review
+PUT    /api/reviews/:id            # Update review
+DELETE /api/reviews/:id            # Delete review
+POST   /api/reviews/:id/respond    # Vendor response to review
+```
+
+#### Admin Endpoints (`/api/admin`)
+```
+GET    /api/admin/dashboard        # Admin dashboard stats
+GET    /api/admin/users            # Get all users
+PUT    /api/admin/users/:id/verify # Verify user account
+DELETE /api/admin/users/:id        # Delete user
+GET    /api/admin/vendors          # Get all vendors
+PUT    /api/admin/vendors/:id/approve # Approve vendor
+GET    /api/admin/bookings         # Get all bookings
+GET    /api/admin/analytics        # Platform analytics
 ```
 
 ## Quality Assurance
@@ -487,42 +830,186 @@ src/
 - **Performance**: Core Web Vitals scores must meet Google standards
 - **Accessibility**: WCAG 2.1 AA compliance required
 
-## 🚨 CURRENT KNOWN ISSUES & QUICK FIXES
+## 🚀 Deployment Guide
 
-### Critical Issues (Fix Immediately)
-1. **FeaturedVendors Component Not Displaying Data**
-   - **Problem**: API returns `{name, category, rating: number}` but component expects `{business_name, business_type, rating: string}`
-   - **File**: `src/pages/homepage/components/FeaturedVendors.tsx`
-   - **Fix**: Update interface and template to use new field names
-   - **Time**: 15 minutes
+### Backend Deployment (Render.com)
 
-2. **Auth Context Invalid Response Error**
-   - **Problem**: Console shows "❌ Invalid verify response"
-   - **File**: `src/shared/contexts/AuthContext.tsx`
-   - **Fix**: Update response handling for `{success, authenticated, user}` format
-   - **Time**: 10 minutes
+**Deployment Configuration:**
+- **Platform**: Render.com
+- **Entry Point**: `backend-deploy/production-backend.js`
+- **Build Command**: `cd backend-deploy && npm install`
+- **Start Command**: `node backend-deploy/production-backend.js`
+- **Production URL**: https://weddingbazaar-web.onrender.com
 
-3. **Navigation Buttons Don't Work**
-   - **Problem**: "View All Vendors" button has no click handler
-   - **File**: `src/pages/homepage/components/FeaturedVendors.tsx`
-   - **Fix**: Add `onClick={() => navigate('/vendors')}` handler
-   - **Time**: 5 minutes
-
-### API Endpoint Status
+**Environment Variables (Required):**
 ```bash
-# PRODUCTION ENDPOINTS (LIVE):
-✅ https://weddingbazaar-web.onrender.com/api/health
-✅ https://weddingbazaar-web.onrender.com/api/vendors/featured  
-✅ https://weddingbazaar-web.onrender.com/api/auth/login
-✅ https://weddingbazaar-web.onrender.com/api/auth/verify
+# Database
+DATABASE_URL=postgresql://[neon-database-url]
 
-# LOCAL DEVELOPMENT ENDPOINTS:
-✅ http://localhost:3001/api/vendors/featured (returns 5 vendors)
-✅ http://localhost:3001/api/ping (health check)
-✅ http://localhost:3001/api/auth/verify (token verification)
-✅ http://localhost:3001/api/health (server status)
+# JWT Authentication
+JWT_SECRET=[your-jwt-secret]
 
-# FRONTEND URLS:
-✅ https://weddingbazaar-web.web.app (PRODUCTION)
-✅ http://localhost:5173 (development)
+# PayMongo API Keys (TEST MODE)
+PAYMONGO_SECRET_KEY=sk_test_[your-test-key]
+PAYMONGO_PUBLIC_KEY=pk_test_[your-test-key]
+
+# PayMongo API Keys (LIVE MODE - for production)
+# PAYMONGO_SECRET_KEY=sk_live_[your-live-key]
+# PAYMONGO_PUBLIC_KEY=pk_live_[your-live-key]
+
+# Frontend URL (for CORS)
+FRONTEND_URL=https://weddingbazaar-web.web.app
+
+# Server Configuration
+PORT=3001
+NODE_ENV=production
+```
+
+**Deployment Steps:**
+1. Push code to GitHub repository
+2. Render auto-deploys from `main` branch
+3. Check build logs in Render dashboard
+4. Verify deployment: `https://weddingbazaar-web.onrender.com/api/health`
+
+**Deployment Scripts:**
+```powershell
+# Deploy backend only
+.\deploy-paymongo.ps1
+
+# Deploy full stack
+.\deploy-complete.ps1
+```
+
+### Frontend Deployment (Firebase Hosting)
+
+**Deployment Configuration:**
+- **Platform**: Firebase Hosting
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist/`
+- **Production URL**: https://weddingbazaar-web.web.app
+
+**Environment Variables (`.env.production`):**
+```bash
+# Backend API URL
+VITE_API_URL=https://weddingbazaar-web.onrender.com
+
+# PayMongo Public Key (for frontend)
+VITE_PAYMONGO_PUBLIC_KEY=pk_test_[your-test-key]
+
+# Firebase Configuration
+VITE_FIREBASE_API_KEY=[your-firebase-key]
+VITE_FIREBASE_AUTH_DOMAIN=[your-domain]
+VITE_FIREBASE_PROJECT_ID=[your-project-id]
+```
+
+**Deployment Steps:**
+```powershell
+# Build frontend
+npm run build
+
+# Deploy to Firebase
+firebase deploy
+
+# Or use deployment script
+.\deploy-frontend.ps1
+```
+
+**Firebase Configuration Files:**
+- `firebase.json` - Hosting configuration
+- `.firebaserc` - Project configuration
+
+### Database Deployment (Neon PostgreSQL)
+
+**Database Configuration:**
+- **Platform**: Neon PostgreSQL (Serverless)
+- **Connection**: Via `@neondatabase/serverless` package
+- **Connection Pooling**: Enabled
+
+**Database Setup Scripts:**
+```bash
+# Create receipts table and views
+node create-receipts-table.cjs
+
+# Apply database fixes
+node apply-database-fixes.cjs
+
+# Check database schema
+node check-database-schema.cjs
+```
+
+**Database Migration Commands:**
+```sql
+-- Run these in Neon SQL Editor
+\i receipts-table-schema.sql
+```
+
+## 🛠️ Implementation Methods & Patterns
+
+### Payment Implementation (PayMongo Real Integration)
+
+**Flow: Card Payment**
+```
+1. User clicks "Pay Deposit" or "Pay Balance"
+2. PayMongoPaymentModal opens
+3. User enters card details
+4. Frontend calls: createCardPayment()
+   ├── Step 1: POST /api/payment/create-intent (creates PayMongo intent)
+   ├── Step 2: POST /api/payment/create-payment-method (tokenizes card)
+   ├── Step 3: POST /api/payment/attach-intent (processes payment)
+   └── Step 4: POST /api/payment/process (creates receipt + updates booking)
+5. Receipt created in database
+6. Booking status updated (deposit_paid or paid_in_full)
+7. Success modal shown to user
+```
+
+**Key Files:**
+- `src/shared/services/payment/paymongoService.ts` - Frontend payment service
+- `backend-deploy/routes/payments.cjs` - Backend payment endpoints
+- `backend-deploy/helpers/receiptGenerator.cjs` - Receipt generation logic
+
+**Example Usage:**
+```typescript
+import { paymongoService } from '@/shared/services/payment/paymongoService';
+
+const result = await paymongoService.createCardPayment(
+  bookingId,
+  amount,
+  'deposit',
+  {
+    number: '4343434343434345', // Test card
+    expiry: '12/25',
+    cvc: '123',
+    name: 'Juan Dela Cruz',
+    email: 'user@example.com'
+  }
+);
+
+if (result.success) {
+  console.log('Receipt:', result.receiptNumber);
+}
+```
+
+### Receipt Viewing Implementation
+
+**Flow: View Receipt**
+```
+1. User clicks "View Receipt" button on booking card
+2. Frontend calls: getBookingReceipts(bookingId)
+3. Backend: GET /api/payment/receipts/:bookingId
+4. Returns array of receipts with full details
+5. Frontend displays receipt in modal/alert
+6. User can download/print receipt
+```
+
+**Key Files:**
+- `src/shared/services/bookingActionsService.ts` - Receipt fetching service
+- `backend-deploy/routes/payments.cjs` - Receipt endpoint
+
+**Example Usage:**
+```typescript
+import { getBookingReceipts, formatReceipt } from '@/shared/services/bookingActionsService';
+
+const receipts = await getBookingReceipts(bookingId);
+const formatted = formatReceipt(receipts[0]);
+console.log(formatted); // Formatted receipt text
 ```

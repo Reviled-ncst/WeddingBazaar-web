@@ -23,6 +23,7 @@ class PayMongoService {
     expiry: string;
     cvc: string;
     name: string;
+    email?: string; // User's email for billing
   }): Promise<PaymentResult> {
     try {
       console.log('💳 [CARD PAYMENT - REAL] Processing REAL card payment with PayMongo...');
@@ -76,7 +77,7 @@ class PayMongoService {
           },
           billing: {
             name: cardDetails.name,
-            email: 'payment@weddingbazaar.com' // PayMongo requires email for card payments
+            email: cardDetails.email || 'payment@weddingbazaar.com' // Use user's email or fallback
           }
         })
       });
@@ -117,12 +118,20 @@ class PayMongoService {
 
       // Step 4: Process payment and create receipt in backend
       console.log('💳 [STEP 4] Creating receipt in backend...');
+      
+      // Map frontend payment types to backend payment types
+      const backendPaymentType = paymentType === 'downpayment' ? 'deposit' 
+                                : paymentType === 'remaining_balance' ? 'balance'
+                                : 'full';
+      
+      console.log(`💳 [STEP 4] Mapping paymentType: "${paymentType}" -> "${backendPaymentType}"`);
+      
       const receiptResponse = await fetch(`${this.baseUrl}/api/payment/process`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({
           bookingId: bookingId,
-          paymentType: paymentType,
+          paymentType: backendPaymentType, // Use mapped backend type
           paymentMethod: 'card',
           amount: Math.round(amount * 100),
           paymentReference: paymentIntentId,
@@ -136,13 +145,31 @@ class PayMongoService {
       });
 
       if (!receiptResponse.ok) {
-        const errorData = await receiptResponse.json();
-        console.warn('⚠️ [STEP 4] Receipt creation failed, but payment succeeded:', errorData);
-        // Payment succeeded but receipt failed - still return success
+        const errorData = await receiptResponse.json().catch(() => ({ error: 'Failed to parse error response' }));
+        console.error('❌ [STEP 4] Receipt creation failed!');
+        console.error('❌ [STEP 4] Status:', receiptResponse.status);
+        console.error('❌ [STEP 4] Error data:', errorData);
+        console.warn('⚠️ [STEP 4] Payment succeeded but receipt failed - continuing anyway');
+        // Payment succeeded but receipt failed - still return success with warning
+        return {
+          success: true,
+          paymentId: paymentIntentId,
+          receiptNumber: undefined,
+          receiptData: undefined,
+          paymentIntent: {
+            id: paymentIntentId,
+            status: 'succeeded',
+            amount: amount * 100,
+            currency: 'PHP'
+          },
+          requiresAction: false,
+          warning: 'Payment succeeded but receipt generation failed'
+        };
       }
 
       const receiptData = await receiptResponse.json();
       
+      console.log('✅ [STEP 4] Receipt response received:', receiptData);
       console.log('✅ [CARD PAYMENT - REAL] Payment completed successfully!');
       console.log('🧾 [CARD PAYMENT - REAL] Receipt created:', receiptData.data?.receipt?.receipt_number);
 
