@@ -1038,40 +1038,10 @@ router.patch('/:bookingId/status', async (req, res) => {
       }
     }
     
-    // For deposit and full payment, trigger receipt generation
+    // NOTE: Receipts are only created via the payment processing flow (/api/payment/process)
+    // Do not auto-generate receipts on manual status updates to avoid missing data errors
     if (status === 'deposit_paid' || status === 'fully_paid') {
-      try {
-        // Only generate receipt if not already done
-        const receiptExists = await sql`
-          SELECT 1 FROM receipts WHERE booking_id = ${bookingId} LIMIT 1
-        `;
-        
-        if (receiptExists.length === 0) {
-          if (status === 'deposit_paid') {
-            // Create deposit receipt
-            await createDepositReceipt(
-              bookingId,
-              booking.couple_id,
-              booking.vendor_id,
-              downpayment_amount,
-              payment_method || 'card',
-              transaction_id
-            );
-          } else if (status === 'fully_paid') {
-            // Create full payment receipt
-            await createFullPaymentReceipt(
-              bookingId,
-              booking.couple_id,
-              booking.vendor_id,
-              remaining_balance,
-              payment_method || 'card',
-              transaction_id
-            );
-          }
-        }
-      } catch (receiptError) {
-        console.error('❌ [PAYMENT UPDATE] Receipt generation error:', receiptError);
-      }
+      console.log('ℹ️ [STATUS UPDATE] Payment status updated. Receipt should be created via payment flow.');
     }
     
     // Respond with updated booking data
