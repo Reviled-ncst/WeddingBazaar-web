@@ -1198,7 +1198,7 @@ export const IndividualBookings: React.FC = () => {
                         )}
 
                         {/* Deposit Paid - Show Pay Balance + View Receipt in 2-column */}
-                        {booking.status === 'downpayment_paid' && (
+                        {(booking.status === 'downpayment_paid' || booking.status === 'deposit_paid' || booking.status === 'downpayment') && (
                           <div className="grid grid-cols-2 gap-2">
                             {booking.remainingBalance && booking.remainingBalance > 0 && (
                               <button
@@ -1219,8 +1219,8 @@ export const IndividualBookings: React.FC = () => {
                           </div>
                         )}
 
-                        {/* View Receipt Button - Show for fully paid bookings */}
-                        {(booking.status === 'deposit_paid' || booking.status === 'downpayment' || booking.status === 'fully_paid' || booking.status === 'paid_in_full' || booking.status === 'completed') && booking.status !== 'downpayment_paid' && (
+                        {/* View Receipt Button - Show for fully paid bookings only (deposit paid is handled above) */}
+                        {(booking.status === 'fully_paid' || booking.status === 'paid_in_full' || booking.status === 'completed') && (
                           <button
                             onClick={() => handleViewReceipt(booking)}
                             className="w-full px-3 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
