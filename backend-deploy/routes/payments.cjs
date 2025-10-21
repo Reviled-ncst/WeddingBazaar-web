@@ -641,13 +641,16 @@ router.post('/process', async (req, res) => {
       paymentProgress: `${paymentProgress}%`
     });
 
+    // Get existing downpayment_amount from booking (for balance payments)
+    const existingDownpayment = parseInt(booking.downpayment_amount) || 0;
+
     // Update booking status WITH PAYMENT AMOUNTS
     const updatedBooking = await sql`
       UPDATE bookings
       SET 
         status = ${newStatus},
         notes = ${`${paymentType.toUpperCase()}_PAID: Payment of ₱${amount / 100} received via ${paymentMethod}`},
-        downpayment_amount = ${paymentType === 'deposit' ? amount : sql`downpayment_amount`},
+        downpayment_amount = ${paymentType === 'deposit' ? amount : existingDownpayment},
         total_paid = ${newTotalPaid},
         remaining_balance = ${newRemainingBalance},
         payment_progress = ${paymentProgress},
