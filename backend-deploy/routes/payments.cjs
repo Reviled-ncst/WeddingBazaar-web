@@ -869,21 +869,36 @@ router.get('/receipts/:bookingId', async (req, res) => {
     console.log(`📄 [GET-RECEIPTS] Booking ID: ${bookingId}`);
     
     // Get receipts from database with JOIN to get booking and vendor details
+    // Note: Using only columns that actually exist in the schema
     const receipts = await sql`
       SELECT 
-        r.*,
+        r.id,
+        r.receipt_number,
+        r.booking_id,
+        r.couple_id,
+        r.vendor_id,
+        r.payment_method,
+        r.amount_paid,
+        r.total_amount,
+        r.tax_amount,
+        r.transaction_reference,
+        r.description,
+        r.payment_status,
+        r.metadata,
+        r.created_at,
         b.service_type,
         b.service_name,
         b.event_date,
         b.event_location,
-        b.couple_name,
         b.total_amount as booking_total,
-        b.remaining_balance as booking_balance,
         v.business_name as vendor_business_name,
-        v.business_type as vendor_category
+        v.business_type as vendor_category,
+        u.full_name as couple_name,
+        u.email as couple_email
       FROM receipts r
       LEFT JOIN bookings b ON r.booking_id = b.id
       LEFT JOIN vendors v ON r.vendor_id = v.id
+      LEFT JOIN users u ON r.couple_id = u.id
       WHERE r.booking_id = ${bookingId}
       ORDER BY r.created_at DESC
     `;
@@ -891,11 +906,19 @@ router.get('/receipts/:bookingId', async (req, res) => {
     console.log(`📄 [GET-RECEIPTS] Found ${receipts.length} receipt(s)`);
     
     if (receipts.length === 0) {
+      console.log(`📄 [GET-RECEIPTS] No receipts found for booking ${bookingId}`);
       return res.status(404).json({
         success: false,
         error: 'No receipts found for this booking'
       });
     }
+    
+    // Calculate remaining balance from receipts
+    const totalPaid = receipts.reduce((sum, r) => sum + (Number(r.amount_paid) || 0), 0);
+    const bookingTotal = Number(receipts[0].booking_total) || 0;
+    const remainingBalance = Math.max(0, bookingTotal - totalPaid);
+    
+    console.log(`📄 [GET-RECEIPTS] Total paid: ₱${totalPaid / 100}, Remaining: ₱${remainingBalance / 100}`);
     
     res.json({
       success: true,
@@ -903,30 +926,32 @@ router.get('/receipts/:bookingId', async (req, res) => {
         id: r.id,
         bookingId: r.booking_id,
         receiptNumber: r.receipt_number,
-        paymentType: r.metadata?.payment_type || r.description?.includes('DEPOSIT') ? 'deposit' : r.description?.includes('BALANCE') ? 'balance' : 'payment',
-        amount: r.amount_paid,
+        paymentType: r.metadata?.payment_type || (r.description?.toLowerCase().includes('deposit') ? 'deposit' : r.description?.toLowerCase().includes('balance') ? 'balance' : 'payment'),
+        amount: Number(r.amount_paid) || 0,
         currency: 'PHP',
         paymentMethod: r.payment_method || 'card',
         paymentIntentId: r.transaction_reference,
         paidBy: r.couple_id,
-        paidByName: r.paid_by_name || r.couple_name || 'Customer',
-        paidByEmail: r.paid_by_email || '',
+        paidByName: r.couple_name || 'Customer',
+        paidByEmail: r.couple_email || '',
         vendorId: r.vendor_id,
         vendorName: r.vendor_business_name || 'Wedding Vendor',
         serviceType: r.service_name || r.service_type || 'Wedding Service',
         eventDate: r.event_date || new Date().toISOString(),
-        totalPaid: r.total_paid || r.amount_paid,
-        remainingBalance: r.remaining_balance || (r.booking_total - r.total_paid) || 0,
-        notes: r.description || r.notes,
+        totalPaid: totalPaid,
+        remainingBalance: remainingBalance,
+        notes: r.description || '',
         createdAt: r.created_at
       }))
     });
     
   } catch (error) {
     console.error('❌ [GET-RECEIPTS] Error:', error);
+    console.error('❌ [GET-RECEIPTS] Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch receipts'
+      error: 'Failed to fetch receipts',
+      details: error.message
     });
   }
 });
