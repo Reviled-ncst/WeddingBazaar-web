@@ -245,11 +245,22 @@ class AvailabilityService {
       const currentBookings = bookingsOnDate.length;
       
       // Count confirmed vs pending/request bookings (consistent with bulk processing)
+      // Include ALL paid/confirmed statuses: fully_paid, paid_in_full, downpayment_paid, deposit_paid, approved, confirmed, completed
       const confirmedBookings = bookingsOnDate.filter((booking: any) => 
-        booking.status === 'confirmed' || booking.status === 'paid_in_full' || booking.status === 'completed'
+        booking.status === 'confirmed' || 
+        booking.status === 'paid_in_full' || 
+        booking.status === 'fully_paid' ||
+        booking.status === 'completed' ||
+        booking.status === 'approved' ||
+        booking.status === 'downpayment_paid' ||
+        booking.status === 'deposit_paid' ||
+        booking.status === 'downpayment' // Legacy status
       ).length;
       const pendingBookings = bookingsOnDate.filter((booking: any) => 
-        booking.status === 'pending' || booking.status === 'request' || booking.status === 'quote_requested' || booking.status === 'quote_sent'
+        booking.status === 'pending' || 
+        booking.status === 'request' || 
+        booking.status === 'quote_requested' || 
+        booking.status === 'quote_sent'
       ).length;
 
       let isAvailable = false;
@@ -493,11 +504,22 @@ class AvailabilityService {
         const maxBookingsPerDay = 1; // Wedding services typically allow 1 booking per day
 
         // Count confirmed vs pending/request bookings
+        // Include ALL paid/confirmed statuses: fully_paid, paid_in_full, downpayment_paid, deposit_paid, approved, confirmed, completed
         const confirmedBookings = dateBookings.filter((booking: any) => 
-          booking.status === 'confirmed' || booking.status === 'paid_in_full' || booking.status === 'completed'
+          booking.status === 'confirmed' || 
+          booking.status === 'paid_in_full' || 
+          booking.status === 'fully_paid' ||
+          booking.status === 'completed' ||
+          booking.status === 'approved' ||
+          booking.status === 'downpayment_paid' ||
+          booking.status === 'deposit_paid' ||
+          booking.status === 'downpayment' // Legacy status
         ).length;
         const pendingBookings = dateBookings.filter((booking: any) => 
-          booking.status === 'pending' || booking.status === 'request' || booking.status === 'quote_requested' || booking.status === 'quote_sent'
+          booking.status === 'pending' || 
+          booking.status === 'request' || 
+          booking.status === 'quote_requested' || 
+          booking.status === 'quote_sent'
         ).length;
 
         let isAvailable = true;
