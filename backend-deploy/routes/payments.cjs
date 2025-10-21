@@ -900,7 +900,7 @@ router.get('/receipts/:bookingId', async (req, res) => {
         b.couple_id,
         v.business_name as vendor_business_name,
         v.business_type as vendor_category,
-        u.full_name as couple_name,
+        CONCAT(u.first_name, ' ', u.last_name) as couple_name,
         u.email as couple_email
       FROM receipts r
       LEFT JOIN bookings b ON r.booking_id = CAST(b.id AS TEXT)
