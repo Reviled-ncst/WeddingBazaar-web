@@ -145,6 +145,87 @@ router.get('/vendor/:vendorId', async (req, res) => {
   }
 });
 
+// Get single service by ID - PUBLIC ENDPOINT (no auth required)
+router.get('/:id', async (req, res) => {
+  console.log('🔍 Getting single service:', req.params.id);
+  
+  try {
+    const { id } = req.params;
+    
+    // Get service details
+    const services = await sql`
+      SELECT * FROM services 
+      WHERE id = ${id}
+    `;
+    
+    if (services.length === 0) {
+      console.log(`❌ Service not found: ${id}`);
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const service = services[0];
+    console.log(`✅ Found service: ${service.title}`);
+    
+    // Enrich with vendor information
+    if (service.vendor_id) {
+      const vendors = await sql`
+        SELECT id, business_name, category, location, phone, email, website, rating, total_reviews
+        FROM vendors 
+        WHERE id = ${service.vendor_id}
+      `;
+      
+      if (vendors.length > 0) {
+        service.vendor = {
+          id: vendors[0].id,
+          name: vendors[0].business_name,
+          business_name: vendors[0].business_name,
+          category: vendors[0].category,
+          location: vendors[0].location,
+          phone: vendors[0].phone,
+          email: vendors[0].email,
+          website: vendors[0].website,
+          rating: vendors[0].rating,
+          review_count: vendors[0].total_reviews
+        };
+        console.log(`✅ Enriched with vendor: ${service.vendor.name}`);
+      }
+    }
+    
+    // Get per-service review stats
+    const reviewStats = await sql`
+      SELECT 
+        COALESCE(ROUND(AVG(rating)::numeric, 2), 0) as rating,
+        COALESCE(COUNT(id), 0) as review_count
+      FROM reviews
+      WHERE service_id = ${id}
+    `;
+    
+    if (reviewStats.length > 0) {
+      service.rating = parseFloat(reviewStats[0].rating);
+      service.review_count = parseInt(reviewStats[0].review_count);
+      console.log(`✅ Service rating: ${service.rating} (${service.review_count} reviews)`);
+    }
+    
+    res.json({
+      success: true,
+      service: service,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Service error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // CREATE SERVICE - POST /api/services
 router.post('/', async (req, res) => {
   try {
