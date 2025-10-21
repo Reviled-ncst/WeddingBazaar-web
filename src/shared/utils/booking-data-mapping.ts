@@ -28,6 +28,9 @@ export interface DatabaseBooking {
   status: string;
   total_amount: string; // Numeric as string from DB
   deposit_amount: string; // Numeric as string from DB
+  quoted_price?: string; // Quoted price from vendor (when quote is sent)
+  quoted_deposit?: string; // Quoted deposit amount
+  quote_itemization?: string; // JSON string containing itemized quote breakdown
   notes?: string;
   vendor_notes?: string; // Quote data stored by vendor
   response_message?: string;
@@ -93,6 +96,7 @@ export interface UIBooking {
   bookingReference?: string;
   notes?: string;
   vendorNotes?: string; // Quote data stored by vendor when quote is sent (JSON string)
+  quoteItemization?: string; // NEW: JSON string containing itemized quote breakdown
   quoteData?: any; // Parsed quote JSON from notes
   hasQuote?: boolean;
   // 🔥 CRITICAL: Parsed serviceItems for itemized quote display
@@ -366,9 +370,33 @@ export function mapDatabaseBookingToUI(dbBooking: DatabaseBooking): UIBooking {
     bookingReference: (dbBooking as any).booking_reference || `WB-${dbBooking.id.toString().slice(-6)}`,
     notes: dbBooking.notes,
     vendorNotes: (dbBooking as any).vendor_notes, // Quote data from vendor
+    quoteItemization: (dbBooking as any).quote_itemization, // NEW: Itemized quote breakdown
     
-    // Parse serviceItems from vendor_notes for easier access
+    // 🔥 PRIORITY: Parse serviceItems from quote_itemization (NEW DATABASE FIELD)
     serviceItems: (() => {
+      // FIRST: Try quote_itemization field (this is where vendor sends itemized quotes)
+      const quoteItemization = (dbBooking as any).quote_itemization;
+      if (quoteItemization) {
+        try {
+          const parsed = typeof quoteItemization === 'string' ? JSON.parse(quoteItemization) : quoteItemization;
+          console.log('✅ [Mapping] Successfully parsed quote_itemization:', parsed);
+          if (parsed.serviceItems && Array.isArray(parsed.serviceItems)) {
+            return parsed.serviceItems.map((item: any) => ({
+              id: item.id,
+              name: item.name || item.service,
+              description: item.description,
+              category: item.category,
+              quantity: item.quantity || 1,
+              unitPrice: item.unitPrice || item.unit_price || 0,
+              total: item.total || (item.unitPrice * item.quantity)
+            }));
+          }
+        } catch (error) {
+          console.error('❌ [Mapping] Failed to parse quote_itemization:', error);
+        }
+      }
+      
+      // FALLBACK: Try vendor_notes for backward compatibility
       const vendorNotes = (dbBooking as any).vendor_notes;
       if (vendorNotes) {
         try {

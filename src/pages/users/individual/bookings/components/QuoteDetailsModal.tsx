@@ -97,15 +97,81 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
     setError(null);
     
     try {
-      // � DEBUG: Log the entire booking object to see what fields we have
+      // 🔍 DEBUG: Log the entire booking object to see what fields we have
       console.log('🔍 [QuoteModal] Full booking object:', booking);
       console.log('🔍 [QuoteModal] Booking keys:', Object.keys(booking));
+      console.log('🔍 [QuoteModal] booking.quoteItemization:', (booking as any)?.quoteItemization);
+      console.log('🔍 [QuoteModal] booking.quote_itemization:', (booking as any)?.quote_itemization);
       console.log('🔍 [QuoteModal] booking.vendorNotes:', (booking as any)?.vendorNotes);
       console.log('🔍 [QuoteModal] booking.vendor_notes:', (booking as any)?.vendor_notes);
       console.log('🔍 [QuoteModal] booking.serviceItems:', (booking as any)?.serviceItems);
-      console.log('🔍 [QuoteModal] booking.service_items:', (booking as any)?.service_items);
       
-      // �🔧 PRIORITY 1: Check if booking has vendor_notes with real quote data
+      // 🔥 PRIORITY 1: Check if booking has quote_itemization field (NEW DATABASE FIELD)
+      const quoteItemization = (booking as any)?.quoteItemization || (booking as any)?.quote_itemization;
+      
+      if (quoteItemization) {
+        console.log('📋 [QuoteModal] Found quote_itemization, attempting to parse quote data...');
+        try {
+          const parsedQuote = typeof quoteItemization === 'string' ? JSON.parse(quoteItemization) : quoteItemization;
+          console.log('✅ [QuoteModal] Successfully parsed quote_itemization:', parsedQuote);
+          
+          // Transform vendor's quote data to QuoteData interface
+          if (parsedQuote.serviceItems && Array.isArray(parsedQuote.serviceItems)) {
+            const transformedQuoteData: QuoteData = {
+              quoteNumber: parsedQuote.quoteNumber || `QT-${booking.id?.slice(-6)?.toUpperCase() || '000001'}`,
+              issueDate: new Date(parsedQuote.timestamp || booking.createdAt || Date.now()).toLocaleDateString(),
+              validUntil: parsedQuote.validUntil || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+              serviceItems: parsedQuote.serviceItems.map((item: any, index: number) => ({
+                id: item.id || index + 1,
+                service: item.name || item.service,
+                description: item.description || '',
+                quantity: item.quantity || 1,
+                unitPrice: item.unitPrice || 0,
+                total: item.total || (item.unitPrice * item.quantity)
+              })),
+              additionalCosts: parsedQuote.additionalCosts || [],
+              paymentTerms: {
+                downpayment: parsedQuote.pricing?.downpayment || booking.downpaymentAmount,
+                downpaymentPercentage: parsedQuote.paymentTerms?.downpayment || 30,
+                finalPayment: parsedQuote.pricing?.balance || booking.remainingBalance,
+                paymentSchedule: parsedQuote.paymentSchedule || [
+                  {
+                    stage: 'Booking Confirmation',
+                    percentage: parsedQuote.paymentTerms?.downpayment || 30,
+                    amount: parsedQuote.pricing?.downpayment || booking.downpaymentAmount || 0
+                  },
+                  {
+                    stage: 'Final Payment',
+                    percentage: parsedQuote.paymentTerms?.balance || 70,
+                    amount: parsedQuote.pricing?.balance || booking.remainingBalance || 0
+                  }
+                ],
+                paymentMethods: parsedQuote.paymentMethods || ['Bank Transfer', 'GCash', 'PayMaya', 'Cash']
+              },
+              inclusions: parsedQuote.inclusions || [],
+              exclusions: parsedQuote.exclusions || [],
+              termsAndConditions: parsedQuote.terms || [parsedQuote.message || ''],
+              vendorContact: {
+                name: booking.vendorName || 'Vendor',
+                email: booking.vendorEmail || 'vendor@example.com',
+                phone: booking.vendorPhone || '+63 912 345 6789',
+                businessAddress: booking.eventLocation || 'Metro Manila'
+              }
+            };
+            
+            console.log('✅ [QuoteModal] Transformed quote data with', transformedQuoteData.serviceItems.length, 'service items');
+            setQuoteData(transformedQuoteData);
+            setLoading(false);
+            return;
+          }
+        } catch (parseError) {
+          console.error('⚠️ [QuoteModal] Failed to parse quote_itemization:', parseError);
+          console.error('⚠️ [QuoteModal] Raw quote_itemization value:', quoteItemization);
+          // Continue to next fallback
+        }
+      }
+      
+      // 🔧 PRIORITY 2: Check if booking has vendor_notes with real quote data (BACKWARD COMPATIBILITY)
       const vendorNotes = (booking as any)?.vendorNotes || (booking as any)?.vendor_notes;
       
       console.log('🔍 [QuoteModal] Extracted vendorNotes value:', vendorNotes);
@@ -374,6 +440,11 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
   }
 
   if (!quoteData) return null;
+
+  // 🔥 DEBUG: Log what we're about to display
+  console.log('🎨 [QuoteModal RENDER] About to display quoteData:', quoteData);
+  console.log('🎨 [QuoteModal RENDER] Service items count:', quoteData.serviceItems?.length);
+  console.log('🎨 [QuoteModal RENDER] Service items:', quoteData.serviceItems);
 
   // Use real quote data instead of mock data
   const quoteDetails = quoteData;
