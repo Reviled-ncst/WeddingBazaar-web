@@ -33,6 +33,51 @@
 
 ## 🔧 Feature Documentation
 
+### Calendar Availability & Payment Tracking ⭐ NEW
+
+- **[CALENDAR_AVAILABILITY_EXPLANATION.md](./CALENDAR_AVAILABILITY_EXPLANATION.md)** (280+ lines)
+  - Comprehensive technical explanation
+  - Per-vendor vs per-service comparison
+  - Business logic justification
+  - Complete code walkthrough
+  - Security and performance details
+  - Test results and verification
+
+- **[CALENDAR_AVAILABILITY_VISUAL_DIAGRAM.txt](./CALENDAR_AVAILABILITY_VISUAL_DIAGRAM.txt)** (450+ lines)
+  - ASCII flow diagrams
+  - Step-by-step user interaction
+  - Database query visualization
+  - UI rendering examples
+  - Edge cases and error handling
+  - Performance metrics
+
+- **[CALENDAR_AVAILABILITY_QUICK_REFERENCE.md](./CALENDAR_AVAILABILITY_QUICK_REFERENCE.md)** (180+ lines)
+  - Quick facts table
+  - Example scenarios
+  - Essential code snippets
+  - Visual calendar display
+  - Business logic summary
+
+- **[CALENDAR_AVAILABILITY_STATUS.md](./CALENDAR_AVAILABILITY_STATUS.md)**
+  - Feature status confirmation
+  - Implementation overview
+  - Test results
+  - Files involved
+
+- **[PAYMENT_TRACKING_AND_SERVICE_DETAILS_COMPLETE.md](./PAYMENT_TRACKING_AND_SERVICE_DETAILS_COMPLETE.md)**
+  - Payment tracking implementation
+  - Service enrichment details
+  - Test results and verification
+  - Deployment status
+
+- **[COMPLETE_STATUS_REPORT.md](./COMPLETE_STATUS_REPORT.md)**
+  - Overall project status
+  - All features summary
+  - Documentation index
+  - Test scripts listing
+  - Deployment status
+  - Next steps
+
 ### Admin Panel
 - **[ADMIN_API_INTEGRATION_GUIDE.md](./ADMIN_API_INTEGRATION_GUIDE.md)**
   - Modular admin API structure
@@ -152,6 +197,10 @@ WeddingBazaar-web/
 
 #### ...understand document verification
 → Read **[ADMIN_DOCUMENT_VERIFICATION_SUCCESS.md](./ADMIN_DOCUMENT_VERIFICATION_SUCCESS.md)**
+
+#### ...learn about calendar availability and payment tracking
+→ Read **[CALENDAR_AVAILABILITY_EXPLANATION.md](./CALENDAR_AVAILABILITY_EXPLANATION.md)**
+→ Read **[PAYMENT_TRACKING_AND_SERVICE_DETAILS_COMPLETE.md](./PAYMENT_TRACKING_AND_SERVICE_DETAILS_COMPLETE.md)**
 
 ---
 
