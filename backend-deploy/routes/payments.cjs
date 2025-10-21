@@ -872,36 +872,40 @@ router.get('/receipts/:bookingId', async (req, res) => {
     console.log(`📄 [GET-RECEIPTS] Booking ID: ${bookingId}`);
     
     // Get receipts from database with JOIN to get booking and vendor details
-    // Note: Using only columns that actually exist in the schema
+    // Using ACTUAL columns that exist in receipts table schema
     const receipts = await sql`
       SELECT 
         r.id,
         r.receipt_number,
         r.booking_id,
-        r.couple_id,
-        r.vendor_id,
+        r.payment_type,
+        r.amount,
+        r.currency,
         r.payment_method,
-        r.amount_paid,
-        r.total_amount,
-        r.tax_amount,
-        r.transaction_reference,
-        r.description,
-        r.payment_status,
+        r.payment_intent_id,
+        r.paid_by,
+        r.paid_by_name,
+        r.paid_by_email,
+        r.total_paid,
+        r.remaining_balance,
+        r.notes,
         r.metadata,
         r.created_at,
         b.service_type,
         b.service_name,
         b.event_date,
         b.event_location,
-        b.total_amount as booking_total,
+        b.amount as booking_total,
+        b.vendor_id,
+        b.couple_id,
         v.business_name as vendor_business_name,
         v.business_type as vendor_category,
         u.full_name as couple_name,
         u.email as couple_email
       FROM receipts r
-      LEFT JOIN bookings b ON r.booking_id = b.id
-      LEFT JOIN vendors v ON r.vendor_id = v.id
-      LEFT JOIN users u ON r.couple_id = u.id
+      LEFT JOIN bookings b ON r.booking_id = CAST(b.id AS TEXT)
+      LEFT JOIN vendors v ON b.vendor_id = v.id
+      LEFT JOIN users u ON b.couple_id = u.id
       WHERE r.booking_id = ${bookingId}
       ORDER BY r.created_at DESC
     `;
@@ -916,12 +920,12 @@ router.get('/receipts/:bookingId', async (req, res) => {
       });
     }
     
-    // Calculate remaining balance from receipts
-    const totalPaid = receipts.reduce((sum, r) => sum + (Number(r.amount_paid) || 0), 0);
-    const bookingTotal = Number(receipts[0].booking_total) || 0;
-    const remainingBalance = Math.max(0, bookingTotal - totalPaid);
+    // Calculate totals from receipts (amount is already in centavos in DB)
+    const totalPaidCentavos = receipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+    const bookingTotalCentavos = Number(receipts[0].booking_total) || 0;
+    const remainingBalanceCentavos = receipts[0].remaining_balance || Math.max(0, bookingTotalCentavos - totalPaidCentavos);
     
-    console.log(`📄 [GET-RECEIPTS] Total paid: ₱${totalPaid / 100}, Remaining: ₱${remainingBalance / 100}`);
+    console.log(`📄 [GET-RECEIPTS] Total paid: ₱${totalPaidCentavos / 100}, Remaining: ₱${remainingBalanceCentavos / 100}`);
     
     res.json({
       success: true,
@@ -929,21 +933,22 @@ router.get('/receipts/:bookingId', async (req, res) => {
         id: r.id,
         bookingId: r.booking_id,
         receiptNumber: r.receipt_number,
-        paymentType: r.metadata?.payment_type || (r.description?.toLowerCase().includes('deposit') ? 'deposit' : r.description?.toLowerCase().includes('balance') ? 'balance' : 'payment'),
-        amount: Number(r.amount_paid) || 0,
-        currency: 'PHP',
+        paymentType: r.payment_type || 'payment',
+        amount: Number(r.amount) || 0, // Amount in centavos
+        currency: r.currency || 'PHP',
         paymentMethod: r.payment_method || 'card',
-        paymentIntentId: r.transaction_reference,
-        paidBy: r.couple_id,
-        paidByName: r.couple_name || 'Customer',
-        paidByEmail: r.couple_email || '',
+        paymentIntentId: r.payment_intent_id || '',
+        paidBy: r.paid_by || r.couple_id,
+        paidByName: r.paid_by_name || r.couple_name || 'Customer',
+        paidByEmail: r.paid_by_email || r.couple_email || '',
         vendorId: r.vendor_id,
         vendorName: r.vendor_business_name || 'Wedding Vendor',
         serviceType: r.service_name || r.service_type || 'Wedding Service',
         eventDate: r.event_date || new Date().toISOString(),
-        totalPaid: totalPaid,
-        remainingBalance: remainingBalance,
-        notes: r.description || '',
+        totalPaid: Number(r.total_paid) || totalPaidCentavos,
+        remainingBalance: Number(r.remaining_balance) || remainingBalanceCentavos,
+        notes: r.notes || '',
+        metadata: r.metadata || {},
         createdAt: r.created_at
       }))
     });
