@@ -113,6 +113,55 @@ router.get('/', async (req, res) => {
   }
 });
 
+// DEBUG ENDPOINT - Get service by ID via query parameter
+router.get('/debug/service', async (req, res) => {
+  const serviceId = req.query.id || 'SRV-0001';
+  console.log('🐛 [DEBUG] Getting service:', serviceId);
+  
+  try {
+    const services = await sql`SELECT * FROM services WHERE id = ${serviceId}`;
+    console.log(`🐛 [DEBUG] Found ${services.length} services`);
+    
+    if (services.length === 0) {
+      return res.json({
+        success: false,
+        message: 'Service not found',
+        searchedId: serviceId
+      });
+    }
+    
+    const service = services[0];
+    console.log(`🐛 [DEBUG] Service title: ${service.title}`);
+    
+    // Get vendor
+    if (service.vendor_id) {
+      const vendors = await sql`SELECT * FROM vendors WHERE id = ${service.vendor_id}`;
+      console.log(`🐛 [DEBUG] Found ${vendors.length} vendors`);
+      if (vendors.length > 0) {
+        service.vendor = vendors[0];
+      }
+    }
+    
+    res.json({
+      success: true,
+      service: service,
+      debug: {
+        requestedId: serviceId,
+        foundId: service.id,
+        hasVendor: !!service.vendor
+      }
+    });
+    
+  } catch (error) {
+    console.error('🐛 [DEBUG] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // Get services for a vendor
 router.get('/vendor/:vendorId', async (req, res) => {
   console.log('🛠️ Getting services for vendor:', req.params.vendorId);
