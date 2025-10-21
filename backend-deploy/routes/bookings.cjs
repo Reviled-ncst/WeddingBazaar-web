@@ -928,12 +928,71 @@ router.patch('/:bookingId/status', async (req, res) => {
     
     console.log('💾 [PAYMENT UPDATE] Final update fields:', updateFields);
     
-    const booking = await sql`
+    // Build SET clause manually for Neon SQL
+    const setClauses = [];
+    const values = [];
+    
+    if (updateFields.status !== undefined) {
+      setClauses.push('status = $' + (values.length + 1));
+      values.push(updateFields.status);
+    }
+    if (updateFields.notes !== undefined) {
+      setClauses.push('notes = $' + (values.length + 1));
+      values.push(updateFields.notes);
+    }
+    if (updateFields.total_paid !== undefined) {
+      setClauses.push('total_paid = $' + (values.length + 1));
+      values.push(updateFields.total_paid);
+    }
+    if (updateFields.payment_amount !== undefined) {
+      setClauses.push('payment_amount = $' + (values.length + 1));
+      values.push(updateFields.payment_amount);
+    }
+    if (updateFields.payment_type !== undefined) {
+      setClauses.push('payment_type = $' + (values.length + 1));
+      values.push(updateFields.payment_type);
+    }
+    if (updateFields.downpayment_amount !== undefined) {
+      setClauses.push('downpayment_amount = $' + (values.length + 1));
+      values.push(updateFields.downpayment_amount);
+    }
+    if (updateFields.remaining_balance !== undefined) {
+      setClauses.push('remaining_balance = $' + (values.length + 1));
+      values.push(updateFields.remaining_balance);
+    }
+    if (updateFields.payment_progress !== undefined) {
+      setClauses.push('payment_progress = $' + (values.length + 1));
+      values.push(updateFields.payment_progress);
+    }
+    if (updateFields.last_payment_date !== undefined) {
+      setClauses.push('last_payment_date = $' + (values.length + 1));
+      values.push(updateFields.last_payment_date);
+    }
+    if (updateFields.payment_method !== undefined) {
+      setClauses.push('payment_method = $' + (values.length + 1));
+      values.push(updateFields.payment_method);
+    }
+    if (updateFields.transaction_id !== undefined) {
+      setClauses.push('transaction_id = $' + (values.length + 1));
+      values.push(updateFields.transaction_id);
+    }
+    if (updateFields.updated_at !== undefined) {
+      setClauses.push('updated_at = $' + (values.length + 1));
+      values.push(updateFields.updated_at);
+    }
+    
+    const setClause = setClauses.join(', ');
+    values.push(bookingId); // Add bookingId as last parameter for WHERE clause
+    
+    console.log('🔧 [SQL DEBUG] SET clause:', setClause);
+    console.log('🔧 [SQL DEBUG] Values:', values);
+    
+    const booking = await sql(`
       UPDATE bookings 
-      SET ${sql(updateFields)}
-      WHERE id = ${bookingId}
+      SET ${setClause}
+      WHERE id = $${values.length}
       RETURNING *
-    `;
+    `, values);
     
     console.log('✅ [PAYMENT UPDATE] Database updated successfully');
     console.log('📄 [PAYMENT UPDATE] Updated booking:', booking[0]);

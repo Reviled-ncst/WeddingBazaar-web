@@ -184,7 +184,7 @@ async function calculateTotalPaid(bookingId) {
     const result = await sql`
       SELECT COALESCE(SUM(amount_paid), 0) as total_paid
       FROM receipts
-      WHERE booking_id = ${bookingId} AND status = 'completed'
+      WHERE booking_id = ${bookingId} AND payment_status = 'completed'
     `;
     
     return parseInt(result[0]?.total_paid || '0');
