@@ -1,5 +1,6 @@
 const express = require('express');
 const { sql } = require('../config/database.cjs');
+const { createDepositReceipt, createBalanceReceipt, createFullPaymentReceipt } = require('../helpers/receiptGenerator.cjs');
 
 const router = express.Router();
 
@@ -1205,24 +1206,88 @@ router.put('/:bookingId/process-payment', async (req, res) => {
     // FIXED: Database allows deposit_paid and fully_paid statuses directly
     let newStatus = '';
     let statusNote = '';
+    let receipt = null;
+    
+    // Convert amount string to centavos (₱13,500 -> 1350000)
+    const amountInCentavos = Math.round(parseFloat(amount.toString().replace(/,/g, '')) * 100);
     
     if (payment_type === 'downpayment') {
       newStatus = 'deposit_paid';
-      statusNote = `DEPOSIT_PAID: ₱${amount} downpayment received via ${payment_method || 'online payment'}`;
-      if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
-      if (payment_notes) statusNote += ` - ${payment_notes}`;
+      
+      // Create deposit receipt
+      try {
+        receipt = await createDepositReceipt(
+          bookingId,
+          booking.couple_id,
+          booking.vendor_id,
+          amountInCentavos,
+          payment_method || 'card',
+          transaction_id
+        );
+        console.log(`✅ [ProcessPayment] Deposit receipt created: ${receipt.receipt_number}`);
+        statusNote = `DEPOSIT_PAID: ₱${amount} downpayment received via ${payment_method || 'online payment'}`;
+        if (receipt) statusNote += ` (Receipt: ${receipt.receipt_number})`;
+        if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
+        if (payment_notes) statusNote += ` - ${payment_notes}`;
+      } catch (error) {
+        console.error('❌ [ProcessPayment] Receipt creation failed:', error);
+        statusNote = `DEPOSIT_PAID: ₱${amount} downpayment received via ${payment_method || 'online payment'}`;
+        if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
+        if (payment_notes) statusNote += ` - ${payment_notes}`;
+      }
       
     } else if (payment_type === 'full_payment') {
       newStatus = 'fully_paid';
-      statusNote = `FULLY_PAID: ₱${amount} full payment received via ${payment_method || 'online payment'}`;
-      if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
-      if (payment_notes) statusNote += ` - ${payment_notes}`;
+      
+      // Create full payment receipt
+      try {
+        receipt = await createFullPaymentReceipt(
+          bookingId,
+          booking.couple_id,
+          booking.vendor_id,
+          amountInCentavos,
+          payment_method || 'card',
+          transaction_id
+        );
+        console.log(`✅ [ProcessPayment] Full payment receipt created: ${receipt.receipt_number}`);
+        statusNote = `FULLY_PAID: ₱${amount} full payment received via ${payment_method || 'online payment'}`;
+        if (receipt) statusNote += ` (Receipt: ${receipt.receipt_number})`;
+        if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
+        if (payment_notes) statusNote += ` - ${payment_notes}`;
+      } catch (error) {
+        console.error('❌ [ProcessPayment] Receipt creation failed:', error);
+        statusNote = `FULLY_PAID: ₱${amount} full payment received via ${payment_method || 'online payment'}`;
+        if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
+        if (payment_notes) statusNote += ` - ${payment_notes}`;
+      }
       
     } else if (payment_type === 'remaining_balance') {
       newStatus = 'fully_paid';
-      statusNote = `BALANCE_PAID: ₱${amount} remaining balance received via ${payment_method || 'online payment'}`;
-      if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
-      if (payment_notes) statusNote += ` - ${payment_notes}`;
+      
+      // Create balance receipt  
+      try {
+        // Get total amount from booking (we need this for balance receipt)
+        const totalAmount = Math.round(parseFloat(booking.total_amount || booking.amount || 0));
+        receipt = await createBalanceReceipt(
+          bookingId,
+          booking.couple_id,
+          booking.vendor_id,
+          amountInCentavos,
+          totalAmount,
+          payment_method || 'card',
+          transaction_id
+        );
+        console.log(`✅ [ProcessPayment] Balance receipt created: ${receipt.receipt_number}`);
+        statusNote = `BALANCE_PAID: ₱${amount} remaining balance received via ${payment_method || 'online payment'}`;
+        if (receipt) statusNote += ` (Receipt: ${receipt.receipt_number})`;
+        if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
+        if (payment_notes) statusNote += ` - ${payment_notes}`;
+      } catch (error) {
+        console.error('❌ [ProcessPayment] Receipt creation failed:', error);
+        statusNote = `BALANCE_PAID: ₱${amount} remaining balance received via ${payment_method || 'online payment'}`;
+        if (transaction_id) statusNote += ` (Transaction ID: ${transaction_id})`;
+        if (payment_notes) statusNote += ` - ${payment_notes}`;
+      }
     }
     
     // Update booking with payment information
@@ -1246,7 +1311,12 @@ router.put('/:bookingId/process-payment', async (req, res) => {
         transaction_id,
         payment_method
       },
-      message: `Payment of ₱${amount} processed successfully`,
+      receipt: receipt ? {
+        receipt_number: receipt.receipt_number,
+        amount: receipt.amount_paid,
+        payment_method: receipt.payment_method
+      } : null,
+      message: `Payment of ₱${amount} processed successfully${receipt ? ` (Receipt: ${receipt.receipt_number})` : ''}`,
       timestamp: new Date().toISOString()
     });
     

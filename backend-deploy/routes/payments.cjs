@@ -872,21 +872,21 @@ router.get('/receipts/:bookingId', async (req, res) => {
         id: r.id,
         bookingId: r.booking_id,
         receiptNumber: r.receipt_number,
-        paymentType: r.payment_type,
-        amount: r.amount_paid || r.amount, // Support both column names
-        currency: r.currency || 'PHP',
+        paymentType: r.metadata?.payment_type || 'payment', // Stored in metadata
+        amount: r.amount_paid, // Actual column name
+        currency: 'PHP',
         paymentMethod: r.payment_method,
-        paymentIntentId: r.payment_reference || r.payment_intent_id, // Support both column names
-        paidBy: r.couple_id || r.paid_by,
-        paidByName: r.paid_by_name || 'Customer',
-        paidByEmail: r.paid_by_email || '',
+        paymentIntentId: r.transaction_reference, // Actual column name
+        paidBy: r.couple_id,
+        paidByName: 'Customer', // Not stored, use default
+        paidByEmail: '', // Not stored
         vendorId: r.vendor_id,
         vendorName: r.vendor_name,
         serviceType: r.service_type,
         eventDate: r.event_date,
-        totalPaid: r.total_amount || r.total_paid || r.amount_paid,
-        remainingBalance: r.remaining_balance || 0,
-        notes: r.notes,
+        totalPaid: r.total_amount,
+        remainingBalance: 0, // Calculate if needed
+        notes: r.description, // Actual column name
         createdAt: r.created_at
       }))
     });

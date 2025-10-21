@@ -51,35 +51,38 @@ async function createReceipt(receiptData) {
   console.log(`💰 Amount: ₱${amountPaid / 100} | Type: ${paymentType} | Method: ${paymentMethod}`);
 
   try {
-    // Insert receipt into database
+    // Insert receipt into database (using actual schema column names)
     const receipt = await sql`
       INSERT INTO receipts (
         receipt_number,
         booking_id,
         couple_id,
         vendor_id,
-        payment_type,
         payment_method,
         amount_paid,
         total_amount,
         tax_amount,
-        payment_reference,
-        notes,
-        status,
+        transaction_reference,
+        description,
+        payment_status,
+        metadata,
         created_at
       ) VALUES (
         ${receiptNumber},
-        ${bookingId},
-        ${coupleId},
-        ${vendorId},
-        ${paymentType},
+        ${String(bookingId)},
+        ${String(coupleId)},
+        ${String(vendorId)},
         ${paymentMethod || 'unknown'},
         ${amountPaid},
         ${totalAmount || amountPaid},
         ${taxAmount},
         ${paymentReference || null},
-        ${notes},
+        ${notes || `${paymentType} payment received`},
         'completed',
+        ${{
+          payment_type: paymentType,
+          created_by: 'wedding_bazaar_system'
+        }},
         NOW()
       )
       RETURNING *
@@ -94,6 +97,7 @@ async function createReceipt(receiptData) {
 
   } catch (error) {
     console.error('❌ Receipt creation error:', error);
+    console.error('❌ Error details:', error.message);
     throw new Error(`Failed to create receipt: ${error.message}`);
   }
 }
