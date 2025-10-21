@@ -7,7 +7,7 @@
 const { neon } = require('@neondatabase/serverless');
 
 async function createReceiptsTable() {
-  const sql = neon(process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_9tiyUmfaX3QB@ep-mute-mode-a1c209pi-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require');
+  const sql = neon(process.env.DATABASE_URL || 'postgresql://[your-database-url]');
 
   console.log('🧾 ====================================');
   console.log('🧾 CREATING RECEIPTS TABLE');
