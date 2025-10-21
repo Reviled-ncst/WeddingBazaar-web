@@ -51,36 +51,41 @@ async function createReceipt(receiptData) {
   console.log(`💰 Amount: ₱${amountPaid / 100} | Type: ${paymentType} | Method: ${paymentMethod}`);
 
   try {
-    // Insert receipt into database (using actual schema column names)
+    // Insert receipt into database (FIXED: using correct schema column names)
     const receipt = await sql`
       INSERT INTO receipts (
         receipt_number,
         booking_id,
-        couple_id,
-        vendor_id,
+        payment_type,
+        amount,
+        currency,
         payment_method,
-        amount_paid,
-        total_amount,
-        tax_amount,
-        transaction_reference,
-        description,
-        payment_status,
+        payment_intent_id,
+        paid_by,
+        paid_by_name,
+        paid_by_email,
+        total_paid,
+        remaining_balance,
+        notes,
         metadata,
         created_at
       ) VALUES (
         ${receiptNumber},
         ${String(bookingId)},
-        ${String(coupleId)},
-        ${String(vendorId)},
-        ${paymentMethod || 'unknown'},
+        ${paymentType},
         ${amountPaid},
-        ${totalAmount || amountPaid},
-        ${taxAmount},
+        'PHP',
+        ${paymentMethod || 'unknown'},
         ${paymentReference || null},
+        ${String(coupleId)},
+        ${notes || `Payment from ${coupleId}`},
+        ${receiptData.paidByEmail || null},
+        ${totalAmount || amountPaid},
+        ${receiptData.remainingBalance || 0},
         ${notes || `${paymentType} payment received`},
-        'completed',
         ${{
           payment_type: paymentType,
+          vendor_id: String(vendorId),
           created_by: 'wedding_bazaar_system'
         }},
         NOW()
@@ -164,8 +169,8 @@ async function getBookingReceipts(bookingId) {
         v.business_name as vendor_name,
         v.business_type as vendor_category
       FROM receipts r
-      LEFT JOIN vendors v ON r.vendor_id = v.id
-      WHERE r.booking_id = ${bookingId}
+      LEFT JOIN vendors v ON (r.metadata->>'vendor_id')::uuid = v.id
+      WHERE r.booking_id = ${String(bookingId)}
       ORDER BY r.created_at DESC
     `;
     
@@ -182,9 +187,9 @@ async function getBookingReceipts(bookingId) {
 async function calculateTotalPaid(bookingId) {
   try {
     const result = await sql`
-      SELECT COALESCE(SUM(amount_paid), 0) as total_paid
+      SELECT COALESCE(SUM(amount), 0) as total_paid
       FROM receipts
-      WHERE booking_id = ${bookingId} AND payment_status = 'completed'
+      WHERE booking_id = ${String(bookingId)}
     `;
     
     return parseInt(result[0]?.total_paid || '0');
