@@ -481,12 +481,25 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
     serviceName: booking.service_name,
     vendorName: booking.vendorName || booking.vendor_name,
     amount: booking.amount,
+    quoted_price: booking.quoted_price,
     status: booking.status,
     responseMessage: booking.response_message?.substring(0, 100) + '...'
   });
   
-  // Try multiple amount fields from different API formats
-  let totalAmount = Number(booking.final_price) || Number(booking.quoted_price) || Number(booking.amount) || Number(booking.total_amount) || 0;
+  // PRIORITY ORDER for amount extraction:
+  // 1. quoted_price (when vendor sends a quote)
+  // 2. final_price (after quote is accepted)
+  // 3. amount (generic amount field)
+  // 4. total_amount (fallback)
+  let totalAmount = Number(booking.quoted_price) || Number(booking.final_price) || Number(booking.amount) || Number(booking.total_amount) || 0;
+  
+  console.log('💰 [AMOUNT PRIORITY] Checking fields:', {
+    quoted_price: booking.quoted_price,
+    final_price: booking.final_price,
+    amount: booking.amount,
+    total_amount: booking.total_amount,
+    selected: totalAmount
+  });
   
   // Extract amount from response_message if available (for quotes)
   if (totalAmount === 0 && booking.response_message) {
