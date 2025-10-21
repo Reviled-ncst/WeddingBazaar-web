@@ -864,16 +864,26 @@ router.get('/receipts/:bookingId', async (req, res) => {
   console.log('📄 [GET-RECEIPTS] Fetching receipts for booking...');
   
   try {
-    const { bookingId } = req.params;
+    const { bookingId} = req.params;
     
     console.log(`📄 [GET-RECEIPTS] Booking ID: ${bookingId}`);
     
-    // Get receipts from database
-    // Note: Using receipts.vendor_id directly since it's already there
+    // Get receipts from database with JOIN to get booking and vendor details
     const receipts = await sql`
       SELECT 
-        r.*
+        r.*,
+        b.service_type,
+        b.service_name,
+        b.event_date,
+        b.event_location,
+        b.couple_name,
+        b.total_amount as booking_total,
+        b.remaining_balance as booking_balance,
+        v.business_name as vendor_business_name,
+        v.business_type as vendor_category
       FROM receipts r
+      LEFT JOIN bookings b ON r.booking_id = b.id
+      LEFT JOIN vendors v ON r.vendor_id = v.id
       WHERE r.booking_id = ${bookingId}
       ORDER BY r.created_at DESC
     `;
@@ -893,21 +903,21 @@ router.get('/receipts/:bookingId', async (req, res) => {
         id: r.id,
         bookingId: r.booking_id,
         receiptNumber: r.receipt_number,
-        paymentType: r.metadata?.payment_type || 'payment', // Stored in metadata
-        amount: r.amount_paid, // Actual column name
+        paymentType: r.metadata?.payment_type || r.description?.includes('DEPOSIT') ? 'deposit' : r.description?.includes('BALANCE') ? 'balance' : 'payment',
+        amount: r.amount_paid,
         currency: 'PHP',
-        paymentMethod: r.payment_method,
-        paymentIntentId: r.transaction_reference, // Actual column name
+        paymentMethod: r.payment_method || 'card',
+        paymentIntentId: r.transaction_reference,
         paidBy: r.couple_id,
-        paidByName: 'Customer', // Not stored, use default
-        paidByEmail: '', // Not stored
+        paidByName: r.paid_by_name || r.couple_name || 'Customer',
+        paidByEmail: r.paid_by_email || '',
         vendorId: r.vendor_id,
-        vendorName: 'Vendor', // Not stored in receipts table
-        serviceType: 'Service', // Not stored in receipts table
-        eventDate: new Date().toISOString(), // Not stored in receipts table
-        totalPaid: r.total_amount,
-        remainingBalance: 0, // Calculate if needed
-        notes: r.description, // Actual column name
+        vendorName: r.vendor_business_name || 'Wedding Vendor',
+        serviceType: r.service_name || r.service_type || 'Wedding Service',
+        eventDate: r.event_date || new Date().toISOString(),
+        totalPaid: r.total_paid || r.amount_paid,
+        remainingBalance: r.remaining_balance || (r.booking_total - r.total_paid) || 0,
+        notes: r.description || r.notes,
         createdAt: r.created_at
       }))
     });
