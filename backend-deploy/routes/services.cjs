@@ -147,10 +147,15 @@ router.get('/vendor/:vendorId', async (req, res) => {
 
 // Get single service by ID - PUBLIC ENDPOINT (no auth required)
 router.get('/:id', async (req, res) => {
-  console.log('🔍 Getting single service:', req.params.id);
+  const serviceId = req.params.id;
+  console.log('🔍 [PUBLIC ENDPOINT] Getting single service:', serviceId);
+  console.log('🔍 Request URL:', req.originalUrl);
+  console.log('🔍 Request method:', req.method);
   
   try {
     const { id } = req.params;
+    
+    console.log('📊 Executing SQL query for service:', id);
     
     // Get service details
     const services = await sql`
@@ -158,25 +163,34 @@ router.get('/:id', async (req, res) => {
       WHERE id = ${id}
     `;
     
+    console.log(`📊 Query returned ${services.length} results`);
+    console.log(`📊 Query returned ${services.length} results`);
+    
     if (services.length === 0) {
-      console.log(`❌ Service not found: ${id}`);
+      console.log(`❌ Service not found in database: ${id}`);
       return res.status(404).json({
         success: false,
         error: 'Service not found',
+        searchedId: id,
         timestamp: new Date().toISOString()
       });
     }
     
     const service = services[0];
-    console.log(`✅ Found service: ${service.title}`);
+    console.log(`✅ Found service: ${service.title} (ID: ${service.id})`);
+    console.log(`📊 Service vendor_id: ${service.vendor_id}`);
+    console.log(`📊 Service vendor_id: ${service.vendor_id}`);
     
     // Enrich with vendor information
     if (service.vendor_id) {
+      console.log(`🏪 Fetching vendor data for: ${service.vendor_id}`);
       const vendors = await sql`
         SELECT id, business_name, category, location, phone, email, website, rating, total_reviews
         FROM vendors 
         WHERE id = ${service.vendor_id}
       `;
+      
+      console.log(`🏪 Vendor query returned ${vendors.length} results`);
       
       if (vendors.length > 0) {
         service.vendor = {
@@ -217,10 +231,13 @@ router.get('/:id', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Service error:', error);
+    console.error('❌ [PUBLIC ENDPOINT] Service error:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error message:', error.message);
     res.status(500).json({
       success: false,
       error: error.message,
+      errorType: error.constructor.name,
       timestamp: new Date().toISOString()
     });
   }
