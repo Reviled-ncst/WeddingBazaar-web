@@ -31,7 +31,9 @@ import {
 // Import modular components
 import {
   BookingDetailsModal,
-  QuoteDetailsModal
+  QuoteDetailsModal,
+  QuoteConfirmationModal,
+  ReceiptModal
 } from './components';
 
 // Import payment components
@@ -90,6 +92,15 @@ interface EnhancedBooking {
   daysUntilEvent?: number;
   specialRequests?: string;
   notes?: string;
+  serviceItems?: Array<{
+    id: string | number;
+    name: string;
+    description?: string;
+    category?: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }>;
 }
 
 export const IndividualBookings: React.FC = () => {
@@ -118,6 +129,49 @@ export const IndividualBookings: React.FC = () => {
   const [showQuoteDetails, setShowQuoteDetails] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  
+  // Quote confirmation modal state
+  const [quoteConfirmation, setQuoteConfirmation] = useState<{
+    isOpen: boolean;
+    booking: EnhancedBooking | null;
+    type: 'accept' | 'reject' | 'modify';
+  }>({
+    isOpen: false,
+    booking: null,
+    type: 'accept'
+  });
+  
+  // Success/Error modal states
+  const [successMessage, setSuccessMessage] = useState<string>('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  
+  // Receipt modal state
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptBooking, setReceiptBooking] = useState<EnhancedBooking | null>(null);
+  
+  // Confirmation modal state
+  const [confirmationModal, setConfirmationModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'warning' | 'danger';
+    onConfirm: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    showInput?: boolean;
+    inputPlaceholder?: string;
+    inputValue?: string;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {},
+    confirmText: 'Confirm',
+    cancelText: 'Cancel'
+  });
   
   // Payment modal state (updated for PayMongo)
   const [paymentModal, setPaymentModal] = useState({
@@ -353,116 +407,78 @@ export const IndividualBookings: React.FC = () => {
 
   // Handle viewing receipts
   const handleViewReceipt = async (booking: EnhancedBooking) => {
-    console.log('📄 [VIEW-RECEIPT] Fetching receipt for booking:', booking.id);
-    console.log('📄 [VIEW-RECEIPT] Booking ID type:', typeof booking.id);
-    console.log('📄 [VIEW-RECEIPT] Booking data:', booking);
-    
-    try {
-      // Ensure booking ID is a string
-      const bookingIdStr = String(booking.id);
-      console.log('📄 [VIEW-RECEIPT] Using booking ID:', bookingIdStr);
-      
-      const receipts = await getBookingReceipts(bookingIdStr);
-      
-      console.log('📄 [VIEW-RECEIPT] Receipts fetched:', receipts);
-      
-      if (receipts.length === 0) {
-        alert('No receipts found for this booking.');
-        return;
-      }
-      
-      // Show the most recent receipt
-      const latestReceipt = receipts[0];
-      const formattedReceipt = formatReceipt(latestReceipt);
-      
-      // Create a modal-like alert with the formatted receipt
-      const showReceipt = confirm(`${formattedReceipt}\n\nWould you like to download this receipt?`);
-      
-      if (showReceipt) {
-        // Create a downloadable text file
-        const blob = new Blob([formattedReceipt], { type: 'text/plain' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `receipt_${latestReceipt.receiptNumber}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        
-        console.log('✅ [VIEW-RECEIPT] Receipt downloaded successfully');
-      }
-    } catch (error) {
-      console.error('❌ [VIEW-RECEIPT] Error fetching receipt:', error);
-      console.error('❌ [VIEW-RECEIPT] Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        type: typeof error
-      });
-      alert(`Failed to fetch receipt: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    console.log('📄 [ViewReceipt] Opening receipt modal for booking:', booking.id);
+    setReceiptBooking(booking);
+    setShowReceiptModal(true);
   };
 
   // Handle booking cancellation
   const handleCancelBooking = async (booking: EnhancedBooking) => {
     if (!user?.id) {
-      alert('You must be logged in to cancel a booking');
+      setConfirmationModal({
+        isOpen: true,
+        title: 'Login Required',
+        message: 'You must be logged in to cancel a booking.',
+        type: 'warning',
+        onConfirm: () => setConfirmationModal(prev => ({ ...prev, isOpen: false })),
+        confirmText: 'OK',
+        cancelText: ''
+      });
       return;
     }
-
-    console.log('🚫 [CANCEL] Attempting to cancel booking:', booking.id);
-    console.log('🚫 [CANCEL] Booking status:', booking.status);
 
     // Determine if this is a direct cancel or requires approval
     const isDirectCancel = booking.status === 'request' || booking.status === 'quote_requested';
     
     const confirmMessage = isDirectCancel
-      ? `Are you sure you want to cancel this booking with ${booking.vendorName}?\n\nThis action cannot be undone.`
-      : `Request cancellation for this booking with ${booking.vendorName}?\n\nThis will require vendor or admin approval.\n\nNote: Refunds (if applicable) will be processed according to the vendor's cancellation policy.`;
+      ? `Are you sure you want to cancel this booking with ${booking.vendorName || 'the vendor'}?\n\nThis action cannot be undone.`
+      : `Request cancellation for this booking with ${booking.vendorName || 'the vendor'}?\n\nThis will require vendor or admin approval.\n\nNote: Refunds (if applicable) will be processed according to the vendor's cancellation policy.`;
     
-    const reason = prompt(confirmMessage + '\n\nOptional: Please provide a reason for cancellation:');
-    
-    if (reason === null) {
-      // User clicked cancel
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      if (isDirectCancel) {
-        // Direct cancellation
-        console.log('🚫 [CANCEL] Performing direct cancellation...');
-        const result = await cancelBooking(booking.id, {
-          userId: user.id,
-          reason: reason || undefined
-        });
+    // Show confirmation modal with optional reason input
+    setConfirmationModal({
+      isOpen: true,
+      title: isDirectCancel ? '🚫 Cancel Booking' : '📝 Request Cancellation',
+      message: confirmMessage,
+      type: 'danger',
+      showInput: true,
+      inputPlaceholder: 'Optional: Reason for cancellation...',
+      inputValue: '',
+      onConfirm: async () => {
+        const reason = confirmationModal.inputValue;
+        setConfirmationModal(prev => ({ ...prev, isOpen: false }));
         
-        alert(`✅ ${result.message}`);
-        console.log('✅ [CANCEL] Booking cancelled successfully:', result);
-        
-        // Refresh bookings
-        await loadBookings();
-      } else {
-        // Cancellation request
-        console.log('📝 [CANCEL] Submitting cancellation request...');
-        const result = await requestCancellation(booking.id, {
-          userId: user.id,
-          reason: reason || undefined
-        });
-        
-        alert(`✅ ${result.message}`);
-        console.log('✅ [CANCEL] Cancellation request submitted:', result);
-        
-        // Refresh bookings
-        await loadBookings();
-      }
-    } catch (error) {
-      console.error('❌ [CANCEL] Error:', error);
-      alert(`Failed to cancel booking: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setLoading(false);
-    }
+        try {
+          setLoading(true);
+          
+          if (isDirectCancel) {
+            const result = await cancelBooking(booking.id, {
+              userId: user.id,
+              reason: reason || undefined
+            });
+            
+            setSuccessMessage(result.message);
+            setShowSuccessModal(true);
+            await loadBookings();
+          } else {
+            const result = await requestCancellation(booking.id, {
+              userId: user.id,
+              reason: reason || undefined
+            });
+            
+            setSuccessMessage(result.message);
+            setShowSuccessModal(true);
+            await loadBookings();
+          }
+        } catch (error) {
+          setErrorMessage(`Failed to cancel booking: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          setShowErrorModal(true);
+        } finally {
+          setLoading(false);
+        }
+      },
+      confirmText: isDirectCancel ? 'Yes, Cancel Booking' : 'Submit Cancellation Request',
+      cancelText: 'Keep Booking'
+    });
   };
 
   // Enhanced PayMongo payment success handler with proper status updates and comprehensive debugging
@@ -619,7 +635,7 @@ export const IndividualBookings: React.FC = () => {
 
       // Show enhanced payment success notification with detailed information
       const notification = document.createElement('div');
-      notification.className = 'fixed top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-lg z-50 transform transition-all duration-300 max-w-md';
+      notification.className = 'fixed top-24 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-lg z-[9999] transform transition-all duration-300 max-w-md';
       notification.innerHTML = `
         <div class="flex items-start gap-3">
           <div class="text-3xl flex-shrink-0">🎉</div>
@@ -683,10 +699,22 @@ export const IndividualBookings: React.FC = () => {
           statusNote = `FULLY_PAID: ₱${amount.toLocaleString()} paid via ${paymentData.method || 'card'} (Transaction ID: ${paymentData.transactionId})`;
         }
         
-        console.log('📡 [BACKEND UPDATE] Sending status update:', {
-          url: updateStatusUrl,
+        // Prepare complete payment update data
+        const updatePayload = {
           status: backendStatus,
-          note: statusNote
+          vendor_notes: statusNote,
+          // CRITICAL: Include payment amounts to persist in database
+          downpayment_amount: paymentType === 'downpayment' ? amount : currentBooking?.downpaymentAmount,
+          remaining_balance: remainingBalance,
+          payment_progress: paymentProgressPercentage,
+          last_payment_date: new Date().toISOString(),
+          payment_method: paymentData.method || 'card',
+          transaction_id: paymentData.transactionId
+        };
+        
+        console.log('📡 [BACKEND UPDATE] Sending complete payment update:', {
+          url: updateStatusUrl,
+          payload: updatePayload
         });
         
         const updateResponse = await fetch(updateStatusUrl, {
@@ -694,10 +722,7 @@ export const IndividualBookings: React.FC = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            status: backendStatus,
-            vendor_notes: statusNote
-          })
+          body: JSON.stringify(updatePayload)
         });
         
         if (updateResponse.ok) {
@@ -773,20 +798,40 @@ export const IndividualBookings: React.FC = () => {
 
   // Handle viewing quote details
   const handleViewQuoteDetails = (booking: EnhancedBooking) => {
+    console.log('🔍 [ViewQuote] Button clicked - Original booking:', booking);
+    console.log('🔍 [ViewQuote] Booking ID:', booking.id);
+    console.log('🔍 [ViewQuote] Booking status:', booking.status);
+    console.log('🔍 [ViewQuote] Has quote_itemization (snake_case):', !!(booking as any)?.quote_itemization);
+    console.log('🔍 [ViewQuote] Has quoteItemization (camelCase):', !!(booking as any)?.quoteItemization);
+    console.log('🔍 [ViewQuote] Has vendor_notes (snake_case):', !!(booking as any)?.vendor_notes);
+    console.log('🔍 [ViewQuote] Has vendorNotes (camelCase):', !!(booking as any)?.vendorNotes);
+    console.log('🔍 [ViewQuote] All booking keys:', Object.keys(booking));
+    
     setSelectedBooking(booking);
     setShowQuoteDetails(true);
   };
 
-  // Handle accepting quotation
+  // Open confirmation modal for quote acceptance
   const handleAcceptQuotation = async (booking: EnhancedBooking) => {
+    setQuoteConfirmation({
+      isOpen: true,
+      booking: booking,
+      type: 'accept'
+    });
+  };
+
+  // Perform actual quote acceptance after confirmation
+  // Perform actual quote acceptance after confirmation
+  const confirmAcceptQuotation = async () => {
+    const booking = quoteConfirmation.booking;
+    if (!booking) return;
+    
     try {
       setLoading(true);
-      
-      console.log('🔄 [AcceptQuotation] Starting accept quote for booking:', booking.id);
+      setQuoteConfirmation({ isOpen: false, booking: null, type: 'accept' });
       
       // Call backend API to accept the quotation
       const url = `https://weddingbazaar-web.onrender.com/api/bookings/${booking.id}/accept-quote`;
-      console.log('📡 [AcceptQuotation] Calling:', url);
       
       const response = await fetch(url, {
         method: 'PATCH',
@@ -798,32 +843,22 @@ export const IndividualBookings: React.FC = () => {
           notes: 'Quotation accepted by couple'
         })
       });
-
-      console.log('📊 [AcceptQuotation] Response status:', response.status, response.statusText);
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ [AcceptQuotation] Error response:', errorText);
         throw new Error(`Failed to accept quotation: ${response.status} ${response.statusText}`);
       }
 
-      const result = await response.json();
-      console.log('✅ [AcceptQuotation] Success response:', result);
+      await response.json();
       
       // Refresh bookings to show updated status
       await loadBookings();
       
-      // Show success message
-      alert('Quotation accepted successfully! You can now proceed with payment.');
-      
-      console.log('✅ [AcceptQuotation] Successfully accepted quotation for booking:', booking.id);
+      // Show success message with custom modal
+      setSuccessMessage('Quotation accepted successfully! You can now proceed with payment.');
+      setShowSuccessModal(true);
     } catch (error) {
-      console.error('❌ [AcceptQuotation] Error accepting quotation:', error);
-      if (error instanceof Error) {
-        console.error('❌ [AcceptQuotation] Error message:', error.message);
-        console.error('❌ [AcceptQuotation] Error stack:', error.stack);
-      }
-      alert('Failed to accept quotation. Please try again.');
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to accept quotation. Please try again.');
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -1142,15 +1177,24 @@ export const IndividualBookings: React.FC = () => {
                           </>
                         )}
 
-                        {/* Quote Accepted/Confirmed - Show Pay Deposit */}
+                        {/* Quote Accepted/Confirmed - Show Pay Deposit AND Pay Full */}
                         {(booking.status === 'quote_accepted' || booking.status === 'confirmed' || booking.status === 'approved') && (
-                          <button
-                            onClick={() => handlePayment(booking as any, 'downpayment')}
-                            className="w-full px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
-                          >
-                            <CreditCard className="w-4 h-4" />
-                            Pay Deposit
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handlePayment(booking as any, 'downpayment')}
+                              className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                            >
+                              <CreditCard className="w-4 h-4" />
+                              Pay Deposit (30%)
+                            </button>
+                            <button
+                              onClick={() => handlePayment(booking as any, 'full_payment')}
+                              className="w-full px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                            >
+                              <DollarSign className="w-4 h-4" />
+                              Pay Full Amount
+                            </button>
+                          </>
                         )}
 
                         {/* Deposit Paid - Show Pay Balance */}
@@ -1368,62 +1412,197 @@ export const IndividualBookings: React.FC = () => {
         onAcceptQuote={async (booking) => {
           if (!booking?.id) return;
           
-          try {
-            console.log('✅ [IndividualBookings] Accepting quote for booking:', booking.id);
-            const updatedBooking = await bookingApiService.updateBookingStatus(booking.id, 'confirmed');
-            
-            if (updatedBooking) {
-              // Update local state
-              setBookings(prevBookings => 
-                prevBookings.map(b => 
-                  b.id === booking.id 
-                    ? { ...b, status: 'confirmed' as BookingStatus }
-                    : b
-                )
-              );
-              
-              console.log('✅ [IndividualBookings] Booking status updated to confirmed');
-              setShowQuoteDetails(false);
-            }
-          } catch (error) {
-            console.error('❌ [IndividualBookings] Error accepting quote:', error);
-          }
+          // Show confirmation modal instead of direct action
+          setQuoteConfirmation({
+            isOpen: true,
+            booking: booking as unknown as EnhancedBooking,
+            type: 'accept'
+          });
         }}
         onRejectQuote={async (booking) => {
           if (!booking?.id) return;
           
-          try {
-            console.log('❌ [IndividualBookings] Rejecting quote for booking:', booking.id);
-            const updatedBooking = await bookingApiService.updateBookingStatus(booking.id, 'quote_rejected');
-            
-            if (updatedBooking) {
-              // Update local state
-              setBookings(prevBookings => 
-                prevBookings.map(b => 
-                  b.id === booking.id 
-                    ? { ...b, status: 'quote_rejected' as BookingStatus }
-                    : b
-                )
-              );
-              
-              console.log('❌ [IndividualBookings] Booking status updated to quote_rejected');
-              setShowQuoteDetails(false);
-            }
-          } catch (error) {
-            console.error('❌ [IndividualBookings] Error rejecting quote:', error);
-          }
+          // Show confirmation modal instead of direct action
+          setQuoteConfirmation({
+            isOpen: true,
+            booking: booking as unknown as EnhancedBooking,
+            type: 'reject'
+          });
         }}
         onRequestModification={async (booking) => {
           if (!booking?.id) return;
           
-          try {
-            console.log('🔄 [IndividualBookings] Requesting modification for booking:', booking.id);
-            // TODO: Implement quote modification request
-            alert('Quote modification request sent to vendor.');
+          // Show confirmation modal instead of direct action
+          setQuoteConfirmation({
+            isOpen: true,
+            booking: booking as unknown as EnhancedBooking,
+            type: 'modify'
+          });
+        }}
+      />
+
+      {/* Quote Confirmation Modal */}
+      <QuoteConfirmationModal
+        isOpen={quoteConfirmation.isOpen}
+        onClose={() => setQuoteConfirmation({ isOpen: false, booking: null, type: 'accept' })}
+        onConfirm={async () => {
+          if (!quoteConfirmation.booking) return;
+          
+          const action = quoteConfirmation.type;
+          
+          if (action === 'accept') {
+            // Use the new confirmation handler that calls the API
+            await confirmAcceptQuotation();
             setShowQuoteDetails(false);
-          } catch (error) {
-            console.error('❌ [IndividualBookings] Error requesting modification:', error);
+          } else if (action === 'reject') {
+            // Show info modal that reject is not yet implemented
+            setConfirmationModal({
+              isOpen: true,
+              title: 'Feature Coming Soon',
+              message: 'Quote rejection is not yet implemented. Please contact the vendor directly to decline their quote.',
+              type: 'info',
+              onConfirm: () => setConfirmationModal(prev => ({ ...prev, isOpen: false })),
+              confirmText: 'OK',
+              cancelText: ''
+            });
+            setQuoteConfirmation({ isOpen: false, booking: null, type: 'accept' });
+            setShowQuoteDetails(false);
+          } else if (action === 'modify') {
+            // TODO: Implement proper modification request
+            setSuccessMessage('Quote modification request sent to vendor.');
+            setShowSuccessModal(true);
+            setQuoteConfirmation({ isOpen: false, booking: null, type: 'accept' });
+            setShowQuoteDetails(false);
           }
+        }}
+        booking={quoteConfirmation.booking ? {
+          vendorName: quoteConfirmation.booking.vendorName || quoteConfirmation.booking.vendorBusinessName,
+          serviceType: quoteConfirmation.booking.serviceType,
+          totalAmount: quoteConfirmation.booking.totalAmount,
+          eventDate: quoteConfirmation.booking.formattedEventDate || quoteConfirmation.booking.eventDate,
+          eventLocation: quoteConfirmation.booking.eventLocation,
+          serviceItems: quoteConfirmation.booking.serviceItems
+        } : null}
+        type={quoteConfirmation.type}
+      />
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Success!</h3>
+              <p className="text-gray-600 mb-6">{successMessage}</p>
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Error</h3>
+              <p className="text-gray-600 mb-6">{errorMessage}</p>
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmationModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+            <div className="text-center">
+              <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${
+                confirmationModal.type === 'danger' ? 'bg-red-100' : 
+                confirmationModal.type === 'warning' ? 'bg-yellow-100' : 
+                'bg-blue-100'
+              }`}>
+                {confirmationModal.type === 'danger' ? (
+                  <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                ) : confirmationModal.type === 'warning' ? (
+                  <svg className="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                ) : (
+                  <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{confirmationModal.title}</h3>
+              <p className="text-gray-600 mb-4 whitespace-pre-line">{confirmationModal.message}</p>
+              
+              {confirmationModal.showInput && (
+                <textarea
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent mb-4"
+                  rows={3}
+                  placeholder={confirmationModal.inputPlaceholder}
+                  value={confirmationModal.inputValue}
+                  onChange={(e) => setConfirmationModal(prev => ({ ...prev, inputValue: e.target.value }))}
+                />
+              )}
+              
+              <div className="flex gap-3">
+                {confirmationModal.cancelText && (
+                  <button
+                    onClick={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+                    className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                  >
+                    {confirmationModal.cancelText}
+                  </button>
+                )}
+                <button
+                  onClick={confirmationModal.onConfirm}
+                  className={`flex-1 px-4 py-2 rounded-lg transition-colors font-medium ${
+                    confirmationModal.type === 'danger' 
+                      ? 'bg-red-600 text-white hover:bg-red-700' 
+                      : confirmationModal.type === 'warning'
+                      ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                      : 'bg-pink-600 text-white hover:bg-pink-700'
+                  }`}
+                >
+                  {confirmationModal.confirmText}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Receipt Modal */}
+      <ReceiptModal
+        booking={receiptBooking}
+        isOpen={showReceiptModal}
+        onClose={() => {
+          setShowReceiptModal(false);
+          setReceiptBooking(null);
         }}
       />
     </div>

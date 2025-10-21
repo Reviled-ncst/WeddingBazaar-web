@@ -334,6 +334,13 @@ router.get('/couple/:userId', async (req, res) => {
           b.next_action,
           b.next_action_by,
           b.last_activity_at,
+          b.total_paid,
+          b.remaining_balance,
+          b.downpayment_amount,
+          b.payment_progress,
+          b.last_payment_date,
+          b.payment_method,
+          b.transaction_id,
           v.business_name as vendor_business_name,
           v.business_type as vendor_category,
           v.rating as vendor_rating,
@@ -815,10 +822,22 @@ router.post('/request', async (req, res) => {
 // Update booking status
 router.patch('/:bookingId/status', async (req, res) => {
   console.log('🔄 Updating booking status:', req.params.bookingId);
+  console.log('📥 [PAYMENT UPDATE] Received data:', req.body);
   
   try {
     const { bookingId } = req.params;
-    const { status, reason, vendor_notes } = req.body;
+    const { 
+      status, 
+      reason, 
+      vendor_notes,
+      // Payment-related fields
+      downpayment_amount,
+      remaining_balance,
+      payment_progress,
+      last_payment_date,
+      payment_method,
+      transaction_id
+    } = req.body;
     
     if (!status) {
       return res.status(400).json({
@@ -859,25 +878,102 @@ router.patch('/:bookingId/status', async (req, res) => {
       statusNote = vendor_notes;
     }
     
+    // 🆕 Prepare payment fields (only update if provided)
+    const updateFields = {
+      status: actualStatus,
+      notes: statusNote,
+      updated_at: new Date()
+    };
+    
+    // Add payment fields if provided
+    if (downpayment_amount !== undefined) {
+      updateFields.downpayment_amount = downpayment_amount;
+      console.log('💰 [PAYMENT UPDATE] Setting downpayment_amount:', downpayment_amount);
+    }
+    if (remaining_balance !== undefined) {
+      updateFields.remaining_balance = remaining_balance;
+      console.log('💸 [PAYMENT UPDATE] Setting remaining_balance:', remaining_balance);
+    }
+    if (payment_progress !== undefined) {
+      updateFields.payment_progress = payment_progress;
+      console.log('📊 [PAYMENT UPDATE] Setting payment_progress:', payment_progress);
+    }
+    if (last_payment_date) {
+      updateFields.last_payment_date = new Date(last_payment_date);
+      console.log('📅 [PAYMENT UPDATE] Setting last_payment_date:', last_payment_date);
+    }
+    if (payment_method) {
+      updateFields.payment_method = payment_method;
+      console.log('💳 [PAYMENT UPDATE] Setting payment_method:', payment_method);
+    }
+    if (transaction_id) {
+      updateFields.transaction_id = transaction_id;
+      console.log('🔖 [PAYMENT UPDATE] Setting transaction_id:', transaction_id);
+    }
+    
+    console.log('💾 [PAYMENT UPDATE] Final update fields:', updateFields);
+    
     const booking = await sql`
       UPDATE bookings 
-      SET status = ${actualStatus}, 
-          notes = ${statusNote},
-          updated_at = NOW()
+      SET ${sql(updateFields)}
       WHERE id = ${bookingId}
       RETURNING *
     `;
     
-    if (booking.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Booking not found',
-        timestamp: new Date().toISOString()
-      });
+    console.log('✅ [PAYMENT UPDATE] Database updated successfully');
+    console.log('📄 [PAYMENT UPDATE] Updated booking:', booking[0]);
+    
+    // SECURITY VALIDATION: Double-check that updated booking belongs to requested vendor
+    if (req.params.vendorId) {
+      const securityCheck = booking[0].vendor_id === req.params.vendorId;
+      if (!securityCheck) {
+        console.log(`🚨 SECURITY ERROR: Updated booking does not belong to vendor ${req.params.vendorId}`);
+        return res.status(500).json({
+          success: false,
+          error: 'Data integrity error',
+          code: 'DATA_INTEGRITY_VIOLATION',
+          timestamp: new Date().toISOString()
+        });
+      }
     }
     
-    console.log(`✅ Booking status updated: ${bookingId} -> ${status}`);
+    // For deposit and full payment, trigger receipt generation
+    if (status === 'deposit_paid' || status === 'fully_paid') {
+      try {
+        // Only generate receipt if not already done
+        const receiptExists = await sql`
+          SELECT 1 FROM receipts WHERE booking_id = ${bookingId} LIMIT 1
+        `;
+        
+        if (receiptExists.length === 0) {
+          if (status === 'deposit_paid') {
+            // Create deposit receipt
+            await createDepositReceipt(
+              bookingId,
+              booking.couple_id,
+              booking.vendor_id,
+              downpayment_amount,
+              payment_method || 'card',
+              transaction_id
+            );
+          } else if (status === 'fully_paid') {
+            // Create full payment receipt
+            await createFullPaymentReceipt(
+              bookingId,
+              booking.couple_id,
+              booking.vendor_id,
+              remaining_balance,
+              payment_method || 'card',
+              transaction_id
+            );
+          }
+        }
+      } catch (receiptError) {
+        console.error('❌ [PAYMENT UPDATE] Receipt generation error:', receiptError);
+      }
+    }
     
+    // Respond with updated booking data
     res.json({
       success: true,
       booking: booking[0],
