@@ -831,6 +831,9 @@ router.patch('/:bookingId/status', async (req, res) => {
       reason, 
       vendor_notes,
       // Payment-related fields
+      total_paid,          // FIXED: Extract total_paid from request
+      payment_amount,      // FIXED: Extract individual payment amount
+      payment_type,        // FIXED: Extract payment type (downpayment/full_payment/remaining_balance)
       downpayment_amount,
       remaining_balance,
       payment_progress,
@@ -886,6 +889,18 @@ router.patch('/:bookingId/status', async (req, res) => {
     };
     
     // Add payment fields if provided
+    if (total_paid !== undefined) {
+      updateFields.total_paid = total_paid;
+      console.log('💵 [PAYMENT UPDATE] Setting total_paid:', total_paid);
+    }
+    if (payment_amount !== undefined) {
+      updateFields.payment_amount = payment_amount;
+      console.log('💰 [PAYMENT UPDATE] Setting payment_amount:', payment_amount);
+    }
+    if (payment_type) {
+      updateFields.payment_type = payment_type;
+      console.log('📝 [PAYMENT UPDATE] Setting payment_type:', payment_type);
+    }
     if (downpayment_amount !== undefined) {
       updateFields.downpayment_amount = downpayment_amount;
       console.log('💰 [PAYMENT UPDATE] Setting downpayment_amount:', downpayment_amount);

@@ -704,12 +704,15 @@ export const IndividualBookings: React.FC = () => {
           status: backendStatus,
           vendor_notes: statusNote,
           // CRITICAL: Include payment amounts to persist in database
-          downpayment_amount: paymentType === 'downpayment' ? amount : currentBooking?.downpaymentAmount,
+          total_paid: totalPaid, // FIXED: Always send total_paid
+          downpayment_amount: paymentType === 'downpayment' ? amount : (currentBooking?.downpaymentAmount || 0),
           remaining_balance: remainingBalance,
           payment_progress: paymentProgressPercentage,
+          payment_amount: amount, // Include the actual payment amount
           last_payment_date: new Date().toISOString(),
           payment_method: paymentData.method || 'card',
-          transaction_id: paymentData.transactionId
+          transaction_id: paymentData.transactionId,
+          payment_type: paymentType // Include payment type for backend logging
         };
         
         console.log('📡 [BACKEND UPDATE] Sending complete payment update:', {
