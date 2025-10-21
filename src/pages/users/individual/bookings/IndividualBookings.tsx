@@ -1141,7 +1141,7 @@ export const IndividualBookings: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Action Buttons - SAME LOGIC AS BEFORE */}
+                      {/* Action Buttons - Compact grid layout for multiple buttons */}
                       <div className="pt-4 space-y-2">
                         {/* Quote Requested/Pending - Show View Details */}
                         {(booking.status === 'quote_requested' || booking.status === 'request' || booking.status === 'pending') && (
@@ -1150,96 +1150,110 @@ export const IndividualBookings: React.FC = () => {
                               setSelectedBooking(booking);
                               setShowDetails(true);
                             }}
-                            className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                            className="w-full px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
                           >
                             <Eye className="w-4 h-4" />
                             View Details
                           </button>
                         )}
 
-                        {/* Quote Sent - Show View Quote + Accept */}
+                        {/* Quote Sent - Show View Quote + Accept in 2-column grid */}
                         {booking.status === 'quote_sent' && (
-                          <>
+                          <div className="grid grid-cols-2 gap-2">
                             <button
                               onClick={() => handleViewQuoteDetails(booking)}
-                              className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                              className="px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-1.5 font-medium text-sm"
                             >
                               <FileText className="w-4 h-4" />
                               View Quote
                             </button>
                             <button
                               onClick={() => handleAcceptQuotation(booking)}
-                              className="w-full px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                              className="px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-1.5 font-medium text-sm"
                             >
                               <CheckCircle2 className="w-4 h-4" />
-                              Accept Quote
+                              Accept
                             </button>
-                          </>
+                          </div>
                         )}
 
-                        {/* Quote Accepted/Confirmed - Show Pay Deposit AND Pay Full */}
+                        {/* Quote Accepted/Confirmed - Show Pay Deposit AND Pay Full in 2-column grid */}
                         {(booking.status === 'quote_accepted' || booking.status === 'confirmed' || booking.status === 'approved') && (
-                          <>
+                          <div className="grid grid-cols-2 gap-2">
                             <button
                               onClick={() => handlePayment(booking as any, 'downpayment')}
-                              className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                              className="px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex flex-col items-center justify-center gap-1 font-medium text-sm"
                             >
                               <CreditCard className="w-4 h-4" />
-                              Pay Deposit (30%)
+                              <span>Deposit 30%</span>
                             </button>
                             <button
                               onClick={() => handlePayment(booking as any, 'full_payment')}
-                              className="w-full px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                              className="px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex flex-col items-center justify-center gap-1 font-medium text-sm"
                             >
                               <DollarSign className="w-4 h-4" />
-                              Pay Full Amount
+                              <span>Full Payment</span>
                             </button>
-                          </>
+                          </div>
                         )}
 
-                        {/* Deposit Paid - Show Pay Balance */}
-                        {booking.status === 'downpayment_paid' && booking.remainingBalance && booking.remainingBalance > 0 && (
-                          <button
-                            onClick={() => handlePayment(booking as any, 'remaining_balance')}
-                            className="w-full px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
-                          >
-                            <DollarSign className="w-4 h-4" />
-                            Pay Balance
-                          </button>
+                        {/* Deposit Paid - Show Pay Balance + View Receipt in 2-column */}
+                        {booking.status === 'downpayment_paid' && (
+                          <div className="grid grid-cols-2 gap-2">
+                            {booking.remainingBalance && booking.remainingBalance > 0 && (
+                              <button
+                                onClick={() => handlePayment(booking as any, 'remaining_balance')}
+                                className="px-3 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-1.5 font-medium text-sm"
+                              >
+                                <DollarSign className="w-4 h-4" />
+                                Pay Balance
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleViewReceipt(booking)}
+                              className="px-3 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-1.5 font-medium text-sm"
+                            >
+                              <FileText className="w-4 h-4" />
+                              View Receipt
+                            </button>
+                          </div>
                         )}
 
-                        {/* View Receipt Button - Show for paid bookings */}
-                        {(booking.status === 'deposit_paid' || booking.status === 'downpayment_paid' || booking.status === 'downpayment' || booking.status === 'fully_paid' || booking.status === 'paid_in_full' || booking.status === 'completed') && (
+                        {/* View Receipt Button - Show for fully paid bookings */}
+                        {(booking.status === 'deposit_paid' || booking.status === 'downpayment' || booking.status === 'fully_paid' || booking.status === 'paid_in_full' || booking.status === 'completed') && booking.status !== 'downpayment_paid' && (
                           <button
                             onClick={() => handleViewReceipt(booking)}
-                            className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium"
+                            className="w-full px-3 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
                           >
                             <FileText className="w-4 h-4" />
                             View Receipt
                           </button>
                         )}
 
-                        {/* Cancel Button - Different logic based on status */}
-                        {booking.status !== 'cancelled' && booking.status !== 'completed' && (
-                          <button
-                            onClick={() => handleCancelBooking(booking)}
-                            className="w-full px-4 py-2.5 bg-white border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition-all flex items-center justify-center gap-2 font-medium"
-                          >
-                            <XCircle className="w-4 h-4" />
-                            {(booking.status === 'request' || booking.status === 'quote_requested') ? 'Cancel Booking' : 'Request Cancellation'}
-                          </button>
-                        )}
+                        {/* Cancel + Contact buttons in 2-column grid */}
+                        <div className="grid grid-cols-2 gap-2">
+                          {/* Cancel Button */}
+                          {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                            <button
+                              onClick={() => handleCancelBooking(booking)}
+                              className="px-3 py-2 bg-white border-2 border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-all flex items-center justify-center gap-1.5 font-medium text-sm"
+                            >
+                              <XCircle className="w-4 h-4" />
+                              {(booking.status === 'request' || booking.status === 'quote_requested') ? 'Cancel' : 'Request Cancel'}
+                            </button>
+                          )}
 
-                        {/* Always show contact vendor */}
-                        {booking.vendorPhone && (
-                          <button
-                            onClick={() => window.open(`tel:${booking.vendorPhone}`)}
-                            className="w-full px-4 py-2.5 bg-white border-2 border-pink-200 text-pink-600 rounded-xl hover:bg-pink-50 transition-all flex items-center justify-center gap-2 font-medium"
-                          >
-                            <Phone className="w-4 h-4" />
-                            Contact Vendor
-                          </button>
-                        )}
+                          {/* Contact vendor */}
+                          {booking.vendorPhone && (
+                            <button
+                              onClick={() => window.open(`tel:${booking.vendorPhone}`)}
+                              className="px-3 py-2 bg-white border-2 border-pink-200 text-pink-600 rounded-lg hover:bg-pink-50 transition-all flex items-center justify-center gap-1.5 font-medium text-sm"
+                            >
+                              <Phone className="w-4 h-4" />
+                              Contact
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </motion.div>
