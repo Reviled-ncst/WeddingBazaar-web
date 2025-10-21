@@ -493,7 +493,14 @@ router.get('/enhanced', async (req, res) => {
           v.business_name as vendor_business_name,
           v.business_type as vendor_category,
           v.rating as vendor_rating,
-          v.location as vendor_location
+          v.location as vendor_location,
+          b.total_paid,
+          b.remaining_balance,
+          b.downpayment_amount,
+          b.payment_progress,
+          b.last_payment_date,
+          b.payment_method,
+          b.transaction_id
         FROM bookings b
         LEFT JOIN vendors v ON b.vendor_id = v.id
         WHERE b.couple_id = ${coupleId}
@@ -546,7 +553,14 @@ router.get('/enhanced', async (req, res) => {
             v.business_name as vendor_business_name,
             v.business_type as vendor_category,
             v.rating as vendor_rating,
-            v.location as vendor_location
+            v.location as vendor_location,
+            b.total_paid,
+            b.remaining_balance,
+            b.downpayment_amount,
+            b.payment_progress,
+            b.last_payment_date,
+            b.payment_method,
+            b.transaction_id
           FROM bookings b
           LEFT JOIN vendors v ON (b.vendor_id = v.id OR b.vendor_id = ${legacyVendorId})
           WHERE (b.vendor_id = ${vendorId} OR b.vendor_id = ${legacyVendorId})
