@@ -1373,23 +1373,25 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
       console.log('   Booking ID:', booking.id);
       console.log('   Quote Data:', quoteData);
       
-      // 🔧 MODULAR BACKEND FIX: Use PATCH /api/bookings/:id/status endpoint
-      // The backend stores quote as status='quote_sent' with details in vendor_notes
-      const statusUpdatePayload = {
-        status: 'quote_sent',
-        vendor_notes: JSON.stringify(quoteData)
+      // � USE NEW /send-quote ENDPOINT that properly sets quoted_price field
+      const sendQuotePayload = {
+        quotedPrice: total,  // Total price from quote calculation
+        quotedDeposit: downpayment,  // Deposit amount
+        vendorNotes: quoteMessage || `Quote for ${booking.serviceType} service`,
+        validityDays: Math.ceil((new Date(validUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
+        itemization: quoteData  // Full quote details including items breakdown
       };
       
-      console.log('📤 [SendQuoteModal] Sending status update:', statusUpdatePayload);
+      console.log('📤 [SendQuoteModal] Sending quote with proper fields:', sendQuotePayload);
       
-      // Call the backend API to save the quote via status update
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com'}/api/bookings/${booking.id}/status`, {
-        method: 'PATCH',
+      // Call the NEW backend endpoint that sets quoted_price properly
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com'}/api/bookings/${booking.id}/send-quote`, {
+        method: 'PUT',  // Changed from PATCH to PUT
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(statusUpdatePayload)
+        body: JSON.stringify(sendQuotePayload)
       });
       
       if (!response.ok) {
