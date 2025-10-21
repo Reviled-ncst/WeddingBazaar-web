@@ -873,19 +873,19 @@ router.get('/receipts/:bookingId', async (req, res) => {
         bookingId: r.booking_id,
         receiptNumber: r.receipt_number,
         paymentType: r.payment_type,
-        amount: r.amount,
-        currency: r.currency,
+        amount: r.amount_paid || r.amount, // Support both column names
+        currency: r.currency || 'PHP',
         paymentMethod: r.payment_method,
-        paymentIntentId: r.payment_intent_id,
-        paidBy: r.paid_by,
-        paidByName: r.paid_by_name,
-        paidByEmail: r.paid_by_email,
+        paymentIntentId: r.payment_reference || r.payment_intent_id, // Support both column names
+        paidBy: r.couple_id || r.paid_by,
+        paidByName: r.paid_by_name || 'Customer',
+        paidByEmail: r.paid_by_email || '',
         vendorId: r.vendor_id,
         vendorName: r.vendor_name,
         serviceType: r.service_type,
         eventDate: r.event_date,
-        totalPaid: r.total_paid,
-        remainingBalance: r.remaining_balance,
+        totalPaid: r.total_amount || r.total_paid || r.amount_paid,
+        remainingBalance: r.remaining_balance || 0,
         notes: r.notes,
         createdAt: r.created_at
       }))

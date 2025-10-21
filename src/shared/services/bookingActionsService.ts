@@ -45,6 +45,7 @@ export interface CancelBookingResponse {
  */
 export async function getBookingReceipts(bookingId: string): Promise<Receipt[]> {
   console.log(`📄 [BookingActions] Fetching receipts for booking ${bookingId}...`);
+  console.log(`🔗 [BookingActions] API URL: ${API_BASE_URL}/api/payment/receipts/${bookingId}`);
   
   try {
     const response = await fetch(`${API_BASE_URL}/api/payment/receipts/${bookingId}`, {
@@ -54,17 +55,35 @@ export async function getBookingReceipts(bookingId: string): Promise<Receipt[]> 
       },
     });
     
-    const data = await response.json();
+    console.log(`📡 [BookingActions] Response status: ${response.status}`);
     
     if (!response.ok) {
+      let errorMessage = 'Failed to fetch receipts';
+      try {
+        const data = await response.json();
+        errorMessage = data.error || errorMessage;
+        console.error(`❌ [BookingActions] Error response:`, data);
+      } catch (e) {
+        console.error(`❌ [BookingActions] Could not parse error response`);
+      }
+      throw new Error(errorMessage);
+    }
+    
+    const data = await response.json();
+    console.log(`📄 [BookingActions] Response data:`, data);
+    
+    if (!data.success) {
       throw new Error(data.error || 'Failed to fetch receipts');
     }
     
-    console.log(`✅ [BookingActions] Retrieved ${data.receipts.length} receipt(s)`);
-    return data.receipts;
+    console.log(`✅ [BookingActions] Retrieved ${data.receipts?.length || 0} receipt(s)`);
+    return data.receipts || [];
     
   } catch (error) {
     console.error('❌ [BookingActions] Error fetching receipts:', error);
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to payment service. Please check your internet connection.');
+    }
     throw error;
   }
 }

@@ -354,9 +354,17 @@ export const IndividualBookings: React.FC = () => {
   // Handle viewing receipts
   const handleViewReceipt = async (booking: EnhancedBooking) => {
     console.log('📄 [VIEW-RECEIPT] Fetching receipt for booking:', booking.id);
+    console.log('📄 [VIEW-RECEIPT] Booking ID type:', typeof booking.id);
+    console.log('📄 [VIEW-RECEIPT] Booking data:', booking);
     
     try {
-      const receipts = await getBookingReceipts(booking.id);
+      // Ensure booking ID is a string
+      const bookingIdStr = String(booking.id);
+      console.log('📄 [VIEW-RECEIPT] Using booking ID:', bookingIdStr);
+      
+      const receipts = await getBookingReceipts(bookingIdStr);
+      
+      console.log('📄 [VIEW-RECEIPT] Receipts fetched:', receipts);
       
       if (receipts.length === 0) {
         alert('No receipts found for this booking.');
@@ -386,6 +394,11 @@ export const IndividualBookings: React.FC = () => {
       }
     } catch (error) {
       console.error('❌ [VIEW-RECEIPT] Error fetching receipt:', error);
+      console.error('❌ [VIEW-RECEIPT] Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        type: typeof error
+      });
       alert(`Failed to fetch receipt: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
