@@ -843,16 +843,11 @@ router.get('/receipts/:bookingId', async (req, res) => {
     console.log(`📄 [GET-RECEIPTS] Booking ID: ${bookingId}`);
     
     // Get receipts from database
+    // Note: Using receipts.vendor_id directly since it's already there
     const receipts = await sql`
       SELECT 
-        r.*,
-        b.vendor_id,
-        b.service_type,
-        b.event_date,
-        v.business_name as vendor_name
+        r.*
       FROM receipts r
-      LEFT JOIN bookings b ON r.booking_id = b.id
-      LEFT JOIN vendors v ON b.vendor_id = v.id
       WHERE r.booking_id = ${bookingId}
       ORDER BY r.created_at DESC
     `;
@@ -881,9 +876,9 @@ router.get('/receipts/:bookingId', async (req, res) => {
         paidByName: 'Customer', // Not stored, use default
         paidByEmail: '', // Not stored
         vendorId: r.vendor_id,
-        vendorName: r.vendor_name,
-        serviceType: r.service_type,
-        eventDate: r.event_date,
+        vendorName: 'Vendor', // Not stored in receipts table
+        serviceType: 'Service', // Not stored in receipts table
+        eventDate: new Date().toISOString(), // Not stored in receipts table
         totalPaid: r.total_amount,
         remainingBalance: 0, // Calculate if needed
         notes: r.description, // Actual column name
