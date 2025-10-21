@@ -404,10 +404,33 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
       });
 
     } catch (error: any) {
-      console.error('Card payment error:', error);
-      setErrorMessage(error.message || 'Card payment failed');
+      console.error('❌ Card payment error:', error);
+      
+      // Enhanced error message handling
+      let friendlyErrorMessage = 'Card payment failed';
+      if (error.message) {
+        // Extract meaningful error messages from common PayMongo errors
+        if (error.message.includes('declined')) {
+          friendlyErrorMessage = 'Your card was declined. Please try a different card or contact your bank.';
+        } else if (error.message.includes('insufficient')) {
+          friendlyErrorMessage = 'Insufficient funds. Please use a different card.';
+        } else if (error.message.includes('invalid')) {
+          friendlyErrorMessage = 'Invalid card details. Please check your card information and try again.';
+        } else if (error.message.includes('expired')) {
+          friendlyErrorMessage = 'Your card has expired. Please use a different card.';
+        } else if (error.message.includes('cvc') || error.message.includes('cvv')) {
+          friendlyErrorMessage = 'Invalid CVC/CVV code. Please check the security code on your card.';
+        } else if (error.message.includes('network') || error.message.includes('timeout')) {
+          friendlyErrorMessage = 'Network error. Please check your connection and try again.';
+        } else {
+          friendlyErrorMessage = error.message;
+        }
+      }
+      
+      console.error('🔴 Setting error state with message:', friendlyErrorMessage);
+      setErrorMessage(friendlyErrorMessage);
       setPaymentStep('error');
-      onPaymentError(error.message || 'Card payment failed');
+      onPaymentError(friendlyErrorMessage);
     } finally {
       setLoading(false);
     }
@@ -960,7 +983,7 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                       <button
                         onClick={() => {
                           if (selectedMethod === 'card') {
-                            setPaymentStep('redirect');
+                            setPaymentStep('card_form');
                           } else {
                             handlePayment();
                           }
@@ -1068,7 +1091,7 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                   </motion.div>
                 )}
 
-                {paymentStep === 'redirect' && selectedMethod && selectedMethod.startsWith('card') && (
+                {(paymentStep === 'card_form' || (paymentStep === 'redirect' && selectedMethod && selectedMethod.startsWith('card'))) && (
                   <motion.div
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -1543,19 +1566,21 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                   </motion.div>
                 )}
 
-                {paymentStep === 'error' && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-center py-12"
-                  >
-                    <motion.div
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", delay: 0.2 }}
-                      className="w-20 h-20 mx-auto mb-6 bg-red-100 rounded-full flex items-center justify-center"
+                {paymentStep === 'error' && (() => {
+                  console.log('🔍 Rendering error step with message:', errorMessage);
+                  return (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="text-center py-12"
                     >
-                      <XCircle className="h-12 w-12 text-red-600" />
-                    </motion.div>
+                      <motion.div
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", delay: 0.2 }}
+                        className="w-20 h-20 mx-auto mb-6 bg-red-100 rounded-full flex items-center justify-center"
+                      >
+                        <XCircle className="h-12 w-12 text-red-600" />
+                      </motion.div>
                     
                     <motion.h3 
                       initial={{ opacity: 0, y: 20 }}
@@ -1617,7 +1642,8 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                       </button>
                     </motion.div>
                   </motion.div>
-                )}
+                  );
+                })()}
                 
                 {/* PayMongo Branding */}
                 <motion.div 

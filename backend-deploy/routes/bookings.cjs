@@ -1549,6 +1549,134 @@ router.post('/:bookingId/request-cancellation', async (req, res) => {
   }
 });
 
+// ============================================================================
+// SEND QUOTE WITH ITEMIZATION - New Enhanced Endpoint
+// ============================================================================
+router.put('/:bookingId/send-quote', async (req, res) => {
+  console.log('💰 [SEND-QUOTE] Sending quote with itemization:', req.params.bookingId);
+  
+  try {
+    const { bookingId } = req.params;
+    const { 
+      quotedPrice, 
+      quotedDeposit, 
+      itemization, 
+      vendorNotes, 
+      validityDays = 30 
+    } = req.body;
+    
+    // Validation
+    if (!quotedPrice || quotedPrice <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Quoted price is required and must be greater than 0'
+      });
+    }
+    
+    // Check if booking exists
+    const existingBooking = await sql`
+      SELECT * FROM bookings WHERE id = ${bookingId}
+    `;
+    
+    if (existingBooking.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+    
+    const booking = existingBooking[0];
+    
+    // Calculate deposit if not provided (default 30%)
+    const calculatedDeposit = quotedDeposit || Math.round(quotedPrice * 0.3);
+    
+    // Calculate quote expiration date
+    const quoteValidUntil = new Date();
+    quoteValidUntil.setDate(quoteValidUntil.getDate() + validityDays);
+    
+    // Prepare itemization JSONB
+    const itemizationData = itemization || {
+      items: [{
+        name: booking.service_type || 'Wedding Service',
+        description: 'Full service package',
+        quantity: 1,
+        unitPrice: quotedPrice,
+        total: quotedPrice
+      }],
+      subtotal: quotedPrice,
+      discount: 0,
+      total: quotedPrice,
+      deposit: calculatedDeposit,
+      depositPercentage: Math.round((calculatedDeposit / quotedPrice) * 100),
+      notes: vendorNotes || '',
+      validUntil: quoteValidUntil.toISOString().split('T')[0]
+    };
+    
+    console.log('📊 [SEND-QUOTE] Quote data:', {
+      bookingId,
+      quotedPrice,
+      quotedDeposit: calculatedDeposit,
+      validUntil: quoteValidUntil.toISOString(),
+      itemsCount: itemizationData.items?.length || 0
+    });
+    
+    // Update booking with quote information
+    const updatedBooking = await sql`
+      UPDATE bookings 
+      SET 
+        status = 'request',
+        notes = ${'QUOTE_SENT: ' + (vendorNotes || 'Quote has been sent to client')},
+        amount = ${quotedPrice},
+        quoted_price = ${quotedPrice},
+        quoted_deposit = ${calculatedDeposit},
+        quote_itemization = ${JSON.stringify(itemizationData)},
+        quote_sent_date = NOW(),
+        quote_valid_until = ${quoteValidUntil.toISOString()},
+        updated_at = NOW()
+      WHERE id = ${bookingId}
+      RETURNING *
+    `;
+    
+    if (updatedBooking.length === 0) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update booking with quote'
+      });
+    }
+    
+    console.log('✅ [SEND-QUOTE] Quote sent successfully for booking:', bookingId);
+    
+    // Process the booking to show quote_sent status
+    const processedBooking = { ...updatedBooking[0] };
+    if (processedBooking.notes && processedBooking.notes.startsWith('QUOTE_SENT:')) {
+      processedBooking.status = 'quote_sent';
+      processedBooking.vendor_notes = processedBooking.notes.substring('QUOTE_SENT:'.length).trim();
+    }
+    
+    res.json({
+      success: true,
+      message: 'Quote sent successfully to couple',
+      booking: processedBooking,
+      quote: {
+        totalPrice: quotedPrice,
+        depositAmount: calculatedDeposit,
+        depositPercentage: Math.round((calculatedDeposit / quotedPrice) * 100),
+        validUntil: quoteValidUntil.toISOString(),
+        itemsCount: itemizationData.items?.length || 0
+      },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [SEND-QUOTE] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to send quote',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 module.exports = router;
 
 // Force deploy - workaround fix

@@ -1502,9 +1502,9 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
                     {service.availability && (
                       <div className="flex items-center gap-3 bg-white rounded-lg p-2.5 shadow-sm col-span-2 md:col-span-1">
                         <div className={`p-2 rounded-lg ${
-                          service.availability.toLowerCase() === 'available' 
+                          typeof service.availability === 'string' && service.availability.toLowerCase() === 'available' 
                             ? 'bg-gradient-to-br from-green-500 to-emerald-600'
-                            : service.availability.toLowerCase() === 'limited'
+                            : typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited'
                             ? 'bg-gradient-to-br from-yellow-500 to-orange-500'
                             : 'bg-gradient-to-br from-red-500 to-rose-600'
                         }`}>
@@ -1515,10 +1515,16 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
                         <div>
                           <div className="text-xs text-gray-500 font-medium">Availability</div>
                           <div className={`text-sm font-bold ${
-                            service.availability.toLowerCase() === 'available' ? 'text-green-600' :
-                            service.availability.toLowerCase() === 'limited' ? 'text-yellow-600' :
+                            typeof service.availability === 'string' && service.availability.toLowerCase() === 'available' ? 'text-green-600' :
+                            typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited' ? 'text-yellow-600' :
                             'text-red-600'
-                          }`}>{service.availability}</div>
+                          }`}>
+                            {typeof service.availability === 'string' 
+                              ? service.availability 
+                              : typeof service.availability === 'object' && service.availability !== null
+                                ? 'Available'
+                                : 'Contact for availability'}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -1727,16 +1733,16 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
               {service.availability && (
                 <div className="flex items-center gap-2">
                   <div className={`p-1.5 rounded-lg shadow-sm ${
-                    service.availability.toLowerCase() === 'available' 
+                    typeof service.availability === 'string' && service.availability.toLowerCase() === 'available' 
                       ? 'bg-gradient-to-br from-green-50 to-green-100'
-                      : service.availability.toLowerCase() === 'limited'
+                      : typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited'
                       ? 'bg-gradient-to-br from-yellow-50 to-yellow-100'
                       : 'bg-gradient-to-br from-red-50 to-red-100'
                   }`}>
                     <svg className={`h-3.5 w-3.5 ${
-                      service.availability.toLowerCase() === 'available' 
+                      typeof service.availability === 'string' && service.availability.toLowerCase() === 'available' 
                         ? 'text-green-600'
-                        : service.availability.toLowerCase() === 'limited'
+                        : typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited'
                         ? 'text-yellow-600'
                         : 'text-red-600'
                     }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1744,13 +1750,17 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
                     </svg>
                   </div>
                   <span className={`text-xs font-medium ${
-                    service.availability.toLowerCase() === 'available' 
+                    typeof service.availability === 'string' && service.availability.toLowerCase() === 'available' 
                       ? 'text-green-700'
-                      : service.availability.toLowerCase() === 'limited'
+                      : typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited'
                       ? 'text-yellow-700'
                       : 'text-red-700'
                   }`}>
-                    {service.availability}
+                    {typeof service.availability === 'string' 
+                      ? service.availability 
+                      : typeof service.availability === 'object' && service.availability !== null
+                        ? 'Available'
+                        : 'Contact for availability'}
                   </span>
                 </div>
               )}
@@ -2009,7 +2019,13 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900 mb-1">Availability</div>
-                        <div className="text-lg font-semibold text-green-600">{service.availability}</div>
+                        <div className="text-lg font-semibold text-green-600">
+                          {typeof service.availability === 'string' 
+                            ? service.availability 
+                            : typeof service.availability === 'object' && service.availability !== null
+                              ? 'Available'
+                              : 'Contact for availability'}
+                        </div>
                         <div className="text-xs text-gray-500">Current status</div>
                       </div>
                     </div>

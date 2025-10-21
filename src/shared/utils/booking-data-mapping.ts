@@ -235,38 +235,81 @@ export function mapDatabaseBookingToUI(dbBooking: DatabaseBooking): UIBooking {
     notes_preview: dbBooking.notes?.substring(0, 50)
   });
 
-  const totalAmount = parseFloat(dbBooking.total_amount || '0');
-  const depositAmount = parseFloat(dbBooking.deposit_amount || '0');
-  const totalPaid = depositAmount; // Assume only deposit is paid initially
-  const remainingBalance = totalAmount - totalPaid;
-  const paymentProgressPercentage = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
-
-  // Parse quote from notes if exists
+  // Parse quote from notes if exists - MUST BE BEFORE totalAmount calculation
   let quoteData = null;
   let hasQuote = false;
   let displayStatus = dbBooking.status;
+  let quotedTotal: number | null = null;
+  let quotedDeposit: number | null = null;
   
   if (dbBooking.notes && dbBooking.notes.includes('QUOTE_SENT:')) {
+    hasQuote = true;
+    // If status is still 'request' but has quote, show as quote_sent
+    if (displayStatus === 'request') {
+      displayStatus = 'quote_sent';
+    }
+    
     try {
+      // Try to parse JSON format first (legacy format)
       const jsonStart = dbBooking.notes.indexOf('{');
       const jsonEnd = dbBooking.notes.lastIndexOf('}') + 1;
       if (jsonStart !== -1 && jsonEnd > jsonStart) {
         const quoteJson = dbBooking.notes.substring(jsonStart, jsonEnd);
         quoteData = JSON.parse(quoteJson);
-        hasQuote = true;
-        // If status is still 'request' but has quote, show as quote_sent
-        if (displayStatus === 'request') {
-          displayStatus = 'quote_sent';
-        }
-        console.log('✅ [BookingMapping] Quote parsed successfully:', {
+        console.log('✅ [BookingMapping] Quote JSON parsed successfully:', {
           quoteNumber: quoteData.quoteNumber,
           total: quoteData.pricing?.total
         });
+        // Extract pricing from JSON if available
+        if (quoteData.pricing?.total) {
+          quotedTotal = quoteData.pricing.total;
+        }
+        if (quoteData.pricing?.downpayment) {
+          quotedDeposit = quoteData.pricing.downpayment;
+        }
       }
     } catch (error) {
-      console.error('❌ [BookingMapping] Failed to parse quote JSON:', error);
+      console.warn('⚠️ [BookingMapping] Could not parse quote as JSON, trying string extraction:', error);
+    }
+    
+    // Also try to extract pricing from string format (new format)
+    // Format: "ITEMIZED QUOTE: X items | Items: ... | TOTAL: ₱50,000 | ..."
+    try {
+      const totalMatch = dbBooking.notes.match(/TOTAL:\s*₱([\d,]+)/);
+      if (totalMatch) {
+        const extracted = parseInt(totalMatch[1].replace(/,/g, ''));
+        if (!quotedTotal || extracted > 0) {
+          quotedTotal = extracted;
+          console.log('💰 [BookingMapping] Extracted quote total from string:', quotedTotal);
+        }
+      }
+      
+      // Extract downpayment/deposit if present
+      const downpaymentMatch = dbBooking.notes.match(/(?:Downpayment|Deposit):\s*₱([\d,]+)/i);
+      if (downpaymentMatch) {
+        const extracted = parseInt(downpaymentMatch[1].replace(/,/g, ''));
+        if (!quotedDeposit || extracted > 0) {
+          quotedDeposit = extracted;
+          console.log('💳 [BookingMapping] Extracted deposit from string:', quotedDeposit);
+        }
+      } else if (quotedTotal && !quotedDeposit) {
+        // Calculate 30% downpayment if not specified
+        quotedDeposit = Math.round(quotedTotal * 0.3);
+        console.log('💳 [BookingMapping] Calculated 30% deposit:', quotedDeposit);
+      }
+      
+      console.log('✅ [BookingMapping] Quote pricing extracted:', { quotedTotal, quotedDeposit });
+    } catch (error) {
+      console.error('❌ [BookingMapping] Failed to extract quote pricing from string:', error);
     }
   }
+
+  // NOW calculate amounts using extracted quote prices if available
+  const totalAmount = quotedTotal || parseFloat(dbBooking.total_amount || '0');
+  const depositAmount = quotedDeposit || parseFloat(dbBooking.deposit_amount || '0');
+  const totalPaid = depositAmount; // Assume only deposit is paid initially
+  const remainingBalance = totalAmount - totalPaid;
+  const paymentProgressPercentage = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
 
   // Format event date and time
   const formattedEventDate = new Date(dbBooking.event_date).toLocaleDateString('en-US', {
