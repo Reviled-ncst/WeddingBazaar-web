@@ -1,1 +1,1 @@
-﻿# Deploy trigger 2025-10-19 11:04:19
+# Deploy trigger 2025-10-19 11:04:19

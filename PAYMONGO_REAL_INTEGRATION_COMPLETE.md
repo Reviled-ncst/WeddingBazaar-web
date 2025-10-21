@@ -55,10 +55,10 @@ Get keys from: https://dashboard.paymongo.com/developers/api-keys
 
 Add to `.env`:
 ```bash
-PAYMONGO_SECRET_KEY=sk_test_your_key_here
-PAYMONGO_PUBLIC_KEY=pk_test_your_key_here
-VITE_PAYMONGO_SECRET_KEY=sk_test_your_key_here
-VITE_PAYMONGO_PUBLIC_KEY=pk_test_your_key_here
+PAYMONGO_SECRET_KEY=sk_test_[REDACTED]_key_here
+PAYMONGO_PUBLIC_KEY=pk_test_[REDACTED]_key_here
+VITE_PAYMONGO_SECRET_KEY=sk_test_[REDACTED]_key_here
+VITE_PAYMONGO_PUBLIC_KEY=pk_test_[REDACTED]_key_here
 ```
 
 ### Step 2: Restart Backend (1 minute)
@@ -238,7 +238,7 @@ cat .env | Select-String "PAYMONGO"
 
 # 2. Ensure keys start with sk_test_ and pk_test_
 # WRONG: PAYMONGO_SECRET_KEY=your_secret_key_here
-# RIGHT: PAYMONGO_SECRET_KEY=sk_test_ABC123...
+# RIGHT: PAYMONGO_SECRET_KEY=sk_test_[REDACTED]...
 
 # 3. Restart backend
 cd backend-deploy

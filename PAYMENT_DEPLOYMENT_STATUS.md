@@ -105,8 +105,8 @@ curl https://weddingbazaar-web.onrender.com/api/payment/health
 3. Click: Environment tab
 4. Add these variables:
    ```
-   PAYMONGO_PUBLIC_KEY = pk_test_yourkey
-   PAYMONGO_SECRET_KEY = sk_test_yourkey
+   PAYMONGO_PUBLIC_KEY = pk_test_[REDACTED]
+   PAYMONGO_SECRET_KEY = sk_test_[REDACTED]
    ```
 5. Click: Save Changes
 6. Wait for auto-redeploy (~2-3 minutes)

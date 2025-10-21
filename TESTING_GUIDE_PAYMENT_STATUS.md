@@ -256,8 +256,8 @@ node create-receipts-table.cjs
 ```
 1. Go to Render Dashboard
 2. Update environment variables:
-   - PAYMONGO_SECRET_KEY = sk_live_xxxxxxxx
-   - PAYMONGO_PUBLIC_KEY = pk_live_xxxxxxxx
+   - PAYMONGO_SECRET_KEY = sk_live_[REDACTED]
+   - PAYMONGO_PUBLIC_KEY = pk_live_[REDACTED]
 3. Redeploy backend
 4. Test with real card (small amount first!)
 ```

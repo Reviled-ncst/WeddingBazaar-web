@@ -24,10 +24,10 @@ Open `.env` and `.env.development` files and replace the placeholders:
 
 ```bash
 # Replace these placeholders with your actual test keys:
-PAYMONGO_SECRET_KEY=sk_test_your_actual_key_here
-PAYMONGO_PUBLIC_KEY=pk_test_your_actual_key_here
-VITE_PAYMONGO_SECRET_KEY=sk_test_your_actual_key_here
-VITE_PAYMONGO_PUBLIC_KEY=pk_test_your_actual_key_here
+PAYMONGO_SECRET_KEY=sk_test_[REDACTED]_actual_key_here
+PAYMONGO_PUBLIC_KEY=pk_test_[REDACTED]_actual_key_here
+VITE_PAYMONGO_SECRET_KEY=sk_test_[REDACTED]_actual_key_here
+VITE_PAYMONGO_PUBLIC_KEY=pk_test_[REDACTED]_actual_key_here
 ```
 
 ### Step 3: Start Testing (2 minutes)

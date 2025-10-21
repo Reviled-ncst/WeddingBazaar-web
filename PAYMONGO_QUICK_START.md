@@ -9,10 +9,10 @@
 
 ### 2. Add to .env (30 sec)
 ```bash
-PAYMONGO_SECRET_KEY=sk_test_paste_your_key_here
-PAYMONGO_PUBLIC_KEY=pk_test_paste_your_key_here
-VITE_PAYMONGO_SECRET_KEY=sk_test_paste_your_key_here
-VITE_PAYMONGO_PUBLIC_KEY=pk_test_paste_your_key_here
+PAYMONGO_SECRET_KEY=sk_test_[REDACTED]_your_key_here
+PAYMONGO_PUBLIC_KEY=pk_test_[REDACTED]_your_key_here
+VITE_PAYMONGO_SECRET_KEY=sk_test_[REDACTED]_your_key_here
+VITE_PAYMONGO_PUBLIC_KEY=pk_test_[REDACTED]_your_key_here
 ```
 
 ### 3. Restart & Test (1.5 min)

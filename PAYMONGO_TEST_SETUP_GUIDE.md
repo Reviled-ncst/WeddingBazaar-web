@@ -14,8 +14,8 @@ Add these environment variables to your backend:
 
 ```bash
 # PayMongo Test API Keys
-PAYMONGO_SECRET_KEY=sk_test_your_secret_key_here
-PAYMONGO_PUBLIC_KEY=pk_test_your_public_key_here
+PAYMONGO_SECRET_KEY=sk_test_[REDACTED]_secret_key_here
+PAYMONGO_PUBLIC_KEY=pk_test_[REDACTED]_public_key_here
 ```
 
 ### Frontend Configuration (Local Development)
@@ -24,8 +24,8 @@ Add to your `.env` file or `.env.development`:
 
 ```bash
 # PayMongo Test API Keys (Frontend)
-VITE_PAYMONGO_SECRET_KEY=sk_test_your_secret_key_here
-VITE_PAYMONGO_PUBLIC_KEY=pk_test_your_public_key_here
+VITE_PAYMONGO_SECRET_KEY=sk_test_[REDACTED]_secret_key_here
+VITE_PAYMONGO_PUBLIC_KEY=pk_test_[REDACTED]_public_key_here
 ```
 
 ### Where to Get Your API Keys
@@ -208,7 +208,7 @@ Expected fields:
 
 **Solution:** Add environment variables to backend:
 ```bash
-PAYMONGO_SECRET_KEY=sk_test_your_key_here
+PAYMONGO_SECRET_KEY=sk_test_[REDACTED]_key_here
 ```
 
 ### Issue: Payment modal doesn't open
