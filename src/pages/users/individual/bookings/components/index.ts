@@ -3,6 +3,8 @@ export { BookingFilters } from './BookingFilters';
 export { default as BookingCard } from './BookingCard';
 export { BookingDetailsModal } from './BookingDetailsModal';
 export { QuoteDetailsModal } from './QuoteDetailsModal';
+export { QuoteConfirmationModal } from './QuoteConfirmationModal';
+export { ReceiptModal } from './ReceiptModal';
 export { VendorImage } from './VendorImage';
 export { ServiceImage } from './ServiceImage';
 export { EnhancedEventLocationMap } from './EnhancedEventLocationMap';

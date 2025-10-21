@@ -106,6 +106,59 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
       console.log('🔍 [QuoteModal] booking.vendor_notes:', (booking as any)?.vendor_notes);
       console.log('🔍 [QuoteModal] booking.serviceItems:', (booking as any)?.serviceItems);
       
+      // 🔥 PRIORITY 0: Check if booking already has pre-parsed serviceItems from mapping layer
+      const bookingServiceItems = (booking as any)?.serviceItems;
+      
+      if (bookingServiceItems && Array.isArray(bookingServiceItems) && bookingServiceItems.length > 0) {
+        console.log('✅ [QuoteModal] Found pre-parsed serviceItems array:', bookingServiceItems);
+        const transformedQuoteData: QuoteData = {
+          quoteNumber: `QT-${booking.id?.slice(-6)?.toUpperCase() || '000001'}`,
+          issueDate: new Date(booking.createdAt || Date.now()).toLocaleDateString(),
+          validUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+          serviceItems: bookingServiceItems.map((item: any, index: number) => ({
+            id: item.id || index + 1,
+            service: item.name || item.service,
+            description: item.description || '',
+            quantity: item.quantity || 1,
+            unitPrice: item.unitPrice || item.unit_price || 0,
+            total: item.total || (item.unitPrice * item.quantity)
+          })),
+          additionalCosts: [],
+          paymentTerms: {
+            downpayment: booking.downpaymentAmount || 0,
+            downpaymentPercentage: 30,
+            finalPayment: booking.remainingBalance || 0,
+            paymentSchedule: [
+              {
+                stage: 'Booking Confirmation',
+                percentage: 30,
+                amount: booking.downpaymentAmount || 0
+              },
+              {
+                stage: 'Final Payment',
+                percentage: 70,
+                amount: booking.remainingBalance || 0
+              }
+            ],
+            paymentMethods: ['Bank Transfer', 'GCash', 'PayMaya', 'Cash']
+          },
+          inclusions: [],
+          exclusions: [],
+          termsAndConditions: ['Standard wedding service terms apply'],
+          vendorContact: {
+            name: booking.vendorName || 'Vendor',
+            email: (booking as any).vendorEmail || 'vendor@example.com',
+            phone: (booking as any).vendorPhone || '+63 912 345 6789',
+            businessAddress: booking.eventLocation || 'Metro Manila'
+          }
+        };
+        
+        console.log('✅ [QuoteModal] Transformed quote data with', transformedQuoteData.serviceItems.length, 'service items from pre-parsed array');
+        setQuoteData(transformedQuoteData);
+        setLoading(false);
+        return;
+      }
+      
       // 🔥 PRIORITY 1: Check if booking has quote_itemization field (NEW DATABASE FIELD)
       const quoteItemization = (booking as any)?.quoteItemization || (booking as any)?.quote_itemization;
       
@@ -439,7 +492,88 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
     );
   }
 
-  if (!quoteData) return null;
+  // 🔥 EMERGENCY DEBUG: Always log render state
+  console.log('🚨 [QuoteModal RENDER CHECK]');
+  console.log('   - isOpen:', isOpen);
+  console.log('   - booking?.id:', booking?.id);
+  console.log('   - booking?.status:', booking?.status);
+  console.log('   - quoteData:', quoteData);
+  console.log('   - loading:', loading);
+  console.log('   - error:', error);
+
+  // Show an error message if quoteData is null instead of returning null
+  if (!quoteData && !loading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8">
+          <div className="flex items-center gap-3 mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+            <h2 className="text-2xl font-bold text-red-600">Quote Data Not Available</h2>
+          </div>
+          
+          <div className="space-y-3 mb-6">
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="text-sm text-gray-600">Booking ID:</p>
+              <p className="font-semibold">{booking?.id || 'N/A'}</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="text-sm text-gray-600">Status:</p>
+              <p className="font-semibold">{booking?.status || 'N/A'}</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="text-sm text-gray-600">Service:</p>
+              <p className="font-semibold">{(booking as any)?.serviceName || 'N/A'}</p>
+            </div>
+          </div>
+
+          <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mb-6">
+            <p className="font-semibold text-yellow-900 mb-2">🔍 Debug Information:</p>
+            <div className="text-sm space-y-1">
+              <p>• Has quote_itemization: {!!(booking as any)?.quote_itemization ? '✅ Yes' : '❌ No'}</p>
+              <p>• Has quoteItemization: {!!(booking as any)?.quoteItemization ? '✅ Yes' : '❌ No'}</p>
+              <p>• Has vendor_notes: {!!(booking as any)?.vendor_notes ? '✅ Yes' : '❌ No'}</p>
+              <p>• Has vendorNotes: {!!(booking as any)?.vendorNotes ? '✅ Yes' : '❌ No'}</p>
+              <p>• Error: {error || 'None'}</p>
+            </div>
+          </div>
+
+          <details className="mb-6">
+            <summary className="cursor-pointer font-semibold text-gray-700 hover:text-gray-900">
+              📋 Full Booking Object (Click to expand)
+            </summary>
+            <pre className="text-xs bg-gray-100 p-3 rounded overflow-auto mt-2 max-h-60">
+              {JSON.stringify(booking, null, 2)}
+            </pre>
+          </details>
+
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition-colors font-semibold"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                console.log('🔄 [QuoteModal] Manual refetch triggered');
+                fetchQuoteData();
+              }}
+              className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+            >
+              🔄 Retry
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-500 mt-4 text-center">
+            This debug screen helps identify why quote data is not loading. 
+            Check the browser console for detailed logs.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!quoteData) return null; // Only if loading
 
   // 🔥 DEBUG: Log what we're about to display
   console.log('🎨 [QuoteModal RENDER] About to display quoteData:', quoteData);

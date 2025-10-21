@@ -8,6 +8,7 @@ interface BookingActionsProps {
   onViewQuoteDetails?: (booking: Booking) => void;
   onPayDeposit?: (booking: Booking) => void;
   onPayBalance?: (booking: Booking) => void;
+  onPayFull?: (booking: Booking) => void;  // 🆕 Add full payment handler
 }
 
 export const BookingActions: React.FC<BookingActionsProps> = ({ 
@@ -16,7 +17,8 @@ export const BookingActions: React.FC<BookingActionsProps> = ({
   onBookingUpdate, 
   onViewQuoteDetails,
   onPayDeposit,
-  onPayBalance 
+  onPayBalance,
+  onPayFull  // 🆕 Add full payment handler
 }) => {
   const [loading, setLoading] = useState<string | null>(null);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
@@ -151,6 +153,13 @@ export const BookingActions: React.FC<BookingActionsProps> = ({
           color: 'bg-purple-500 hover:bg-purple-600',
           icon: '💳'
         });
+        // 🆕 Add full payment option
+        actions.push({ 
+          id: 'pay_full', 
+          label: 'Pay Full Amount', 
+          color: 'bg-green-500 hover:bg-green-600',
+          icon: '💰'
+        });
         break;
         
       case 'downpayment_paid':
@@ -207,6 +216,9 @@ export const BookingActions: React.FC<BookingActionsProps> = ({
               } else if (action.id === 'pay_balance') {
                 // Call parent handler for balance payment
                 onPayBalance?.(booking);
+              } else if (action.id === 'pay_full') {
+                // 🆕 Call parent handler for full payment
+                onPayFull?.(booking);
               } else if (action.id === 'reject-quote') {
                 setShowRejectModal(true);
               } else if (action.id === 'view-quote') {

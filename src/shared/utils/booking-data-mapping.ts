@@ -710,12 +710,46 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
     notesPrefix: booking.notes?.substring(0, 20) + '...'
   });
 
-  // 🔥 CRITICAL: Parse serviceItems from vendor_notes for itemized quote display
+  // 🔥 CRITICAL: Parse serviceItems from quote_itemization or vendor_notes for itemized quote display
   let serviceItems = undefined;
+  let quoteItemization = booking.quote_itemization || booking.quoteItemization;
   let vendorNotes = booking.vendor_notes || booking.vendorNotes;
   
-  if (vendorNotes) {
-    console.log('📋 [mapComprehensiveBookingToUI] Found vendor_notes for booking', booking.id, {
+  // PRIORITY 1: Try quote_itemization field first (NEW backend field)
+  if (quoteItemization) {
+    console.log('📋 [mapComprehensiveBookingToUI] Found quote_itemization for booking', booking.id, {
+      type: typeof quoteItemization,
+      preview: typeof quoteItemization === 'string' ? quoteItemization.substring(0, 100) : JSON.stringify(quoteItemization).substring(0, 100)
+    });
+    
+    try {
+      const parsed = typeof quoteItemization === 'string' ? JSON.parse(quoteItemization) : quoteItemization;
+      console.log('✅ [mapComprehensiveBookingToUI] Parsed quote_itemization:', {
+        hasServiceItems: !!parsed.serviceItems,
+        itemCount: parsed.serviceItems?.length,
+        keys: Object.keys(parsed)
+      });
+      
+      if (parsed.serviceItems && Array.isArray(parsed.serviceItems)) {
+        serviceItems = parsed.serviceItems.map((item: any) => ({
+          id: item.id,
+          name: item.name || item.service,
+          description: item.description,
+          category: item.category,
+          quantity: item.quantity || 1,
+          unitPrice: item.unitPrice || item.unit_price || 0,
+          total: item.total || ((item.unitPrice || item.unit_price || 0) * (item.quantity || 1))
+        }));
+        console.log('✅ [mapComprehensiveBookingToUI] Mapped', serviceItems.length, 'service items from quote_itemization');
+      }
+    } catch (error) {
+      console.error('❌ [mapComprehensiveBookingToUI] Failed to parse quote_itemization:', error);
+    }
+  }
+  
+  // PRIORITY 2: Fallback to vendor_notes if quote_itemization didn't work
+  if (!serviceItems && vendorNotes) {
+    console.log('📋 [mapComprehensiveBookingToUI] Falling back to vendor_notes for booking', booking.id, {
       length: vendorNotes.length,
       preview: vendorNotes.substring(0, 100)
     });
@@ -735,15 +769,17 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
           category: item.category,
           quantity: item.quantity || 1,
           unitPrice: item.unitPrice || item.unit_price || 0,
-          total: item.total || (item.unitPrice * item.quantity)
+          total: item.total || ((item.unitPrice || item.unit_price || 0) * (item.quantity || 1))
         }));
-        console.log('✅ [mapComprehensiveBookingToUI] Mapped', serviceItems.length, 'service items');
+        console.log('✅ [mapComprehensiveBookingToUI] Mapped', serviceItems.length, 'service items from vendor_notes');
       }
     } catch (error) {
       console.error('❌ [mapComprehensiveBookingToUI] Failed to parse vendor_notes:', error);
     }
-  } else {
-    console.warn('⚠️ [mapComprehensiveBookingToUI] No vendor_notes found for booking', booking.id);
+  }
+  
+  if (!serviceItems) {
+    console.warn('⚠️ [mapComprehensiveBookingToUI] No serviceItems found for booking', booking.id);
   }
 
   const mapped = {
@@ -773,8 +809,9 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
     paymentProgressPercentage,
     paymentCount: 0,
     
-    // 🔥 CRITICAL: Include vendor_notes and parsed serviceItems
+    // 🔥 CRITICAL: Include vendor_notes, quote_itemization, and parsed serviceItems
     vendorNotes,
+    quoteItemization,
     serviceItems,
     
     formatted: {

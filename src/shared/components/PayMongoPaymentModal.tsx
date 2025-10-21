@@ -390,47 +390,68 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
       }
 
       console.log('✅ Card payment processed successfully:', paymentResult);
-      setPaymentStep('success');
       
-      onPaymentSuccess({
-        payment: paymentResult,
-        paymentIntent: paymentResult.paymentIntent,
-        amount: amount,
-        currency: currency,
-        method: 'card',
-        status: 'succeeded',
-        transactionId: paymentResult.paymentId || `card_${Date.now()}`,
-        formattedAmount: formatAmount(amount)
-      });
+      // Store payment result for success screen display
+      if (paymentResult.paymentIntent) {
+        setPaymentIntent(paymentResult.paymentIntent as any);
+      }
+      if (paymentResult.paymentId) {
+        setSource({ 
+          id: paymentResult.paymentId,
+          status: 'succeeded'
+        } as PayMongoSource);
+      }
+      
+      // Show success screen (callback will be called when user clicks Continue)
+      setPaymentStep('success');
 
     } catch (error: any) {
       console.error('❌ Card payment error:', error);
       
-      // Enhanced error message handling
-      let friendlyErrorMessage = 'Card payment failed';
+      // Enhanced error message handling - User-friendly messages
+      let friendlyErrorMessage = 'We couldn\'t process your payment. Please try again.';
+      
       if (error.message) {
-        // Extract meaningful error messages from common PayMongo errors
-        if (error.message.includes('declined')) {
-          friendlyErrorMessage = 'Your card was declined. Please try a different card or contact your bank.';
-        } else if (error.message.includes('insufficient')) {
-          friendlyErrorMessage = 'Insufficient funds. Please use a different card.';
-        } else if (error.message.includes('invalid')) {
-          friendlyErrorMessage = 'Invalid card details. Please check your card information and try again.';
-        } else if (error.message.includes('expired')) {
+        const errorMsg = error.message.toLowerCase();
+        
+        // Handle specific error cases with friendly messages
+        if (errorMsg.includes('declined')) {
+          friendlyErrorMessage = 'Your card was declined. Please try a different payment method or contact your bank for assistance.';
+        } else if (errorMsg.includes('insufficient')) {
+          friendlyErrorMessage = 'Your card has insufficient funds. Please use a different card or payment method.';
+        } else if (errorMsg.includes('test card') || errorMsg.includes('testing')) {
+          // User-friendly message for test card errors (remove technical developer references)
+          friendlyErrorMessage = 'This card cannot be processed. Please use a valid credit or debit card.';
+        } else if (errorMsg.includes('invalid') && (errorMsg.includes('card') || errorMsg.includes('number'))) {
+          friendlyErrorMessage = 'Invalid card number. Please check your card details and try again.';
+        } else if (errorMsg.includes('expired')) {
           friendlyErrorMessage = 'Your card has expired. Please use a different card.';
-        } else if (error.message.includes('cvc') || error.message.includes('cvv')) {
-          friendlyErrorMessage = 'Invalid CVC/CVV code. Please check the security code on your card.';
-        } else if (error.message.includes('network') || error.message.includes('timeout')) {
-          friendlyErrorMessage = 'Network error. Please check your connection and try again.';
+        } else if (errorMsg.includes('cvc') || errorMsg.includes('cvv')) {
+          friendlyErrorMessage = 'Invalid security code (CVC). Please check the 3-digit code on the back of your card.';
+        } else if (errorMsg.includes('expiry') || errorMsg.includes('expiration')) {
+          friendlyErrorMessage = 'Invalid expiry date. Please check your card\'s expiration date.';
+        } else if (errorMsg.includes('network') || errorMsg.includes('timeout')) {
+          friendlyErrorMessage = 'Connection timeout. Please check your internet connection and try again.';
+        } else if (errorMsg.includes('blocked') || errorMsg.includes('restricted')) {
+          friendlyErrorMessage = 'This card is blocked or restricted. Please contact your bank or use a different card.';
+        } else if (errorMsg.includes('limit')) {
+          friendlyErrorMessage = 'Transaction limit exceeded. Please contact your bank or use a different card.';
+        } else if (errorMsg.includes('fraud') || errorMsg.includes('security')) {
+          friendlyErrorMessage = 'Payment blocked for security reasons. Please contact your bank or try a different payment method.';
+        } else if (errorMsg.includes('generic_decline')) {
+          friendlyErrorMessage = 'Your payment was declined. Please try a different card or payment method.';
         } else {
-          friendlyErrorMessage = error.message;
+          // For any other errors, show a generic friendly message
+          // Don't show raw technical errors to users
+          friendlyErrorMessage = 'We couldn\'t process your payment at this time. Please try again or use a different payment method.';
         }
       }
       
       console.error('🔴 Setting error state with message:', friendlyErrorMessage);
+      console.error('🔴 Original error:', error.message); // Log original for debugging
       setErrorMessage(friendlyErrorMessage);
       setPaymentStep('error');
-      onPaymentError(friendlyErrorMessage);
+      // Don't call error callback here - let user see the error and decide to retry or close
     } finally {
       setLoading(false);
     }
@@ -543,27 +564,13 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
         setTimeout(() => {
           console.log('🎉 [DEMO PAYMENT] Payment simulation completed successfully!');
           
-          const demoPaymentData = {
-            source_id: `demo_${booking.id}_${Date.now()}`,
-            payment_id: `demo_payment_${Date.now()}`,
-            amount: amount,
-            currency: currency,
-            status: 'succeeded',
-            payment_method: 'demo_payment',
-            original_currency: currency,
-            original_amount: amount,
-            display_amount: formatAmount(amount),
-            transaction_id: `demo_txn_${Date.now()}`,
-            method: 'demo',
-            formattedAmount: formatAmount(amount)
-          };
+          // Store demo payment data
+          setSource({
+            id: `demo_${booking.id}_${Date.now()}`,
+            status: 'succeeded'
+          } as PayMongoSource);
           
-          console.log('🧪 [DEMO PAYMENT] Calling success handler with data:', demoPaymentData);
-          
-          // Call the success handler
-          onPaymentSuccess(demoPaymentData);
-          
-          // Set success state
+          // Set success state (callback will be called when user clicks Continue)
           setPaymentStep('success');
         }, 2000); // 2 second delay to simulate processing
         
@@ -649,19 +656,15 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
           } else {
             // Simulated payment - mark as success
             console.log(`✅ ${selectedMethod} payment simulation completed successfully`);
-            setPaymentStep('success');
             
-            onPaymentSuccess({
-              payment: result,
-              paymentIntent: result.paymentIntent,
-              amount: amount,
-              currency: currency,
-              method: selectedMethod,
-              status: 'succeeded',
-              transactionId: result.paymentId,
-              formattedAmount: formatAmount(amount),
-              sourceId: result.sourceId
-            });
+            // Store source data for success screen
+            setSource({
+              id: result.sourceId || `${selectedMethod}_${Date.now()}`,
+              status: 'succeeded'
+            } as PayMongoSource);
+            
+            // Show success screen (callback will be called when user clicks Continue)
+            setPaymentStep('success');
             
             return;
           }
@@ -673,15 +676,14 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
       }
 
     } catch (error: any) {
-      console.error('� Payment processing error:', error);
+      console.error('❌ Payment processing error:', error);
       
       const errorMessage = error instanceof Error ? error.message : 'Payment processing failed';
       setErrorMessage(errorMessage);
       setPaymentStep('error');
       setLoading(false);
       
-      // Call error handler
-      onPaymentError(errorMessage);
+      // Don't call error callback here - let user see the error and decide to retry or close
     }
   };
 
@@ -1555,7 +1557,27 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.7 }}
                       onClick={() => {
-                        console.log('🎉 Payment completed, closing modal (success callback already called)');
+                        console.log('🎉 User confirmed successful payment, calling callback and closing modal');
+                        
+                        // Call success callback with payment data
+                        onPaymentSuccess({
+                          payment: {
+                            id: paymentIntent?.id || source?.id,
+                            status: 'succeeded',
+                            amount: amount,
+                            currency: currency
+                          },
+                          paymentIntent: paymentIntent,
+                          amount: amount,
+                          currency: currency,
+                          method: selectedMethod || 'card',
+                          status: 'succeeded',
+                          transactionId: paymentIntent?.id || source?.id || `txn_${Date.now()}`,
+                          formattedAmount: formatAmount(amount),
+                          sourceId: source?.id
+                        });
+                        
+                        // Close modal after callback
                         handleClose();
                       }}
                       className="w-full px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-semibold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
@@ -1605,12 +1627,12 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.6 }}
-                        className="bg-red-50 border border-red-200 rounded-xl p-4 mb-8"
+                        className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8 text-center"
                       >
-                        <div className="flex items-center gap-3">
-                          <XCircle className="h-5 w-5 text-red-600" />
+                        <div className="flex flex-col items-center gap-3">
+                          <XCircle className="h-6 w-6 text-red-600" />
                           <div className="text-sm text-red-800">
-                            <div className="font-semibold">Error Details</div>
+                            <div className="font-semibold mb-2">Error Details</div>
                             <div>{errorMessage}</div>
                           </div>
                         </div>
@@ -1624,13 +1646,19 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                       className="flex gap-4"
                     >
                       <button
-                        onClick={onClose}
+                        onClick={() => {
+                          console.log('❌ User acknowledged payment failure, calling error callback');
+                          // Call error callback when user closes after seeing error
+                          onPaymentError(errorMessage || 'Payment failed');
+                          onClose();
+                        }}
                         className="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all duration-200 font-semibold"
                       >
-                        Cancel
+                        Close
                       </button>
                       <button
                         onClick={() => {
+                          console.log('🔄 User chose to retry payment');
                           setPaymentStep('select');
                           setErrorMessage('');
                           setSelectedMethod('');

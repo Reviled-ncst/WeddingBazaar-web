@@ -627,12 +627,33 @@ router.post('/process', async (req, res) => {
         });
     }
 
-    // Update booking status
+    // Calculate new payment amounts after this payment
+    const newTotalPaid = totalPaid + amount;
+    const newRemainingBalance = totalAmount - newTotalPaid;
+    const paymentProgress = Math.round((newTotalPaid / totalAmount) * 100);
+
+    console.log(`💰 [PAYMENT AMOUNTS] Calculating:`, {
+      previousTotalPaid: totalPaid,
+      paymentAmount: amount,
+      newTotalPaid: newTotalPaid,
+      totalAmount: totalAmount,
+      newRemainingBalance: newRemainingBalance,
+      paymentProgress: `${paymentProgress}%`
+    });
+
+    // Update booking status WITH PAYMENT AMOUNTS
     const updatedBooking = await sql`
       UPDATE bookings
       SET 
         status = ${newStatus},
         notes = ${`${paymentType.toUpperCase()}_PAID: Payment of ₱${amount / 100} received via ${paymentMethod}`},
+        downpayment_amount = ${paymentType === 'deposit' ? amount : sql`downpayment_amount`},
+        total_paid = ${newTotalPaid},
+        remaining_balance = ${newRemainingBalance},
+        payment_progress = ${paymentProgress},
+        last_payment_date = NOW(),
+        payment_method = ${paymentMethod},
+        transaction_id = ${paymentReference},
         updated_at = NOW()
       WHERE id = ${bookingId}
       RETURNING *
@@ -641,6 +662,11 @@ router.post('/process', async (req, res) => {
     console.log(`✅ [PROCESS-PAYMENT] Payment processed successfully`);
     console.log(`✅ [PROCESS-PAYMENT] Receipt: ${receipt.receipt_number}`);
     console.log(`✅ [PROCESS-PAYMENT] Status: ${booking.status} -> ${newStatus}`);
+    console.log(`💰 [PROCESS-PAYMENT] Amounts updated:`, {
+      total_paid: updatedBooking[0].total_paid,
+      remaining_balance: updatedBooking[0].remaining_balance,
+      payment_progress: updatedBooking[0].payment_progress
+    });
 
     res.json({
       success: true,
