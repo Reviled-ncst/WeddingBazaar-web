@@ -230,6 +230,14 @@ router.get('/:id', async (req, res) => {
     console.log(`📊 Service vendor_id: ${service.vendor_id}`);
     console.log(`📊 Service vendor_id: ${service.vendor_id}`);
     
+    // TEMP: Return immediately to test if vendor/review queries are causing the issue
+    return res.json({
+      success: true,
+      service: service,
+      _debug: 'Early return for testing',
+      timestamp: new Date().toISOString()
+    });
+    
     // Enrich with vendor information
     if (service.vendor_id) {
       console.log(`🏪 Fetching vendor data for: ${service.vendor_id}`);
