@@ -435,6 +435,9 @@ class AvailabilityService {
     const bookingVendorId = this.mapVendorIdForBookings(vendorId);
 
     console.log('📊 [AvailabilityService] Making bulk API calls...');
+    console.log('🔧 [AvailabilityService] Original vendor ID:', vendorId);
+    console.log('🔧 [AvailabilityService] Mapped vendor ID:', bookingVendorId);
+    console.log('🔧 [AvailabilityService] API URL:', `${this.apiUrl}/api/bookings/vendor/${bookingVendorId}`);
 
     try {
       // Parallel API calls for efficiency
@@ -457,10 +460,16 @@ class AvailabilityService {
       // Process bookings response
       if (bookingsResponse.ok) {
         const bookingsData = await bookingsResponse.json();
+        console.log('📡 [AvailabilityService] Raw bookings API response:', bookingsData);
         bookings = bookingsData.bookings || bookingsData || [];
         console.log('📅 [AvailabilityService] Retrieved', bookings.length, 'bookings for date range');
+        if (bookings.length > 0) {
+          console.log('📋 [AvailabilityService] Sample booking:', bookings[0]);
+        }
       } else {
         console.warn('⚠️ [AvailabilityService] Bookings API failed:', bookingsResponse.status);
+        const errorText = await bookingsResponse.text();
+        console.warn('⚠️ [AvailabilityService] Error response:', errorText);
       }
 
       // Process off days response

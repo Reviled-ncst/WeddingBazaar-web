@@ -25,10 +25,13 @@ router.get('/vendor/:vendorId', async (req, res) => {
       });
     }
     
-    const { page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    const { page = 1, limit = 10, status, sortBy = 'created_at', sortOrder = 'desc', startDate, endDate } = req.query;
     const offset = (page - 1) * limit;
     
     console.log(`🔍 SECURE: Searching for bookings with exact vendor_id: "${requestedVendorId}"`);
+    if (startDate || endDate) {
+      console.log(`📅 Date range filter: ${startDate || 'any'} to ${endDate || 'any'}`);
+    }
     
     // SECURITY FIX: Only search for exact vendor ID match, no legacy fallback
     let query = `
@@ -36,6 +39,16 @@ router.get('/vendor/:vendorId', async (req, res) => {
       WHERE vendor_id = $1
     `;
     let params = [requestedVendorId];
+    
+    // Add date range filtering if provided
+    if (startDate) {
+      query += ` AND event_date >= $${params.length + 1}`;
+      params.push(startDate);
+    }
+    if (endDate) {
+      query += ` AND event_date <= $${params.length + 1}`;
+      params.push(endDate);
+    }
     
     if (status && status !== 'all') {
       query += ` AND status = $${params.length + 1}`;
