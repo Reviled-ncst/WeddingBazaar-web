@@ -6,11 +6,18 @@
  */
 
 const { neon } = require('@neondatabase/serverless');
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, 'backend-deploy', '.env') });
+// Uses DATABASE_URL from environment variables (set in Render dashboard)
 
 async function addPaymentTrackingColumns() {
-  const sql = neon(process.env.DATABASE_URL);
+  const DATABASE_URL = process.env.DATABASE_URL;
+  
+  if (!DATABASE_URL || DATABASE_URL === 'postgresql://[your-database-url]') {
+    console.error('❌ DATABASE_URL environment variable is not set or is a placeholder');
+    console.error('Make sure DATABASE_URL is configured in your Render environment variables');
+    process.exit(1);
+  }
+
+  const sql = neon(DATABASE_URL);
 
   console.log('🔧 Adding payment tracking columns to bookings table...\n');
 
