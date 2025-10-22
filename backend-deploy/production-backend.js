@@ -66,7 +66,7 @@ app.get('/api/health', async (req, res) => {
         error: ''
       },
       environment: process.env.NODE_ENV || 'production',
-      version: '2.7.0-SQL-FIX-DEPLOYED',
+      version: '2.7.1-PUBLIC-SERVICE-DEBUG',
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       endpoints: {
@@ -91,12 +91,36 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// TEST: Direct service fetch endpoint (no route parameters)
+app.get('/api/test-service-direct', async (req, res) => {
+  try {
+    const { sql } = require('./config/database.cjs');
+    const services = await sql`SELECT * FROM services WHERE id = 'SRV-0001'`;
+    
+    if (services.length === 0) {
+      return res.json({ success: false, message: 'Service not found', tested: 'SRV-0001' });
+    }
+    
+    res.json({
+      success: true,
+      service: services[0],
+      message: 'Direct query successful'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // Ping endpoint
 app.get('/api/ping', (req, res) => {
   res.json({ 
     success: true, 
     message: 'Wedding Bazaar Backend is running - Modular Architecture',
-    version: '2.7.0-SQL-FIX-DEPLOYED',
+    version: '2.7.1-PUBLIC-SERVICE-DEBUG',
     timestamp: new Date().toISOString()
   });
 });
