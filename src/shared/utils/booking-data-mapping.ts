@@ -36,6 +36,15 @@ export interface DatabaseBooking {
   response_message?: string;
   created_at: string;
   updated_at: string;
+  // Payment tracking columns
+  amount?: string; // Total booking amount (numeric as string)
+  total_paid?: string; // Total amount paid so far (numeric as string)
+  remaining_balance?: string; // Remaining balance to be paid (numeric as string)
+  downpayment_amount?: string; // Downpayment amount (numeric as string)
+  payment_progress?: string; // Payment progress percentage (numeric as string)
+  last_payment_date?: string; // Last payment timestamp
+  payment_method?: string; // Payment method used
+  transaction_id?: string; // Transaction/payment intent ID
 }
 
 // API response format (camelCase)
@@ -309,11 +318,28 @@ export function mapDatabaseBookingToUI(dbBooking: DatabaseBooking): UIBooking {
   }
 
   // NOW calculate amounts using extracted quote prices if available
-  const totalAmount = quotedTotal || parseFloat(dbBooking.total_amount || '0');
-  const depositAmount = quotedDeposit || parseFloat(dbBooking.deposit_amount || '0');
-  const totalPaid = depositAmount; // Assume only deposit is paid initially
-  const remainingBalance = totalAmount - totalPaid;
+  // CRITICAL FIX: Use actual payment tracking columns from database instead of assumptions
+  const totalAmount = quotedTotal || parseFloat(dbBooking.amount || dbBooking.quoted_price || dbBooking.total_amount || '0');
+  const depositAmount = quotedDeposit || parseFloat(dbBooking.downpayment_amount || dbBooking.deposit_amount || '0');
+  
+  // Use actual total_paid and remaining_balance from database (updated after payments)
+  const totalPaid = parseFloat(dbBooking.total_paid || '0');
+  const remainingBalance = parseFloat(dbBooking.remaining_balance || (totalAmount - totalPaid).toString());
   const paymentProgressPercentage = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
+
+  console.log('💰 [BookingMapping] Payment calculations:', {
+    totalAmount,
+    depositAmount,
+    totalPaid,
+    remainingBalance,
+    paymentProgressPercentage,
+    source: {
+      amount: dbBooking.amount,
+      total_paid: dbBooking.total_paid,
+      remaining_balance: dbBooking.remaining_balance,
+      downpayment_amount: dbBooking.downpayment_amount
+    }
+  });
 
   // Format event date and time
   const formattedEventDate = new Date(dbBooking.event_date).toLocaleDateString('en-US', {

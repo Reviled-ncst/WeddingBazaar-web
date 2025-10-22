@@ -1,9 +1,55 @@
-# 🧾 Receipt Generation Fix - ROOT CAUSE FOUND
+# 🧾 Receipt Generation Fix - FINAL FIX APPLIED ✅
 
-**Date**: October 21, 2025  
-**Status**: ✅ **FIX APPLIED - READY FOR DEPLOYMENT**
+**Date**: January 10, 2025  
+**Latest Update**: 11:45 PM - Manual Status Update Fix
+**Deployed Commit**: `86b6bf6`
+**Status**: ✅ **ALL FIXES DEPLOYED - TESTING IN PROGRESS**
 
-## 🔍 Root Cause Identified
+## 🆕 NEW FIX: Manual Status Update Receipt Error (Jan 10, 2025)
+
+### Issue Discovered
+When booking status was manually updated to `fully_paid` or `deposit_paid` via the Vendor Dashboard, the system attempted to auto-generate receipts but failed with:
+```
+❌ [PAYMENT UPDATE] Receipt generation error: Error: Missing required fields for receipt creation
+```
+
+### Root Cause
+The booking status update endpoint (`PATCH /api/bookings/:id/status`) was incorrectly trying to create receipts automatically when status changed to payment-related statuses, but it lacked the required payment data (coupleId, amountPaid, paymentMethod, paymentReference).
+
+### Solution Applied
+**File**: `backend-deploy/routes/bookings.cjs` (lines ~1040-1045)
+
+**Changed from**:
+```javascript
+// OLD CODE - Attempted auto-receipt generation
+if (status === 'deposit_paid' || status === 'fully_paid') {
+  try {
+    await createDepositReceipt(...);  // ❌ Missing required data
+    await createFullPaymentReceipt(...);  // ❌ Missing required data
+  } catch (receiptError) {
+    console.error('❌ Receipt generation error:', receiptError);
+  }
+}
+```
+
+**Changed to**:
+```javascript
+// NEW CODE - Just log info
+if (status === 'deposit_paid' || status === 'fully_paid') {
+  console.log('ℹ️ [STATUS UPDATE] Payment status updated. Receipt should be created via payment flow.');
+}
+```
+
+### Key Principle
+**Receipts should ONLY be created during actual payment processing** through:
+- `POST /api/payment/process` (card payments)
+- `POST /api/payment/create-source` → `POST /api/payment/process` (e-wallet payments)
+
+Manual status updates should NOT attempt receipt generation.
+
+---
+
+## 🔍 Original Root Cause (Fixed Previously)
 
 ### The Problem:
 **Payments were NOT creating receipts** because the frontend was calling the **wrong endpoint**.

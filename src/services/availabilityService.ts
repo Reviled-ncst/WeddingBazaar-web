@@ -57,8 +57,8 @@ class AvailabilityService {
   /**
    * Generate cache key for availability requests
    */
-  private getCacheKey(vendorId: string, startDate: string, endDate: string): string {
-    return `${vendorId}_${startDate}_${endDate}`;
+  private getCacheKey(vendorId: string, startDate: string, endDate: string, serviceId?: string): string {
+    return serviceId ? `${vendorId}_${serviceId}_${startDate}_${endDate}` : `${vendorId}_${startDate}_${endDate}`;
   }
 
   /**
@@ -71,8 +71,8 @@ class AvailabilityService {
   /**
    * Get cached availability data if valid
    */
-  private getCachedData(vendorId: string, startDate: string, endDate: string): Map<string, AvailabilityCheck> | null {
-    const cacheKey = this.getCacheKey(vendorId, startDate, endDate);
+  private getCachedData(vendorId: string, startDate: string, endDate: string, serviceId?: string): Map<string, AvailabilityCheck> | null {
+    const cacheKey = this.getCacheKey(vendorId, startDate, endDate, serviceId);
     const cached = this.cache.get(cacheKey);
     
     if (cached && this.isCacheValid(cached.timestamp)) {
@@ -91,8 +91,8 @@ class AvailabilityService {
   /**
    * Cache availability data
    */
-  private setCachedData(vendorId: string, startDate: string, endDate: string, data: Map<string, AvailabilityCheck>): void {
-    const cacheKey = this.getCacheKey(vendorId, startDate, endDate);
+  private setCachedData(vendorId: string, startDate: string, endDate: string, data: Map<string, AvailabilityCheck>, serviceId?: string): void {
+    const cacheKey = this.getCacheKey(vendorId, startDate, endDate, serviceId);
     this.cache.set(cacheKey, {
       data: new Map(data), // Store a copy
       timestamp: Date.now()
@@ -159,13 +159,9 @@ class AvailabilityService {
    * The services use "2-2025-XXX" format but bookings use "2" format
    */
   private mapVendorIdForBookings(vendorId: string): string {
-    // If vendor ID starts with "2-2025-", map it to "2" where the booking data exists
-    if (vendorId.startsWith('2-2025-')) {
-      silent.info(`🔧 [AvailabilityService] Mapping vendor ID ${vendorId} -> 2 for booking data`);
-      return '2';
-    }
-    
-    // For other vendor IDs, return as-is
+    // Return vendor ID as-is - bookings in database use full vendor ID format
+    // No mapping needed (e.g., "2-2025-001" should stay as "2-2025-001")
+    silent.info(`🔧 [AvailabilityService] Using vendor ID: ${vendorId} (no mapping)`);
     return vendorId;
   }
 
@@ -352,12 +348,12 @@ class AvailabilityService {
    * Check availability for a date range - OPTIMIZED VERSION with CACHING & DEDUPLICATION
    * Makes bulk API calls instead of individual date checks and caches results
    */
-  async checkAvailabilityRange(vendorId: string, startDate: string, endDate: string): Promise<Map<string, AvailabilityCheck>> {
-    const cacheKey = this.getCacheKey(vendorId, startDate, endDate);
-    console.log('🚀 [AvailabilityService] Availability check request:', { vendorId, startDate, endDate, cacheKey });
+  async checkAvailabilityRange(vendorId: string, startDate: string, endDate: string, serviceId?: string): Promise<Map<string, AvailabilityCheck>> {
+    const cacheKey = this.getCacheKey(vendorId, startDate, endDate, serviceId);
+    console.log('🚀 [AvailabilityService] Availability check request:', { vendorId, serviceId, startDate, endDate, cacheKey });
 
     // Check cache first
-    const cached = this.getCachedData(vendorId, startDate, endDate);
+    const cached = this.getCachedData(vendorId, startDate, endDate, serviceId);
     if (cached) {
       console.log('⚡ [AvailabilityService] Returning cached results for', cached.size, 'dates');
       return cached;
@@ -370,7 +366,7 @@ class AvailabilityService {
     }
 
     // Create new request
-    const requestPromise = this.performAvailabilityCheck(vendorId, startDate, endDate);
+    const requestPromise = this.performAvailabilityCheck(vendorId, startDate, endDate, serviceId);
     this.ongoingRequests.set(cacheKey, requestPromise);
 
     try {
@@ -385,13 +381,13 @@ class AvailabilityService {
   /**
    * Perform the actual availability check (separated for deduplication)
    */
-  private async performAvailabilityCheck(vendorId: string, startDate: string, endDate: string): Promise<Map<string, AvailabilityCheck>> {
+  private async performAvailabilityCheck(vendorId: string, startDate: string, endDate: string, serviceId?: string): Promise<Map<string, AvailabilityCheck>> {
     const availabilityMap = new Map<string, AvailabilityCheck>();
     const dates = this.generateDateRange(startDate, endDate);
 
     try {
       // Bulk check using existing booking API - much more efficient
-      const bulkResults = await this.checkAvailabilityBulk(vendorId, startDate, endDate);
+      const bulkResults = await this.checkAvailabilityBulk(vendorId, startDate, endDate, serviceId);
       
       // Process results for each date
       for (const date of dates) {
@@ -415,7 +411,7 @@ class AvailabilityService {
       console.log('✅ [AvailabilityService] Bulk check completed:', availabilityMap.size, 'dates processed');
       
       // Cache the results
-      this.setCachedData(vendorId, startDate, endDate, availabilityMap);
+      this.setCachedData(vendorId, startDate, endDate, availabilityMap, serviceId);
       
       return availabilityMap;
       
@@ -423,34 +419,54 @@ class AvailabilityService {
       console.error('❌ [AvailabilityService] Bulk check failed, falling back to individual checks:', error);
       
       // Fallback to individual checks only if bulk fails
-      return await this.checkAvailabilityRangeFallback(vendorId, dates);
+      return await this.checkAvailabilityRangeFallback(vendorId, dates, serviceId);
     }
   }
 
   /**
    * Optimized bulk availability check using existing API endpoints
    */
-  private async checkAvailabilityBulk(vendorId: string, startDate: string, endDate: string): Promise<Map<string, AvailabilityCheck>> {
+  private async checkAvailabilityBulk(vendorId: string, startDate: string, endDate: string, serviceId?: string): Promise<Map<string, AvailabilityCheck>> {
     const availabilityMap = new Map<string, AvailabilityCheck>();
     const bookingVendorId = this.mapVendorIdForBookings(vendorId);
 
     console.log('📊 [AvailabilityService] Making bulk API calls...');
     console.log('🔧 [AvailabilityService] Original vendor ID:', vendorId);
     console.log('🔧 [AvailabilityService] Mapped vendor ID:', bookingVendorId);
+    console.log('🔧 [AvailabilityService] Service ID (filter):', serviceId || 'ALL SERVICES');
     console.log('🔧 [AvailabilityService] API URL:', `${this.apiUrl}/api/bookings/vendor/${bookingVendorId}`);
 
     try {
+      // CRITICAL: Log the EXACT fetch URL being called
+      const bookingsUrl = `${this.apiUrl}/api/bookings/vendor/${bookingVendorId}?startDate=${startDate}&endDate=${endDate}`;
+      const offDaysUrl = `${this.apiUrl}/api/vendors/${vendorId}/off-days`;
+      
+      console.log('🌐 [AvailabilityService] 🚨 FETCHING BOOKINGS FROM:', bookingsUrl);
+      console.log('🌐 [AvailabilityService] 🚨 FETCHING OFF-DAYS FROM:', offDaysUrl);
+      
       // Parallel API calls for efficiency
       const [bookingsResponse, offDaysResponse] = await Promise.all([
         // Get all bookings for vendor in date range
-        fetch(`${this.apiUrl}/api/bookings/vendor/${bookingVendorId}?startDate=${startDate}&endDate=${endDate}`, {
+        fetch(bookingsUrl, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
+        }).then(response => {
+          console.log('📡 [AvailabilityService] 🚨 BOOKINGS FETCH COMPLETED:', response.status, response.statusText);
+          return response;
+        }).catch(error => {
+          console.error('❌ [AvailabilityService] 🚨 BOOKINGS FETCH FAILED:', error);
+          throw error;
         }),
         // Get all off days for vendor
-        fetch(`${this.apiUrl}/api/vendors/${vendorId}/off-days`, {
+        fetch(offDaysUrl, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
+        }).then(response => {
+          console.log('📡 [AvailabilityService] 🚨 OFF-DAYS FETCH COMPLETED:', response.status, response.statusText);
+          return response;
+        }).catch(error => {
+          console.error('❌ [AvailabilityService] 🚨 OFF-DAYS FETCH FAILED:', error);
+          throw error;
         })
       ]);
 
@@ -484,9 +500,15 @@ class AvailabilityService {
       // Build availability map efficiently
       const dates = this.generateDateRange(startDate, endDate);
       
-      // Create booking count map
+      // Create booking count map (filter by serviceId if provided)
       const bookingsByDate = new Map<string, any[]>();
       bookings.forEach((booking: any) => {
+        // SERVICE-SPECIFIC FILTERING: Only include bookings for this specific service
+        if (serviceId && booking.service_id !== serviceId) {
+          console.log('🔍 [AvailabilityService] Skipping booking for different service:', booking.service_id, '!==', serviceId);
+          return; // Skip bookings for other services
+        }
+        
         const bookingDate = booking.event_date || booking.eventDate;
         if (bookingDate) {
           const dateKey = bookingDate.split('T')[0]; // Extract YYYY-MM-DD
@@ -494,8 +516,12 @@ class AvailabilityService {
             bookingsByDate.set(dateKey, []);
           }
           bookingsByDate.get(dateKey)!.push(booking);
+          console.log('📅 [AvailabilityService] Added booking for date:', dateKey, 'service:', booking.service_id);
         }
       });
+      
+      console.log('🎯 [AvailabilityService] Service filter:', serviceId ? `ONLY service ${serviceId}` : 'ALL SERVICES');
+      console.log('📊 [AvailabilityService] Bookings by date after filter:', bookingsByDate.size, 'dates with bookings');
 
       // Create off days set
       const offDayDates = new Set<string>();
@@ -581,10 +607,11 @@ class AvailabilityService {
   /**
    * Fallback method - individual checks (only used if bulk fails)
    */
-  private async checkAvailabilityRangeFallback(vendorId: string, dates: string[]): Promise<Map<string, AvailabilityCheck>> {
+  private async checkAvailabilityRangeFallback(vendorId: string, dates: string[], serviceId?: string): Promise<Map<string, AvailabilityCheck>> {
     const availabilityMap = new Map<string, AvailabilityCheck>();
     
     console.log('⚠️ [AvailabilityService] Using fallback individual checks for', dates.length, 'dates');
+    console.log('🎯 [AvailabilityService] Service filter:', serviceId ? `service ${serviceId}` : 'ALL SERVICES');
 
     // Limit to prevent API overload
     const limitedDates = dates.slice(0, 10);

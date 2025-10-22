@@ -58,24 +58,24 @@ const getUserLandingPage = (role?: string, user?: any): string => {
   // ROLE MAPPING FIX: Handle backend role inconsistencies
   let normalizedRole = role;
   
-  // Enhanced vendor detection with detailed logging
+  // Enhanced vendor detection with detailed logging - ONLY use SOLID vendor indicators
   const hasBusinessName = !!user?.businessName;
   const hasVendorId = !!user?.vendorId;
   const hasVendorIdPattern = user?.id && user.id.startsWith('2-2025-');
-  const hasVendorEmailPattern = user?.email && (
-    user.email.includes('vendor') || 
-    user.email.includes('business') || 
-    user.email.includes('company')
-  );
-  const isVendorByProperties = hasBusinessName || hasVendorId || hasVendorIdPattern || hasVendorEmailPattern;
+  
+  // REMOVED: Email pattern check - users can have any email regardless of role
+  // const hasVendorEmailPattern = user?.email && (user.email.includes('vendor') || ...)
+  
+  const isVendorByProperties = hasBusinessName || hasVendorId || hasVendorIdPattern;
   
   console.log('🔍 Vendor detection analysis:', {
     originalRole: role,
     hasBusinessName,
     hasVendorId,
     hasVendorIdPattern,
-    hasVendorEmailPattern,
-    isVendorByProperties
+    isVendorByProperties,
+    userId: user?.id,
+    email: user?.email
   });
   
   // If user has vendor-like properties, treat as vendor regardless of role

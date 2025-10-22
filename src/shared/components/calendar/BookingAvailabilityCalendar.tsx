@@ -15,6 +15,7 @@ import { cn } from '../../../utils/cn';
 
 interface BookingAvailabilityCalendarProps {
   vendorId?: string;
+  serviceId?: string;  // NEW: For service-specific availability
   selectedDate?: string;
   onDateSelect?: (date: string, availability: AvailabilityCheck) => void;
   minDate?: string;
@@ -33,6 +34,7 @@ interface CalendarDay {
 
 export const BookingAvailabilityCalendar: React.FC<BookingAvailabilityCalendarProps> = ({
   vendorId,
+  serviceId,  // NEW: Accept serviceId prop
   selectedDate,
   onDateSelect,
   minDate,
@@ -94,9 +96,9 @@ export const BookingAvailabilityCalendar: React.FC<BookingAvailabilityCalendarPr
       const startStr = calendarStartDate.toISOString().split('T')[0];
       const endStr = calendarEndDate.toISOString().split('T')[0];
       
-      console.log('📅 [BookingCalendar] Loading availability for:', { vendorId, startStr, endStr });
+      console.log('📅 [BookingCalendar] Loading availability for:', { vendorId, serviceId, startStr, endStr });
       
-      const availabilityMap = await availabilityService.checkAvailabilityRange(vendorId, startStr, endStr);
+      const availabilityMap = await availabilityService.checkAvailabilityRange(vendorId, startStr, endStr, serviceId);
       setAvailabilityData(availabilityMap);
       
       console.log('✅ [BookingCalendar] Loaded availability for', availabilityMap.size, 'dates');
@@ -204,8 +206,22 @@ export const BookingAvailabilityCalendar: React.FC<BookingAvailabilityCalendarPr
   const handleDateClick = (day: CalendarDay) => {
     if (day.isPast || !day.isCurrentMonth) return;
     
-    if (day.availability && onDateSelect) {
-      onDateSelect(day.date, day.availability);
+    // If availability data exists but the date is unavailable, don't allow selection
+    if (day.availability && !day.availability.isAvailable) return;
+    
+    // If no availability data yet, treat as available and allow selection
+    const availability: AvailabilityCheck = day.availability || {
+      date: day.date,
+      vendorId: vendorId || '',
+      isAvailable: true,
+      currentBookings: 0,
+      maxBookingsPerDay: 1,
+      reason: undefined,
+      bookingStatus: 'available' as const
+    };
+    
+    if (onDateSelect) {
+      onDateSelect(day.date, availability);
     }
   };
 
@@ -285,14 +301,14 @@ export const BookingAvailabilityCalendar: React.FC<BookingAvailabilityCalendarPr
                 key={`${day.date}-${index}`}
                 type="button"
                 onClick={() => handleDateClick(day)}
-                disabled={day.isPast || !day.isCurrentMonth || !day.availability?.isAvailable}
+                disabled={day.isPast || !day.isCurrentMonth || (day.availability && !day.availability.isAvailable)}
                 whileHover={
-                  day.isCurrentMonth && !day.isPast && day.availability?.isAvailable
+                  day.isCurrentMonth && !day.isPast && (!day.availability || day.availability.isAvailable)
                     ? { scale: 1.05 }
                     : {}
                 }
                 whileTap={
-                  day.isCurrentMonth && !day.isPast && day.availability?.isAvailable
+                  day.isCurrentMonth && !day.isPast && (!day.availability || day.availability.isAvailable)
                     ? { scale: 0.95 }
                     : {}
                 }
@@ -302,7 +318,7 @@ export const BookingAvailabilityCalendar: React.FC<BookingAvailabilityCalendarPr
                   day.isSelected ? "ring-2 ring-blue-500 ring-offset-1" : "",
                   day.isToday ? "border-blue-300" : "border-transparent",
                   status.color,
-                  day.isCurrentMonth && !day.isPast && day.availability?.isAvailable
+                  day.isCurrentMonth && !day.isPast && (!day.availability || day.availability.isAvailable)
                     ? "cursor-pointer hover:shadow-md"
                     : "cursor-not-allowed"
                 )}

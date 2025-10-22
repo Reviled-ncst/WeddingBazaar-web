@@ -1608,6 +1608,7 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
                   <div className="mb-4">
                     <BookingAvailabilityCalendar
                       vendorId={service?.vendorId}
+                      serviceId={service?.id}
                       selectedDate={formData.eventDate}
                       onDateSelect={(date, availability) => {
                         handleInputChange('eventDate', date);

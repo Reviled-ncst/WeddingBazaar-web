@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -10,12 +10,13 @@ import {
   Settings,
   BarChart3,
   MessageSquare,
-  FileText,
   DollarSign,
   ChevronLeft,
   ChevronRight,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 
 interface NavItem {
   label: string;
@@ -89,12 +90,19 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   onToggleCollapse,
 }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const isActive = (href: string) => {
     if (href === '/admin') {
       return location.pathname === href;
     }
     return location.pathname.startsWith(href);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
   };
 
   return (
@@ -118,39 +126,60 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       </button>
 
       {/* Navigation */}
-      <nav className="p-4 space-y-1 overflow-y-auto h-full" aria-label="Admin navigation">
-        {navigationItems.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.href);
+      <nav className="p-4 flex flex-col h-full overflow-hidden" aria-label="Admin navigation">
+        {/* Main Navigation Items */}
+        <div className="space-y-1 flex-1 overflow-y-auto">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
 
-          return (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all duration-200',
-                'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-                active
-                  ? 'bg-blue-50 text-blue-700 shadow-sm'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900',
-                collapsed && 'justify-center'
-              )}
-              aria-current={active ? 'page' : undefined}
-            >
-              <Icon className={cn('flex-shrink-0', collapsed ? 'h-6 w-6' : 'h-5 w-5')} />
-              {!collapsed && (
-                <>
-                  <span className="flex-1 truncate">{item.label}</span>
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span className="flex-shrink-0 px-2 py-0.5 text-xs font-semibold bg-red-500 text-white rounded-full">
-                      {item.badge}
-                    </span>
-                  )}
-                </>
-              )}
-            </Link>
-          );
-        })}
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all duration-200',
+                  'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+                  active
+                    ? 'bg-blue-50 text-blue-700 shadow-sm'
+                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900',
+                  collapsed && 'justify-center'
+                )}
+                aria-current={active ? 'page' : undefined}
+              >
+                <Icon className={cn('flex-shrink-0', collapsed ? 'h-6 w-6' : 'h-5 w-5')} />
+                {!collapsed && (
+                  <>
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="flex-shrink-0 px-2 py-0.5 text-xs font-semibold bg-red-500 text-white rounded-full">
+                        {item.badge}
+                      </span>
+                    )}
+                  </>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Logout Button - Bottom of Sidebar */}
+        <div className="pt-4 mt-4 border-t border-slate-200">
+          <button
+            onClick={handleLogout}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all duration-200 w-full',
+              'text-red-600 hover:bg-red-50 hover:text-red-700',
+              'focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2',
+              collapsed && 'justify-center'
+            )}
+            aria-label="Sign out"
+            title={collapsed ? 'Sign Out' : undefined}
+          >
+            <LogOut className={cn('flex-shrink-0', collapsed ? 'h-6 w-6' : 'h-5 w-5')} />
+            {!collapsed && <span className="flex-1 text-left">Sign Out</span>}
+          </button>
+        </div>
       </nav>
     </aside>
   );

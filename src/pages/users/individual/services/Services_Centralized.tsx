@@ -13,7 +13,8 @@ import {
   Globe,
   SlidersHorizontal,
   Brain,
-  Sparkles
+  Sparkles,
+  Share2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../../../utils/cn';
@@ -22,6 +23,7 @@ import { useMessagingModal } from '../../../../shared/components/messaging';
 import { SERVICE_CATEGORIES } from '../../../../shared/services/CentralizedServiceManager';
 import { BookingRequestModal } from '../../../../modules/services/components/BookingRequestModal';
 import { IntelligentWeddingPlanner } from './dss/IntelligentWeddingPlanner_v2';
+import { createServiceShareUrl } from '../../../../shared/utils/slug-generator';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 import type { Service as BookingService } from '../../../../modules/services/types';
 
@@ -254,18 +256,22 @@ export function Services() {
           // Enhance services with vendor data and real/fallback images
           console.log('🔄 [Services] Starting enhancement for', servicesData.services.length, 'services');
           const enhancedServices = servicesData.services.map((service: any, index: number) => {
+            // Try to get vendor from map (for additional data like images/contact), but service already has vendor_business_name enriched
             const vendor = vendorMap.get(service.vendor_id);
             console.log(`📋 [Services] [${index + 1}/${servicesData.services.length}] Service:`, {
               id: service.id,
               name: service.name,
               category: service.category,
               vendor_id: service.vendor_id,
-              vendorFound: !!vendor,
-              vendorName: vendor?.name || 'N/A',
-              rawRating: vendor?.rating,
-              ratingType: typeof vendor?.rating,
-              rawReviewCount: vendor?.reviewCount,
-              reviewCountType: typeof vendor?.reviewCount
+              // Backend-enriched data (already in service object!)
+              backendVendorName: service.vendor_business_name,
+              backendServiceRating: service.vendor_rating,
+              backendServiceReviewCount: service.vendor_review_count,
+              // Frontend vendor map lookup (may not exist)
+              vendorMapFound: !!vendor,
+              vendorMapName: vendor?.name || 'N/A',
+              // Decision: Use backend-enriched data first, fallback to vendor map
+              finalVendorName: service.vendor_business_name || vendor?.name || 'N/A'
             });
             
             // Use real service images from database
@@ -464,34 +470,27 @@ export function Services() {
             const generatedContactInfo = generateContactInfo(service.vendor_id);
             
             // Calculate final rating and review count with explicit logging
-            // 🔥 FIX: Use per-service ratings from API (field is misleadingly named vendor_rating but contains per-service data)
-            // Primary: service.vendor_rating (per-service rating from reviews table grouped by service_id)
-            // Fallback: vendor.rating (vendor overall rating, only used if service has no reviews yet)
-            const finalRating = service.vendor_rating ? parseFloat(service.vendor_rating) : 
-                               (vendor?.rating ? parseFloat(vendor.rating) : 0);
-            const finalReviewCount = service.vendor_review_count ? parseInt(service.vendor_review_count) : 
-                                    (vendor?.reviewCount ? parseInt(vendor.reviewCount) : 0);
+            // 🔥 FIX: Use backend-enriched per-service ratings (already grouped by service_id in backend)
+            // Backend provides: vendor_business_name, vendor_rating (per-service!), vendor_review_count (per-service!)
+            // These fields are enriched in backend routes/services.cjs from reviews table grouped by service_id
+            const finalRating = service.vendor_rating ? parseFloat(service.vendor_rating) : 0;
+            const finalReviewCount = service.vendor_review_count ? parseInt(service.vendor_review_count) : 0;
             
             console.log(`📊 [Services] Rating for "${service.title || service.name}":`, {
               serviceId: service.id,
               vendorId: service.vendor_id,
-              vendorName: vendor?.name || service.vendor_business_name || 'Generated',
               
-              // Per-service ratings (from API - field name is misleading!)
-              serviceRating: service.vendor_rating,
-              serviceReviewCount: service.vendor_review_count,
+              // Backend-enriched data (correct per-service values!)
+              backendVendorName: service.vendor_business_name,
+              backendServiceRating: service.vendor_rating,
+              backendServiceReviewCount: service.vendor_review_count,
               
-              // Vendor overall ratings (from vendor lookup map)
-              vendorRating: vendor?.rating,
-              vendorReviewCount: vendor?.reviewCount,
-              
-              // Final calculated values
+              // Final calculated values (using backend-enriched data)
               finalRating,
               finalReviewCount,
               
               // Data source tracking
-              usingServiceRating: !!service.vendor_rating,
-              usingVendorRatingAsFallback: !service.vendor_rating && !!vendor?.rating,
+              usingBackendEnrichedData: !!(service.vendor_rating || service.vendor_review_count),
               imageCount: serviceImages.length,
               
               // 🔥 DSS FIELDS DEBUG
@@ -503,7 +502,7 @@ export function Services() {
                 availability: service.availability
               },
               
-              note: '⚠️ API field "vendor_rating" actually contains PER-SERVICE rating (not vendor overall rating)'
+              note: '✅ Using backend-enriched per-service ratings from reviews table grouped by service_id'
             });
 
             // Calculate attractive price range
@@ -519,15 +518,15 @@ export function Services() {
               category: service.category,
               vendor_id: service.vendor_id,
               vendorId: service.vendor_id,
-              // Use real vendor data if available, otherwise use generated realistic data
-              vendorName: vendor?.name || generatedVendorName,
+              // Use backend-enriched vendor name (already provided by backend)
+              vendorName: service.vendor_business_name || vendor?.name || generatedVendorName,
               vendorImage: generateVendorImage(),
               description: service.description || `Professional ${service.category.toLowerCase()} services for your special day.`,
               price: basePrice,
               priceRange: priceRangeText,
               // Use real vendor location if available, otherwise use generated
               location: vendor?.location || generatedLocation,
-              // Use real vendor rating data if available, otherwise default to 0
+              // Use backend-enriched per-service rating data
               rating: finalRating,
               reviewCount: finalReviewCount,
               image: serviceImages[0],
@@ -720,17 +719,161 @@ Best regards`;
 
   const handleShareService = (service: Service) => {
     console.log('📤 [Services] Sharing service:', service.name);
-    if (navigator.share) {
-      navigator.share({
-        title: `${service.name} - Wedding Service`,
-        text: `Check out this wedding service: ${service.name} by ${service.vendorName}`,
-        url: window.location.href
+    
+    // Create secure, slug-based shareable URL (no IDs exposed publicly)
+    const baseUrl = window.location.origin;
+    const securePath = createServiceShareUrl(service.name, service.vendorName, service.id);
+    const serviceUrl = `${baseUrl}${securePath}`;
+    
+    console.log('🔗 [Services] SECURE Share URL (slug-based, no vendor ID exposed):', serviceUrl);
+    
+    // Enhanced share data with service details
+    const shareData = {
+      title: `${service.name} - ${service.vendorName}`,
+      text: `Check out this amazing wedding service!\n\n${service.name} by ${service.vendorName}\n${service.priceRange} - Rated ${service.rating}⭐ (${service.reviewCount} reviews)\n\n`,
+      url: serviceUrl
+    };
+    
+    console.log('📋 [Services] Share data:', shareData);
+    
+    // Show custom share modal with the link - ALWAYS ACCESSIBLE
+    const showShareModal = (linkCopied: boolean = false) => {
+      console.log('📱 [Services] Opening share modal...');
+      
+      // Remove any existing share modals first
+      const existingModals = document.querySelectorAll('.share-modal-overlay');
+      existingModals.forEach(m => m.remove());
+      
+      // Show custom share modal with options
+      const modal = document.createElement('div');
+      modal.className = 'share-modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4';
+      modal.innerHTML = `
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl transform animate-scale-in">
+          <div class="text-center mb-4">
+            <div class="inline-flex items-center justify-center w-12 h-12 ${linkCopied ? 'bg-green-100' : 'bg-pink-100'} rounded-full mb-3">
+              ${linkCopied ? `
+                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              ` : `
+                <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
+                </svg>
+              `}
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">${linkCopied ? 'Link Copied! 🎉' : 'Share Service 🎊'}</h3>
+            <p class="text-gray-600 mb-4">Share this amazing wedding service with everyone!</p>
+          </div>
+          
+          <div class="bg-gray-50 rounded-lg p-3 mb-3 break-all text-sm text-gray-700 font-mono relative group">
+            <div class="pr-20">${serviceUrl}</div>
+            <button onclick="
+              navigator.clipboard.writeText('${serviceUrl}').then(() => {
+                this.innerHTML = '<svg class=\\'w-5 h-5\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M5 13l4 4L19 7\\'></path></svg><span class=\\'ml-1\\'>Copied!</span>';
+                this.className = 'absolute right-2 top-1/2 -translate-y-1/2 bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700 transition-colors flex items-center text-xs font-semibold';
+                setTimeout(() => {
+                  this.innerHTML = '<svg class=\\'w-5 h-5\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z\\'></path></svg>';
+                  this.className = 'absolute right-2 top-1/2 -translate-y-1/2 bg-pink-600 text-white px-3 py-1.5 rounded-md hover:bg-pink-700 transition-colors';
+                }, 2000);
+              });
+            " class="absolute right-2 top-1/2 -translate-y-1/2 bg-pink-600 text-white px-3 py-1.5 rounded-md hover:bg-pink-700 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <p class="text-xs text-gray-500 text-center mb-4">📍 This is a public link - anyone can view this service</p>
+          
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(serviceUrl)}" 
+               target="_blank" 
+               class="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              Facebook
+            </a>
+            
+            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(shareData.text)}&url=${encodeURIComponent(serviceUrl)}" 
+               target="_blank"
+               class="flex items-center justify-center gap-2 bg-sky-500 text-white px-4 py-3 rounded-lg hover:bg-sky-600 transition-colors">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+              </svg>
+              Twitter
+            </a>
+            
+            <a href="https://wa.me/?text=${encodeURIComponent(shareData.text + ' ' + serviceUrl)}" 
+               target="_blank"
+               class="flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+              </svg>
+              WhatsApp
+            </a>
+            
+            <button onclick="window.open('mailto:?subject=${encodeURIComponent(shareData.title)}&body=${encodeURIComponent(shareData.text + '\n\n' + serviceUrl)}', '_blank')"
+               class="flex items-center justify-center gap-2 bg-gray-600 text-white px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+              </svg>
+              Email
+            </button>
+          </div>
+          
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="w-full bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition-colors font-semibold">
+            Close
+          </button>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Prevent modal from being clickable through (stop propagation)
+      const modalContent = modal.querySelector('.bg-white');
+      if (modalContent) {
+        modalContent.addEventListener('click', (e) => {
+          e.stopPropagation();
+        });
+      }
+      
+      // Add click outside to close
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          console.log('📱 [Services] Closing modal (clicked outside)');
+          modal.remove();
+        }
       });
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
-      alert('Service link copied to clipboard!');
-    }
+      
+      // Auto-remove after 5 minutes (300 seconds) - plenty of time
+      const autoCloseTimeout = setTimeout(() => {
+        console.log('📱 [Services] Auto-closing modal after 5 minutes');
+        if (modal.parentElement) {
+          modal.remove();
+        }
+      }, 300000);
+      
+      // Clear timeout if modal is manually closed
+      const closeButton = modal.querySelector('button[onclick*="remove"]');
+      if (closeButton) {
+        closeButton.addEventListener('click', () => {
+          clearTimeout(autoCloseTimeout);
+        });
+      }
+    };
+    
+    // Try to copy to clipboard first (optional), then always show modal
+    navigator.clipboard.writeText(serviceUrl)
+      .then(() => {
+        console.log('✅ [Services] Link copied to clipboard');
+        showShareModal(true); // Show with "copied" message
+      })
+      .catch((err) => {
+        console.warn('⚠️ [Services] Could not copy to clipboard (this is OK):', err);
+        showShareModal(false); // Show without "copied" message
+      });
   };
 
   // Removed unused helper functions: handleQuickContact, handleCompareService, handleViewGallery
@@ -1665,7 +1808,7 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
               Featured
             </div>
           )}
-          <div className="absolute top-4 right-4">
+          <div className="absolute top-4 right-4 flex flex-col gap-2">
             <button 
               onClick={(e) => {
                 e.stopPropagation();
@@ -1676,6 +1819,18 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
             >
               <Heart className="h-5 w-5 text-gray-600 hover:text-pink-600" />
             </button>
+            {onShare && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShare(service);
+                }}
+                className="p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white/90 transition-colors"
+                title="Share service"
+              >
+                <Share2 className="h-5 w-5 text-gray-600 hover:text-blue-600" />
+              </button>
+            )}
           </div>
         </div>
         <div className="p-6">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -56,7 +56,8 @@ interface Service {
 }
 
 export const ServicePreview: React.FC = () => {
-  const { serviceId } = useParams<{ serviceId: string }>();
+  const { serviceId: slugParam } = useParams<{ serviceId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +65,9 @@ export const ServicePreview: React.FC = () => {
   const [copySuccess, setCopySuccess] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [locationCoords, setLocationCoords] = useState<[number, number] | null>(null);
+
+  // Get the actual service ID from query params (secure, not exposed in slug)
+  const serviceId = searchParams.get('id') || slugParam;
 
   // Function to geocode address to coordinates
   const geocodeAddress = async (address: string): Promise<[number, number] | null> => {
