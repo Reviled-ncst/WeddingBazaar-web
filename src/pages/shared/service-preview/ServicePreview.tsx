@@ -18,8 +18,7 @@ import {
   Facebook,
   Twitter,
   Loader2,
-  AlertTriangle,
-  X
+  AlertTriangle
 } from 'lucide-react';
 import { VendorMap, type VendorLocation } from '../../../shared/components/maps/VendorMap';
 import { VendorAvailabilityCalendar } from '../../../shared/components/calendar/VendorAvailabilityCalendar';
@@ -224,60 +223,98 @@ export const ServicePreview: React.FC = () => {
   const hasImages = images.length > 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-md border-b border-white/20 sticky top-0 z-40">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Ultra-Premium Floating Header with Gradient Border */}
+      <motion.div 
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-br from-white/10 via-pink-50/10 to-purple-50/10 backdrop-blur-2xl border-b border-white/10 shadow-2xl"
+        style={{
+          backgroundImage: 'linear-gradient(to right, rgba(236, 72, 153, 0.1), rgba(168, 85, 247, 0.1))',
+        }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <button
+          <div className="flex items-center justify-between h-20">
+            {/* Premium Back Button with Glow Effect */}
+            <motion.button
+              whileHover={{ scale: 1.08, x: -8 }}
+              whileTap={{ scale: 0.92 }}
               onClick={() => navigate(-1)}
-              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-white/50 rounded-lg transition-all duration-200"
+              className="group relative flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-pink-600 via-rose-600 to-purple-600 text-white rounded-2xl font-bold shadow-2xl hover:shadow-pink-500/50 transition-all duration-500 overflow-hidden"
             >
-              <ArrowLeft size={20} />
-              <span className="hidden sm:inline font-medium">Back</span>
-            </button>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+              <ArrowLeft size={22} className="relative z-10 group-hover:-translate-x-2 transition-transform duration-300" />
+              <span className="relative z-10 text-lg">Back</span>
+            </motion.button>
             
-            <div className="flex items-center gap-2">
-              <button
+            {/* Premium Action Buttons with Glow */}
+            <div className="flex items-center gap-4">
+              <motion.button
+                whileHover={{ scale: 1.08, rotate: 5 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={handleCopyLink}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+                className={`relative flex items-center gap-3 px-8 py-4 rounded-2xl font-bold shadow-2xl transition-all duration-500 overflow-hidden ${
                   copySuccess
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-white/60 text-gray-700 hover:bg-white/80'
+                    ? 'bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 text-white shadow-emerald-500/50'
+                    : 'bg-gradient-to-r from-white/90 via-pink-50/90 to-purple-50/90 text-gray-900 hover:shadow-white/50'
                 }`}
               >
-                {copySuccess ? <CheckCircle2 size={16} /> : <Copy size={16} />}
-                {copySuccess ? 'Copied!' : 'Copy Link'}
-              </button>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 translate-x-[-100%] hover:translate-x-[100%] transition-transform duration-1000"></div>
+                {copySuccess ? (
+                  <>
+                    <CheckCircle2 size={20} className="relative z-10 animate-pulse" />
+                    <span className="relative z-10 hidden sm:inline text-lg">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={20} className="relative z-10" />
+                    <span className="relative z-10 hidden sm:inline text-lg">Copy Link</span>
+                  </>
+                )}
+              </motion.button>
               
+              {/* Premium Share Button with Animated Dropdown */}
               <div className="relative group">
-                <button className="flex items-center gap-2 px-4 py-2 bg-white/60 text-gray-700 hover:bg-white/80 rounded-lg font-medium transition-all duration-300">
-                  <Share2 size={16} />
-                  Share
-                </button>
+                <motion.button 
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.92 }}
+                  className="relative flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white rounded-2xl font-bold shadow-2xl hover:shadow-purple-500/50 transition-all duration-500 overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                  <Share2 size={20} className="relative z-10" />
+                  <span className="relative z-10 hidden sm:inline text-lg">Share</span>
+                </motion.button>
                 
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                  <div className="p-2">
+                {/* Ultra-Premium Dropdown with Glassmorphism */}
+                <div className="absolute right-0 top-full mt-4 w-64 bg-gradient-to-br from-white/95 via-pink-50/95 to-purple-50/95 backdrop-blur-2xl rounded-3xl shadow-2xl border-2 border-white/20 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-500 overflow-hidden z-50">
+                  <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-purple-500/10"></div>
+                  <div className="relative p-3 space-y-2">
                     <button
                       onClick={() => handleShare('facebook')}
-                      className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 rounded-lg transition-colors"
+                      className="w-full flex items-center gap-4 px-5 py-4 text-left bg-gradient-to-r from-blue-500/10 to-blue-600/10 hover:from-blue-500/20 hover:to-blue-600/20 rounded-2xl transition-all duration-300 group/item"
                     >
-                      <Facebook size={16} className="text-blue-600" />
-                      Facebook
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center group-hover/item:scale-110 group-hover/item:rotate-6 transition-all duration-300 shadow-lg">
+                        <Facebook size={20} className="text-white" />
+                      </div>
+                      <span className="font-bold text-gray-900 text-lg">Facebook</span>
                     </button>
                     <button
                       onClick={() => handleShare('twitter')}
-                      className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 rounded-lg transition-colors"
+                      className="w-full flex items-center gap-4 px-5 py-4 text-left bg-gradient-to-r from-sky-500/10 to-sky-600/10 hover:from-sky-500/20 hover:to-sky-600/20 rounded-2xl transition-all duration-300 group/item"
                     >
-                      <Twitter size={16} className="text-sky-500" />
-                      Twitter
+                      <div className="w-12 h-12 bg-gradient-to-br from-sky-500 to-sky-600 rounded-2xl flex items-center justify-center group-hover/item:scale-110 group-hover/item:rotate-6 transition-all duration-300 shadow-lg">
+                        <Twitter size={20} className="text-white" />
+                      </div>
+                      <span className="font-medium text-gray-700">Twitter</span>
                     </button>
                     <button
                       onClick={() => handleShare('native')}
-                      className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 rounded-lg transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100 rounded-xl transition-all duration-200 group"
                     >
-                      <Share2 size={16} className="text-gray-600" />
-                      More Options
+                      <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Share2 size={18} className="text-white" />
+                      </div>
+                      <span className="font-medium text-gray-700">More Options</span>
                     </button>
                   </div>
                 </div>
@@ -285,267 +322,402 @@ export const ServicePreview: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Main Content - Full Width Layout */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Hero Section - Full Width */}
-        <div className="mb-12">
-          <div className="grid grid-cols-1 xl:grid-cols-5 gap-12">
-            
-            {/* Image Gallery - Takes 3/5 width on extra large screens */}
-            <div className="xl:col-span-3">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6 }}
-                className="space-y-6"
-              >
+      {/* Main Content - ULTRA-PREMIUM Layout with Dark Theme */}
+      <div className="pt-28 pb-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          {/* Hero Section - CINEMATIC Magazine Style */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="mb-20"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+              
+              {/* Left: Image Gallery - STUNNING Premium Design with 3D Effects */}
+              <div className="space-y-8">
                 {hasImages ? (
                   <>
-                    <div className="aspect-video rounded-2xl overflow-hidden bg-white shadow-xl">
+                    {/* Main Image - Cinematic Hero Style with Parallax */}
+                    <motion.div
+                      key={currentImageIndex}
+                      initial={{ opacity: 0, scale: 0.9, rotateY: 10 }}
+                      animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                      className="relative aspect-[4/3] rounded-[32px] overflow-hidden shadow-[0_25px_80px_-15px_rgba(0,0,0,0.5)] group perspective-1000"
+                      style={{
+                        transform: 'translateZ(0)',
+                        backfaceVisibility: 'hidden',
+                      }}
+                    >
+                      {/* Glowing Border Effect */}
+                      <div className="absolute inset-0 rounded-[32px] bg-gradient-to-br from-pink-500 via-purple-500 to-rose-500 p-[3px] opacity-50 group-hover:opacity-100 transition-opacity duration-500">
+                        <div className="w-full h-full bg-black rounded-[29px]"></div>
+                      </div>
+                      
                       <img
                         src={images[currentImageIndex]}
                         alt={service.title}
-                        className="w-full h-full object-cover"
+                        className="relative z-10 w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out"
                       />
-                    </div>
+                      
+                      {/* Cinematic Gradient Overlays */}
+                      <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <div className="absolute inset-0 z-20 bg-gradient-to-br from-pink-500/10 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      
+                      {/* Floating Image Counter with Glassmorphism */}
+                      {images.length > 1 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.3 }}
+                          className="absolute bottom-8 right-8 z-30 px-6 py-3 bg-white/10 backdrop-blur-2xl rounded-2xl text-white font-bold text-lg border border-white/20 shadow-2xl"
+                        >
+                          {currentImageIndex + 1} <span className="text-pink-300">/</span> {images.length}
+                        </motion.div>
+                      )}
+                      
+                      {/* Premium Badge Overlay */}
+                      {service.featured && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.4 }}
+                          className="absolute top-8 left-8 z-30 px-5 py-2 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 rounded-2xl shadow-2xl flex items-center gap-2 animate-pulse"
+                        >
+                          <Star size={18} className="text-white fill-white" />
+                          <span className="text-white font-black uppercase tracking-wider text-sm">Featured</span>
+                        </motion.div>
+                      )}
+                    </motion.div>
                     
+                    {/* Thumbnail Gallery - Luxury Carousel with 3D Hover */}
                     {images.length > 1 && (
-                      <div className="flex gap-2 overflow-x-auto pb-2">
+                      <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide">
                         {images.map((image, index) => (
-                          <button
+                          <motion.button
                             key={index}
+                            whileHover={{ scale: 1.15, y: -8, rotateZ: 3 }}
+                            whileTap={{ scale: 0.9 }}
                             onClick={() => setCurrentImageIndex(index)}
-                            className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                            className={`relative flex-shrink-0 w-28 h-28 rounded-3xl overflow-hidden transition-all duration-500 ${
                               index === currentImageIndex
-                                ? 'border-rose-500 shadow-lg'
-                                : 'border-gray-200 hover:border-gray-300'
+                                ? 'ring-4 ring-pink-500 shadow-[0_10px_40px_-5px_rgba(236,72,153,0.6)]'
+                                : 'ring-2 ring-white/20 hover:ring-white/40 shadow-xl'
                             }`}
+                            style={{
+                              transform: 'translateZ(0)',
+                              backfaceVisibility: 'hidden',
+                            }}
                           >
                             <img
                               src={image}
                               alt={`${service.title} ${index + 1}`}
                               className="w-full h-full object-cover"
                             />
-                          </button>
+                            {/* Active Indicator Glow */}
+                            {index === currentImageIndex && (
+                              <div className="absolute inset-0 bg-gradient-to-br from-pink-500/30 to-purple-500/30 backdrop-blur-[1px]"></div>
+                            )}
+                          </motion.button>
                         ))}
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className="aspect-video rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-xl">
+                  // No Image Placeholder - STUNNING Minimalist Design
+                  <div className="aspect-[4/3] rounded-[32px] bg-gradient-to-br from-gray-800 via-gray-900 to-black flex items-center justify-center shadow-[0_25px_80px_-15px_rgba(0,0,0,0.8)] border border-white/10">
                     <div className="text-center">
-                      <ImageIcon size={48} className="text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-500 font-medium">No images available</p>
+                      <div className="w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-full flex items-center justify-center backdrop-blur-xl border border-white/10">
+                        <ImageIcon size={64} className="text-white/40" />
+                      </div>
+                      <p className="text-white/60 font-bold text-lg">No images available</p>
+                      <p className="text-white/40 text-sm mt-2">Gallery coming soon</p>
                     </div>
                   </div>
                 )}
-              </motion.div>
-            </div>
+              </div>
 
-            {/* Service Header Info - Takes 2/5 width */}
-            <div className="xl:col-span-2">
+              {/* Right: Service Information - ULTRA-PREMIUM Glassmorphic Card */}
               <motion.div
-                initial={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="space-y-6"
+                transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
+                className="space-y-8"
               >
-                {/* Service Header */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-sm font-medium">
-                      {service.category}
-                    </span>
-                    {service.featured && (
-                      <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-                        Featured
-                      </span>
-                    )}
-                  </div>
+                {/* STUNNING Premium Info Card with Glassmorphism & Gradients */}
+                <div className="relative bg-gradient-to-br from-white/10 via-pink-50/10 to-purple-50/10 backdrop-blur-3xl rounded-[32px] p-10 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.5)] border border-white/20 overflow-hidden">
+                  {/* Animated Background Gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 via-purple-500/5 to-rose-500/5 animate-pulse" />
                   
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    {service.title || service.name}
-                  </h1>
-                  
-                  <div className="flex items-center gap-4 text-gray-600">
-                    <div className="text-2xl font-bold text-rose-600">
-                      {(service as any).price_range && (service as any).price_range !== '₱' 
-                        ? (service as any).price_range 
-                        : formatPrice(service.price)}
+                  {/* Content Layer */}
+                  <div className="relative z-10">
+                    {/* PREMIUM Animated Badges Row */}
+                    <div className="flex flex-wrap items-center gap-4 mb-8">
+                      <motion.span
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.5 }}
+                        className="px-6 py-3 bg-gradient-to-r from-rose-500 via-pink-600 to-rose-500 text-white rounded-2xl font-black text-base shadow-[0_10px_30px_-5px_rgba(236,72,153,0.5)] uppercase tracking-wider"
+                      >
+                        {service.category}
+                      </motion.span>
+                      {service.service_tier && (
+                        <motion.span
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.6 }}
+                          className={`px-6 py-3 rounded-2xl font-black uppercase tracking-wider text-base shadow-2xl ${
+                            service.service_tier === 'premium' 
+                              ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-600 text-white shadow-purple-500/50'
+                              : service.service_tier === 'standard'
+                              ? 'bg-gradient-to-r from-blue-600 via-cyan-500 to-cyan-600 text-white shadow-cyan-500/50'
+                              : 'bg-gradient-to-r from-gray-600 via-slate-500 to-gray-700 text-white shadow-gray-500/50'
+                          }`}
+                        >
+                          {service.service_tier} Tier
+                        </motion.span>
+                      )}
                     </div>
-                    
+
+                    {/* DRAMATIC Title with Gradient Text */}
+                    <motion.h1
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.7 }}
+                      className="text-5xl font-black mb-6 leading-tight bg-gradient-to-br from-white via-pink-100 to-purple-100 bg-clip-text text-transparent"
+                      style={{ 
+                        textShadow: '0 2px 40px rgba(236, 72, 153, 0.3)',
+                      }}
+                    >
+                      {service.title || service.name}
+                    </motion.h1>
+
+                    {/* SPECTACULAR Price Display */}
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.8 }}
+                      className="mb-8"
+                    >
+                      <div className="relative inline-flex items-baseline gap-3 px-8 py-6 bg-gradient-to-br from-pink-500/20 via-rose-500/20 to-purple-500/20 backdrop-blur-xl rounded-3xl border-2 border-pink-300/30 shadow-[0_20px_60px_-15px_rgba(236,72,153,0.5)]">
+                        <div className="absolute inset-0 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-3xl animate-pulse" />
+                        <span className="relative z-10 text-5xl font-black bg-gradient-to-r from-pink-400 via-rose-400 to-purple-400 bg-clip-text text-transparent">
+                          {(service as any).price_range && (service as any).price_range !== '₱' 
+                            ? (service as any).price_range 
+                            : formatPrice(service.price)}
+                        </span>
+                      </div>
+                    </motion.div>
+
+                    {/* LUXURY Rating Display */}
                     {service.vendor?.rating && (
-                      <div className="flex items-center gap-1">
-                        <Star size={16} className="text-yellow-400 fill-current" />
-                        <span className="font-medium">{service.vendor.rating}</span>
-                        {service.vendor.review_count && (
-                          <span className="text-sm">({service.vendor.review_count} reviews)</span>
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.9 }}
+                        className="flex items-center gap-5 p-6 bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 backdrop-blur-xl rounded-3xl border border-amber-300/20 mb-8 shadow-[0_10px_40px_-10px_rgba(251,191,36,0.3)]"
+                      >
+                        <div className="flex items-center gap-2">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              size={24}
+                              className={`transition-all duration-300 ${
+                                i < Math.floor(service.vendor?.rating || 0) 
+                                  ? 'text-amber-400 fill-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]' 
+                                  : 'text-white/20'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl font-black text-white">{service.vendor.rating}</span>
+                          {service.vendor.review_count && (
+                            <span className="text-base text-white/70 font-medium">({service.vendor.review_count} reviews)</span>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* MODERN Quick Stats Grid with Animations */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 1.0 }}
+                      className="grid grid-cols-2 gap-5 mb-8"
+                    >
+                      {/* Experience Stat */}
+                      {service.years_in_business && (
+                        <div className="relative p-6 bg-gradient-to-br from-purple-500/10 via-indigo-500/10 to-purple-600/10 backdrop-blur-xl rounded-3xl border border-purple-300/20 text-center group hover:scale-105 transition-transform duration-300">
+                          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          <div className="relative z-10">
+                            <div className="text-4xl font-black bg-gradient-to-br from-purple-300 to-indigo-300 bg-clip-text text-transparent mb-2">
+                              {service.years_in_business}+
+                            </div>
+                            <div className="text-sm font-bold text-white/80 uppercase tracking-wide">Years Experience</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Availability Status */}
+                      <div className={`relative p-6 backdrop-blur-xl rounded-3xl border text-center group hover:scale-105 transition-transform duration-300 ${
+                        service.is_active !== false
+                          ? 'bg-gradient-to-br from-emerald-500/10 via-green-500/10 to-emerald-600/10 border-emerald-300/20'
+                          : 'bg-gradient-to-br from-gray-500/10 via-slate-500/10 to-gray-600/10 border-gray-300/20'
+                      }`}>
+                        <div className={`absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
+                          service.is_active !== false
+                            ? 'bg-gradient-to-br from-emerald-500/20 to-green-500/20'
+                            : 'bg-gradient-to-br from-gray-500/20 to-slate-500/20'
+                        }`} />
+                        <div className="relative z-10">
+                          <div className={`text-2xl font-black mb-2 ${
+                            service.is_active !== false 
+                              ? 'bg-gradient-to-br from-emerald-300 to-green-300 bg-clip-text text-transparent' 
+                              : 'text-white/60'
+                          }`}>
+                            {service.is_active !== false ? '✓ Available' : '✗ Unavailable'}
+                          </div>
+                          <div className="text-sm font-bold text-white/80 uppercase tracking-wide">Booking Status</div>
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    {/* ELEGANT Location Display */}
+                    {(service as any).location && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1.1 }}
+                        className="flex items-start gap-4 p-6 bg-gradient-to-r from-gray-500/10 via-slate-500/10 to-gray-600/10 backdrop-blur-xl rounded-3xl border border-white/10 mb-8"
+                      >
+                        <div className="w-12 h-12 bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                          <MapPin size={24} className="text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm font-black text-white/90 mb-2 uppercase tracking-wider">Service Location</div>
+                          <div className="text-base text-white/70 font-medium">{(service as any).location}</div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* PREMIUM CTA Buttons with Spectacular Hover Effects */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 1.2 }}
+                      className="space-y-4"
+                    >
+                      <motion.button
+                        whileHover={{ scale: 1.03, y: -4 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => navigate('/individual/services')}
+                        className="relative w-full px-10 py-6 bg-gradient-to-r from-rose-600 via-pink-600 to-rose-600 text-white rounded-3xl font-black text-xl shadow-[0_20px_60px_-15px_rgba(236,72,153,0.6)] hover:shadow-[0_25px_80px_-10px_rgba(236,72,153,0.8)] transition-all duration-500 flex items-center justify-center gap-4 overflow-hidden group"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                        <MessageCircle size={28} className="relative z-10" />
+                        <span className="relative z-10">Book This Service Now</span>
+                      </motion.button>
+                      
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="relative w-full px-10 py-5 bg-gradient-to-r from-white/10 via-pink-50/10 to-purple-50/10 backdrop-blur-xl text-white rounded-3xl font-bold text-lg border-2 border-white/20 hover:border-pink-300/50 hover:bg-white/20 transition-all duration-500 flex items-center justify-center gap-3 overflow-hidden group"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-pink-500/0 via-pink-500/10 to-pink-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                        <Heart size={22} className="relative z-10" />
+                        <span className="relative z-10">Save to Favorites</span>
+                      </motion.button>
+                    </motion.div>
+                  </div>
+                </div>
+
+                {/* LUXURY Vendor Info Card with Dark Elegance */}
+                {service.vendor && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.3 }}
+                    className="relative bg-gradient-to-br from-gray-900/90 via-gray-800/90 to-black/90 backdrop-blur-2xl text-white rounded-[32px] p-8 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.8)] border border-white/10 overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 to-purple-500/5" />
+                    <div className="relative z-10">
+                      <h3 className="text-xl font-black mb-6 text-white/90 uppercase tracking-wider">Provided By</h3>
+                      <div className="space-y-4">
+                        <div className="text-3xl font-black bg-gradient-to-r from-pink-300 via-rose-300 to-purple-300 bg-clip-text text-transparent">
+                          {service.vendor.name || service.vendor.business_name}
+                        </div>
+                        {service.vendor.category && (
+                          <div className="text-base text-white/60 font-medium uppercase tracking-wide">{service.vendor.category}</div>
                         )}
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-3">About This Service</h2>
-                  <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
-                    {service.description || 'No description provided for this service.'}
-                  </p>
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={() => navigate('/individual/services')}
-                    className="flex-1 px-6 py-4 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl font-semibold hover:from-rose-600 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
-                  >
-                    <MessageCircle size={20} className="inline mr-2" />
-                    Book This Service
-                  </button>
-                  
-                  <button className="px-6 py-4 bg-white/60 backdrop-blur-sm text-gray-700 rounded-xl font-semibold hover:bg-white/80 transition-all duration-300 border border-white/20">
-                    <Heart size={20} className="inline mr-2" />
-                    Save
-                  </button>
-                </div>
+                    </div>
+                  </motion.div>
+                )}
               </motion.div>
             </div>
-          </div>
-        </div>
+          </motion.div>
 
-        {/* Full Width Content Sections */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="space-y-12"
-        >
-
-          {/* Service Details */}
-          <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Service Details</h2>
+          {/* CINEMATIC Description Section with Luxury Design */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 1.4 }}
+            className="relative bg-gradient-to-br from-white/10 via-pink-50/10 to-purple-50/10 backdrop-blur-3xl rounded-[32px] p-12 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.5)] border border-white/20 overflow-hidden"
+          >
+            {/* Animated Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 to-purple-500/5 animate-pulse" />
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Package Details */}
-              <div className="space-y-3">
-                <h3 className="font-semibold text-gray-900">Package Information</h3>
-                <div className="space-y-2">
-                  <p className="text-gray-600">Base service package</p>
-                  {(service as any).price_range && (service as any).price_range !== '₱' && (
-                    <p className="text-sm text-gray-500">
-                      Additional packages may be available within the price range
-                    </p>
-                  )}
-                </div>
+            <div className="relative z-10">
+              {/* PREMIUM Section Header */}
+              <div className="flex items-center gap-5 mb-8">
+                <div className="w-2 h-16 bg-gradient-to-b from-rose-500 via-pink-600 to-purple-600 rounded-full shadow-lg" />
+                <h2 className="text-4xl font-black bg-gradient-to-r from-white via-pink-100 to-purple-100 bg-clip-text text-transparent">
+                  About This Service
+                </h2>
               </div>
-
-              {/* Availability Status */}
-              <div className="space-y-3">
-                <h3 className="font-semibold text-gray-900">Current Status</h3>
-                <span className={`inline-flex px-4 py-2 rounded-full text-sm font-medium ${
-                  (service as any).is_active !== false
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {(service as any).is_active !== false ? '✓ Accepting Bookings' : '✗ Not Available'}
-                </span>
-              </div>
-
-              {/* Location Info */}
-              {(service as any).location && (
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-gray-900">Service Location</h3>
-                  <div className="flex items-start gap-2 text-gray-600">
-                    <MapPin size={16} className="mt-1 flex-shrink-0" />
-                    <span className="text-sm">{(service as any).location}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Experience & Specialization Section */}
-          {(service.years_in_business || service.service_tier || service.wedding_styles || service.cultural_specialties) && (
-            <div className="bg-gradient-to-br from-white/70 to-rose-50/70 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-6">Experience & Specialization</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                {/* Years in Business */}
-                {service.years_in_business && (
-                  <div className="bg-white/80 rounded-xl p-4 border border-rose-100">
-                    <div className="text-3xl font-bold text-rose-600 mb-1">
-                      {service.years_in_business}+
-                    </div>
-                    <div className="text-sm text-gray-600">Years of Experience</div>
-                  </div>
-                )}
+              {/* ELEGANT Description Text */}
+              <p className="text-xl text-white/90 leading-relaxed whitespace-pre-wrap font-light tracking-wide">
+                {service.description || 'No description provided for this service.'}
+              </p>
+            </div>
+          </motion.div>
 
-                {/* Service Tier */}
-                {service.service_tier && (
-                  <div className="bg-white/80 rounded-xl p-4 border border-purple-100">
-                    <div className={`inline-flex px-4 py-2 rounded-full text-sm font-bold uppercase mb-1 ${
-                      service.service_tier === 'premium' 
-                        ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-white'
-                        : service.service_tier === 'standard'
-                        ? 'bg-gradient-to-r from-blue-400 to-blue-500 text-white'
-                        : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white'
-                    }`}>
-                      {service.service_tier}
-                    </div>
-                    <div className="text-sm text-gray-600">Service Tier</div>
-                  </div>
-                )}
-
-                {/* Active Status */}
-                <div className="bg-white/80 rounded-xl p-4 border border-green-100">
-                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-1 ${
-                    service.is_active !== false
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {service.is_active !== false ? (
-                      <>
-                        <CheckCircle2 size={16} />
-                        Accepting Bookings
-                      </>
-                    ) : (
-                      <>
-                        <X size={16} />
-                        Not Available
-                      </>
-                    )}
-                  </div>
-                  <div className="text-sm text-gray-600">Current Status</div>
-                </div>
-
-                {/* Featured Badge */}
-                {service.featured && (
-                  <div className="bg-white/80 rounded-xl p-4 border border-amber-100">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-gradient-to-r from-amber-400 to-yellow-500 text-white mb-1">
-                      <Star size={16} className="fill-current" />
-                      Featured
-                    </div>
-                    <div className="text-sm text-gray-600">Premium Listing</div>
-                  </div>
-                )}
-              </div>
-
-              {/* Wedding Styles */}
+          {/* STUNNING Wedding Styles & Specialties with Gradient Cards */}
+          {((service.wedding_styles && service.wedding_styles.length > 0) || 
+            (service.cultural_specialties && service.cultural_specialties.length > 0)) && (
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1.5 }}
+              className="grid grid-cols-1 lg:grid-cols-2 gap-10"
+            >
+              {/* LUXURY Wedding Styles Card */}
               {service.wedding_styles && service.wedding_styles.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Wedding Styles</h3>
-                  <div className="flex flex-wrap gap-2">
+                <div className="bg-gradient-to-br from-pink-50 via-rose-50 to-white backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-pink-200">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl flex items-center justify-center shadow-lg">
+                      <Star size={24} className="text-white fill-white" />
+                    </div>
+                    <h3 className="text-2xl font-black text-gray-900">Wedding Styles</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
                     {service.wedding_styles.map((style, index) => (
-                      <span
+                      <motion.span
                         key={index}
-                        className="px-4 py-2 bg-gradient-to-r from-pink-100 to-rose-100 text-rose-800 rounded-full text-sm font-medium border border-rose-200"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.8 + index * 0.1 }}
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        className="px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
                       >
                         {style}
-                      </span>
+                      </motion.span>
                     ))}
                   </div>
                 </div>
@@ -553,21 +725,30 @@ export const ServicePreview: React.FC = () => {
 
               {/* Cultural Specialties */}
               {service.cultural_specialties && service.cultural_specialties.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Cultural Specialties</h3>
-                  <div className="flex flex-wrap gap-2">
+                <div className="bg-gradient-to-br from-purple-50 via-indigo-50 to-white backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-purple-200">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                      <Globe size={24} className="text-white" />
+                    </div>
+                    <h3 className="text-2xl font-black text-gray-900">Cultural Specialties</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
                     {service.cultural_specialties.map((specialty, index) => (
-                      <span
+                      <motion.span
                         key={index}
-                        className="px-4 py-2 bg-gradient-to-r from-purple-100 to-indigo-100 text-indigo-800 rounded-full text-sm font-medium border border-indigo-200"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.8 + index * 0.1 }}
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
                       >
                         {specialty}
-                      </span>
+                      </motion.span>
                     ))}
                   </div>
                 </div>
               )}
-            </div>
+            </motion.div>
           )}
 
           {/* Location & Availability - Side by Side */}
@@ -798,26 +979,30 @@ export const ServicePreview: React.FC = () => {
           </div>
 
           {/* Final Action Buttons */}
-          <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-            <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-              <button
+          <div className="bg-gradient-to-br from-white/10 via-pink-50/10 to-purple-50/10 backdrop-blur-3xl rounded-[32px] p-8 border border-white/20 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.5)]">
+            <div className="flex flex-col sm:flex-row gap-5 max-w-2xl mx-auto">
+              <motion.button
+                whileHover={{ scale: 1.03, y: -4 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => navigate('/individual/services')}
-                className="flex-1 px-8 py-4 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl font-semibold hover:from-rose-600 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                className="flex-1 px-10 py-5 bg-gradient-to-r from-rose-600 via-pink-600 to-rose-600 text-white rounded-3xl font-black text-lg shadow-[0_20px_60px_-15px_rgba(236,72,153,0.6)] hover:shadow-[0_25px_80px_-10px_rgba(236,72,153,0.8)] transition-all duration-500 flex items-center justify-center gap-3"
               >
-                <MessageCircle size={20} className="inline mr-2" />
+                <MessageCircle size={24} />
                 Book This Service
-              </button>
+              </motion.button>
               
-              <button
-                className="px-8 py-4 bg-white/60 backdrop-blur-sm text-gray-700 rounded-xl font-semibold hover:bg-white/80 transition-all duration-300 border border-white/20"
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-10 py-5 bg-gradient-to-r from-white/10 via-pink-50/10 to-purple-50/10 backdrop-blur-xl text-white rounded-3xl font-bold text-lg border-2 border-white/20 hover:border-pink-300/50 hover:bg-white/20 transition-all duration-500 flex items-center justify-center gap-3"
               >
-                <Heart size={20} className="inline mr-2" />
+                <Heart size={24} />
                 Save
-              </button>
+              </motion.button>
             </div>
           </div>
 
-        </motion.div>
+        </div>
       </div>
     </div>
   );
