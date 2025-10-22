@@ -18,7 +18,8 @@ import {
   Facebook,
   Twitter,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  X
 } from 'lucide-react';
 import { VendorMap, type VendorLocation } from '../../../shared/components/maps/VendorMap';
 import { VendorAvailabilityCalendar } from '../../../shared/components/calendar/VendorAvailabilityCalendar';
@@ -41,6 +42,14 @@ interface Service {
   features?: string[];
   tags?: string[];
   keywords?: string;
+  
+  // DSS Fields (Dynamic Service Scoring)
+  years_in_business?: number;
+  service_tier?: 'premium' | 'standard' | 'basic';
+  wedding_styles?: string[];
+  cultural_specialties?: string[];
+  availability?: any; // Can be string or object
+  
   vendor?: {
     id: string;
     name: string;
@@ -458,6 +467,108 @@ export const ServicePreview: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* Experience & Specialization Section */}
+          {(service.years_in_business || service.service_tier || service.wedding_styles || service.cultural_specialties) && (
+            <div className="bg-gradient-to-br from-white/70 to-rose-50/70 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-6">Experience & Specialization</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {/* Years in Business */}
+                {service.years_in_business && (
+                  <div className="bg-white/80 rounded-xl p-4 border border-rose-100">
+                    <div className="text-3xl font-bold text-rose-600 mb-1">
+                      {service.years_in_business}+
+                    </div>
+                    <div className="text-sm text-gray-600">Years of Experience</div>
+                  </div>
+                )}
+
+                {/* Service Tier */}
+                {service.service_tier && (
+                  <div className="bg-white/80 rounded-xl p-4 border border-purple-100">
+                    <div className={`inline-flex px-4 py-2 rounded-full text-sm font-bold uppercase mb-1 ${
+                      service.service_tier === 'premium' 
+                        ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-white'
+                        : service.service_tier === 'standard'
+                        ? 'bg-gradient-to-r from-blue-400 to-blue-500 text-white'
+                        : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white'
+                    }`}>
+                      {service.service_tier}
+                    </div>
+                    <div className="text-sm text-gray-600">Service Tier</div>
+                  </div>
+                )}
+
+                {/* Active Status */}
+                <div className="bg-white/80 rounded-xl p-4 border border-green-100">
+                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-1 ${
+                    service.is_active !== false
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {service.is_active !== false ? (
+                      <>
+                        <CheckCircle2 size={16} />
+                        Accepting Bookings
+                      </>
+                    ) : (
+                      <>
+                        <X size={16} />
+                        Not Available
+                      </>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-600">Current Status</div>
+                </div>
+
+                {/* Featured Badge */}
+                {service.featured && (
+                  <div className="bg-white/80 rounded-xl p-4 border border-amber-100">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-gradient-to-r from-amber-400 to-yellow-500 text-white mb-1">
+                      <Star size={16} className="fill-current" />
+                      Featured
+                    </div>
+                    <div className="text-sm text-gray-600">Premium Listing</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Wedding Styles */}
+              {service.wedding_styles && service.wedding_styles.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Wedding Styles</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {service.wedding_styles.map((style, index) => (
+                      <span
+                        key={index}
+                        className="px-4 py-2 bg-gradient-to-r from-pink-100 to-rose-100 text-rose-800 rounded-full text-sm font-medium border border-rose-200"
+                      >
+                        {style}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Cultural Specialties */}
+              {service.cultural_specialties && service.cultural_specialties.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Cultural Specialties</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {service.cultural_specialties.map((specialty, index) => (
+                      <span
+                        key={index}
+                        className="px-4 py-2 bg-gradient-to-r from-purple-100 to-indigo-100 text-indigo-800 rounded-full text-sm font-medium border border-indigo-200"
+                      >
+                        {specialty}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Location & Availability - Side by Side */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
