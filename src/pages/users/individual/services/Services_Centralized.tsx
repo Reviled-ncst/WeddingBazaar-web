@@ -625,12 +625,68 @@ export function Services() {
       );
     }
 
-    // Price range filter
+    // Price range filter (ENHANCED - handles vendor price ranges properly)
     if (priceRange !== 'all') {
+      const extractPriceFromRange = (priceRange: string): { min: number; max: number } => {
+        // Extract numbers from price range like "₱10,000 - ₱25,000"
+        const numbers = priceRange.match(/₱?([\d,]+)/g);
+        if (!numbers || numbers.length === 0) return { min: 0, max: Infinity };
+        
+        const min = parseInt(numbers[0].replace(/[^\d]/g, ''));
+        const max = numbers.length > 1 
+          ? parseInt(numbers[1].replace(/[^\d]/g, ''))
+          : (priceRange.includes('+') ? Infinity : min);
+        
+        return { min, max };
+      };
+
+      // ✨ STANDARDIZED PRICE FILTER LOGIC - Aligned with vendor price ranges
       const priceRanges: { [key: string]: (service: Service) => boolean } = {
-        'budget': (service) => service.price ? service.price < 50000 : service.priceRange.includes('₱') && parseInt(service.priceRange.replace(/[^\d]/g, '')) < 50000,
-        'mid': (service) => service.price ? (service.price >= 50000 && service.price <= 150000) : true,
-        'premium': (service) => service.price ? service.price > 150000 : service.priceRange.toLowerCase().includes('premium') || service.priceRange.toLowerCase().includes('luxury')
+        'budget': (service) => {
+          // Budget-Friendly: ₱10K - ₱50K
+          if (service.priceRange && service.priceRange !== 'Price on request') {
+            const { min, max } = extractPriceFromRange(service.priceRange);
+            // Match if range overlaps with budget (under ₱75K to catch both old and new data)
+            return min < 75000 || (max > 0 && max <= 60000);
+          }
+          return service.price ? service.price < 60000 : false;
+        },
+        'mid': (service) => {
+          // Mid-Range: ₱50K - ₱100K
+          if (service.priceRange && service.priceRange !== 'Price on request') {
+            const { min, max } = extractPriceFromRange(service.priceRange);
+            // Match if range overlaps with mid-range
+            return (min >= 40000 && min <= 120000) || (max >= 50000 && max <= 120000);
+          }
+          return service.price ? (service.price >= 40000 && service.price <= 120000) : false;
+        },
+        'premium': (service) => {
+          // Premium: ₱100K - ₱200K
+          if (service.priceRange && service.priceRange !== 'Price on request') {
+            const { min, max } = extractPriceFromRange(service.priceRange);
+            // Match if range overlaps with premium
+            return (min >= 90000 && min <= 250000) || (max >= 100000 && max <= 250000);
+          }
+          return service.price ? (service.price >= 90000 && service.price <= 250000) : false;
+        },
+        'luxury': (service) => {
+          // Luxury: ₱200K - ₱500K
+          if (service.priceRange && service.priceRange !== 'Price on request') {
+            const { min } = extractPriceFromRange(service.priceRange);
+            // Match if range starts in luxury range
+            return min >= 180000 && min < 600000;
+          }
+          return service.price ? (service.price >= 180000 && service.price < 600000) : false;
+        },
+        'ultra': (service) => {
+          // Ultra-Luxury: ₱500K+
+          if (service.priceRange && service.priceRange !== 'Price on request') {
+            const { min } = extractPriceFromRange(service.priceRange);
+            // Match if range starts above ₱400K
+            return min >= 400000;
+          }
+          return service.price ? service.price >= 400000 : false;
+        }
       };
       
       if (priceRanges[priceRange]) {
@@ -1209,7 +1265,7 @@ Best regards`;
                     className="mt-6 pt-6 border-t border-pink-100"
                   >
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {/* Price Range */}
+                      {/* Price Range - Aligned with Vendor Ranges */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
                         <select
@@ -1219,9 +1275,11 @@ Best regards`;
                           title="Select price range"
                         >
                           <option value="all">All Prices</option>
-                          <option value="budget">Budget (Under ₱50K)</option>
-                          <option value="mid">Mid-range (₱50K - ₱150K)</option>
-                          <option value="premium">Premium (Above ₱150K)</option>
+                          <option value="budget">💰 Budget-Friendly (₱10K - ₱50K)</option>
+                          <option value="mid">⭐ Mid-Range (₱50K - ₱100K)</option>
+                          <option value="premium">✨ Premium (₱100K - ₱200K)</option>
+                          <option value="luxury">👑 Luxury (₱200K - ₱500K)</option>
+                          <option value="ultra">💎 Ultra-Luxury (₱500K+)</option>
                         </select>
                       </div>
 

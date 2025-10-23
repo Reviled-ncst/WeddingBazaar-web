@@ -162,26 +162,32 @@ interface AddServiceFormProps {
 }
 
 // Price range options for services
+// ✨ STANDARDIZED PRICE RANGES - Aligned with customer filter categories
 const PRICE_RANGES = [
   { 
-    value: '₱10,000 - ₱25,000', 
-    label: 'Budget Friendly', 
-    description: 'Affordable options for couples on a tight budget'
+    value: '₱10,000 - ₱50,000', 
+    label: '💰 Budget-Friendly', 
+    description: 'Great value for couples on a budget (< ₱50K)'
   },
   { 
-    value: '₱25,000 - ₱75,000', 
-    label: 'Moderate', 
-    description: 'Mid-range services with good value'
+    value: '₱50,000 - ₱100,000', 
+    label: '⭐ Mid-Range', 
+    description: 'Balance of quality and affordability (₱50K-₱100K)'
   },
   { 
-    value: '₱75,000 - ₱150,000', 
-    label: 'Premium', 
-    description: 'High-quality services with premium features'
+    value: '₱100,000 - ₱200,000', 
+    label: '✨ Premium', 
+    description: 'High-end services and experiences (₱100K-₱200K)'
   },
   { 
-    value: '₱150,000+', 
-    label: 'Luxury', 
-    description: 'Exclusive, top-tier services'
+    value: '₱200,000 - ₱500,000', 
+    label: '👑 Luxury', 
+    description: 'Exclusive and bespoke services (₱200K-₱500K)'
+  },
+  { 
+    value: '₱500,000+', 
+    label: '💎 Ultra-Luxury', 
+    description: 'The finest wedding services available (₱500K+)'
   }
 ];
 
