@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Service API Test - Wedding Bazaar</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #e91e63;
+    }
+    h2 {
+      color: #333;
+      border-bottom: 2px solid #e91e63;
+      padding-bottom: 10px;
+    }
+    button {
+      background: linear-gradient(135deg, #e91e63 0%, #ec4899 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 10px 10px 0;
+    }
+    button:hover {
+      transform: scale(1.05);
+    }
+    .result {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+      font-family: monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .success { border-left: 4px solid #4caf50; }
+    .error { border-left: 4px solid #f44336; }
+    .info { border-left: 4px solid #2196f3; }
+    input, select {
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 16px;
+      margin: 5px 0;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #e91e63;
+    }
+    .form-group {
+      margin: 15px 0;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Service API Test - Wedding Bazaar</h1>
+  <p>Test production backend API: <strong>https://weddingbazaar-web.onrender.com</strong></p>
+
+  <!-- Test 1: Get All Services -->
+  <div class="test-section">
+    <h2>📋 Test 1: Get All Services</h2>
+    <button onclick="getAllServices()">Get All Services</button>
+    <div id="result1" class="result" style="display: none;"></div>
+  </div>
+
+  <!-- Test 2: Get Specific Service -->
+  <div class="test-section">
+    <h2>🔎 Test 2: Get Specific Service by ID</h2>
+    <div class="form-group">
+      <label for="serviceId">Service ID:</label>
+      <input type="text" id="serviceId" placeholder="e.g., SRV-00001" value="SRV-00001">
+    </div>
+    <button onclick="getServiceById()">Get Service</button>
+    <div id="result2" class="result" style="display: none;"></div>
+  </div>
+
+  <!-- Test 3: Create Service (with price_range) -->
+  <div class="test-section">
+    <h2>➕ Test 3: Create Service with Price Range</h2>
+    <div class="form-group">
+      <label for="vendorId">Vendor ID:</label>
+      <input type="text" id="vendorId" placeholder="Your vendor UUID">
+    </div>
+    <div class="form-group">
+      <label for="serviceTitle">Service Title:</label>
+      <input type="text" id="serviceTitle" placeholder="e.g., Premium Wedding Photography" value="Test Service with Price Range">
+    </div>
+    <div class="form-group">
+      <label for="serviceCategory">Category:</label>
+      <select id="serviceCategory">
+        <option value="Photography">Photography</option>
+        <option value="Catering">Catering</option>
+        <option value="Venue">Venue</option>
+        <option value="DJ">DJ/Music</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="priceRange">Price Range:</label>
+      <select id="priceRange">
+        <option value="">None (Will show custom price)</option>
+        <option value="₱10,000 - ₱30,000">₱10,000 - ₱30,000</option>
+        <option value="₱30,000 - ₱50,000">₱30,000 - ₱50,000</option>
+        <option value="₱50,000 - ₱100,000">₱50,000 - ₱100,000</option>
+        <option value="₱100,000 - ₱200,000">₱100,000 - ₱200,000</option>
+        <option value="₱200,000+">₱200,000+</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="customPrice">Custom Price (optional):</label>
+      <input type="number" id="customPrice" placeholder="e.g., 50000">
+    </div>
+    <button onclick="createService()">Create Service</button>
+    <div id="result3" class="result" style="display: none;"></div>
+  </div>
+
+  <!-- Test 4: Check Latest Service -->
+  <div class="test-section">
+    <h2>🆕 Test 4: Check Latest Created Service</h2>
+    <button onclick="checkLatestService()">Get Latest Service</button>
+    <div id="result4" class="result" style="display: none;"></div>
+  </div>
+
+  <script>
+    const API_URL = 'https://weddingbazaar-web.onrender.com';
+    
+    function showResult(elementId, data, isError = false) {
+      const element = document.getElementById(elementId);
+      element.style.display = 'block';
+      element.className = isError ? 'result error' : 'result success';
+      element.textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function getAllServices() {
+      try {
+        const response = await fetch(`${API_URL}/api/services`);
+        const data = await response.json();
+        
+        console.log('All services:', data);
+        
+        // Check if services have price_range field
+        if (data.services && data.services.length > 0) {
+          const analysis = data.services.map(s => ({
+            id: s.id,
+            title: s.title,
+            price: s.price,
+            price_range: s.price_range,
+            has_price_range: !!s.price_range
+          }));
+          
+          showResult('result1', {
+            total_services: data.services.length,
+            services_with_price_range: analysis.filter(s => s.has_price_range).length,
+            sample_services: analysis.slice(0, 5)
+          });
+        } else {
+          showResult('result1', data);
+        }
+      } catch (error) {
+        showResult('result1', { error: error.message }, true);
+      }
+    }
+
+    async function getServiceById() {
+      const serviceId = document.getElementById('serviceId').value;
+      try {
+        const response = await fetch(`${API_URL}/api/services/${serviceId}`);
+        const data = await response.json();
+        
+        console.log('Service details:', data);
+        
+        // Highlight price_range field
+        if (data.service) {
+          showResult('result2', {
+            id: data.service.id,
+            title: data.service.title,
+            category: data.service.category,
+            price: data.service.price,
+            price_range: data.service.price_range,
+            '⚠️ HAS_PRICE_RANGE': !!data.service.price_range,
+            features: data.service.features,
+            full_service: data.service
+          });
+        } else {
+          showResult('result2', data);
+        }
+      } catch (error) {
+        showResult('result2', { error: error.message }, true);
+      }
+    }
+
+    async function createService() {
+      const vendorId = document.getElementById('vendorId').value;
+      const title = document.getElementById('serviceTitle').value;
+      const category = document.getElementById('serviceCategory').value;
+      const priceRange = document.getElementById('priceRange').value;
+      const price = document.getElementById('customPrice').value;
+      
+      if (!vendorId) {
+        alert('Please enter a vendor ID');
+        return;
+      }
+      
+      const serviceData = {
+        vendor_id: vendorId,
+        title: title,
+        description: 'Test service created via API test page',
+        category: category,
+        price_range: priceRange || null,
+        price: price ? parseFloat(price) : 0,
+        features: ['Professional service', 'High quality'],
+        is_active: true,
+        featured: false
+      };
+      
+      try {
+        console.log('Creating service:', serviceData);
+        
+        const response = await fetch(`${API_URL}/api/services`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(serviceData)
+        });
+        
+        const data = await response.json();
+        console.log('Create response:', data);
+        
+        if (data.success) {
+          showResult('result3', {
+            success: true,
+            message: 'Service created successfully! ✅',
+            service_id: data.service.id,
+            title: data.service.title,
+            price_range: data.service.price_range,
+            price: data.service.price,
+            '⚠️ PRICE_RANGE_SAVED': !!data.service.price_range,
+            full_service: data.service
+          });
+        } else {
+          showResult('result3', data, true);
+        }
+      } catch (error) {
+        showResult('result3', { error: error.message }, true);
+      }
+    }
+
+    async function checkLatestService() {
+      try {
+        const response = await fetch(`${API_URL}/api/services`);
+        const data = await response.json();
+        
+        if (data.services && data.services.length > 0) {
+          // Sort by created_at to get latest
+          const latest = data.services.sort((a, b) => 
+            new Date(b.created_at) - new Date(a.created_at)
+          )[0];
+          
+          showResult('result4', {
+            latest_service_id: latest.id,
+            title: latest.title,
+            category: latest.category,
+            price: latest.price,
+            price_range: latest.price_range,
+            '✅ HAS_PRICE_RANGE': !!latest.price_range,
+            '✅ HAS_FEATURES': !!latest.features && latest.features.length > 0,
+            created_at: latest.created_at,
+            full_service: latest
+          });
+        } else {
+          showResult('result4', { message: 'No services found' });
+        }
+      } catch (error) {
+        showResult('result4', { error: error.message }, true);
+      }
+    }
+  </script>
+</body>
+</html>

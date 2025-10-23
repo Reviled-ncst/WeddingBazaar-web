@@ -24,6 +24,7 @@ import { SERVICE_CATEGORIES } from '../../../../shared/services/CentralizedServi
 import { BookingRequestModal } from '../../../../modules/services/components/BookingRequestModal';
 import { IntelligentWeddingPlanner } from './dss/IntelligentWeddingPlanner_v2';
 import { createServiceShareUrl } from '../../../../shared/utils/slug-generator';
+import { ConfirmationModal } from '../../../../shared/components/modals/ConfirmationModal';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 import type { Service as BookingService } from '../../../../modules/services/types';
 
@@ -161,6 +162,18 @@ export function Services() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<Service | null>(null);
   const [showDSS, setShowDSS] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationConfig, setConfirmationConfig] = useState<{
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+    icon: 'heart' | 'check' | 'alert' | 'info';
+  }>({
+    title: '',
+    message: '',
+    type: 'success',
+    icon: 'check'
+  });
   
   
   const { openModal: openMessagingModal } = useMessagingModal();
@@ -713,8 +726,14 @@ Best regards`;
   const handleFavoriteService = (service: Service) => {
     console.log('❤️ [Services] Adding service to favorites:', service.name);
     // TODO: Implement favorites/wishlist functionality
-    // For now, show a success message
-    alert(`Added "${service.name}" to your favorites! 💕`);
+    // Show confirmation modal instead of alert
+    setConfirmationConfig({
+      title: 'Added to Favorites! 💕',
+      message: `"${service.name}" has been saved to your favorites. You can view all your saved services in your profile.`,
+      type: 'success',
+      icon: 'heart'
+    });
+    setShowConfirmation(true);
   };
 
   const handleShareService = (service: Service) => {
@@ -1499,6 +1518,15 @@ Best regards`;
         />
       )}
 
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        title={confirmationConfig.title}
+        message={confirmationConfig.message}
+        type={confirmationConfig.type}
+        icon={confirmationConfig.icon}
+      />
 
     </div>
   );

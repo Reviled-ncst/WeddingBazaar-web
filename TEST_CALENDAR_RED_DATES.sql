@@ -86,3 +86,4 @@ ORDER BY event_date;
 -- CLEANUP (Run after testing to remove test data)
 -- ==========================================
 -- DELETE FROM bookings WHERE booking_reference LIKE 'TEST-RED-%';
+

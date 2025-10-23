@@ -348,6 +348,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   const [isDragOver, setIsDragOver] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showCustomPricing, setShowCustomPricing] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // Dynamic categories state
   const [categories, setCategories] = useState<Category[]>([]);
@@ -548,18 +549,28 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         if (!formData.location.trim()) newErrors.location = 'Service location is required';
         break;
       case 2:
-        if (!formData.price_range) {
-          newErrors.price_range = 'Please select a price range';
-        }
-        if (showCustomPricing && formData.price && parseFloat(formData.price) < 0) {
-          newErrors.price = 'Price must be a positive number';
-        }
-        if (showCustomPricing && formData.max_price && parseFloat(formData.max_price) < 0) {
-          newErrors.max_price = 'Maximum price must be a positive number';
-        }
-        if (showCustomPricing && formData.price && formData.max_price && 
-            parseFloat(formData.price) > parseFloat(formData.max_price)) {
-          newErrors.max_price = 'Maximum price must be greater than minimum price';
+        // Validate based on pricing mode
+        if (!showCustomPricing) {
+          // Recommended price range mode
+          if (!formData.price_range) {
+            newErrors.price_range = 'Please select a price range';
+          }
+        } else {
+          // Custom pricing mode
+          if (!formData.price || formData.price.trim() === '') {
+            newErrors.price = 'Minimum price is required';
+          } else if (parseFloat(formData.price) < 0) {
+            newErrors.price = 'Price must be a positive number';
+          }
+          
+          if (formData.max_price && parseFloat(formData.max_price) < 0) {
+            newErrors.max_price = 'Maximum price must be a positive number';
+          }
+          
+          if (formData.price && formData.max_price && 
+              parseFloat(formData.price) > parseFloat(formData.max_price)) {
+            newErrors.max_price = 'Maximum price must be greater than minimum price';
+          }
         }
         break;
       case 3:
@@ -571,9 +582,35 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
-  const handleSubmit = async (e?: React.MouseEvent) => {
+  // Show confirmation modal instead of direct submit
+  const handleShowConfirmation = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
+    
+    // Basic validation before showing confirmation
+    if (!formData.title.trim()) {
+      setErrors({ title: 'Service name is required' });
+      setCurrentStep(1);
+      return;
+    }
+    
+    if (!formData.category) {
+      setErrors({ category: 'Category is required' });
+      setCurrentStep(1);
+      return;
+    }
+
+    if (!formData.description.trim()) {
+      setErrors({ description: 'Description is required' });
+      setCurrentStep(1);
+      return;
+    }
+
+    // Show confirmation modal
+    setShowConfirmation(true);
+  };
+
+  // Handle form submission (called after confirmation)
+  const handleSubmit = async () => {
     
     // Prevent multiple submissions
     if (isLoading || isUploading || isSubmitting) {
@@ -613,13 +650,15 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         title: formData.title.trim(),
         description: formData.description.trim(),
         category: formData.category,
-        price: formData.price ? parseFloat(formData.price) : 0,
+        // Only send price_range if in recommended mode, otherwise send price/max_price
+        price_range: !showCustomPricing && formData.price_range ? formData.price_range : null,
+        price: showCustomPricing && formData.price ? parseFloat(formData.price) : null,
+        max_price: showCustomPricing && formData.max_price ? parseFloat(formData.max_price) : null,
         images: formData.images.length > 0 ? formData.images : [],
         features: formData.features.filter(f => f.trim()),
         is_active: formData.is_active,
         featured: formData.featured,
         location: formData.location.trim(),
-        price_range: formData.price_range,
         contact_info: formData.contact_info,
         tags: formData.tags.filter(t => t.trim()),
         keywords: formData.keywords.trim(),
@@ -637,7 +676,8 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
       await onSubmit(serviceData);
       console.log('✅ [AddServiceForm] Form submission completed successfully');
       
-      // Close form only after successful submission
+      // Close confirmation modal and main form after successful submission
+      setShowConfirmation(false);
       onClose();
     } catch (error) {
       console.error('❌ [AddServiceForm] Error submitting service:', error);
@@ -1136,114 +1176,119 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                     </div>
 
                     <div className="space-y-8">
-                      {/* Price Range - REQUIRED */}
-                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
-                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                          <DollarSign className="h-5 w-5 text-green-600" />
-                          Price Range *
-                        </label>
-                        <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-green-200">
-                          💰 Select the price range that best fits your service. This helps couples find options within their budget.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {PRICE_RANGES.map(range => (
-                            <label key={range.value} className="relative cursor-pointer group">
-                              <input
-                                type="radio"
-                                name="price_range"
-                                value={range.value}
-                                checked={formData.price_range === range.value}
-                                onChange={(e) => setFormData(prev => ({ ...prev, price_range: e.target.value }))}
-                                className="sr-only"
-                                aria-label={`${range.label} - ${range.value}`}
-                              />
-                              <div className={`p-5 rounded-2xl border-2 transition-all duration-300 transform ${
-                                formData.price_range === range.value
-                                  ? 'border-green-500 bg-green-50 shadow-xl scale-[1.02] ring-2 ring-green-200'
-                                  : 'border-gray-200 bg-white/80 hover:border-green-300 hover:shadow-lg hover:scale-[1.01] group-hover:bg-green-50/30'
-                              }`}>
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-3 mb-2">
-                                      <div className="inline-flex px-3 py-1 rounded-full text-sm font-semibold shadow-sm bg-green-100 text-green-800">
-                                        {range.label}
+                      {/* PRICING SECTION WITH INTEGRATED TOGGLE */}
+                      {!showCustomPricing ? (
+                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
+                          {/* Header with Toggle */}
+                          <div className="flex items-center justify-between mb-3">
+                            <label className="flex items-center gap-2">
+                              <DollarSign className="h-5 w-5 text-green-600" />
+                              <span className="text-lg font-semibold text-gray-800">Recommended Price Range *</span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowCustomPricing(true);
+                                // Clear price_range when switching to custom pricing
+                                setFormData(prev => ({ ...prev, price_range: '' }));
+                              }}
+                              className="px-4 py-2 bg-white text-blue-600 border-2 border-blue-200 hover:border-blue-400 rounded-lg font-medium transition-all flex items-center gap-2 text-sm shadow-sm hover:shadow-md"
+                            >
+                              <DollarSign className="h-4 w-4" />
+                              Set Custom Pricing
+                            </button>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-green-200">
+                            💰 Select the price range that best fits your service. This helps couples find options within their budget.
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {PRICE_RANGES.map(range => (
+                              <label key={range.value} className="relative cursor-pointer group">
+                                <input
+                                  type="radio"
+                                  name="price_range"
+                                  value={range.value}
+                                  checked={formData.price_range === range.value}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, price_range: e.target.value }))}
+                                  className="sr-only"
+                                  aria-label={`${range.label} - ${range.value}`}
+                                />
+                                <div className={`p-5 rounded-2xl border-2 transition-all duration-300 transform ${
+                                  formData.price_range === range.value
+                                    ? 'border-green-500 bg-green-50 shadow-xl scale-[1.02] ring-2 ring-green-200'
+                                    : 'border-gray-200 bg-white/80 hover:border-green-300 hover:shadow-lg hover:scale-[1.01] group-hover:bg-green-50/30'
+                                }`}>
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-3 mb-2">
+                                        <div className="inline-flex px-3 py-1 rounded-full text-sm font-semibold shadow-sm bg-green-100 text-green-800">
+                                          {range.label}
+                                        </div>
+                                      </div>
+                                      <div className="text-lg font-bold text-gray-900 mb-1">
+                                        {range.value}
+                                      </div>
+                                      <div className="text-sm text-gray-600">
+                                        {range.description}
                                       </div>
                                     </div>
-                                    <div className="text-lg font-bold text-gray-900 mb-1">
-                                      {range.value}
+                                    <div className="flex-shrink-0 ml-3">
+                                      {formData.price_range === range.value ? (
+                                        <div className="flex items-center justify-center w-8 h-8 bg-green-500 rounded-full">
+                                          <CheckCircle2 className="h-5 w-5 text-white" />
+                                        </div>
+                                      ) : (
+                                        <div className="w-8 h-8 border-2 border-gray-300 rounded-full group-hover:border-green-300 transition-colors"></div>
+                                      )}
                                     </div>
-                                    <div className="text-sm text-gray-600">
-                                      {range.description}
-                                    </div>
-                                  </div>
-                                  <div className="flex-shrink-0 ml-3">
-                                    {formData.price_range === range.value ? (
-                                      <div className="flex items-center justify-center w-8 h-8 bg-green-500 rounded-full">
-                                        <CheckCircle2 className="h-5 w-5 text-white" />
-                                      </div>
-                                    ) : (
-                                      <div className="w-8 h-8 border-2 border-gray-300 rounded-full group-hover:border-green-300 transition-colors"></div>
-                                    )}
                                   </div>
                                 </div>
-                              </div>
+                              </label>
+                            ))}
+                          </div>
+                          {errors.price_range && (
+                            <p className="mt-3 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-3 rounded-lg border border-red-200">
+                              <AlertCircle size={16} />
+                              {errors.price_range}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        /* OPTION 2: Custom Price Range */
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
+                          {/* Header with Toggle */}
+                          <div className="flex items-center justify-between mb-3">
+                            <label className="flex items-center gap-2">
+                              <span className="p-1 bg-blue-600 text-white rounded-full text-sm">₱</span>
+                              <span className="text-lg font-semibold text-gray-800">Custom Price Range</span>
                             </label>
-                          ))}
-                        </div>
-                        {errors.price_range && (
-                          <p className="mt-3 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-3 rounded-lg border border-red-200">
-                            <AlertCircle size={16} />
-                            {errors.price_range}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowCustomPricing(false);
+                                // Clear custom pricing when switching to recommended range
+                                setFormData(prev => ({ 
+                                  ...prev, 
+                                  price: '',
+                                  max_price: '',
+                                  price_range: '₱10,000 - ₱25,000' // Reset to default
+                                }));
+                              }}
+                              className="px-4 py-2 bg-white text-green-600 border-2 border-green-200 hover:border-green-400 rounded-lg font-medium transition-all flex items-center gap-2 text-sm shadow-sm hover:shadow-md"
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                              Use Recommended Range
+                            </button>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-blue-200">
+                            💡 Set your exact minimum and maximum prices. This will override the general price range options.
                           </p>
-                        )}
-                      </div>
-
-                      {/* Custom Pricing - Optional with Toggle */}
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
-                        <div className="flex items-center justify-between mb-4">
-                          <label className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                            <span className="p-1 bg-blue-600 text-white rounded-full text-sm">₱</span>
-                            Custom Price Range (Optional)
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => setShowCustomPricing(!showCustomPricing)}
-                            className={`px-4 py-2 rounded-xl font-medium transition-all flex items-center gap-2 ${
-                              showCustomPricing
-                                ? 'bg-blue-500 text-white shadow-lg hover:bg-blue-600'
-                                : 'bg-white text-blue-600 border-2 border-blue-200 hover:border-blue-400'
-                            }`}
-                          >
-                            {showCustomPricing ? (
-                              <>
-                                <CheckCircle2 className="h-4 w-4" />
-                                Hide Custom Pricing
-                              </>
-                            ) : (
-                              <>
-                                <DollarSign className="h-4 w-4" />
-                                Set Custom Pricing
-                              </>
-                            )}
-                          </button>
-                        </div>
-                        
-                        <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-blue-200">
-                          💡 Want to be more specific? Set your exact minimum and maximum prices here. Otherwise, the general price range above will be used.
-                        </p>
-
-                        {showCustomPricing && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white"
-                          >
+                          <div className="bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {/* Minimum Price */}
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-                                  Minimum Price
+                                  Minimum Price *
                                   <span className="text-xs text-gray-500">(₱)</span>
                                 </label>
                                 <div className="relative">
@@ -1280,25 +1325,10 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                                 </div>
                               </div>
                             </div>
-                            
-                            <div className="mt-3 text-xs text-gray-500 flex items-center gap-1 bg-blue-50 p-2 rounded-lg">
-                              <span>💡</span>
-                              <span>These custom values will override the general price range you selected above</span>
-                            </div>
-                          </motion.div>
-                        )}
-                        
-                        {!showCustomPricing && (
-                          <div className="bg-gradient-to-r from-gray-50 to-slate-50 p-4 rounded-xl border border-gray-200 text-center">
-                            <p className="text-sm text-gray-600">
-                              📊 Currently using general price range: <span className="font-semibold text-gray-900">{formData.price_range}</span>
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Click "Set Custom Pricing" above to specify exact prices
-                            </p>
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
+
                     </div>
 
                     {/* Service Options */}
@@ -2208,7 +2238,7 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                 ) : (
                   <button
                     type="button"
-                    onClick={handleSubmit}
+                    onClick={handleShowConfirmation}
                     disabled={isLoading || isUploading || isSubmitting}
                     className="px-8 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-all font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -2237,6 +2267,178 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
           vendorId={parseInt(vendorId)}
           onClose={() => setShowCalendar(false)}
         />
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmation && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          onClick={() => setShowConfirmation(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-rose-500 to-pink-600 p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-white/20 rounded-full backdrop-blur-sm">
+                    <AlertTriangle className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold">Confirm Service Details</h3>
+                    <p className="text-white/90 text-sm mt-1">
+                      Please review your service information before publishing
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowConfirmation(false)}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                  title="Close confirmation"
+                  aria-label="Close confirmation modal"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+              <div className="space-y-4">
+                {/* Service Name */}
+                <div className="bg-gradient-to-r from-rose-50 to-pink-50 p-4 rounded-xl border border-rose-200">
+                  <p className="text-sm font-medium text-gray-600 mb-1">Service Name</p>
+                  <p className="text-lg font-bold text-gray-900">{formData.title}</p>
+                </div>
+
+                {/* Category */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                    <p className="text-sm font-medium text-gray-600 mb-1">Category</p>
+                    <p className="font-semibold text-gray-900">{formData.category}</p>
+                  </div>
+                  {formData.subcategory && (
+                    <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-200">
+                      <p className="text-sm font-medium text-gray-600 mb-1">Subcategory</p>
+                      <p className="font-semibold text-gray-900">{formData.subcategory}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Location */}
+                <div className="bg-green-50 p-4 rounded-xl border border-green-200">
+                  <p className="text-sm font-medium text-gray-600 mb-1 flex items-center gap-1">
+                    <MapPin size={14} />
+                    Location
+                  </p>
+                  <p className="font-semibold text-gray-900">{formData.location}</p>
+                </div>
+
+                {/* Pricing */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                  <p className="text-sm font-medium text-gray-600 mb-2">Pricing</p>
+                  {showCustomPricing ? (
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-900 text-lg">
+                        ₱{parseFloat(formData.price || '0').toLocaleString()}
+                      </span>
+                      {formData.max_price && (
+                        <>
+                          <span className="text-gray-500">-</span>
+                          <span className="font-bold text-gray-900 text-lg">
+                            ₱{parseFloat(formData.max_price).toLocaleString()}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="font-semibold text-gray-900">{formData.price_range}</p>
+                  )}
+                </div>
+
+                {/* Images */}
+                <div className="bg-purple-50 p-4 rounded-xl border border-purple-200">
+                  <p className="text-sm font-medium text-gray-600 mb-2 flex items-center gap-1">
+                    <Camera size={14} />
+                    Images
+                  </p>
+                  <p className="font-semibold text-gray-900">
+                    {formData.images.length} {formData.images.length === 1 ? 'image' : 'images'} uploaded
+                  </p>
+                </div>
+
+                {/* Service Items */}
+                {formData.features.length > 0 && (
+                  <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+                    <p className="text-sm font-medium text-gray-600 mb-2">Service Items & Equipment</p>
+                    <p className="font-semibold text-gray-900">
+                      {formData.features.length} {formData.features.length === 1 ? 'item' : 'items'} included
+                    </p>
+                  </div>
+                )}
+
+                {/* Description Preview */}
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                  <p className="text-sm font-medium text-gray-600 mb-2">Description</p>
+                  <p className="text-sm text-gray-700 line-clamp-3">{formData.description}</p>
+                </div>
+
+                {/* Status */}
+                <div className="flex gap-4">
+                  {formData.featured && (
+                    <div className="flex-1 bg-yellow-50 p-3 rounded-xl border border-yellow-200 flex items-center gap-2">
+                      <Star className="h-5 w-5 text-yellow-600" />
+                      <span className="text-sm font-semibold text-yellow-900">Featured Service</span>
+                    </div>
+                  )}
+                  {formData.is_active && (
+                    <div className="flex-1 bg-green-50 p-3 rounded-xl border border-green-200 flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      <span className="text-sm font-semibold text-green-900">Available for Booking</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-gray-200 p-6 bg-gray-50">
+              <div className="flex items-center justify-between gap-4">
+                <button
+                  onClick={() => setShowConfirmation(false)}
+                  className="px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium"
+                >
+                  ← Go Back & Edit
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="px-8 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-all font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      {editingService ? 'Updating...' : 'Creating...'}
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-5 w-5" />
+                      {editingService ? 'Confirm & Update' : 'Confirm & Publish'}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
       )}
     </AnimatePresence>
   );
