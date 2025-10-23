@@ -379,7 +379,7 @@ router.post('/', async (req, res) => {
     // Insert into database with DSS fields
     const result = await sql`
       INSERT INTO services (
-        id, vendor_id, title, description, category, price, location, images, 
+        id, vendor_id, title, description, category, price, price_range, location, images, features,
         featured, is_active,
         years_in_business, service_tier, wedding_styles, cultural_specialties, availability,
         created_at, updated_at
@@ -390,8 +390,10 @@ router.post('/', async (req, res) => {
         ${description || ''},
         ${category},
         ${price ? parseFloat(price) : null},
+        ${price_range || null},
         ${location || ''},
         ${Array.isArray(images) ? images : []},
+        ${Array.isArray(features) ? features : []},
         ${Boolean(featured)},
         ${Boolean(is_active)},
         ${years_in_business ? parseInt(years_in_business) : null},
@@ -434,6 +436,7 @@ router.put('/:id', async (req, res) => {
       description,
       category,
       price,
+      price_range,
       location,
       images,
       features,
@@ -468,6 +471,10 @@ router.put('/:id', async (req, res) => {
       updates.push(`price = $${paramCount++}`);
       values.push(price ? parseFloat(price) : null);
     }
+    if (price_range !== undefined) {
+      updates.push(`price_range = $${paramCount++}`);
+      values.push(price_range);
+    }
     if (location !== undefined) {
       updates.push(`location = $${paramCount++}`);
       values.push(location);
@@ -475,6 +482,10 @@ router.put('/:id', async (req, res) => {
     if (images !== undefined) {
       updates.push(`images = $${paramCount++}`);
       values.push(Array.isArray(images) ? images : []);
+    }
+    if (features !== undefined) {
+      updates.push(`features = $${paramCount++}`);
+      values.push(Array.isArray(features) ? features : []);
     }
     if (is_active !== undefined) {
       updates.push(`is_active = $${paramCount++}`);
