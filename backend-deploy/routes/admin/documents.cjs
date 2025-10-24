@@ -225,6 +225,108 @@ async function updateDocumentStatus(req, res) {
 }
 
 /**
+ * POST /api/admin/documents/:id/approve
+ * Convenience endpoint to approve a document
+ */
+async function approveDocument(req, res) {
+  try {
+    const { id } = req.params;
+    const { adminNotes } = req.body;
+    
+    console.log('✅ [Admin Documents] Approving document:', id);
+    
+    const result = await sql`
+      UPDATE vendor_documents
+      SET 
+        verification_status = 'approved',
+        verified_at = ${new Date().toISOString()},
+        verified_by = ${req.user?.email || 'admin'},
+        updated_at = ${new Date().toISOString()}
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Document not found'
+      });
+    }
+    
+    console.log('✅ [Admin Documents] Document approved successfully');
+    
+    res.json({
+      success: true,
+      document: result[0],
+      message: 'Document approved successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ [Admin Documents] Error approving document:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to approve document',
+      details: error.message
+    });
+  }
+}
+
+/**
+ * POST /api/admin/documents/:id/reject
+ * Convenience endpoint to reject a document
+ */
+async function rejectDocument(req, res) {
+  try {
+    const { id } = req.params;
+    const { rejectionReason, adminNotes } = req.body;
+    
+    console.log('❌ [Admin Documents] Rejecting document:', id);
+    
+    if (!rejectionReason) {
+      return res.status(400).json({
+        success: false,
+        error: 'Rejection reason is required'
+      });
+    }
+    
+    const result = await sql`
+      UPDATE vendor_documents
+      SET 
+        verification_status = 'rejected',
+        verified_at = ${new Date().toISOString()},
+        verified_by = ${req.user?.email || 'admin'},
+        rejection_reason = ${rejectionReason},
+        updated_at = ${new Date().toISOString()}
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Document not found'
+      });
+    }
+    
+    console.log('✅ [Admin Documents] Document rejected successfully');
+    
+    res.json({
+      success: true,
+      document: result[0],
+      message: 'Document rejected successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ [Admin Documents] Error rejecting document:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to reject document',
+      details: error.message
+    });
+  }
+}
+
+/**
  * GET /api/admin/documents/stats
  * Get document verification statistics
  */
@@ -270,5 +372,7 @@ module.exports = {
   getDocuments,
   getDocumentById,
   updateDocumentStatus,
-  getDocumentStats
+  getDocumentStats,
+  approveDocument,
+  rejectDocument
 };

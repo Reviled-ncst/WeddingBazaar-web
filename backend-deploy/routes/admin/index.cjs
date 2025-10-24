@@ -49,6 +49,8 @@ try {
   documentsRoutes.get('/stats', documentsModule.getDocumentStats);
   documentsRoutes.get('/:id', documentsModule.getDocumentById);
   documentsRoutes.patch('/:id/status', documentsModule.updateDocumentStatus);
+  documentsRoutes.post('/:id/approve', documentsModule.approveDocument);
+  documentsRoutes.post('/:id/reject', documentsModule.rejectDocument);
   
   console.log('✅ Documents routes loaded successfully');
 } catch (error) {
