@@ -518,11 +518,13 @@ export function Services() {
               note: '✅ Using backend-enriched per-service ratings from reviews table grouped by service_id'
             });
 
-            // Calculate attractive price range
+            // Use price_range from database if available, otherwise calculate from price
             const basePrice = parseFloat(service.price) || 0;
-            const priceRangeText = basePrice > 0 
-              ? `₱${(basePrice * 0.8).toLocaleString('en-PH', { maximumFractionDigits: 0 })} - ₱${(basePrice * 1.2).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`
-              : 'Contact for pricing';
+            const priceRangeText = service.price_range 
+              ? service.price_range  // ✅ Use database price_range (e.g., "₱10,000 - ₱50,000")
+              : basePrice > 0 
+                ? `₱${(basePrice * 0.8).toLocaleString('en-PH', { maximumFractionDigits: 0 })} - ₱${(basePrice * 1.2).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`
+                : 'Contact for pricing';
 
             return {
               id: service.id,
@@ -537,8 +539,8 @@ export function Services() {
               description: service.description || `Professional ${service.category.toLowerCase()} services for your special day.`,
               price: basePrice,
               priceRange: priceRangeText,
-              // Use real vendor location if available, otherwise use generated
-              location: vendor?.location || generatedLocation,
+              // ✅ FIX: Use backend-enriched vendor location (vendor_service_area), then fallback to vendor.service_area, then generated
+              location: service.vendor_service_area || vendor?.service_area || generatedLocation,
               // Use backend-enriched per-service rating data
               rating: finalRating,
               reviewCount: finalReviewCount,
