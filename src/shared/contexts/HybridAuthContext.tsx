@@ -258,13 +258,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return unsubscribe;
   }, [isRegistering]);
 
-  // Check for stored backend session on app load
+  // Check for stored backend session on app load (ONCE)
   useEffect(() => {
     const initializeBackendSession = () => {
       const storedToken = localStorage.getItem('jwt_token');
       const storedUser = localStorage.getItem('backend_user');
       
-      if (storedToken && storedUser && !user && !firebaseUser) {
+      if (storedToken && storedUser) {
         try {
           const backendUser = JSON.parse(storedUser);
           console.log('🔍 Found stored admin session:', backendUser);
@@ -303,14 +303,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           localStorage.removeItem('backend_user');
           setIsLoading(false);
         }
+      } else {
+        setIsLoading(false);
       }
     };
     
-    // Only run if we don't have Firebase auth state yet
-    if (!firebaseUser && !user) {
-      initializeBackendSession();
-    }
-  }, [user, firebaseUser, API_BASE_URL]);
+    // Only run ONCE on mount
+    initializeBackendSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - run once on mount
 
   // OLD Firebase method removed - using hybrid approach below
 
