@@ -312,19 +312,30 @@ export const VendorServices: React.FC = () => {
   // Ensure vendor profile exists before creating services
   const ensureVendorProfile = async (): Promise<boolean> => {
     try {
-      const targetVendorId = user?.id || vendorId;
+      const targetVendorId = user?.vendorId || user?.id || vendorId;
       console.log('🔍 Checking if vendor profile exists for:', targetVendorId);
+      console.log('🔍 User object:', { id: user?.id, vendorId: user?.vendorId, role: user?.role });
       
-      // Check if vendor profile exists
-      const checkResponse = await fetch(`${apiUrl}/api/vendors/${targetVendorId}`);
+      // Check if vendor profile exists using the correct API
+      // Try vendor profile API first (new system)
+      const checkResponse = await fetch(`${apiUrl}/api/vendor-profile/${targetVendorId}`);
       
       if (checkResponse.ok) {
-        console.log('✅ Vendor profile exists');
+        console.log('✅ Vendor profile exists in vendor_profiles table');
         return true;
       }
       
       if (checkResponse.status === 404) {
-        console.log('❌ Vendor profile not found, need to create one');
+        console.log('❌ Vendor profile not found');
+        console.log('🔍 Attempted URL:', `${apiUrl}/api/vendor-profile/${targetVendorId}`);
+        
+        // Try looking up by user ID as fallback
+        const userIdCheck = await fetch(`${apiUrl}/api/vendor-profile/user/${user?.id}`);
+        if (userIdCheck.ok) {
+          console.log('✅ Vendor profile found by user ID');
+          return true;
+        }
+        
         setError('Vendor profile required. Please complete your business profile first.');
         return false;
       }
