@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -15,11 +15,14 @@ import {
   ChevronRight,
   Star,
   Lightbulb,
-  Navigation
+  Navigation,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../../../utils/cn';
 import { CoupleHeader } from '../landing/CoupleHeader';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
+import { dashboardService, type IndividualDashboardData } from '../../../../services/api/dashboardService';
 
 // Tutorial steps configuration
 const tutorialSteps = [
@@ -104,88 +107,84 @@ const quickTips = [
 
 export const IndividualDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [showTutorial, setShowTutorial] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [showQuickTips, setShowQuickTips] = useState(false);
 
+  // Real data state
+  const [dashboardData, setDashboardData] = useState<IndividualDashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch real dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user?.id) {
+        console.log('⚠️ [Dashboard] No user ID, using fallback data');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        console.log('📊 [Dashboard] Fetching data for user:', user.id);
+        const data = await dashboardService.getIndividualDashboard(user.id);
+        console.log('✅ [Dashboard] Data fetched successfully:', data);
+        setDashboardData(data);
+        setError(null);
+      } catch (err) {
+        console.error('❌ [Dashboard] Error fetching data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [user?.id]);
+
   // Mock data - in a real app, this would come from your backend
   const weddingData = {
     weddingDate: '2024-08-15',
-    partnerName: 'Sarah & John',
+    partnerName: user?.firstName || 'Guest',
     venue: 'Sunset Garden Venue',
     guestCount: 150,
-    budget: 50000,
-    spent: 32000,
+    budget: dashboardData?.budget.total || 50000,
+    spent: dashboardData?.budget.spent || 32000,
     tasksCompleted: 12,
     totalTasks: 25,
     daysToWedding: 45
   };
 
-  const recentActivities = [
+  const recentActivities = dashboardData?.recentActivities || [
     {
-      id: 1,
-      type: 'booking',
-      title: 'Photographer booked',
-      description: 'Jessica Williams Photography confirmed',
-      time: '2 hours ago',
-      icon: Camera,
-      color: 'text-pink-600'
-    },
-    {
-      id: 2,
-      type: 'task',
-      title: 'Venue visit completed',
-      description: 'Final walkthrough at Sunset Garden',
-      time: '1 day ago',
-      icon: CheckCircle,
-      color: 'text-green-600'
-    },
-    {
-      id: 3,
-      type: 'message',
-      title: 'Message from caterer',
-      description: 'Menu tasting scheduled for Friday',
-      time: '2 days ago',
-      icon: MessageCircle,
-      color: 'text-blue-600'
-    },
-    {
-      id: 4,
-      type: 'budget',
-      title: 'Budget updated',
-      description: 'Added flowers and decorations',
-      time: '3 days ago',
-      icon: DollarSign,
-      color: 'text-purple-600'
+      id: '1',
+      type: 'booking' as const,
+      title: 'No recent activities',
+      description: 'Start by browsing services and making bookings',
+      timestamp: 'Just now',
+      icon: 'Calendar',
+      color: 'text-gray-600'
     }
   ];
 
-  const upcomingEvents = [
-    {
-      id: 1,
-      title: 'Menu Tasting',
-      date: '2024-03-20',
-      time: '2:00 PM',
-      vendor: 'Gourmet Catering Co.',
-      location: 'Downtown Kitchen'
-    },
-    {
-      id: 2,
-      title: 'Dress Fitting',
-      date: '2024-03-25',
-      time: '11:00 AM',
-      vendor: 'Bridal Elegance',
-      location: 'Fashion District'
-    },
-    {
-      id: 3,
-      title: 'Venue Final Walkthrough',
-      date: '2024-04-01',
-      time: '10:00 AM',
-      vendor: 'Sunset Garden Venue',
-      location: 'Sunset Gardens'
-    }
-  ];
+  const upcomingEvents = dashboardData?.upcomingEvents || [];
+
+  // Icon mapping helper
+  const getIconComponent = (iconName: string) => {
+    const icons: Record<string, any> = {
+      Calendar,
+      Camera,
+      CheckCircle,
+      MessageCircle,
+      DollarSign,
+      Users,
+      Clock,
+      MapPin
+    };
+    return icons[iconName] || Calendar;
+  };
 
   const quickActions = [
     {
@@ -212,7 +211,6 @@ export const IndividualDashboard: React.FC = () => {
   ];
 
   const budgetProgress = (weddingData.spent / weddingData.budget) * 100;
-  const taskProgress = (weddingData.tasksCompleted / weddingData.totalTasks) * 100;
 
   const handleTutorialAction = (action: any) => {
     switch (action.type) {
@@ -418,17 +416,20 @@ export const IndividualDashboard: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-2xl font-bold text-gray-900">
-                    ${weddingData.spent.toLocaleString()}
+                    ₱{weddingData.spent.toLocaleString()}
                   </span>
                   <span className="text-sm text-gray-500">
-                    of ${weddingData.budget.toLocaleString()}
+                    of ₱{weddingData.budget.toLocaleString()}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                   <div 
                     className={cn(
                       "bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-300",
-                      budgetProgress > 75 ? "w-3/4" : budgetProgress > 50 ? "w-1/2" : budgetProgress > 25 ? "w-1/4" : "w-1/12"
+                      budgetProgress >= 100 ? "w-full" :
+                      budgetProgress >= 75 ? "w-3/4" :
+                      budgetProgress >= 50 ? "w-1/2" :
+                      budgetProgress >= 25 ? "w-1/4" : "w-1/12"
                     )}
                   />
                 </div>
@@ -438,32 +439,27 @@ export const IndividualDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Task Progress */}
+            {/* Bookings Overview */}
             <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-pink-100">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Tasks</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Bookings</h3>
                 <CheckCircle className="h-6 w-6 text-purple-600" />
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-2xl font-bold text-gray-900">
-                    {weddingData.tasksCompleted}
+                    {dashboardData?.stats.totalBookings || 0}
                   </span>
-                  <span className="text-sm text-gray-500">
-                    of {weddingData.totalTasks} tasks
+                  <span className="text-sm text-gray-500">total</span>
+                </div>
+                <div className="flex space-x-2 text-sm flex-wrap">
+                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                    {dashboardData?.stats.confirmedBookings || 0} confirmed
+                  </span>
+                  <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                    {dashboardData?.stats.pendingBookings || 0} pending
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div 
-                    className={cn(
-                      "bg-gradient-to-r from-purple-400 to-purple-600 h-3 rounded-full transition-all duration-300",
-                      taskProgress > 75 ? "w-3/4" : taskProgress > 50 ? "w-1/2" : taskProgress > 25 ? "w-1/4" : "w-1/12"
-                    )}
-                  />
-                </div>
-                <p className="text-sm text-gray-600">
-                  {taskProgress.toFixed(1)}% complete
-                </p>
               </div>
             </div>
 
@@ -518,20 +514,40 @@ export const IndividualDashboard: React.FC = () => {
             <div className="space-y-6" id="recent-activities">
               <h2 className="text-2xl font-bold text-gray-900">Recent Activities</h2>
               <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-pink-100">
-                <div className="space-y-4">
-                  {recentActivities.map((activity) => (
-                    <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-xl hover:bg-pink-50/50 transition-colors duration-200">
-                      <div className={cn("p-2 rounded-lg", activity.color.replace('text-', 'bg-').replace('-600', '-100'))}>
-                        <activity.icon className={cn("h-4 w-4", activity.color)} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900">{activity.title}</p>
-                        <p className="text-sm text-gray-600">{activity.description}</p>
-                        <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 text-pink-500 animate-spin" />
+                    <span className="ml-3 text-gray-600">Loading activities...</span>
+                  </div>
+                ) : error ? (
+                  <div className="text-center py-8">
+                    <p className="text-red-600 mb-2">Failed to load activities</p>
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="text-pink-600 hover:text-pink-700 font-medium"
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recentActivities.map((activity) => {
+                      const IconComponent = getIconComponent(activity.icon);
+                      return (
+                        <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-xl hover:bg-pink-50/50 transition-colors duration-200">
+                          <div className={cn("p-2 rounded-lg", activity.color.replace('text-', 'bg-').replace('-600', '-100'))}>
+                            <IconComponent className={cn("h-4 w-4", activity.color)} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                            <p className="text-sm text-gray-600">{activity.description}</p>
+                            <p className="text-xs text-gray-500 mt-1">{activity.timestamp}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -539,37 +555,61 @@ export const IndividualDashboard: React.FC = () => {
           {/* Upcoming Events */}
           <div className="mt-8" id="upcoming-events">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Upcoming Events</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {upcomingEvents.map((event) => (
-                <div key={event.id} className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-pink-100 hover:shadow-xl hover:scale-105 transition-all duration-300">
-                  <div className="flex items-center justify-between mb-4">
-                    <Calendar className="h-6 w-6 text-pink-600" />
-                    <span className="text-sm font-medium text-pink-600 bg-pink-100 px-3 py-1 rounded-full">
-                      Upcoming
-                    </span>
+            {loading ? (
+              <div className="flex items-center justify-center py-12 bg-white/70 backdrop-blur-sm rounded-2xl">
+                <Loader2 className="h-8 w-8 text-pink-500 animate-spin" />
+                <span className="ml-3 text-gray-600">Loading events...</span>
+              </div>
+            ) : upcomingEvents.length === 0 ? (
+              <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-12 shadow-lg border border-pink-100 text-center">
+                <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Upcoming Events</h3>
+                <p className="text-gray-600 mb-6">Book services to see your upcoming appointments here</p>
+                <button
+                  onClick={() => navigate('/individual/services')}
+                  className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-300 inline-flex items-center space-x-2"
+                >
+                  <span>Browse Services</span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {upcomingEvents.map((event) => (
+                  <div key={event.id} className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-pink-100 hover:shadow-xl hover:scale-105 transition-all duration-300">
+                    <div className="flex items-center justify-between mb-4">
+                      <Calendar className="h-6 w-6 text-pink-600" />
+                      <span className="text-sm font-medium text-pink-600 bg-pink-100 px-3 py-1 rounded-full">
+                        Upcoming
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{event.title}</h3>
+                    <div className="space-y-2 text-sm text-gray-600">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>{new Date(event.date).toLocaleDateString()}</span>
+                      </div>
+                      {event.time && (
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4" />
+                          <span>{event.time}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center space-x-2">
+                        <Users className="h-4 w-4" />
+                        <span>{event.vendor}</span>
+                      </div>
+                      {event.location && (
+                        <div className="flex items-center space-x-2">
+                          <MapPin className="h-4 w-4" />
+                          <span>{event.location}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{event.title}</h3>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="h-4 w-4" />
-                      <span>{new Date(event.date).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Clock className="h-4 w-4" />
-                      <span>{event.time}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Users className="h-4 w-4" />
-                      <span>{event.vendor}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4" />
-                      <span>{event.location}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
