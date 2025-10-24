@@ -154,7 +154,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             },
             body: JSON.stringify({
               ...profileData,
-              firebase_uid: fbUser.uid // Link to Firebase account
+              firebase_uid: fbUser.uid, // Link to Firebase account
+              oauth_provider: 'google' // Mark as OAuth registration for auto-verification
             })
           });
 
@@ -401,7 +402,45 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const updatedFirebaseUser = await firebaseAuthService.reloadUser();
       if (updatedFirebaseUser) {
         setFirebaseUser(updatedFirebaseUser);
-        // Sync will happen via the auth state listener
+        
+        // Sync email verification status with backend if it changed
+        if (updatedFirebaseUser.emailVerified && user && !user.emailVerified) {
+          console.log('✅ Email verified in Firebase - syncing with backend...');
+          
+          try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/sync-firebase-verification`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                firebase_uid: updatedFirebaseUser.uid,
+                email_verified: true
+              })
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              console.log('✅ Backend email verification synced:', data.user);
+              
+              // Update local user state
+              setUser(prev => prev ? { ...prev, emailVerified: true } : null);
+              
+              // Update cached user data
+              const cachedUser = localStorage.getItem('cached_user_data');
+              if (cachedUser) {
+                const userData = JSON.parse(cachedUser);
+                userData.emailVerified = true;
+                localStorage.setItem('cached_user_data', JSON.stringify(userData));
+                sessionStorage.setItem('cached_user_data', JSON.stringify(userData));
+              }
+            } else {
+              console.warn('⚠️ Failed to sync email verification with backend');
+            }
+          } catch (syncError) {
+            console.error('❌ Error syncing email verification:', syncError);
+          }
+        }
       }
     } catch (error) {
       console.error('❌ Error reloading user:', error);
@@ -511,6 +550,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         user_type: userData.role,
         phone: userData.phone,
         firebase_uid: result.firebaseUid, // Link to Firebase account
+        oauth_provider: null, // Regular email/password registration (not OAuth)
         ...(userData.role === 'vendor' && {
           business_name: userData.business_name,
           business_type: userData.business_type,

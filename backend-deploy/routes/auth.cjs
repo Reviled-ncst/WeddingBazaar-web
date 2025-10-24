@@ -212,15 +212,21 @@ router.post('/register', async (req, res) => {
     const userId = await getNextUserId(sql, user_type === 'vendor' ? 'vendor' : 'individual');
     
     // 1. Create user account in users table (with Firebase UID support)
-    // If firebase_uid is provided, user has already verified their email with Firebase
-    const isFirebaseVerified = !!firebase_uid;
+    // Email verification logic:
+    // - OAuth providers (Google/Facebook): Auto-verified (email_verified=true)
+    // - Regular email/password: Requires email verification (email_verified=false)
+    // - Firebase sends verification emails, but backend only trusts OAuth providers
+    const isOAuthProvider = req.body.oauth_provider ? true : false; // e.g., 'google', 'facebook'
+    const isFirebaseVerified = isOAuthProvider; // Only OAuth providers get auto-verification
     
     console.log('💾 Inserting user into database:', { 
       userId, 
       email, 
       user_type, 
       firebase_uid, 
-      email_verified: isFirebaseVerified 
+      oauth_provider: req.body.oauth_provider || 'email/password',
+      email_verified: isFirebaseVerified,
+      reason: isOAuthProvider ? 'OAuth auto-verified' : 'Requires email verification'
     });
     
     const userResult = await sql`
@@ -556,6 +562,71 @@ router.post('/verify-email', async (req, res) => {
   }
 });
 
+// Firebase Email Verification Sync - Updates backend when Firebase confirms email
+router.post('/sync-firebase-verification', async (req, res) => {
+  try {
+    const { firebase_uid, email_verified } = req.body;
+    console.log('🔄 [AUTH] Syncing Firebase email verification status:', { 
+      firebase_uid, 
+      email_verified 
+    });
+
+    if (!firebase_uid) {
+      return res.status(400).json({
+        success: false,
+        error: 'firebase_uid is required',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Update user's email verification status based on Firebase
+    const result = await sql`
+      UPDATE users 
+      SET email_verified = ${email_verified === true}, updated_at = NOW()
+      WHERE firebase_uid = ${firebase_uid}
+      RETURNING id, email, first_name, last_name, user_type, email_verified, firebase_uid
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found with this Firebase UID',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const user = result[0];
+    console.log('✅ Firebase email verification synced for user:', {
+      id: user.id,
+      email: user.email,
+      email_verified: user.email_verified
+    });
+
+    res.json({
+      success: true,
+      message: 'Email verification status synced successfully',
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        userType: user.user_type,
+        emailVerified: user.email_verified,
+        firebaseUid: user.firebase_uid
+      },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Firebase verification sync error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to sync email verification status',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Phone Verification endpoint (temporarily disabled until schema supports phone_verified column)
 router.post('/verify-phone', async (req, res) => {
   try {
@@ -590,6 +661,7 @@ router.post('/verify-phone', async (req, res) => {
     });
   }
 });
+
 
 // Vendor Document Submission endpoint
 router.post('/vendor/submit-documents', async (req, res) => {
