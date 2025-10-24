@@ -305,4 +305,104 @@ router.get('/documents/pending', async (req, res) => {
   }
 });
 
+/**
+ * Approve a vendor document
+ */
+router.post('/documents/:documentId/approve', async (req, res) => {
+  const { documentId } = req.params;
+  
+  try {
+    console.log(`✅ [Admin] Approving document: ${documentId}`);
+    
+    // Update the document status to approved
+    const result = await sql`
+      UPDATE vendor_documents
+      SET 
+        verification_status = 'approved',
+        verified_at = NOW(),
+        rejection_reason = NULL
+      WHERE id = ${documentId}
+      RETURNING *
+    `;
+    
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Document not found'
+      });
+    }
+    
+    console.log(`✅ [Admin] Document ${documentId} approved successfully`);
+    
+    res.json({
+      success: true,
+      message: 'Document approved successfully',
+      document: result[0],
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error(`❌ [Admin] Error approving document ${documentId}:`, error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * Reject a vendor document
+ */
+router.post('/documents/:documentId/reject', async (req, res) => {
+  const { documentId } = req.params;
+  const { reason } = req.body;
+  
+  try {
+    console.log(`❌ [Admin] Rejecting document: ${documentId}, Reason: ${reason}`);
+    
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'Rejection reason is required'
+      });
+    }
+    
+    // Update the document status to rejected
+    const result = await sql`
+      UPDATE vendor_documents
+      SET 
+        verification_status = 'rejected',
+        verified_at = NOW(),
+        rejection_reason = ${reason}
+      WHERE id = ${documentId}
+      RETURNING *
+    `;
+    
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Document not found'
+      });
+    }
+    
+    console.log(`❌ [Admin] Document ${documentId} rejected successfully`);
+    
+    res.json({
+      success: true,
+      message: 'Document rejected successfully',
+      document: result[0],
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error(`❌ [Admin] Error rejecting document ${documentId}:`, error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 module.exports = router;
