@@ -41,8 +41,16 @@ router.get('/', async (req, res) => {
       console.log('🏪 Getting vendor data for IDs:', vendorIds);
       console.log('⭐ Calculating per-service review stats for:', serviceIds.length, 'services');
       
-      // Get all relevant vendors in one query
-      const vendors = await sql`SELECT id, business_name FROM vendors WHERE id = ANY(${vendorIds})`;
+      // Get all relevant vendors in one query WITH location data from vendor_profiles
+      const vendors = await sql`
+        SELECT 
+          v.id, 
+          v.business_name,
+          vp.service_area
+        FROM vendors v
+        LEFT JOIN vendor_profiles vp ON v.id = vp.user_id
+        WHERE v.id = ANY(${vendorIds})
+      `;
       
       // Get per-service review stats
       const reviewStats = await sql`
@@ -80,6 +88,7 @@ router.get('/', async (req, res) => {
         
         if (vendor) {
           service.vendor_business_name = vendor.business_name;
+          service.vendor_service_area = vendor.service_area; // ✅ Add location data
         }
         
         // ✅ Per-service review stats (not vendor totals!)
