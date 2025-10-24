@@ -127,7 +127,7 @@ const SERVICE_CATEGORIES = [
 
 export const VendorServices: React.FC = () => {
   // Auth context to get the logged-in vendor
-  const { user, isEmailVerified, firebaseUser } = useAuth();
+  const { user } = useAuth();
 
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,27 +150,14 @@ export const VendorServices: React.FC = () => {
   // Get API base URL
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
-  // Helper function to check document verification status from profile
-  const isDocumentVerified = (): boolean => {
-    if (!profile?.documents || profile.documents.length === 0) {
-      console.log('� No documents found in profile');
-      return false;
-    }
-    const hasApproved = profile.documents.some((doc: any) => doc.status === 'approved');
-    console.log('📄 Document verification check:', {
-      documentsCount: profile.documents.length,
-      documents: profile.documents.map((doc: any) => ({ id: doc.id, type: doc.type, status: doc.status })),
-      hasApproved
-    });
-    return hasApproved;
-  };
-
-  // Enhanced verification status check - requires both email AND documents
+  // Enhanced verification status check - uses vendor profile API data
   const getVerificationStatus = () => {
     return {
-      emailVerified: firebaseUser?.emailVerified || isEmailVerified || false,
+      emailVerified: profile?.emailVerified || false,
       phoneVerified: profile?.phoneVerified || false,
-      documentsVerified: isDocumentVerified()
+      businessVerified: profile?.businessVerified || false,
+      documentsVerified: profile?.documentsVerified || false,
+      overallStatus: profile?.overallVerificationStatus || 'unverified'
     };
   };
 
@@ -181,6 +168,8 @@ export const VendorServices: React.FC = () => {
     console.log('🔒 Service creation permission check:', {
       emailVerified: verification.emailVerified,
       documentsVerified: verification.documentsVerified,
+      businessVerified: verification.businessVerified,
+      overallStatus: verification.overallStatus,
       canAddServices: canAdd
     });
     return canAdd;
@@ -220,9 +209,8 @@ export const VendorServices: React.FC = () => {
     highlightedServiceId: highlightedServiceId,
     userVendorId: user?.vendorId,
     userId: user?.id,
-    documentsVerified: isDocumentVerified(),
+    verificationStatus: getVerificationStatus(),
     canAddServices: canAddServices(),
-    emailVerified: getVerificationStatus().emailVerified,
     profile: profile ? 'loaded' : 'not loaded',
     documentsCount: profile?.documents?.length || 0
   });

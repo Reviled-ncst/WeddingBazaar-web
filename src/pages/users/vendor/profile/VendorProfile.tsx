@@ -965,7 +965,7 @@ export const VendorProfile: React.FC = () => {
                           <Mail className="w-6 h-6 text-blue-600" />
                           <h3 className="text-xl font-semibold text-gray-900">Email Verification</h3>
                         </div>
-                        {user?.emailVerified ? (
+                        {profile?.emailVerified ? (
                           <div className="flex items-center space-x-2 text-green-600">
                             <CheckCircle className="w-5 h-5" />
                             <span className="font-medium">Verified</span>
@@ -985,11 +985,11 @@ export const VendorProfile: React.FC = () => {
                           </p>
                           <div className="space-y-2">
                             <p className="text-sm text-gray-500"><strong>Email:</strong> {user?.email}</p>
-                            <p className="text-sm text-gray-500"><strong>Status:</strong> {user?.emailVerified ? 'Verified' : 'Pending verification'}</p>
+                            <p className="text-sm text-gray-500"><strong>Status:</strong> {profile?.emailVerified ? 'Verified' : 'Pending verification'}</p>
                           </div>
                         </div>
                         <div className="flex items-center justify-center">
-                          {!user?.emailVerified && (
+                          {!profile?.emailVerified && (
                             <button
                               onClick={handleEmailVerification}
                               disabled={isVerifyingEmail}
@@ -1168,24 +1168,24 @@ export const VendorProfile: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="text-center">
                           <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${
-                            user?.emailVerified ? 'bg-green-100' : 'bg-gray-100'
+                            profile?.emailVerified ? 'bg-green-100' : 'bg-gray-100'
                           }`}>
-                            <Mail className={`w-8 h-8 ${user?.emailVerified ? 'text-green-600' : 'text-gray-400'}`} />
+                            <Mail className={`w-8 h-8 ${profile?.emailVerified ? 'text-green-600' : 'text-gray-400'}`} />
                           </div>
                           <h4 className="font-medium text-gray-900">Email</h4>
-                          <p className={`text-sm ${user?.emailVerified ? 'text-green-600' : 'text-gray-500'}`}>
-                            {user?.emailVerified ? 'Verified' : 'Pending'}
+                          <p className={`text-sm ${profile?.emailVerified ? 'text-green-600' : 'text-gray-500'}`}>
+                            {profile?.emailVerified ? 'Verified' : 'Pending'}
                           </p>
                         </div>
                         <div className="text-center">
                           <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${
-                            profile?.phone_verified ? 'bg-green-100' : 'bg-gray-100'
+                            profile?.phoneVerified ? 'bg-green-100' : 'bg-gray-100'
                           }`}>
-                            <Phone className={`w-8 h-8 ${profile?.phone_verified ? 'text-green-600' : 'text-gray-400'}`} />
+                            <Phone className={`w-8 h-8 ${profile?.phoneVerified ? 'text-green-600' : 'text-gray-400'}`} />
                           </div>
                           <h4 className="font-medium text-gray-900">Phone</h4>
-                          <p className={`text-sm ${profile?.phone_verified ? 'text-green-600' : 'text-gray-500'}`}>
-                            {profile?.phone_verified ? 'Verified' : 'Pending'}
+                          <p className={`text-sm ${profile?.phoneVerified ? 'text-green-600' : 'text-gray-500'}`}>
+                            {profile?.phoneVerified ? 'Verified' : 'Pending'}
                           </p>
                         </div>
                         <div className="text-center">
