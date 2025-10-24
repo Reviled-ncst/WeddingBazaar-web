@@ -256,20 +256,52 @@ async function approveDocument(req, res) {
     const document = result[0];
     console.log('✅ [Admin Documents] Document approved successfully');
     
-    // Update vendor profile to mark documents as verified
+    // Update vendor profile with comprehensive verification check
     try {
       const vendorId = document.vendor_id;
-      console.log('📝 [Admin Documents] Updating vendor profile documents_verified flag for:', vendorId);
+      console.log('📝 [Admin Documents] Updating vendor verification status for:', vendorId);
+      
+      // Check if vendor has any approved documents
+      const approvedDocsCheck = await sql`
+        SELECT COUNT(*) as approved_count
+        FROM vendor_documents
+        WHERE vendor_id = ${vendorId} AND verification_status = 'approved'
+      `;
+      
+      const hasApprovedDocs = parseInt(approvedDocsCheck[0].approved_count) > 0;
+      
+      // Get vendor profile to check business info
+      const vendorProfile = await sql`
+        SELECT business_name, business_type, verification_status
+        FROM vendor_profiles
+        WHERE id = ${vendorId}
+      `;
+      
+      const hasBusinessInfo = vendorProfile[0]?.business_name && vendorProfile[0]?.business_type;
+      
+      // Determine overall verification status
+      let verificationStatus = 'unverified';
+      if (hasApprovedDocs && hasBusinessInfo) {
+        verificationStatus = 'verified';
+      } else if (hasApprovedDocs || hasBusinessInfo) {
+        verificationStatus = 'partially_verified';
+      }
       
       await sql`
         UPDATE vendor_profiles
         SET 
-          documents_verified = true,
+          documents_verified = ${hasApprovedDocs},
+          business_verified = ${hasBusinessInfo},
+          verification_status = ${verificationStatus},
           updated_at = ${new Date().toISOString()}
         WHERE id = ${vendorId}
       `;
       
-      console.log('✅ [Admin Documents] Vendor profile updated with documents_verified = true');
+      console.log('✅ [Admin Documents] Vendor profile updated:', {
+        documents_verified: hasApprovedDocs,
+        business_verified: hasBusinessInfo,
+        verification_status: verificationStatus
+      });
     } catch (profileError) {
       console.error('⚠️ [Admin Documents] Error updating vendor profile:', profileError.message);
       // Don't fail the request if profile update fails
@@ -331,20 +363,52 @@ async function rejectDocument(req, res) {
     const document = result[0];
     console.log('✅ [Admin Documents] Document rejected successfully');
     
-    // Update vendor profile to mark documents as NOT verified
+    // Update vendor profile with comprehensive verification check
     try {
       const vendorId = document.vendor_id;
-      console.log('📝 [Admin Documents] Updating vendor profile documents_verified flag for:', vendorId);
+      console.log('📝 [Admin Documents] Recalculating vendor verification status after rejection for:', vendorId);
+      
+      // Check if vendor still has any approved documents (after this rejection)
+      const approvedDocsCheck = await sql`
+        SELECT COUNT(*) as approved_count
+        FROM vendor_documents
+        WHERE vendor_id = ${vendorId} AND verification_status = 'approved'
+      `;
+      
+      const hasApprovedDocs = parseInt(approvedDocsCheck[0].approved_count) > 0;
+      
+      // Get vendor profile to check business info
+      const vendorProfile = await sql`
+        SELECT business_name, business_type
+        FROM vendor_profiles
+        WHERE id = ${vendorId}
+      `;
+      
+      const hasBusinessInfo = vendorProfile[0]?.business_name && vendorProfile[0]?.business_type;
+      
+      // Determine overall verification status
+      let verificationStatus = 'unverified';
+      if (hasApprovedDocs && hasBusinessInfo) {
+        verificationStatus = 'verified';
+      } else if (hasApprovedDocs || hasBusinessInfo) {
+        verificationStatus = 'partially_verified';
+      }
       
       await sql`
         UPDATE vendor_profiles
         SET 
-          documents_verified = false,
+          documents_verified = ${hasApprovedDocs},
+          business_verified = ${hasBusinessInfo},
+          verification_status = ${verificationStatus},
           updated_at = ${new Date().toISOString()}
         WHERE id = ${vendorId}
       `;
       
-      console.log('✅ [Admin Documents] Vendor profile updated with documents_verified = false');
+      console.log('✅ [Admin Documents] Vendor profile updated after rejection:', {
+        documents_verified: hasApprovedDocs,
+        business_verified: hasBusinessInfo,
+        verification_status: verificationStatus
+      });
     } catch (profileError) {
       console.error('⚠️ [Admin Documents] Error updating vendor profile:', profileError.message);
       // Don't fail the request if profile update fails
