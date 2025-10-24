@@ -253,11 +253,31 @@ async function approveDocument(req, res) {
       });
     }
     
+    const document = result[0];
     console.log('✅ [Admin Documents] Document approved successfully');
+    
+    // Update vendor profile to mark documents as verified
+    try {
+      const vendorId = document.vendor_id;
+      console.log('📝 [Admin Documents] Updating vendor profile documents_verified flag for:', vendorId);
+      
+      await sql`
+        UPDATE vendor_profiles
+        SET 
+          documents_verified = true,
+          updated_at = ${new Date().toISOString()}
+        WHERE id = ${vendorId}
+      `;
+      
+      console.log('✅ [Admin Documents] Vendor profile updated with documents_verified = true');
+    } catch (profileError) {
+      console.error('⚠️ [Admin Documents] Error updating vendor profile:', profileError.message);
+      // Don't fail the request if profile update fails
+    }
     
     res.json({
       success: true,
-      document: result[0],
+      document,
       message: 'Document approved successfully'
     });
     
@@ -308,11 +328,31 @@ async function rejectDocument(req, res) {
       });
     }
     
+    const document = result[0];
     console.log('✅ [Admin Documents] Document rejected successfully');
+    
+    // Update vendor profile to mark documents as NOT verified
+    try {
+      const vendorId = document.vendor_id;
+      console.log('📝 [Admin Documents] Updating vendor profile documents_verified flag for:', vendorId);
+      
+      await sql`
+        UPDATE vendor_profiles
+        SET 
+          documents_verified = false,
+          updated_at = ${new Date().toISOString()}
+        WHERE id = ${vendorId}
+      `;
+      
+      console.log('✅ [Admin Documents] Vendor profile updated with documents_verified = false');
+    } catch (profileError) {
+      console.error('⚠️ [Admin Documents] Error updating vendor profile:', profileError.message);
+      // Don't fail the request if profile update fails
+    }
     
     res.json({
       success: true,
-      document: result[0],
+      document,
       message: 'Document rejected successfully'
     });
     
