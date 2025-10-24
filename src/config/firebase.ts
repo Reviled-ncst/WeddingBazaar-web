@@ -1,5 +1,5 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence, type Auth } from 'firebase/auth';
 
 // Validate and sanitize Firebase environment variables
 const apiKey = import.meta.env.VITE_FIREBASE_API_KEY?.trim();
@@ -44,6 +44,18 @@ let auth: Auth | null = null;
 if (isFirebaseConfigured) {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
+  
+  // Set persistence to LOCAL to maintain session across page refreshes
+  // This ensures users stay logged in after browser refresh
+  if (auth) {
+    setPersistence(auth, browserLocalPersistence)
+      .then(() => {
+        console.log('✅ Firebase auth persistence set to LOCAL - session will persist across refreshes');
+      })
+      .catch((error) => {
+        console.error('❌ Failed to set Firebase auth persistence:', error);
+      });
+  }
 } else {
   console.warn('Firebase not configured - using backend-only authentication');
 }
