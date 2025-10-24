@@ -155,7 +155,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             body: JSON.stringify({
               ...profileData,
               firebase_uid: fbUser.uid, // Link to Firebase account
-              oauth_provider: 'google' // Mark as OAuth registration for auto-verification
+              oauth_provider: null // ❌ FIX: This is NOT OAuth - regular email/password registration
             })
           });
 
