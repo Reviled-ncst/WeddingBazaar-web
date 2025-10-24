@@ -33,6 +33,7 @@ import { cn } from '../../../../utils/cn';
 import type { VendorProfile as VendorProfileType } from '../../../../services/api/vendorApiService';
 import { PhoneVerification } from '../../../../components/PhoneVerification';
 import { DocumentUploadComponent } from '../../../../components/DocumentUpload';
+import { cloudinaryService } from '../../../../services/cloudinaryService';
 
 export const VendorProfile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -58,16 +59,17 @@ export const VendorProfile: React.FC = () => {
   // Local state for editing
   const [editForm, setEditForm] = useState<Partial<VendorProfileType>>({});
 
-  // Helper function to check document verification status
+  // Helper function to check document verification status - FIXED MAPPING
   const isDocumentVerified = (): boolean => {
-    if (!profile?.documents || profile.documents.length === 0) return false;
-    return profile.documents.some((doc: any) => doc.status === 'approved');
+    // Check documents_verified field from database (snake_case)
+    return profile?.documents_verified === true;
   };
 
-  // Helper function to get verification status with document check
+  // Helper function to get verification status with document check - FIXED MAPPING
   const getBusinessVerificationStatus = () => {
-    const documentsVerified = isDocumentVerified();
-    const businessVerified = profile?.businessVerified || profile?.business_verified || documentsVerified;
+    // Use correct database field names (snake_case from database)
+    const documentsVerified = profile?.documents_verified === true;
+    const businessVerified = profile?.business_verified === true;
     
     if (businessVerified || documentsVerified) {
       return { status: 'verified', color: 'text-green-600', icon: CheckCircle, label: 'Verified' };
@@ -253,29 +255,14 @@ export const VendorProfile: React.FC = () => {
 
     try {
       setIsUploadingImage(true);
-      console.log('🔄 Starting image upload...', { fileName: file.name, size: file.size });
+      console.log('🔄 Starting image upload to Cloudinary...', { fileName: file.name, size: file.size });
 
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append('image', file);
-      formData.append('folder', 'vendor-profiles');
+      // Upload directly to Cloudinary (no backend endpoint needed)
+      const uploadResponse = await cloudinaryService.uploadImage(file, 'vendor-profiles');
+      console.log('✅ Cloudinary upload successful:', uploadResponse.secure_url);
 
-      // Upload to backend
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      const response = await fetch(`${apiUrl}/api/vendors/${vendorId}/upload-image`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      console.log('✅ Image upload successful:', result);
-
-      // Update the profile in the database
-      await updateProfile({ profileImage: result.imageUrl });
+      // Update the profile in the database with the new image URL
+      await updateProfile({ profileImage: uploadResponse.secure_url });
       
       // Refresh profile data
       await refetch();
@@ -284,7 +271,7 @@ export const VendorProfile: React.FC = () => {
       
     } catch (error) {
       console.error('❌ Image upload error:', error);
-      alert('❌ Failed to upload image. Please try again.');
+      alert(`❌ Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsUploadingImage(false);
     }
@@ -965,7 +952,8 @@ export const VendorProfile: React.FC = () => {
                           <Mail className="w-6 h-6 text-blue-600" />
                           <h3 className="text-xl font-semibold text-gray-900">Email Verification</h3>
                         </div>
-                        {profile?.emailVerified ? (
+                        {/* FIXED: Use user.emailVerified from users table */}
+                        {user?.emailVerified ? (
                           <div className="flex items-center space-x-2 text-green-600">
                             <CheckCircle className="w-5 h-5" />
                             <span className="font-medium">Verified</span>
@@ -985,11 +973,12 @@ export const VendorProfile: React.FC = () => {
                           </p>
                           <div className="space-y-2">
                             <p className="text-sm text-gray-500"><strong>Email:</strong> {user?.email}</p>
-                            <p className="text-sm text-gray-500"><strong>Status:</strong> {profile?.emailVerified ? 'Verified' : 'Pending verification'}</p>
+                            <p className="text-sm text-gray-500"><strong>Status:</strong> {user?.emailVerified ? 'Verified' : 'Pending verification'}</p>
                           </div>
                         </div>
                         <div className="flex items-center justify-center">
-                          {!profile?.emailVerified && (
+                          {/* FIXED: Check user.emailVerified */}
+                          {!user?.emailVerified && (
                             <button
                               onClick={handleEmailVerification}
                               disabled={isVerifyingEmail}
@@ -1018,7 +1007,8 @@ export const VendorProfile: React.FC = () => {
                               <span className="text-sm font-normal text-gray-500 ml-2">(Optional)</span>
                             </h3>
                           </div>
-                          {profile?.phoneVerified ? (
+                          {/* FIXED: Use profile.phone_verified from vendor_profiles table */}
+                          {profile?.phone_verified ? (
                             <div className="flex items-center space-x-2 text-green-600">
                               <CheckCircle className="w-5 h-5" />
                               <span className="font-medium">Verified</span>
@@ -1038,8 +1028,8 @@ export const VendorProfile: React.FC = () => {
                                 <strong>Optional:</strong> Verify your phone number using Firebase SMS verification to allow customers to contact you directly and improve your profile credibility. This step is not required but recommended for better customer trust.
                               </p>
                               <div className="space-y-2">
-                                <p className="text-sm text-gray-500"><strong>Current Phone:</strong> {profile?.phone || 'Not provided'}</p>
-                                <p className="text-sm text-gray-500"><strong>Status:</strong> {profile?.phoneVerified ? 'Verified with Firebase' : 'Pending verification'}</p>
+                                <p className="text-sm text-gray-500"><strong>Current Phone:</strong> {profile?.phone || user?.phone || 'Not provided'}</p>
+                                <p className="text-sm text-gray-500"><strong>Status:</strong> {profile?.phone_verified ? 'Verified with Firebase' : 'Pending verification'}</p>
                               </div>
                               
                               <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -1053,7 +1043,8 @@ export const VendorProfile: React.FC = () => {
                               </div>
                             </div>
                             <div className="flex items-center justify-center">
-                              {!profile?.phoneVerified && (
+                              {/* FIXED: Check profile.phone_verified */}
+                              {!profile?.phone_verified && (
                                 <button
                                   onClick={handlePhoneVerification}
                                   className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
@@ -1062,11 +1053,11 @@ export const VendorProfile: React.FC = () => {
                                   <span>Start Phone Verification</span>
                                 </button>
                               )}
-                              {profile?.phoneVerified && (
+                              {profile?.phone_verified && (
                                 <div className="text-center">
                                   <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-2" />
                                   <p className="text-green-700 font-medium">Phone Verified!</p>
-                                  <p className="text-sm text-green-600">{profile?.phone}</p>
+                                  <p className="text-sm text-green-600">{profile?.phone || user?.phone}</p>
                                 </div>
                               )}
                             </div>
