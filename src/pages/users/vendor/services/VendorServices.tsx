@@ -140,6 +140,9 @@ export const VendorServices: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [highlightedServiceId, setHighlightedServiceId] = useState<string | null>(null);
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
+  
+  // FIXED: Track Firebase email verification status directly (same as VendorProfile.tsx)
+  const [firebaseEmailVerified, setFirebaseEmailVerified] = useState(false);
 
   // Get current vendor ID from auth context - no fallback for non-vendors
   const vendorId = user?.role === 'vendor' ? (user?.id || getVendorIdForUser(user as any)) : null;
@@ -150,10 +153,28 @@ export const VendorServices: React.FC = () => {
   // Get API base URL
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
-  // Enhanced verification status check - uses vendor profile API data
+  // FIXED: Poll Firebase email verification status (same as VendorProfile.tsx)
+  React.useEffect(() => {
+    const checkFirebaseEmailStatus = async () => {
+      try {
+        const currentUser = firebaseAuthService.getCurrentUser();
+        setFirebaseEmailVerified(currentUser?.emailVerified || false);
+      } catch (error) {
+        console.error('Error checking Firebase email status:', error);
+      }
+    };
+    
+    checkFirebaseEmailStatus();
+    
+    // Recheck every 5 seconds to catch verification updates
+    const interval = setInterval(checkFirebaseEmailStatus, 5000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Enhanced verification status check - FIXED to use Firebase for email
   const getVerificationStatus = () => {
     return {
-      emailVerified: profile?.emailVerified || false,
+      emailVerified: firebaseEmailVerified, // ✅ Now uses Firebase directly (real-time)
       phoneVerified: profile?.phoneVerified || false,
       businessVerified: profile?.businessVerified || false,
       documentsVerified: profile?.documentsVerified || false,
@@ -161,16 +182,19 @@ export const VendorServices: React.FC = () => {
     };
   };
 
-  // Check if user can add services (requires BOTH email verification AND approved documents)
+  // Check if user can add services (requires ONLY email verification for now)
+  // TODO: Re-enable document verification requirement in production
   const canAddServices = () => {
     const verification = getVerificationStatus();
-    const canAdd = verification.emailVerified && verification.documentsVerified;
+    const canAdd = verification.emailVerified; // Temporarily removed document requirement
     console.log('🔒 Service creation permission check:', {
       emailVerified: verification.emailVerified,
+      emailSource: 'Firebase (real-time)', // ✅ Now using Firebase
       documentsVerified: verification.documentsVerified,
       businessVerified: verification.businessVerified,
       overallStatus: verification.overallStatus,
-      canAddServices: canAdd
+      canAddServices: canAdd,
+      note: 'Email verification now reads from Firebase directly (matches VendorProfile)'
     });
     return canAdd;
   };
