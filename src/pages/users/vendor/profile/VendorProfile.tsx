@@ -100,30 +100,51 @@ export const VendorProfile: React.FC = () => {
     }
   }, [profile]);
 
-  // Verification functions - Updated to use new modular endpoints
+  // Verification functions - Use Firebase directly for email verification
   const handleEmailVerification = async () => {
     setIsVerifyingEmail(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      const response = await fetch(`${apiUrl}/api/vendor-profile/${vendorId}/verify-email`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      console.log('📧 Sending email verification via Firebase...');
       
-      if (response.ok) {
-        const result = await response.json();
-        alert('✅ Verification email sent! Please check your inbox.');
-        console.log('Email verification result:', result);
-      } else {
-        const errorText = await response.text();
-        throw new Error(`Failed to send verification email: ${errorText}`);
+      // Import Firebase auth dynamically
+      const { firebaseAuthService } = await import('../../../../services/auth/firebaseAuthService');
+      
+      // Get current Firebase user
+      const currentUser = firebaseAuthService.getCurrentUser();
+      
+      if (!currentUser) {
+        throw new Error('No user logged in. Please log in and try again.');
       }
+      
+      if (currentUser.emailVerified) {
+        alert('✅ Your email is already verified!');
+        setIsVerifyingEmail(false);
+        return;
+      }
+      
+      // Send verification email using Firebase
+      await firebaseAuthService.resendEmailVerification();
+      
+      console.log('✅ Firebase verification email sent successfully');
+      alert('✅ Verification email sent! Please check your inbox and click the verification link. After verifying, refresh this page.');
+      
     } catch (error) {
-      console.error('Email verification error:', error);
-      alert('❌ Failed to send verification email. Please try again.');
+      console.error('❌ Email verification error:', error);
+      
+      // User-friendly error messages
+      let errorMessage = 'Failed to send verification email. ';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('too-many-requests')) {
+          errorMessage = 'Too many requests. Please wait a few minutes before trying again.';
+        } else if (error.message.includes('No user logged in')) {
+          errorMessage = error.message;
+        } else {
+          errorMessage += error.message;
+        }
+      }
+      
+      alert('❌ ' + errorMessage);
     } finally {
       setIsVerifyingEmail(false);
     }
