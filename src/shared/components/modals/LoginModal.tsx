@@ -100,36 +100,41 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         
         console.log('🔍 [LoginModal] Error message:', message);
         
-        // Login credential issues
-        if (message.includes('invalid email or password') || message.includes('invalid credentials') || message.includes('401')) {
+        // Firebase authentication errors (most common)
+        if (message.includes('auth/invalid-credential') || message.includes('invalid-credential')) {
           errorMessage = 'Incorrect email or password. Please try again.';
-        } 
-        // Firebase specific errors
-        else if (message.includes('incorrect password') || message.includes('wrong-password') || message.includes('wrong password')) {
+        }
+        else if (message.includes('auth/wrong-password') || message.includes('wrong-password') || message.includes('incorrect password')) {
           errorMessage = 'Incorrect password. Please try again.';
         }
-        else if (message.includes('user not found') || message.includes('no account found')) {
+        else if (message.includes('auth/user-not-found') || message.includes('user-not-found') || message.includes('user not found')) {
           errorMessage = "We couldn't find an account with that email. Please check your email or create a new account.";
         }
-        // Email verification issues (should be rare now since we allow unverified login)
+        else if (message.includes('auth/invalid-email') || message.includes('invalid-email')) {
+          errorMessage = 'Please enter a valid email address.';
+        }
+        else if (message.includes('auth/user-disabled') || message.includes('user-disabled') || message.includes('account disabled')) {
+          errorMessage = 'Your account has been disabled. Please contact support for help.';
+        }
+        else if (message.includes('auth/too-many-requests') || message.includes('too-many-requests') || message.includes('too many attempts')) {
+          errorMessage = 'Too many failed login attempts. Please wait a few minutes and try again.';
+        }
+        // Backend API errors
+        else if (message.includes('invalid email or password') || message.includes('invalid credentials') || message.includes('401')) {
+          errorMessage = 'Incorrect email or password. Please try again.';
+        }
+        // Email verification issues
         else if (message.includes('verify your email') || message.includes('email not verified') || message.includes('account not verified')) {
           errorMessage = 'Login successful! Some features may be limited until you verify your email from your profile settings.';
         }
-        // Account issues
-        else if (message.includes('account suspended') || message.includes('account disabled') || message.includes('user-disabled')) {
-          errorMessage = 'Your account has been temporarily suspended. Please contact us for help.';
-        }
-        else if (message.includes('account locked') || message.includes('too many attempts') || message.includes('too-many-requests')) {
-          errorMessage = 'Too many failed attempts. Please wait a few minutes and try again.';
-        }
-        // Connection problems
+        // Network and connection errors
         else if (message.includes('network') || message.includes('fetch failed') || message.includes('timeout') || err instanceof TypeError) {
           errorMessage = 'Connection problem. Please check your internet and try again.';
         }
         else if (message.includes('offline')) {
           errorMessage = 'No internet connection. Please check your connection and try again.';
         }
-        // Server problems
+        // Server errors
         else if (message.includes('500') || message.includes('502') || message.includes('503') || message.includes('504') || message.includes('server')) {
           errorMessage = 'Our servers are having issues. Please try again in a few minutes.';
         }
@@ -137,9 +142,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         else if (message.includes('maintenance') || message.includes('unavailable')) {
           errorMessage = 'We are updating our system. Please try again in a few minutes.';
         }
-        // Generic fallback
+        // Generic fallback - show the actual error for debugging
         else {
-          errorMessage = err.message || 'Something went wrong. Please try again or contact us if this keeps happening.';
+          // For development, show the actual error; for production, use generic message
+          errorMessage = import.meta.env.DEV 
+            ? `Error: ${err.message}` 
+            : 'Something went wrong. Please try again or contact us if this keeps happening.';
         }
       }
       
