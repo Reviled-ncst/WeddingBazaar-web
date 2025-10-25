@@ -36,13 +36,15 @@ export const Header: React.FC = () => {
     setIsEmailVerificationMode(isInMode);
   };
 
-  // NEVER AUTO-CLOSE REGISTER MODAL - LET IT HANDLE ITS OWN LIFECYCLE
+  // NEVER AUTO-CLOSE MODALS - LET THEM HANDLE THEIR OWN LIFECYCLE
+  // The LoginModal will close itself on successful login
+  // This prevents closing the modal during login attempts that fail
   useEffect(() => {
-    if (isAuthenticated && !isEmailVerificationMode) {
-      console.log('🔒 User authenticated - closing LOGIN modal only');
-      setIsLoginModalOpen(false);
-      // DO NOT CLOSE REGISTER MODAL - IT MANAGES ITSELF
-    }
+    // REMOVED: Auto-close login modal on authentication
+    // This was causing the modal to close even on failed login attempts
+    // The LoginModal now manages its own lifecycle
+    
+    // DO NOT CLOSE REGISTER MODAL - IT MANAGES ITSELF
   }, [isAuthenticated, isEmailVerificationMode]);
 
   // RESTORE REGISTER MODAL ON PAGE LOAD IF EMAIL VERIFICATION IS PENDING
