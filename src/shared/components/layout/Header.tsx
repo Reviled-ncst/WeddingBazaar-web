@@ -138,8 +138,12 @@ export const Header: React.FC = () => {
   };
   
   const handleLoginModalClose = () => {
-    console.log('🚪 [Header] Login modal close requested - allowing close');
+    console.log('🚪 [Header] Login modal close requested');
     console.trace('🔍 [Header] Close call stack trace');
+    
+    // The LoginModal has its own tracedOnClose wrapper that prevents closing on error
+    // If this function is called, it means the LoginModal approved the close
+    console.log('✅ [Header] LoginModal approved close - closing modal');
     setIsLoginModalOpen(false);
   };
 
