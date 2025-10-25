@@ -126,13 +126,21 @@ export const Header: React.FC = () => {
   }, []);
 
   const handleSwitchToRegister = () => {
+    console.log('🔄 [Header] Switching to register modal');
     setIsLoginModalOpen(false);
     setIsRegisterModalOpenWithLogging(true);
   };
 
   const handleSwitchToLogin = () => {
+    console.log('🔄 [Header] Switching to login modal');
     setIsRegisterModalOpenWithLogging(false);
     setIsLoginModalOpen(true);
+  };
+  
+  const handleLoginModalClose = () => {
+    console.log('🚪 [Header] Login modal close requested - allowing close');
+    console.trace('🔍 [Header] Close call stack trace');
+    setIsLoginModalOpen(false);
   };
 
   return (
@@ -381,7 +389,7 @@ export const Header: React.FC = () => {
     {/* Modals */}
     <LoginModal
       isOpen={isLoginModalOpen}
-      onClose={() => setIsLoginModalOpen(false)}
+      onClose={handleLoginModalClose}
       onSwitchToRegister={handleSwitchToRegister}
     />
     <RegisterModal

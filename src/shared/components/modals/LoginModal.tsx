@@ -29,20 +29,34 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  // Reset all states when modal opens or closes
+  // Create a wrapper for onClose to trace who's calling it
+  const tracedOnClose = () => {
+    console.log('🚨 [LoginModal] onClose() called!');
+    console.trace('📍 Call stack for onClose:');
+    console.log('🔍 Current state:', { error, isLoading, isLoginSuccess });
+    
+    // Only allow close if no error or if login was successful
+    if (error && !isLoginSuccess) {
+      console.log('🛑 BLOCKING modal close - error is present and login not successful!');
+      return; // Block the close!
+    }
+    
+    console.log('✅ Allowing modal close');
+    onClose();
+  };
+
+  // Reset all states when modal opens ONLY
+  // DON'T reset on close - let the close happen naturally after error is acknowledged
   useEffect(() => {
+    console.log('🔄 [LoginModal] isOpen changed to:', isOpen);
     if (isOpen) {
       // Clear all states when modal opens
+      console.log('🧹 Clearing states on modal open');
       setError(null);
       setIsLoginSuccess(false);
       setIsLoading(false);
-    } else {
-      // Also reset when modal closes
-      setError(null);
-      setIsLoginSuccess(false);
-      setIsLoading(false);
-      setFormData({ email: '', password: '', rememberMe: false });
     }
+    // REMOVED: Don't clear states when modal closes - this was causing the error to disappear!
   }, [isOpen]);
 
   // Debug: Log when error state changes
@@ -79,7 +93,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setTimeout(() => {
         setIsLoginSuccess(false);
         setIsLoading(false);
-        onClose();
+        tracedOnClose(); // Use traced version
         
         // Navigate based on role
         switch (user.role) {
@@ -242,7 +256,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         </div>
       )}
 
-      <Modal isOpen={isOpen} onClose={onClose} maxWidth="md" preventBackdropClose={!!error}>
+      <Modal isOpen={isOpen} onClose={tracedOnClose} maxWidth="md" preventBackdropClose={!!error}>
       {/* Simple header */}
       <div className="text-center mb-6">
         <div className="flex justify-center mb-4">
