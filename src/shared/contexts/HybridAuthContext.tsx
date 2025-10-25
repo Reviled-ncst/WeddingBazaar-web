@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { firebaseAuthService, type FirebaseAuthUser } from '../../services/auth/firebaseAuthService';
 
@@ -73,6 +73,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [firebaseUser, setFirebaseUser] = useState<FirebaseAuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRegistering, setIsRegistering] = useState(false);
+  
+  // 🔒 CRITICAL FIX: Block auth state changes during active login
+  const [isLoginInProgress, setIsLoginInProgress] = useState(false);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -132,6 +135,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         console.log('🔧 Final merged user:', JSON.stringify(mergedUser, null, 2));
         console.log('🔧 Final merged user.role:', mergedUser.role);
+        
+        // Store in BOTH localStorage keys for compatibility
+        localStorage.setItem('backend_user', JSON.stringify(mergedUser));
+        localStorage.setItem('weddingbazaar_user_profile', JSON.stringify(mergedUser));
+        console.log('💾 Stored backend user in localStorage (both keys)');
         
         setUser(mergedUser);
         return;
@@ -231,9 +239,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const unsubscribe = firebaseAuthService.onAuthStateChanged(async (fbUser) => {
       console.log('🔧 Firebase auth state changed:', fbUser ? 'User logged in' : 'User logged out');
       
+      // 🔒 CRITICAL: Skip auth state changes during active login attempts
+      if (isLoginInProgress) {
+        console.log('⏸️ BLOCKING auth state change - login in progress');
+        return;
+      }
+      
       // Skip auth state processing during registration to prevent login flash
       if (isRegistering) {
         console.log('⏸️ Skipping auth state change during registration process');
+        return;
+      }
+      
+      // 🎯 FIX: Check if the state actually changed before updating
+      const currentUserLoggedIn = user !== null;
+      const newUserLoggedIn = fbUser !== null;
+      
+      if (currentUserLoggedIn === newUserLoggedIn && !newUserLoggedIn) {
+        // Both null (logged out) - no change, don't update isLoading
+        console.log('✅ Auth state unchanged (both logged out) - skipping update');
         return;
       }
       
@@ -257,14 +281,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     return unsubscribe;
-  }, [isRegistering]);
+  }, [isRegistering, isLoginInProgress]);
 
-  // Check for stored backend session on app load (ONCE)
+  // Check for stored session on app load (ONCE)
+  // This handles BOTH admin (JWT) and regular Firebase users
   useEffect(() => {
-    const initializeBackendSession = () => {
+    const initializeSession = () => {
+      console.log('🔄 Initializing session from localStorage...');
+      
       const storedToken = localStorage.getItem('jwt_token');
       const storedUser = localStorage.getItem('backend_user');
       
+      // Case 1: Admin user with JWT token
       if (storedToken && storedUser) {
         try {
           const backendUser = JSON.parse(storedUser);
@@ -289,6 +317,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               console.log('❌ Stored admin session expired, clearing...');
               localStorage.removeItem('jwt_token');
               localStorage.removeItem('backend_user');
+              localStorage.removeItem('weddingbazaar_user_profile');
               setIsLoading(false);
             }
           })
@@ -296,21 +325,45 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.log('❌ Error verifying stored session:', error);
             localStorage.removeItem('jwt_token');
             localStorage.removeItem('backend_user');
+            localStorage.removeItem('weddingbazaar_user_profile');
             setIsLoading(false);
           });
         } catch (error) {
           console.log('❌ Error parsing stored user data:', error);
           localStorage.removeItem('jwt_token');
           localStorage.removeItem('backend_user');
+          localStorage.removeItem('weddingbazaar_user_profile');
           setIsLoading(false);
         }
-      } else {
-        setIsLoading(false);
+      } 
+      // Case 2: Regular Firebase user (couple/vendor) - no JWT token but has user data
+      else if (storedUser) {
+        try {
+          const backendUser = JSON.parse(storedUser);
+          console.log('🔍 Found stored Firebase user session:', backendUser.email, backendUser.role);
+          
+          // Restore user data immediately - Firebase auth state listener will verify/update later
+          setUser(backendUser);
+          console.log('✅ User session restored from localStorage:', backendUser.role);
+          
+          // Let Firebase auth state listener handle validation
+          // isLoading will be set to false by the auth state listener
+        } catch (error) {
+          console.log('❌ Error parsing stored user data:', error);
+          localStorage.removeItem('backend_user');
+          localStorage.removeItem('weddingbazaar_user_profile');
+          setIsLoading(false);
+        }
+      }
+      // Case 3: No stored session - let Firebase auth state listener handle it
+      else {
+        console.log('📭 No stored session found - waiting for Firebase auth state');
+        // Don't set isLoading to false yet - let Firebase auth state listener handle it
       }
     };
     
     // Only run ONCE on mount
-    initializeBackendSession();
+    initializeSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - run once on mount
 
@@ -318,7 +371,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string): Promise<User> => {
     try {
-      setIsLoading(true);
+      // DON'T set loading yet - validate credentials first!
+      setIsLoginInProgress(true); // 🔒 BLOCK auth state changes
       console.log('🔧 Starting hybrid login - credentials will be validated BEFORE proceeding...');
       
       try {
@@ -327,6 +381,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('🔐 Firebase sign in attempt (validating credentials)...');
         const userCredential = await firebaseAuthService.signIn(email, password);
         console.log('✅ Firebase credentials validated successfully - user authenticated');
+        
+        // ✅ NOW set loading - credentials are valid, we're fetching data
+        setIsLoading(true);
         
         // At this point, credentials are CONFIRMED VALID by Firebase
         // Now we can safely proceed with backend sync
@@ -370,6 +427,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         syncedUser = await captureUser;
         
         setIsLoading(false);
+        setIsLoginInProgress(false); // 🔓 UNBLOCK auth state changes
         console.log('✅ Login complete! User:', syncedUser.email, 'Role:', syncedUser.role);
         return syncedUser;
         
@@ -380,21 +438,66 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Try backend-only login for admin users
         try {
           console.log('🔧 Attempting backend-only login for admin...');
+          // ✅ Set loading NOW - attempting backend login
+          setIsLoading(true);
           const adminUser = await loginBackendOnly(email, password);
           console.log('✅ Backend-only login successful for admin');
+          setIsLoading(false);
+          setIsLoginInProgress(false); // 🔓 UNBLOCK auth state changes
           return adminUser;
         } catch (backendError: any) {
-          console.error('❌ Both Firebase and backend login failed - invalid credentials');
+          console.error('❌ Both Firebase and backend login failed');
+          console.error('🔧 Backend error:', backendError.message);
           setIsLoading(false);
-          // Throw the original Firebase error (has user-friendly message)
-          throw firebaseError;
+          
+          // Create user-friendly error message
+          // Prioritize showing the most specific error
+          let errorMessage: string;
+          
+          // Check if backend gave us a specific error
+          if (backendError.message && !backendError.message.includes('fetch')) {
+            errorMessage = backendError.message;
+          }
+          // Otherwise use Firebase error
+          else if (firebaseError.code === 'auth/invalid-credential') {
+            errorMessage = 'Invalid email or password. Please check your credentials.';
+          }
+          else if (firebaseError.code === 'auth/user-not-found') {
+            errorMessage = 'No account found with this email address.';
+          }
+          else if (firebaseError.code === 'auth/wrong-password') {
+            errorMessage = 'Incorrect password. Please try again.';
+          }
+          else if (firebaseError.code === 'auth/too-many-requests') {
+            errorMessage = 'Too many failed attempts. Please try again later.';
+          }
+          else {
+            errorMessage = 'Login failed. Please check your credentials and try again.';
+          }
+          
+          console.error('📢 User-friendly error:', errorMessage);
+          
+          // Throw error with user-friendly message
+          throw new Error(errorMessage);
         }
       }
       
     } catch (error: any) {
       console.error('❌ Login error - credentials validation failed:', error);
-      setIsLoading(false);  
-      throw error;
+      setIsLoading(false);
+      // 🔓 UNBLOCK auth state changes NOW (after all error handling)
+      setIsLoginInProgress(false);
+      
+      // Make sure we throw a user-friendly error
+      if (error.message) {
+        throw error;
+      } else {
+        throw new Error('Login failed. Please check your credentials and try again.');
+      }
+    } finally {
+      // ALWAYS unblock, even if error was thrown
+      setIsLoginInProgress(false);
+      console.log('🔓 Login process complete - auth state changes unblocked');
     }
   };
 
@@ -697,7 +800,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loginBackendOnly = async (email: string, password: string): Promise<User> => {
     try {
-      setIsLoading(true);
+      // Loading is already set by the caller
       console.log('🔧 Starting backend-only login for admin...');
       
       // Call backend login API directly
@@ -743,23 +846,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (data.token) {
         localStorage.setItem('jwt_token', data.token);
         localStorage.setItem('backend_user', JSON.stringify(backendUser));
-        console.log('💾 JWT token stored for API authentication');
+        localStorage.setItem('weddingbazaar_user_profile', JSON.stringify(backendUser));
+        console.log('💾 JWT token and user data stored (both keys)');
       }
       
       setUser(backendUser);
-      setIsLoading(false);
+      // Loading will be turned off by the caller
       
       console.log('👑 Admin user logged in successfully:', backendUser);
       return backendUser;
       
     } catch (error: any) {
       console.error('❌ Backend login error:', error);
-      setIsLoading(false);
+      // Don't turn off loading here - let the caller handle it
       throw error;
     }
   };
 
-  const value: AuthContextType = {
+  // 🔥 CRITICAL FIX: Memoize context value to prevent unnecessary re-renders
+  // This ensures Services and other consumers only re-render when auth state actually changes
+  // NOTE: We only include state values in dependencies, not functions (they don't change)
+  const value: AuthContextType = useMemo(() => ({
     user,
     firebaseUser,
     isAuthenticated: !!user, // Admin users can be authenticated without Firebase
@@ -776,7 +883,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     registerWithGoogle,
     clearRegistrationState, // Allow manual clearing of registration state
     loginBackendOnly // Expose backend-only login method
-  };
+  }), [
+    user,
+    firebaseUser,
+    isLoading,
+    isRegistering
+    // Functions are NOT included in deps - they're stable and don't need to trigger re-memoization
+  ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

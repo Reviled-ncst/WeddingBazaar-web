@@ -79,6 +79,9 @@ const FloatingActions: React.FC = () => (
 );
 
 export const Homepage: React.FC = () => {
+  // 🔍 DEBUG: Track re-renders
+  console.log('🏠 Homepage rendering/re-rendering');
+
   // Check for email verification success from Firebase
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);

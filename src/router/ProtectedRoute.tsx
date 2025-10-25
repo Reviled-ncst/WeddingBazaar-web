@@ -14,6 +14,29 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   redirectTo 
 }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
+  
+  // 🔒 CRITICAL FIX: Delay navigation after authentication to prevent modal destruction
+  const [canNavigate, setCanNavigate] = React.useState(false);
+  
+  // 🔥 PERFORMANCE FIX: Memoize children to prevent unnecessary re-renders
+  // Children should only re-render when auth state actually requires a navigation change
+  const memoizedChildren = React.useMemo(() => children, [children]);
+  
+  React.useEffect(() => {
+    if (isAuthenticated && !requireAuth) {
+      // Don't navigate immediately - give modal time to handle errors/success
+      setCanNavigate(false);
+      
+      const timer = setTimeout(() => {
+        setCanNavigate(true);
+        console.log('🔓 ProtectedRoute: Navigation delay complete');
+      }, 1500); // 1.5 second delay
+      
+      return () => clearTimeout(timer);
+    } else {
+      setCanNavigate(true);
+    }
+  }, [isAuthenticated, requireAuth]);
 
   // Show loading spinner while checking auth status
   if (isLoading) {
@@ -33,7 +56,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // If route is public but user is authenticated, redirect to their landing page
-  if (!requireAuth && isAuthenticated) {
+  // BUT: Only navigate after delay period to protect login modal
+  if (!requireAuth && isAuthenticated && canNavigate) {
     console.log('🔄 ProtectedRoute: User is authenticated, redirecting from public route');
     console.log('🔄 User object:', user);
     console.log('🔄 User role:', JSON.stringify(user?.role));
@@ -42,7 +66,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to={userRedirect} replace />;
   }
 
-  return <>{children}</>;
+  // 🔥 Return memoized children to prevent unnecessary re-renders
+  return <>{memoizedChildren}</>;
 };
 
 // Helper function to get the appropriate landing page based on user role

@@ -2,32 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Menu, X, Heart, Search, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '../../../utils/cn';
-import { LoginModal, RegisterModal } from '../modals';
-import { useAuth } from '../../contexts/HybridAuthContext';
+import { RegisterModal } from '../modals';
+import { AbsoluteProofLoginModal } from '../modals/AbsoluteProofLoginModal';
 
-export const Header: React.FC = () => {
+export const Header: React.FC = React.memo(() => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
-  
-  // CRITICAL: Wrap setIsLoginModalOpen with logging to catch ALL state changes
-  const setIsLoginModalOpenWithLogging = (newState: boolean, source: string = 'unknown') => {
-    console.log(`🚨🚨🚨 [Header] setIsLoginModalOpen called!`);
-    console.log(`📍 Source: ${source}`);
-    console.log(`🔄 Changing from ${isLoginModalOpen} to ${newState}`);
-    console.trace('📍 Full call stack:');
-    setIsLoginModalOpen(newState);
-  };
-  
-  // Smart modal state management - allow user-initiated actions
-  const setIsRegisterModalOpenWithLogging = (newState: boolean) => {
-    console.log(`🎭 Setting RegisterModal state to: ${newState}`);
-    console.trace('📍 Modal state change call stack:');
-    setIsRegisterModalOpen(newState);
-  };
   const [activeSection, setActiveSection] = useState('couples');
   
-  const { isAuthenticated } = useAuth();
+  // 🔥 REMOVED useAuth() call - Header doesn't actually use isAuthenticated
+  // This was causing unnecessary re-renders when auth state changed
+  // const { isAuthenticated } = useAuth();
 
   const navigation = [
     { name: 'Home', href: '#couples', isSection: true },
@@ -54,7 +40,7 @@ export const Header: React.FC = () => {
     // The LoginModal now manages its own lifecycle
     
     // DO NOT CLOSE REGISTER MODAL - IT MANAGES ITSELF
-  }, [isAuthenticated, isEmailVerificationMode]);
+  }, [isEmailVerificationMode]);
 
   // RESTORE REGISTER MODAL ON PAGE LOAD IF EMAIL VERIFICATION IS PENDING
   useEffect(() => {
@@ -65,7 +51,7 @@ export const Header: React.FC = () => {
         // Only restore if less than 10 minutes old
         if (Date.now() - timestamp < 10 * 60 * 1000) {
           console.log('🔄 Restoring register modal for pending email verification');
-          setIsRegisterModalOpenWithLogging(true);
+          setIsRegisterModalOpen(true);
         } else {
           localStorage.removeItem('emailVerificationPending');
         }
@@ -107,7 +93,7 @@ export const Header: React.FC = () => {
     }
     
     console.log('✅ Allowing modal close (no verification in progress)');
-    setIsRegisterModalOpenWithLogging(false);
+    setIsRegisterModalOpen(false);
   };
 
   // Scroll spy functionality
@@ -136,24 +122,14 @@ export const Header: React.FC = () => {
 
   const handleSwitchToRegister = () => {
     console.log('🔄 [Header] Switching to register modal');
-    setIsLoginModalOpenWithLogging(false, 'switchToRegister');
-    setIsRegisterModalOpenWithLogging(true);
+    setIsLoginModalOpen(false);
+    setIsRegisterModalOpen(true);
   };
 
   const handleSwitchToLogin = () => {
     console.log('🔄 [Header] Switching to login modal');
-    setIsRegisterModalOpenWithLogging(false);
-    setIsLoginModalOpenWithLogging(true, 'switchToLogin');
-  };
-  
-  const handleLoginModalClose = () => {
-    console.log('🚪 [Header] Login modal close requested');
-    console.trace('🔍 [Header] Close call stack trace');
-    
-    // The LoginModal has its own tracedOnClose wrapper that prevents closing on error
-    // If this function is called, it means the LoginModal approved the close
-    console.log('✅ [Header] LoginModal approved close - closing modal');
-    setIsLoginModalOpenWithLogging(false, 'handleLoginModalClose');
+    setIsRegisterModalOpen(false);
+    setIsLoginModalOpen(true);
   };
 
   return (
@@ -257,7 +233,7 @@ export const Header: React.FC = () => {
               
               {/* Login button with enhanced styling */}
               <button 
-                onClick={() => setIsLoginModalOpenWithLogging(true, 'loginButtonClick')}
+                onClick={() => setIsLoginModalOpen(true)}
                 className="relative p-3 text-gray-600 hover:text-rose-600 transition-all duration-300 group overflow-hidden rounded-2xl"
                 title="Login"
               >
@@ -268,7 +244,7 @@ export const Header: React.FC = () => {
               
               {/* Enhanced CTA button */}
               <button 
-                onClick={() => setIsRegisterModalOpenWithLogging(true)}
+                onClick={() => setIsRegisterModalOpen(true)}
                 className={cn(
                   "relative px-8 py-3 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 text-white font-semibold rounded-2xl overflow-hidden",
                   "hover:from-rose-600 hover:via-pink-600 hover:to-rose-700 transform hover:scale-105 transition-all duration-300",
@@ -379,7 +355,7 @@ export const Header: React.FC = () => {
                   <button 
                     onClick={() => {
                       setIsMenuOpen(false);
-                      setIsRegisterModalOpenWithLogging(true);
+                      setIsRegisterModalOpen(true);
                     }}
                     className={cn(
                       "relative mx-4 px-8 py-4 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 text-white font-semibold rounded-2xl text-center overflow-hidden",
@@ -400,9 +376,9 @@ export const Header: React.FC = () => {
     </header>
 
     {/* Modals */}
-    <LoginModal
+    <AbsoluteProofLoginModal
       isOpen={isLoginModalOpen}
-      onClose={handleLoginModalClose}
+      onClose={() => setIsLoginModalOpen(false)}
       onSwitchToRegister={handleSwitchToRegister}
     />
     <RegisterModal
@@ -413,4 +389,4 @@ export const Header: React.FC = () => {
     />
   </>
   );
-};
+});

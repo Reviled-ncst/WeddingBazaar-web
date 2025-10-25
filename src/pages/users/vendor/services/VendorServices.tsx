@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { getVendorIdForUser } from '../../../../utils/vendorIdMapping';
 import { firebaseAuthService } from '../../../../services/auth/firebaseAuthService';
 import { createServiceShareUrl } from '../../../../shared/utils/slug-generator';
@@ -25,7 +26,9 @@ import {
   Share2,
   MoreVertical,
   Camera,
-  CheckCircle2
+  CheckCircle2,
+  Crown,
+  Zap
 } from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
@@ -131,6 +134,7 @@ const SERVICE_CATEGORIES = [
 export const VendorServices: React.FC = () => {
   // Auth context to get the logged-in vendor
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,6 +167,12 @@ export const VendorServices: React.FC = () => {
 
   // Get API base URL
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+
+  // Handle navigation to subscription page
+  const handleNavigateToSubscription = () => {
+    console.log('🚀 Navigating to subscription page from VendorServices');
+    navigate('/vendor/subscription');
+  };
 
   // FIXED: Poll Firebase email verification status (same as VendorProfile.tsx)
   React.useEffect(() => {
@@ -208,6 +218,9 @@ export const VendorServices: React.FC = () => {
     const maxServices = subscription?.plan?.limits?.max_services || 5; // Default 5 for free tier
     const currentServicesCount = services.length;
     
+    // Handle unlimited services (-1) or check if below limit
+    const canAdd = maxServices === -1 || currentServicesCount < maxServices;
+    
     console.log('🔒 Service creation permission check:', {
       emailVerified: verification.emailVerified,
       emailSource: 'Firebase (real-time)',
@@ -215,13 +228,13 @@ export const VendorServices: React.FC = () => {
       businessVerified: verification.businessVerified,
       overallStatus: verification.overallStatus,
       currentServices: currentServicesCount,
-      maxServices: maxServices,
+      maxServices: maxServices === -1 ? 'Unlimited' : maxServices,
       subscriptionTier: subscription?.plan?.tier || 'free',
-      canAddServices: currentServicesCount < maxServices,
+      canAddServices: canAdd,
       note: 'Email verification now reads from Firebase directly (matches VendorProfile)'
     });
     
-    return currentServicesCount < maxServices;
+    return canAdd;
   };
   
   // Check for highlighted service from URL parameters
@@ -744,6 +757,20 @@ export const VendorServices: React.FC = () => {
               </div>
               
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                {/* Upgrade Plan Button - Only show for free tier */}
+                {subscription?.plan?.tier === 'basic' && (
+                  <button
+                    onClick={handleNavigateToSubscription}
+                    className="group w-full sm:w-auto px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white hover:from-purple-700 hover:via-pink-700 hover:to-rose-700 hover:scale-105 relative overflow-hidden"
+                    title="Upgrade to unlock unlimited services"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <Crown size={20} className="group-hover:rotate-12 transition-transform duration-300" />
+                    <span className="relative z-10">Upgrade Plan</span>
+                    <Zap size={16} className="group-hover:scale-110 transition-transform duration-300" />
+                  </button>
+                )}
+                
                 <div className="relative">
                   <button
                     onClick={handleQuickCreateService}
@@ -979,11 +1006,11 @@ export const VendorServices: React.FC = () => {
                       <div className="flex items-center justify-between text-sm">
                         <span className={cn(
                           "font-medium",
-                          services.length >= (subscription.plan.limits.max_services || 5)
+                          subscription.plan.limits.max_services !== -1 && services.length >= (subscription.plan.limits.max_services || 5)
                             ? "text-amber-800"
                             : "text-gray-700"
                         )}>
-                          {services.length} of {subscription.plan.limits.max_services || 5} services used
+                          {services.length} of {subscription.plan.limits.max_services === -1 ? 'Unlimited' : (subscription.plan.limits.max_services || 5)} services used
                         </span>
                         <span className={cn(
                           "px-3 py-1 rounded-full text-xs font-semibold",
@@ -999,18 +1026,22 @@ export const VendorServices: React.FC = () => {
                         <div 
                           className={cn(
                             "h-2.5 rounded-full transition-all duration-500",
-                            services.length >= (subscription.plan.limits.max_services || 5)
+                            subscription.plan.limits.max_services === -1 
+                              ? "bg-gradient-to-r from-purple-500 to-indigo-500" // Unlimited = purple gradient
+                              : services.length >= (subscription.plan.limits.max_services || 5)
                               ? "bg-gradient-to-r from-amber-500 to-orange-500"
                               : services.length >= (subscription.plan.limits.max_services || 5) * 0.8
                               ? "bg-gradient-to-r from-yellow-500 to-amber-500"
                               : "bg-gradient-to-r from-green-500 to-emerald-500"
                           )}
                           style={{ 
-                            width: `${Math.min(100, (services.length / (subscription.plan.limits.max_services || 5)) * 100)}%` 
+                            width: subscription.plan.limits.max_services === -1 
+                              ? '100%' // Always full for unlimited
+                              : `${Math.min(100, (services.length / (subscription.plan.limits.max_services || 5)) * 100)}%` 
                           }}
                         ></div>
                       </div>
-                      {services.length >= (subscription.plan.limits.max_services || 5) && (
+                      {subscription.plan.limits.max_services !== -1 && services.length >= (subscription.plan.limits.max_services || 5) && (
                         <p className="text-amber-800 text-sm mt-2">
                           You've reached your service limit. 
                           <button

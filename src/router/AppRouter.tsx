@@ -95,17 +95,16 @@ export const AppRouter: React.FC = () => {
               <Router>
           <div className="min-h-screen flex flex-col">
             <Routes>
-              {/* Public Homepage - redirect to user's landing page if authenticated */}
+              {/* Public Homepage - NO AUTH CHECK to prevent re-renders */}
+              {/* Auto-redirect removed to fix Services refetch bug on login failure */}
               <Route path="/" element={
-                <ProtectedRoute requireAuth={false}>
-                  <>
-                    <Header />
-                    <main className="flex-1">
-                      <Homepage />
-                    </main>
-                    <Footer />
-                  </>
-                </ProtectedRoute>
+                <>
+                  <Header />
+                  <main className="flex-1">
+                    <Homepage />
+                  </main>
+                  <Footer />
+                </>
               } />
 
               {/* Public Service Preview - accessible to everyone */}

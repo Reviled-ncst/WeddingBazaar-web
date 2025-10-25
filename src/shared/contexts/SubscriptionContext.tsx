@@ -169,12 +169,12 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
           });
         }
       } else {
-        console.log('⚠️ [SubscriptionContext] No subscription found, providing development fallback');
-        // Provide a development fallback subscription
+        console.log('⚠️ [SubscriptionContext] No subscription found, defaulting to FREE TIER (basic)');
+        // Provide a FREE TIER fallback subscription (basic plan with 5 services limit)
         const fallbackSubscription: VendorSubscription = {
           id: 'dev-fallback',
           vendor_id: user?.id || 'dev-vendor',
-          plan_id: 'enterprise',
+          plan_id: 'basic',
           status: 'active',
           current_period_start: new Date().toISOString(),
           current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -195,20 +195,20 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
             webhook_calls_count: 0,
             last_updated: new Date().toISOString()
           },
-          plan: SUBSCRIPTION_PLANS.find(p => p.id === 'enterprise') || SUBSCRIPTION_PLANS[0]
+          plan: SUBSCRIPTION_PLANS.find(p => p.id === 'basic') || SUBSCRIPTION_PLANS[0]
         };
         setSubscription(fallbackSubscription);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch subscription';
       console.error('❌ [SubscriptionContext] Error:', errorMessage);
-      console.log('🔧 [SubscriptionContext] Providing development fallback due to error');
+      console.log('🔧 [SubscriptionContext] Providing FREE TIER fallback (basic) due to error');
       
-      // Provide development fallback on error too
+      // Provide FREE TIER fallback on error (basic plan with 5 services limit)
       const fallbackSubscription: VendorSubscription = {
         id: 'dev-fallback-error',
         vendor_id: user?.id || 'dev-vendor',
-        plan_id: 'enterprise',
+        plan_id: 'basic',
         status: 'active',
         current_period_start: new Date().toISOString(),
         current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -229,7 +229,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
           webhook_calls_count: 0,
           last_updated: new Date().toISOString()
         },
-        plan: SUBSCRIPTION_PLANS.find(p => p.id === 'enterprise') || SUBSCRIPTION_PLANS[0]
+        plan: SUBSCRIPTION_PLANS.find(p => p.id === 'basic') || SUBSCRIPTION_PLANS[0]
       };
       setSubscription(fallbackSubscription);
       setError(errorMessage);

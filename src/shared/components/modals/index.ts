@@ -1,5 +1,8 @@
 export { Modal } from './Modal';
 export { LoginModal } from './LoginModal';
+export { FreshLoginModal } from './FreshLoginModal';
+export { UnmountProofLoginModal } from './UnmountProofLoginModal';
+export { AbsoluteProofLoginModal } from './AbsoluteProofLoginModal';
 export { RegisterModal } from './RegisterModal';
 export { TermsOfServiceModal } from './TermsOfServiceModal';
 export { PrivacyPolicyModal } from './PrivacyPolicyModal';
