@@ -40,6 +40,7 @@ export const VendorProfile: React.FC = () => {
   const [activeTab, setActiveTab] = useState('business');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [firebaseEmailVerified, setFirebaseEmailVerified] = useState(false);
 
   const [showPhoneVerification, setShowPhoneVerification] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +48,25 @@ export const VendorProfile: React.FC = () => {
   // Get real authenticated user data
   const { user } = useAuth();
   const vendorId = user?.vendorId || user?.id || 'vendor-user-1'; // Fallback to existing data
+  
+  // Check Firebase email verification status on mount and when user changes
+  React.useEffect(() => {
+    const checkFirebaseEmailStatus = async () => {
+      try {
+        const { firebaseAuthService } = await import('../../../../services/auth/firebaseAuthService');
+        const currentUser = firebaseAuthService.getCurrentUser();
+        setFirebaseEmailVerified(currentUser?.emailVerified || false);
+      } catch (error) {
+        console.error('Error checking Firebase email status:', error);
+      }
+    };
+    
+    checkFirebaseEmailStatus();
+    
+    // Recheck every 5 seconds to catch verification updates
+    const interval = setInterval(checkFirebaseEmailStatus, 5000);
+    return () => clearInterval(interval);
+  }, [user]);
   
   const { 
     profile, 
@@ -116,7 +136,13 @@ export const VendorProfile: React.FC = () => {
         throw new Error('No user logged in. Please log in and try again.');
       }
       
-      if (currentUser.emailVerified) {
+      // Force reload to get latest Firebase state
+      await firebaseAuthService.reloadUser();
+      const reloadedUser = firebaseAuthService.getCurrentUser();
+      
+      if (reloadedUser?.emailVerified) {
+        // Email is already verified - update local state immediately
+        setFirebaseEmailVerified(true);
         alert('✅ Your email is already verified!');
         setIsVerifyingEmail(false);
         return;
@@ -126,7 +152,7 @@ export const VendorProfile: React.FC = () => {
       await firebaseAuthService.resendEmailVerification();
       
       console.log('✅ Firebase verification email sent successfully');
-      alert('✅ Verification email sent! Please check your inbox and click the verification link. After verifying, refresh this page.');
+      alert('✅ Verification email sent! Please check your inbox and click the verification link. The badge will update automatically after verification.');
       
     } catch (error) {
       console.error('❌ Email verification error:', error);
@@ -973,8 +999,8 @@ export const VendorProfile: React.FC = () => {
                           <Mail className="w-6 h-6 text-blue-600" />
                           <h3 className="text-xl font-semibold text-gray-900">Email Verification</h3>
                         </div>
-                        {/* FIXED: Use user.emailVerified from users table */}
-                        {user?.emailVerified ? (
+                        {/* FIXED: Use firebaseEmailVerified state directly from Firebase */}
+                        {firebaseEmailVerified ? (
                           <div className="flex items-center space-x-2 text-green-600">
                             <CheckCircle className="w-5 h-5" />
                             <span className="font-medium">Verified</span>
@@ -994,12 +1020,12 @@ export const VendorProfile: React.FC = () => {
                           </p>
                           <div className="space-y-2">
                             <p className="text-sm text-gray-500"><strong>Email:</strong> {user?.email}</p>
-                            <p className="text-sm text-gray-500"><strong>Status:</strong> {user?.emailVerified ? 'Verified' : 'Pending verification'}</p>
+                            <p className="text-sm text-gray-500"><strong>Status:</strong> {firebaseEmailVerified ? 'Verified ✅' : 'Pending verification'}</p>
                           </div>
                         </div>
                         <div className="flex items-center justify-center">
-                          {/* FIXED: Check user.emailVerified */}
-                          {!user?.emailVerified && (
+                          {/* FIXED: Check firebaseEmailVerified state */}
+                          {!firebaseEmailVerified && (
                             <button
                               onClick={handleEmailVerification}
                               disabled={isVerifyingEmail}
