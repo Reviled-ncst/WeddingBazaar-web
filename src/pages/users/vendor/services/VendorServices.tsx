@@ -419,8 +419,9 @@ export const VendorServices: React.FC = () => {
       
       const payload = {
         ...serviceData,
-        // Use the user ID that should match the vendor profile
-        vendor_id: user?.id || vendorId,
+        // ✅ FIX: Use vendorId (UUID) not user.id (user ID string)
+        // The services table foreign key expects the vendors.id (UUID)
+        vendor_id: user?.vendorId || vendorId,
       };
       
       console.log('🔍 [VendorServices] Making API request:', {
