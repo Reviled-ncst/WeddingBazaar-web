@@ -319,43 +319,80 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (email: string, password: string): Promise<User> => {
     try {
       setIsLoading(true);
-      console.log('🔧 Starting hybrid login...');
+      console.log('🔧 Starting hybrid login - credentials will be validated BEFORE proceeding...');
       
       try {
-        // Try Firebase login first
-        console.log('🔐 Firebase sign in attempt...');
+        // Try Firebase login first - THIS VALIDATES CREDENTIALS
+        // If credentials are wrong, this will throw an error immediately
+        console.log('🔐 Firebase sign in attempt (validating credentials)...');
         const userCredential = await firebaseAuthService.signIn(email, password);
-        console.log('✅ Firebase login successful');
+        console.log('✅ Firebase credentials validated successfully - user authenticated');
         
-        // Sync with backend will happen automatically via auth state listener
-        // Return a user object (will be updated by the listener)
-        const tempUser = convertFirebaseUser({
-          uid: userCredential.user.uid,
-          email: userCredential.user.email,
-          emailVerified: userCredential.user.emailVerified,
-          displayName: userCredential.user.displayName,
-          photoURL: userCredential.user.photoURL
+        // At this point, credentials are CONFIRMED VALID by Firebase
+        // Now we can safely proceed with backend sync
+        console.log('🔄 Fetching complete user profile from backend...');
+        
+        // Create a promise that will resolve when we have the full user data
+        let syncedUser: User | null = null;
+        
+        // Create a callback to capture the synced user
+        const captureUser = new Promise<User>((resolve) => {
+          // Sync with backend and capture the result
+          syncWithBackend(userCredential.user).then(() => {
+            // Small delay to ensure state is updated
+            setTimeout(() => {
+              // Try to get from localStorage first (most reliable)
+              const storedUser = localStorage.getItem('backend_user');
+              if (storedUser) {
+                try {
+                  const parsedUser = JSON.parse(storedUser);
+                  console.log('✅ User data retrieved from localStorage:', parsedUser.role);
+                  resolve(parsedUser);
+                  return;
+                } catch (e) {
+                  console.warn('⚠️ Failed to parse stored user');
+                }
+              }
+              
+              // Fallback: use Firebase data
+              const firebaseUser = convertFirebaseUser(userCredential.user);
+              console.log('⚠️ Using Firebase-only user data (backend sync incomplete)');
+              resolve(firebaseUser);
+            }, 200);
+          }).catch((syncError) => {
+            console.warn('⚠️ Backend sync failed, using Firebase data:', syncError);
+            const firebaseUser = convertFirebaseUser(userCredential.user);
+            resolve(firebaseUser);
+          });
         });
-
-        return tempUser;
+        
+        // Wait for the synced user data
+        syncedUser = await captureUser;
+        
+        setIsLoading(false);
+        console.log('✅ Login complete! User:', syncedUser.email, 'Role:', syncedUser.role);
+        return syncedUser;
         
       } catch (firebaseError: any) {
-        console.log('⚠️ Firebase login failed, trying backend-only login...');
+        console.log('⚠️ Firebase login failed - credentials may be invalid');
         console.log('🔧 Firebase error:', firebaseError.message);
         
         // Try backend-only login for admin users
         try {
+          console.log('🔧 Attempting backend-only login for admin...');
           const adminUser = await loginBackendOnly(email, password);
           console.log('✅ Backend-only login successful for admin');
           return adminUser;
         } catch (backendError: any) {
-          console.error('❌ Both Firebase and backend login failed');
-          throw firebaseError; // Throw original Firebase error
+          console.error('❌ Both Firebase and backend login failed - invalid credentials');
+          setIsLoading(false);
+          // Throw the original Firebase error (has user-friendly message)
+          throw firebaseError;
         }
       }
       
     } catch (error: any) {
-      console.error('❌ Login error:', error);
+      console.error('❌ Login error - credentials validation failed:', error);
       setIsLoading(false);  
       throw error;
     }
