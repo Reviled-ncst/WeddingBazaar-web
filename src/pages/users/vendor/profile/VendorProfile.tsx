@@ -79,21 +79,39 @@ export const VendorProfile: React.FC = () => {
   // Local state for editing
   const [editForm, setEditForm] = useState<Partial<VendorProfileType>>({});
 
-  // Helper function to check document verification status - FIXED MAPPING
+  // Helper function to check document verification status - ENHANCED
   const isDocumentVerified = (): boolean => {
     // Check documents_verified field from database (snake_case)
-    return profile?.documents_verified === true;
+    const hasVerifiedField = profile?.documents_verified === true;
+    
+    // Also check if there are any approved documents in the documents array
+    const hasApprovedDocuments = profile?.documents && 
+      Array.isArray(profile.documents) && 
+      profile.documents.some((doc: any) => doc.status === 'approved');
+    
+    return hasVerifiedField || hasApprovedDocuments || false;
   };
 
-  // Helper function to get verification status with document check - FIXED MAPPING
+  // Helper function to get verification status with document check - ENHANCED
   const getBusinessVerificationStatus = () => {
-    // Use correct database field names (snake_case from database)
-    const documentsVerified = profile?.documents_verified === true;
+    // Check both database field and actual uploaded documents
+    const documentsVerified = isDocumentVerified();
     const businessVerified = profile?.business_verified === true;
+    
+    // Count approved documents
+    const approvedDocsCount = profile?.documents?.filter((doc: any) => doc.status === 'approved').length || 0;
+    
+    console.log('🔍 Business Verification Check:', {
+      documentsVerified,
+      businessVerified,
+      approvedDocsCount,
+      totalDocs: profile?.documents?.length || 0,
+      verification_status: profile?.verification_status
+    });
     
     if (businessVerified || documentsVerified) {
       return { status: 'verified', color: 'text-green-600', icon: CheckCircle, label: 'Verified' };
-    } else if (profile?.verification_status === 'pending') {
+    } else if (profile?.verification_status === 'pending' || approvedDocsCount > 0) {
       return { status: 'pending', color: 'text-amber-600', icon: Clock, label: 'Under Review' };
     } else {
       return { status: 'not_verified', color: 'text-amber-600', icon: XCircle, label: 'Not Verified' };
