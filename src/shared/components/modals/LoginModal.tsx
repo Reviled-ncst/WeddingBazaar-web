@@ -29,10 +29,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  // Clear error when modal opens or closes
+  // Reset all states when modal opens or closes
   useEffect(() => {
     if (isOpen) {
+      // Clear all states when modal opens
       setError(null);
+      setIsLoginSuccess(false);
+      setIsLoading(false);
+    } else {
+      // Also reset when modal closes
+      setError(null);
+      setIsLoginSuccess(false);
+      setIsLoading(false);
+      setFormData({ email: '', password: '', rememberMe: false });
     }
   }, [isOpen]);
 
@@ -46,22 +55,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     try {
       console.log('🔐 [LoginModal] Starting login process...');
       
-      // Attempt login and get user data
+      // Attempt login and get user data - this will throw an error if credentials are wrong
       const user = await login(formData.email, formData.password);
       
       console.log('✅ [LoginModal] Login successful, user:', user);
       
-      // Quick success state (no long animation)
-      setIsLoginSuccess(true);
-      
-      // Close modal immediately
-      onClose();
-      
-      // Reset form
+      // Only show success and navigate after successful authentication
+      // Reset form first
       setFormData({ email: '', password: '', rememberMe: false });
       
-      // Route user to appropriate landing page based on their role
+      // Show brief success state
+      setIsLoginSuccess(true);
+      
+      // Small delay to show success message, then navigate
       setTimeout(() => {
+        setIsLoginSuccess(false);
+        setIsLoading(false);
+        onClose();
+        
+        // Navigate based on role
         switch (user.role) {
           case 'couple':
             navigate('/individual');
@@ -75,9 +87,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           default:
             navigate('/');
         }
-        setIsLoginSuccess(false);
-        setIsLoading(false);
-      }, 100);
+      }, 800); // Slightly longer delay to show success message
       
     } catch (err) {
       console.error('❌ [LoginModal] Login failed with error:', err);
@@ -166,8 +176,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   return (
     <>
-      {/* Simple Success Overlay - Brief and minimal */}
-      {isLoginSuccess && (
+      {/* Simple Success Overlay - Brief and minimal - Only show if no error */}
+      {isLoginSuccess && !error && !isLoading && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-sm">
           <div className="bg-white rounded-2xl p-6 shadow-xl border border-green-200 max-w-sm w-full mx-4">
             <div className="text-center">
@@ -289,7 +299,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* Simple Submit Button */}
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || isLoginSuccess}
           className={cn(
             "w-full py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-medium rounded-lg",
             "hover:from-rose-600 hover:to-pink-600 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2",
@@ -297,7 +307,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             "shadow-lg hover:shadow-xl"
           )}
         >
-          {isLoading ? 'Signing In...' : 'Sign In'}
+          {isLoading ? (
+            <span className="flex items-center justify-center">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Verifying credentials...
+            </span>
+          ) : 'Sign In'}
         </button>
 
         {/* Simple Divider */}
