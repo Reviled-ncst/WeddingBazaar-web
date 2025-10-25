@@ -45,6 +45,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   }, [isOpen]);
 
+  // Debug: Log when error state changes
+  useEffect(() => {
+    console.log('🔍 [LoginModal] Error state changed:', error);
+    console.log('🔍 [LoginModal] Modal isOpen:', isOpen);
+    console.log('🔍 [LoginModal] isLoading:', isLoading);
+    console.log('🔍 [LoginModal] isLoginSuccess:', isLoginSuccess);
+  }, [error, isOpen, isLoading, isLoginSuccess]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -180,12 +188,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
       
       console.log('📝 [LoginModal] Setting error message:', errorMessage);
+      console.log('🔍 [LoginModal] Current state before setting error:', { isLoading, isLoginSuccess, error });
       
       setError(errorMessage);
       setIsLoading(false);
       setIsLoginSuccess(false);
       
+      console.log('✅ [LoginModal] Error state set, modal should stay open');
+      console.log('🔍 [LoginModal] Error value set to:', errorMessage);
+      
       // Don't close modal on error - let user try again
+      // DO NOT call onClose() here!
     }
   };
 
@@ -245,20 +258,24 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-        {/* Simple Error Message */}
+        {/* Simple Error Message - ENHANCED VISIBILITY */}
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="p-4 bg-red-50 border-2 border-red-500 rounded-lg animate-shake">
             <div className="flex items-center space-x-2">
-              <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-6 h-6 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
-              <p className="text-red-600 text-sm">{error}</p>
+              <p className="text-red-700 text-sm font-medium flex-1">{error}</p>
               <button 
-                onClick={() => setError(null)}
-                className="text-red-400 hover:text-red-600"
+                type="button"
+                onClick={() => {
+                  console.log('🚨 [LoginModal] ERROR IS VISIBLE IN UI:', error);
+                  setError(null);
+                }}
+                className="text-red-400 hover:text-red-600 flex-shrink-0"
                 title="Dismiss"
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
               </button>
