@@ -169,42 +169,9 @@ router.get('/', async (req, res) => {
 });
 
 /**
- * GET /api/subscriptions/plans/:planId
- * Get specific plan details
- */
-router.get('/:planId', async (req, res) => {
-  try {
-    const { planId } = req.params;
-    const plan = SUBSCRIPTION_PLANS[planId];
-    
-    if (!plan) {
-      return res.status(404).json({
-        success: false,
-        error: 'Plan not found'
-      });
-    }
-    
-    res.json({
-      success: true,
-      plan: {
-        ...plan,
-        price_display: plan.price === 0 ? 'Free' : `₱${(plan.price / 100).toLocaleString()}`,
-        price_yearly_display: plan.price_yearly === 0 ? 'Free' : `₱${(plan.price_yearly / 100).toLocaleString()}`,
-        savings_yearly: plan.price_yearly > 0 ? ((plan.price * 12 - plan.price_yearly) / 100) : 0
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error fetching plan:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch plan details'
-    });
-  }
-});
-
-/**
  * GET /api/subscriptions/plans/compare
  * Get plan comparison matrix
+ * NOTE: This route must come BEFORE /:planId to avoid matching 'compare' as a planId
  */
 router.get('/compare', async (req, res) => {
   try {
@@ -226,6 +193,43 @@ router.get('/compare', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to generate plan comparison'
+    });
+  }
+});
+
+/**
+ * GET /api/subscriptions/plans/:planId
+ * Get specific plan details
+ * NOTE: This route must come AFTER /compare to avoid route conflicts
+ */
+router.get('/:planId', async (req, res) => {
+  try {
+    const { planId } = req.params;
+    const plan = SUBSCRIPTION_PLANS[planId];
+    
+    if (!plan) {
+      return res.status(404).json({
+        success: false,
+        error: 'Plan not found',
+        message: `No subscription plan found with ID: ${planId}`,
+        availablePlans: Object.keys(SUBSCRIPTION_PLANS)
+      });
+    }
+    
+    res.json({
+      success: true,
+      plan: {
+        ...plan,
+        price_display: plan.price === 0 ? 'Free' : `₱${(plan.price / 100).toLocaleString()}`,
+        price_yearly_display: plan.price_yearly === 0 ? 'Free' : `₱${(plan.price_yearly / 100).toLocaleString()}`,
+        savings_yearly: plan.price_yearly > 0 ? ((plan.price * 12 - plan.price_yearly) / 100) : 0
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error fetching plan:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch plan details'
     });
   }
 });

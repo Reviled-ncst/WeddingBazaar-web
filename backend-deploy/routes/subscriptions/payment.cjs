@@ -749,4 +749,49 @@ router.put('/reactivate', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/subscriptions/payment/health
+ * Payment service health check
+ */
+router.get('/health', async (req, res) => {
+  try {
+    // Check PayMongo API connectivity
+    let paymongoStatus = 'Unknown';
+    let paymongoMessage = '';
+    
+    try {
+      // Test API connectivity by fetching a non-existent payment intent (will 404 but proves API works)
+      await fetch(`${PAYMONGO_API_URL}/payment_intents/test`, {
+        headers: {
+          'Authorization': `Basic ${Buffer.from(PAYMONGO_SECRET_KEY).toString('base64')}`
+        }
+      });
+      paymongoStatus = 'Connected';
+      paymongoMessage = 'PayMongo API is reachable';
+    } catch (error) {
+      paymongoStatus = 'Error';
+      paymongoMessage = error.message;
+    }
+    
+    res.json({
+      success: true,
+      service: 'Subscription Payment Service',
+      status: 'OK',
+      paymongo: {
+        status: paymongoStatus,
+        message: paymongoMessage,
+        test_mode: PAYMONGO_SECRET_KEY.includes('test'),
+        configured: PAYMONGO_SECRET_KEY !== 'sk_test_YOUR_KEY'
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Payment service health check failed',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;
