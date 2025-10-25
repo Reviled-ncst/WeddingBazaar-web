@@ -26,46 +26,63 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     rememberMe: false
   });
 
+  // **CRITICAL FIX**: Internal modal state that OVERRIDES parent's isOpen when error is present
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  // Create a wrapper for onClose to trace who's calling it
-  const tracedOnClose = () => {
-    console.log('🚨 [LoginModal] onClose() called!');
-    console.trace('📍 Call stack for onClose:');
-    console.log('🔍 Current state:', { error, isLoading, isLoginSuccess });
-    
-    // Only allow close if no error or if login was successful
-    if (error && !isLoginSuccess) {
-      console.log('🛑 BLOCKING modal close - error is present and login not successful!');
-      return; // Block the close!
-    }
-    
-    console.log('✅ Allowing modal close');
-    onClose();
-  };
-
-  // Reset all states when modal opens ONLY
-  // DON'T reset on close - let the close happen naturally after error is acknowledged
+  // Sync internal state with parent, but LOCK it open when there's an error
   useEffect(() => {
-    console.log('🔄 [LoginModal] isOpen changed to:', isOpen);
+    console.log('� [LoginModal] Parent isOpen changed to:', isOpen, '| Has error:', !!error);
+    
     if (isOpen) {
-      // Clear all states when modal opens
-      console.log('🧹 Clearing states on modal open');
+      // Parent wants to open - always allow
+      console.log('✅ [LoginModal] Opening modal');
+      setInternalIsOpen(true);
+      // Clear states when opening
       setError(null);
       setIsLoginSuccess(false);
       setIsLoading(false);
+    } else if (!error && !isLoginSuccess) {
+      // Parent wants to close AND no error - allow
+      console.log('✅ [LoginModal] Closing modal (no error)');
+      setInternalIsOpen(false);
+    } else if (error) {
+      // Parent wants to close BUT there's an error - BLOCK
+      console.log('🛑 [LoginModal] BLOCKING CLOSE - error is present:', error);
+      setInternalIsOpen(true); // Keep it open!
+    } else {
+      // Default: follow parent
+      setInternalIsOpen(isOpen);
     }
-    // REMOVED: Don't clear states when modal closes - this was causing the error to disappear!
-  }, [isOpen]);
+  }, [isOpen, error, isLoginSuccess]);
 
-  // Debug: Log when error state changes
-  useEffect(() => {
-    console.log('🔍 [LoginModal] Error state changed:', error);
-    console.log('🔍 [LoginModal] Modal isOpen:', isOpen);
-    console.log('🔍 [LoginModal] isLoading:', isLoading);
-    console.log('🔍 [LoginModal] isLoginSuccess:', isLoginSuccess);
-  }, [error, isOpen, isLoading, isLoginSuccess]);
+  // When user dismisses error, allow modal to close if parent wanted it closed
+  const handleDismissError = () => {
+    console.log('�️ [LoginModal] Dismissing error');
+    setError(null);
+    // If parent's isOpen is false, close the modal now
+    if (!isOpen) {
+      console.log('✅ [LoginModal] Parent wanted close - closing now');
+      setInternalIsOpen(false);
+      onClose();
+    }
+  };
+
+  // Handle close attempts
+  const handleClose = () => {
+    console.log('🚨 [LoginModal] Close requested | Has error:', !!error);
+    
+    if (error) {
+      console.log('🛑 [LoginModal] BLOCKING close - error must be dismissed first');
+      return;
+    }
+    
+    console.log('✅ [LoginModal] Allowing close');
+    setInternalIsOpen(false);
+    onClose();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,7 +115,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setTimeout(() => {
         setIsLoginSuccess(false);
         setIsLoading(false);
-        tracedOnClose(); // Use traced version
+        handleClose(); // Use our close handler
         
         // Navigate based on role
         switch (user.role) {
@@ -267,7 +284,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         </div>
       )}
 
-      <Modal isOpen={isOpen} onClose={tracedOnClose} maxWidth="md" preventBackdropClose={!!error}>
+      <Modal isOpen={internalIsOpen} onClose={handleClose} maxWidth="md" preventBackdropClose={!!error}>
       {/* Simple header */}
       <div className="text-center mb-6">
         <div className="flex justify-center mb-4">
@@ -293,10 +310,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <p className="text-red-700 text-sm font-medium flex-1">{error}</p>
               <button 
                 type="button"
-                onClick={() => {
-                  console.log('🚨 [LoginModal] ERROR IS VISIBLE IN UI:', error);
-                  setError(null);
-                }}
+                onClick={handleDismissError}
                 className="text-red-400 hover:text-red-600 flex-shrink-0"
                 title="Dismiss"
               >
