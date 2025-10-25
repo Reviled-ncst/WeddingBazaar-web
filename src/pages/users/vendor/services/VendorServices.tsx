@@ -29,8 +29,11 @@ import {
 } from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
+import { useSubscription } from '../../../../shared/contexts/SubscriptionContext';
+import { UpgradePrompt } from '../../../../shared/components/subscription/UpgradePrompt';
 import { AddServiceForm } from './components/AddServiceForm';
 import { useVendorProfile } from '../../../../hooks/useVendorData';
+import { cn } from '../../../../utils/cn';
 
 // Service interface based on the actual API response
 interface Service {
@@ -150,6 +153,14 @@ export const VendorServices: React.FC = () => {
   // Use the same vendor profile hook as VendorProfile component
   const { profile, refetch: refetchProfile } = useVendorProfile(vendorId || '');
 
+  // Get subscription data for service limits
+  const {
+    subscription,
+    showUpgradePrompt,
+    upgradePrompt,
+    hideUpgradePrompt
+  } = useSubscription();
+
   // Get API base URL
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
@@ -186,17 +197,31 @@ export const VendorServices: React.FC = () => {
   // TODO: Re-enable document verification requirement in production
   const canAddServices = () => {
     const verification = getVerificationStatus();
-    const canAdd = verification.emailVerified; // Temporarily removed document requirement
+    
+    // Check email verification first
+    if (!verification.emailVerified) {
+      console.log('🔒 Service creation blocked: Email not verified');
+      return false;
+    }
+    
+    // Check subscription limits
+    const maxServices = subscription?.plan?.limits?.max_services || 5; // Default 5 for free tier
+    const currentServicesCount = services.length;
+    
     console.log('🔒 Service creation permission check:', {
       emailVerified: verification.emailVerified,
-      emailSource: 'Firebase (real-time)', // ✅ Now using Firebase
+      emailSource: 'Firebase (real-time)',
       documentsVerified: verification.documentsVerified,
       businessVerified: verification.businessVerified,
       overallStatus: verification.overallStatus,
-      canAddServices: canAdd,
+      currentServices: currentServicesCount,
+      maxServices: maxServices,
+      subscriptionTier: subscription?.plan?.tier || 'free',
+      canAddServices: currentServicesCount < maxServices,
       note: 'Email verification now reads from Firebase directly (matches VendorProfile)'
     });
-    return canAdd;
+    
+    return currentServicesCount < maxServices;
   };
   
   // Check for highlighted service from URL parameters
@@ -547,11 +572,24 @@ export const VendorServices: React.FC = () => {
     }
   };
 
-  // Quick service creation function with verification check
+  // Quick service creation function with verification and subscription check
   const handleQuickCreateService = () => {
     // Check if user is verified before allowing service creation
-    if (!canAddServices()) {
+    const verification = getVerificationStatus();
+    if (!verification.emailVerified) {
       setShowVerificationPrompt(true);
+      return;
+    }
+    
+    // Check subscription limits
+    const maxServices = subscription?.plan?.limits?.max_services || 5; // Default 5 for free tier
+    const currentServicesCount = services.length;
+    
+    if (currentServicesCount >= maxServices) {
+      const planName = subscription?.plan?.name || 'Free';
+      const message = `You've reached the maximum of ${maxServices} services for your ${planName} plan. Upgrade to add more services!`;
+      
+      showUpgradePrompt(message, subscription?.plan?.tier === 'basic' ? 'premium' : 'pro');
       return;
     }
     
@@ -889,6 +927,108 @@ export const VendorServices: React.FC = () => {
                 </div>
               </motion.div>
             </div>
+
+            {/* Service Limit Indicator */}
+            {subscription && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={cn(
+                  "rounded-2xl p-6 mb-8 border",
+                  services.length >= (subscription.plan.limits.max_services || 5)
+                    ? "bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200"
+                    : services.length >= (subscription.plan.limits.max_services || 5) * 0.8
+                    ? "bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200"
+                    : "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200"
+                )}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={cn(
+                    "p-2 rounded-lg flex-shrink-0",
+                    services.length >= (subscription.plan.limits.max_services || 5)
+                      ? "bg-amber-100"
+                      : services.length >= (subscription.plan.limits.max_services || 5) * 0.8
+                      ? "bg-yellow-100"
+                      : "bg-green-100"
+                  )}>
+                    <CheckCircle2 className={cn(
+                      "h-6 w-6",
+                      services.length >= (subscription.plan.limits.max_services || 5)
+                        ? "text-amber-600"
+                        : services.length >= (subscription.plan.limits.max_services || 5) * 0.8
+                        ? "text-yellow-600"
+                        : "text-green-600"
+                    )} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className={cn(
+                      "text-lg font-semibold mb-2",
+                      services.length >= (subscription.plan.limits.max_services || 5)
+                        ? "text-amber-900"
+                        : services.length >= (subscription.plan.limits.max_services || 5) * 0.8
+                        ? "text-yellow-900"
+                        : "text-green-900"
+                    )}>
+                      {services.length >= (subscription.plan.limits.max_services || 5)
+                        ? "Service Limit Reached"
+                        : services.length >= (subscription.plan.limits.max_services || 5) * 0.8
+                        ? "Approaching Service Limit"
+                        : "Service Limit Status"}
+                    </h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className={cn(
+                          "font-medium",
+                          services.length >= (subscription.plan.limits.max_services || 5)
+                            ? "text-amber-800"
+                            : "text-gray-700"
+                        )}>
+                          {services.length} of {subscription.plan.limits.max_services || 5} services used
+                        </span>
+                        <span className={cn(
+                          "px-3 py-1 rounded-full text-xs font-semibold",
+                          subscription.plan.tier === 'basic' ? "bg-blue-100 text-blue-800" :
+                          subscription.plan.tier === 'premium' ? "bg-purple-100 text-purple-800" :
+                          subscription.plan.tier === 'pro' ? "bg-indigo-100 text-indigo-800" :
+                          "bg-gray-100 text-gray-800"
+                        )}>
+                          {subscription.plan.name} Plan
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div 
+                          className={cn(
+                            "h-2.5 rounded-full transition-all duration-500",
+                            services.length >= (subscription.plan.limits.max_services || 5)
+                              ? "bg-gradient-to-r from-amber-500 to-orange-500"
+                              : services.length >= (subscription.plan.limits.max_services || 5) * 0.8
+                              ? "bg-gradient-to-r from-yellow-500 to-amber-500"
+                              : "bg-gradient-to-r from-green-500 to-emerald-500"
+                          )}
+                          style={{ 
+                            width: `${Math.min(100, (services.length / (subscription.plan.limits.max_services || 5)) * 100)}%` 
+                          }}
+                        ></div>
+                      </div>
+                      {services.length >= (subscription.plan.limits.max_services || 5) && (
+                        <p className="text-amber-800 text-sm mt-2">
+                          You've reached your service limit. 
+                          <button
+                            onClick={() => showUpgradePrompt(
+                              `Upgrade to add more than ${subscription.plan.limits.max_services || 5} services!`,
+                              subscription.plan.tier === 'basic' ? 'premium' : 'pro'
+                            )}
+                            className="ml-2 font-semibold underline hover:text-amber-900"
+                          >
+                            Upgrade to add more services →
+                          </button>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             {/* Verification Status Banner */}
             {!canAddServices() && (
@@ -1999,6 +2139,14 @@ export const VendorServices: React.FC = () => {
           )}
         </div>
       </motion.div>
+
+      {/* Upgrade Prompt Modal */}
+      <UpgradePrompt
+        isOpen={upgradePrompt.show}
+        onClose={hideUpgradePrompt}
+        message={upgradePrompt.message}
+        requiredTier={upgradePrompt.requiredTier}
+      />
     </div>
   );
 };
