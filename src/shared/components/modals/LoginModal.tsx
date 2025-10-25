@@ -44,8 +44,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setError(null);
 
     try {
+      console.log('🔐 [LoginModal] Starting login process...');
+      
       // Attempt login and get user data
       const user = await login(formData.email, formData.password);
+      
+      console.log('✅ [LoginModal] Login successful, user:', user);
       
       // Quick success state (no long animation)
       setIsLoginSuccess(true);
@@ -76,28 +80,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }, 100);
       
     } catch (err) {
+      console.error('❌ [LoginModal] Login failed with error:', err);
+      
       // User-friendly error handling
       let errorMessage = 'Something went wrong. Please try again.';
       
       if (err instanceof Error) {
         const message = err.message.toLowerCase();
         
+        console.log('🔍 [LoginModal] Error message:', message);
+        
         // Login credential issues
         if (message.includes('invalid email or password') || message.includes('invalid credentials') || message.includes('401')) {
           errorMessage = 'Incorrect email or password. Please try again.';
         } 
+        // Firebase specific errors
+        else if (message.includes('incorrect password') || message.includes('wrong-password') || message.includes('wrong password')) {
+          errorMessage = 'Incorrect password. Please try again.';
+        }
+        else if (message.includes('user not found') || message.includes('no account found')) {
+          errorMessage = "We couldn't find an account with that email. Please check your email or create a new account.";
+        }
         // Email verification issues (should be rare now since we allow unverified login)
         else if (message.includes('verify your email') || message.includes('email not verified') || message.includes('account not verified')) {
           errorMessage = 'Login successful! Some features may be limited until you verify your email from your profile settings.';
         }
         // Account issues
-        else if (message.includes('user not found') || message.includes('account not found')) {
-          errorMessage = "We couldn't find an account with that email. Please check your email or create a new account.";
-        }
-        else if (message.includes('account suspended') || message.includes('account disabled')) {
+        else if (message.includes('account suspended') || message.includes('account disabled') || message.includes('user-disabled')) {
           errorMessage = 'Your account has been temporarily suspended. Please contact us for help.';
         }
-        else if (message.includes('account locked') || message.includes('too many attempts')) {
+        else if (message.includes('account locked') || message.includes('too many attempts') || message.includes('too-many-requests')) {
           errorMessage = 'Too many failed attempts. Please wait a few minutes and try again.';
         }
         // Connection problems
@@ -117,9 +129,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         }
         // Generic fallback
         else {
-          errorMessage = 'Something went wrong. Please try again or contact us if this keeps happening.';
+          errorMessage = err.message || 'Something went wrong. Please try again or contact us if this keeps happening.';
         }
       }
+      
+      console.log('📝 [LoginModal] Setting error message:', errorMessage);
       
       setError(errorMessage);
       setIsLoading(false);
