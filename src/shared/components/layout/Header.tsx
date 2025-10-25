@@ -10,6 +10,15 @@ export const Header: React.FC = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   
+  // CRITICAL: Wrap setIsLoginModalOpen with logging to catch ALL state changes
+  const setIsLoginModalOpenWithLogging = (newState: boolean, source: string = 'unknown') => {
+    console.log(`🚨🚨🚨 [Header] setIsLoginModalOpen called!`);
+    console.log(`📍 Source: ${source}`);
+    console.log(`🔄 Changing from ${isLoginModalOpen} to ${newState}`);
+    console.trace('📍 Full call stack:');
+    setIsLoginModalOpen(newState);
+  };
+  
   // Smart modal state management - allow user-initiated actions
   const setIsRegisterModalOpenWithLogging = (newState: boolean) => {
     console.log(`🎭 Setting RegisterModal state to: ${newState}`);
@@ -127,14 +136,14 @@ export const Header: React.FC = () => {
 
   const handleSwitchToRegister = () => {
     console.log('🔄 [Header] Switching to register modal');
-    setIsLoginModalOpen(false);
+    setIsLoginModalOpenWithLogging(false, 'switchToRegister');
     setIsRegisterModalOpenWithLogging(true);
   };
 
   const handleSwitchToLogin = () => {
     console.log('🔄 [Header] Switching to login modal');
     setIsRegisterModalOpenWithLogging(false);
-    setIsLoginModalOpen(true);
+    setIsLoginModalOpenWithLogging(true, 'switchToLogin');
   };
   
   const handleLoginModalClose = () => {
@@ -144,7 +153,7 @@ export const Header: React.FC = () => {
     // The LoginModal has its own tracedOnClose wrapper that prevents closing on error
     // If this function is called, it means the LoginModal approved the close
     console.log('✅ [Header] LoginModal approved close - closing modal');
-    setIsLoginModalOpen(false);
+    setIsLoginModalOpenWithLogging(false, 'handleLoginModalClose');
   };
 
   return (
@@ -248,7 +257,7 @@ export const Header: React.FC = () => {
               
               {/* Login button with enhanced styling */}
               <button 
-                onClick={() => setIsLoginModalOpen(true)}
+                onClick={() => setIsLoginModalOpenWithLogging(true, 'loginButtonClick')}
                 className="relative p-3 text-gray-600 hover:text-rose-600 transition-all duration-300 group overflow-hidden rounded-2xl"
                 title="Login"
               >

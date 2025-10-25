@@ -71,14 +71,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     e.preventDefault();
     e.stopPropagation();
     
-    setIsLoading(true);
+    // DON'T START LOADING YET - First check if credentials are valid
     setError(null);
 
     try {
-      console.log('🔐 [LoginModal] Starting login process...');
+      console.log('🔐 [LoginModal] Checking credentials (no loading yet)...');
       
-      // Attempt login and get user data - this will throw an error if credentials are wrong
+      // Attempt login - this will throw an error IMMEDIATELY if credentials are wrong
+      // NO loading spinner during this check
       const user = await login(formData.email, formData.password);
+      
+      // ✅ CREDENTIALS ARE VALID - NOW START LOADING
+      console.log('✅ [LoginModal] Credentials valid! Starting loading state...');
+      setIsLoading(true);
       
       console.log('✅ [LoginModal] Login successful, user:', user);
       
@@ -113,6 +118,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       
     } catch (err) {
       console.error('❌ [LoginModal] Login failed with error:', err);
+      
+      // ❌ CREDENTIALS INVALID - NO LOADING, JUST SHOW ERROR
+      console.log('❌ [LoginModal] Credentials invalid - showing error (no loading)');
+      
+      // Make sure loading is OFF (it should never have been ON)
+      setIsLoading(false);
       
       // User-friendly error handling
       let errorMessage = 'Something went wrong. Please try again.';
