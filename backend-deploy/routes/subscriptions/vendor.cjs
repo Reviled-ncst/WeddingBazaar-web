@@ -32,7 +32,7 @@ router.get('/:vendorId', async (req, res) => {
         start_date,
         end_date,
         trial_end_date,
-        next_billing_date,
+        current_period_end,
         cancel_at_period_end,
         cancelled_at,
         created_at,
@@ -77,8 +77,9 @@ router.get('/:vendorId', async (req, res) => {
       subscription: {
         ...subscription,
         plan: plan,
-        days_until_renewal: subscription.next_billing_date 
-          ? Math.ceil((new Date(subscription.next_billing_date) - new Date()) / (1000 * 60 * 60 * 24))
+        next_billing_date: subscription.current_period_end,
+        days_until_renewal: subscription.current_period_end 
+          ? Math.ceil((new Date(subscription.current_period_end) - new Date()) / (1000 * 60 * 60 * 24))
           : null,
         is_trial: subscription.status === 'trial',
         will_cancel: subscription.cancel_at_period_end
