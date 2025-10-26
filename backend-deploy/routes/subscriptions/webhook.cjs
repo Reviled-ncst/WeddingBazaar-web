@@ -6,7 +6,10 @@
 
 const express = require('express');
 const router = express.Router();
-const { sql } = require('@neondatabase/serverless');
+const { neon } = require('@neondatabase/serverless');
+
+// Initialize Neon SQL client
+const sql = neon(process.env.DATABASE_URL);
 
 // PayMongo Configuration
 const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY || 'sk_test_YOUR_KEY';

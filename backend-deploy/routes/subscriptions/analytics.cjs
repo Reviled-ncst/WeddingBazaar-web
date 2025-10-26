@@ -5,9 +5,12 @@
 
 const express = require('express');
 const router = express.Router();
-const { sql } = require('@neondatabase/serverless');
+const { neon } = require('@neondatabase/serverless');
 const { authenticateToken } = require('../../middleware/auth.cjs');
 const { SUBSCRIPTION_PLANS } = require('./plans.cjs');
+
+// Initialize Neon SQL client
+const sql = neon(process.env.DATABASE_URL);
 
 /**
  * GET /api/subscriptions/analytics/overview
