@@ -2278,11 +2278,52 @@ export const VendorServices: React.FC = () => {
         limit={upgradePromptConfig.currentLimit}
         message={upgradePromptConfig.message}
         recommendedPlan={upgradePromptConfig.suggestedPlan}
-        onUpgrade={(planId) => {
-          console.log('🚀 Upgrading to plan:', planId);
-          // Navigate to subscription upgrade page
-          navigate('/vendor/subscription/upgrade');
-          setShowUpgradeModal(false);
+        onUpgrade={async (planId) => {
+          console.log('🚀 Processing upgrade to plan:', planId);
+          
+          try {
+            // Close the modal immediately for better UX
+            setShowUpgradeModal(false);
+            
+            // Show loading state
+            setLoading(true);
+            
+            // Call backend API to process upgrade
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/subscriptions/upgrade`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify({
+                vendor_id: user?.vendorId,
+                new_plan: planId
+              })
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || 'Failed to upgrade subscription');
+            }
+
+            const result = await response.json();
+            console.log('✅ Upgrade successful:', result);
+
+            // Update subscription state by refreshing the component
+            // The useSubscription hook will fetch the new subscription info
+            
+            // Show success message
+            alert(`🎉 Successfully upgraded to ${planId.toUpperCase()} plan!\n\nYou now have unlimited services and access to premium features.\n\nThe page will refresh to show your new limits.`);
+            
+            // Reload the page to refresh all subscription data
+            window.location.reload();
+            
+          } catch (error) {
+            console.error('❌ Upgrade failed:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            alert(`Failed to upgrade subscription: ${errorMessage}\n\nPlease try again or contact support.`);
+            setLoading(false);
+          }
         }}
       />
     </div>
