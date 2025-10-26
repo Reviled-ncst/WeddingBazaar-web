@@ -459,16 +459,25 @@ export const VendorServices: React.FC = () => {
       
       const method = editingService ? 'PUT' : 'POST';
       
+      // ✅ CRITICAL FIX: Use the correct vendor_id format
+      // The services table foreign key expects vendor_id to match vendors.id (UUID)
+      // Use user.vendorId (UUID from vendors table), NOT user.id (format: "2-2025-XXX")
+      const correctVendorId = user?.vendorId || vendorId; // Vendor UUID from vendors table
+      
       const payload = {
         ...serviceData,
-        // ✅ FIX: Use vendorId (UUID) not user.id (user ID string)
-        // The services table foreign key expects the vendors.id (UUID)
-        vendor_id: user?.vendorId || vendorId,
+        vendor_id: correctVendorId, // Use vendor UUID that matches vendors.id
       };
       
       console.log('🔍 [VendorServices] Making API request:', {
         url,
         method,
+        vendorId_used: correctVendorId,
+        vendorId_type: typeof correctVendorId,
+        user_id: user?.id,
+        user_vendorId_uuid: user?.vendorId,
+        vendorId_state: vendorId,
+        note: 'Using user.vendorId (UUID) for foreign key constraint',
         payload: JSON.stringify(payload, null, 2)
       });
       
