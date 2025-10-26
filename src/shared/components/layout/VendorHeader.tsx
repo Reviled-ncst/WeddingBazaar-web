@@ -19,7 +19,8 @@ import {
   CheckCircle,
   DollarSign,
   Star,
-  RefreshCw
+  RefreshCw,
+  Crown
 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useAuth } from '../../contexts/HybridAuthContext';
@@ -146,6 +147,7 @@ export const VendorHeader: React.FC = () => {
     { name: 'Services', href: '/vendor/services', icon: Briefcase, description: 'Manage your service offerings' },
     { name: 'Bookings', href: '/vendor/bookings', icon: Calendar, description: 'View and manage reservations' },
     { name: 'Availability', href: '/vendor/availability', icon: Calendar, description: 'Set off days and availability' },
+    { name: 'Subscription', href: '/vendor/subscription', icon: Crown, description: 'Manage your subscription plan' },
   ];
 
   const businessDropdownItems = [

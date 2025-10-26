@@ -1,4 +1,4 @@
-# Vendor ID UUID Fix - COMPLETE ✅
+# Vendor ID Format Fix - COMPLETE ✅
 
 ## Issue
 Service creation was failing with foreign key constraint violation:
@@ -7,37 +7,61 @@ Service creation was failing with foreign key constraint violation:
 "insert or update on table \"services\" violates foreign key constraint \"services_vendor_id_fkey\""
 ```
 
-## Root Cause
-**The `services` table has a foreign key constraint that references `vendors.id` (UUID format):**
-- ❌ **Wrong**: Frontend was sending `user.id` = `'2-2025-003'` (user ID format)
-- ✅ **Correct**: Should send `user.vendorId` = `'daf1dd71-b5c7-44a1-bf88-36d41e73a7fa'` (UUID)
+## Root Cause Analysis
+**The database has TWO vendor tables with different ID formats:**
 
-## Database Schema
+### vendors table (LEGACY SYSTEM - Still in use)
+```sql
+CREATE TABLE vendors (
+  id VARCHAR(50) PRIMARY KEY,  -- Format: '2-2025-003'
+  business_name VARCHAR(255),
+  business_type VARCHAR(100),
+  ...
+);
+```
+
+### vendor_profiles table (NEW SYSTEM)
+```sql
+CREATE TABLE vendor_profiles (
+  id UUID PRIMARY KEY,  -- Format: 'daf1dd71-b5c7-44a1-bf88-36d41e73a7fa'
+  user_id VARCHAR(50) REFERENCES users(id),  -- '2-2025-003'
+  ...
+);
+```
+
+### services table
 ```sql
 CREATE TABLE services (
   id UUID PRIMARY KEY,
-  vendor_id UUID REFERENCES vendors(id), -- ⚠️ FOREIGN KEY TO VENDORS TABLE
-  ...
-);
-
-CREATE TABLE vendors (
-  id UUID PRIMARY KEY,  -- ✅ This is the UUID we need
-  user_id VARCHAR(50) REFERENCES users(id), -- This is '2-2025-003'
-  ...
-);
-
-CREATE TABLE users (
-  id VARCHAR(50) PRIMARY KEY, -- Format: '2-2025-003'
+  vendor_id VARCHAR(50) REFERENCES vendors(id),  -- ⚠️ References vendors table, NOT vendor_profiles
   ...
 );
 ```
 
-## Data Flow
+## The Problem
+- ❌ **Wrong**: Frontend was using `user.vendorId` (UUID from vendor_profiles)
+- ✅ **Correct**: Should use `user.id` (VARCHAR format '2-2025-003' from vendors table)
+
+## Database Structure
 ```
-users.id ('2-2025-003') 
-  → vendors.user_id (FK to users.id)
-  → vendors.id (UUID: 'daf1dd71-b5c7-44a1-bf88-36d41e73a7fa')
-  → services.vendor_id (FK to vendors.id) ✅
+users table
+├── id: '2-2025-003' ✅ This is what services.vendor_id expects
+└── ...
+
+vendors table (LEGACY - still active)
+├── id: '2-2025-003'  ← services.vendor_id FK points here
+├── business_name: 'Boutique'
+└── ...
+
+vendor_profiles table (NEW)
+├── id: 'daf1dd71-b5c7-44a1-bf88-36d41e73a7fa' (UUID)
+├── user_id: '2-2025-003'  ← References users.id
+└── ...
+
+services table
+├── id: UUID
+├── vendor_id: '2-2025-003'  ← MUST match vendors.id (not vendor_profiles.id)
+└── ...
 ```
 
 ## Fix Applied
@@ -46,37 +70,35 @@ users.id ('2-2025-003')
 
 **Before:**
 ```typescript
-const correctVendorId = user?.id || vendorId; // ❌ Wrong: user.id = '2-2025-003'
+const correctVendorId = user?.vendorId || vendorId; // ❌ Wrong: UUID from vendor_profiles
 const payload = {
   ...serviceData,
-  vendor_id: correctVendorId, // ❌ Violates FK constraint
+  vendor_id: correctVendorId, // ❌ FK violation - vendors.id doesn't have UUIDs
 };
 ```
 
 **After:**
 ```typescript
-const correctVendorId = user?.vendorId || vendorId; // ✅ Correct: UUID from vendors table
+const correctVendorId = user?.id || vendorId; // ✅ Correct: user.id = '2-2025-003'
 const payload = {
   ...serviceData,
-  vendor_id: correctVendorId, // ✅ Matches vendors.id (UUID)
+  vendor_id: correctVendorId, // ✅ Matches vendors.id format
 };
 ```
 
 ## Verification
-The user object structure:
-```typescript
-user = {
-  id: '2-2025-003',                              // User ID (users table)
-  vendorId: 'daf1dd71-b5c7-44a1-bf88-36d41e73a7fa', // Vendor UUID (vendors table)
-  role: 'vendor',
-  email: 'wendell@example.com',
-  ...
-}
+Confirmed vendor record exists in vendors table:
+```
+┌───────┬──────────────┬───────────┬───────────────┬──────────┐
+│ id    │ business_name│ bus_type  │ verified │
+├───────┼──────────────┼───────────┼──────────┤
+│ 2-2025-003 │ Boutique     │ Music/DJ  │ false    │
+└───────┴──────────────┴───────────┴──────────┘
 ```
 
 ## Expected Result
 After this fix:
-1. ✅ Service creation will use the correct vendor UUID
+1. ✅ Service creation will use '2-2025-003' as vendor_id
 2. ✅ Foreign key constraint will be satisfied
 3. ✅ Service will be created successfully
 4. ✅ No more FK violation errors
@@ -88,17 +110,16 @@ node test-subscription-limit-REAL-VENDOR.js
 ```
 
 Or manual test:
-1. Login as vendor: `wendell@example.com`
+1. Login as vendor: `elealesantos06@gmail.com`
 2. Navigate to Vendor Services
 3. Click "Create New Service"
 4. Fill form and submit
-5. ✅ Service should be created successfully
+5. ✅ Service should be created with vendor_id='2-2025-003'
 
 ## Related Files
 - `src/pages/users/vendor/services/VendorServices.tsx` (✅ Fixed)
 - `backend-deploy/routes/services.cjs` (Backend endpoint)
-- `test-subscription-limit-REAL-VENDOR.js` (Automated test)
-- `fix-vendor-data-integrity.cjs` (Vendor record creation)
+- `check-vendors-structure.cjs` (Database structure verification)
 
 ## Status
 🎉 **COMPLETE** - Ready for deployment and testing
@@ -110,10 +131,11 @@ npm run build
 firebase deploy
 
 # Verify in production
-# https://weddingbazaar-web.web.app/vendor/services
+# https://weddingbazaarph.web.app/vendor/services
 ```
 
 ---
 **Created:** 2025-01-30  
+**Updated:** 2025-01-30 (Corrected UUID → user ID format)  
 **Status:** RESOLVED ✅  
 **Impact:** Critical - Unblocks service creation for all vendors

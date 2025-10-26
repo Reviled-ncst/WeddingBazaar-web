@@ -16,41 +16,22 @@ import {
   TrendingUp,
   Lock,
   AlertTriangle,
-  ArrowUp
+  ArrowUp,
+  Loader2
 } from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { UpgradePrompt } from '../../../../shared/components/subscription/UpgradePrompt';
 import { SUBSCRIPTION_PLANS } from '../../../../shared/types/subscription';
-import type { VendorSubscription as VendorSubscriptionType } from '../../../../shared/types/subscription';
-
-// Mock subscription data - replace with actual API call
-const mockSubscription: VendorSubscriptionType = {
-  id: 'sub_123',
-  vendor_id: '2-2025-003',
-  plan_id: 'premium',
-  status: 'active',
-  current_period_start: '2025-08-01T00:00:00Z',
-  current_period_end: '2025-09-01T00:00:00Z',
-  created_at: '2025-08-01T00:00:00Z',
-  updated_at: '2025-08-15T00:00:00Z',
-  usage: {
-    services_count: 3,
-    portfolio_items_count: 25,
-    monthly_bookings_count: 45,
-    current_bookings_count: 8,
-    monthly_messages_count: 320,
-    video_call_minutes_used: 180,
-    featured_listing_active: true,
-    social_integrations_count: 3,
-    api_calls_count: 2400,
-    webhook_calls_count: 150,
-    last_updated: '2025-08-20T00:00:00Z'
-  },
-  plan: SUBSCRIPTION_PLANS[1] // Premium plan
-};
+import { useSubscriptionAccess } from '../../../../shared/hooks/useSubscription';
+import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 
 export const VendorSubscriptionPage: React.FC = () => {
-  const [subscription] = useState<VendorSubscriptionType>(mockSubscription);
+  const { user } = useAuth();
+  const vendorId = user?.vendorId || '';
+  
+  // Use real subscription data from API
+  const { subscription, loading, error, refreshSubscription } = useSubscriptionAccess(vendorId);
+  
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [searchParams] = useSearchParams();
 
@@ -61,6 +42,47 @@ export const VendorSubscriptionPage: React.FC = () => {
     }
   }, [searchParams]);
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+        <VendorHeader />
+        <main className="pt-24 pb-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+              <Loader2 className="h-12 w-12 text-rose-500 animate-spin mb-4" />
+              <p className="text-gray-600">Loading subscription details...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error || !subscription) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+        <VendorHeader />
+        <main className="pt-24 pb-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+              <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+              <p className="text-gray-900 font-semibold mb-2">Failed to load subscription</p>
+              <p className="text-gray-600 mb-4">{error || 'Unable to fetch subscription data'}</p>
+              <button
+                onClick={() => refreshSubscription()}
+                className="bg-rose-500 text-white px-6 py-2 rounded-lg hover:bg-rose-600 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   // Convert SUBSCRIPTION_PLANS to format expected by UpgradePrompt
   const customPlans = SUBSCRIPTION_PLANS.map(plan => ({
     id: plan.id,
@@ -68,7 +90,7 @@ export const VendorSubscriptionPage: React.FC = () => {
     price: plan.price,
     features: plan.features.map(feature => feature.name),
     popular: plan.popular || false,
-    current: subscription.plan.id === plan.id,
+    current: subscription?.plan.id === plan.id,
     description: plan.description,
     billing_cycle: plan.billing_cycle
   }));
