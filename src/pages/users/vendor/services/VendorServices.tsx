@@ -179,10 +179,21 @@ export const VendorServices: React.FC = () => {
   // Get API base URL
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
-  // Handle navigation to subscription page
-  const handleNavigateToSubscription = () => {
-    console.log('🚀 Navigating to subscription page from VendorServices');
-    navigate('/vendor/subscription');
+  // Handle upgrade modal opening
+  const handleOpenUpgradeModal = () => {
+    console.log('🚀 Opening upgrade modal from VendorServices');
+    
+    // Set upgrade config for manual upgrade (Basic -> Premium)
+    const maxServices = subscription?.plan?.limits?.max_services || 5;
+    setUpgradePromptConfig({
+      message: 'Upgrade to Premium to unlock unlimited services and advanced features!',
+      currentPlan: subscription?.plan?.tier || 'basic',
+      suggestedPlan: 'premium',
+      currentLimit: maxServices,
+      isBlocking: false
+    });
+    
+    setShowUpgradeModal(true);
   };
 
   // FIXED: Poll Firebase email verification status (same as VendorProfile.tsx)
@@ -839,7 +850,7 @@ export const VendorServices: React.FC = () => {
                 {/* Upgrade Plan Button - Only show for free tier */}
                 {subscription?.plan?.tier === 'basic' && (
                   <button
-                    onClick={handleNavigateToSubscription}
+                    onClick={handleOpenUpgradeModal}
                     className="group w-full sm:w-auto px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white hover:from-purple-700 hover:via-pink-700 hover:to-rose-700 hover:scale-105 relative overflow-hidden"
                     title="Upgrade to unlock unlimited services"
                   >
