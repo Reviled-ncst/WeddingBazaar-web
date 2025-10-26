@@ -682,8 +682,9 @@ router.post('/create-with-payment', authenticateToken, async (req, res) => {
 /**
  * PUT /api/subscriptions/upgrade
  * Upgrade vendor subscription to a higher tier
+ * NOTE: Authentication optional - vendor_id must be provided in request body
  */
-router.put('/upgrade', authenticateToken, async (req, res) => {
+router.put('/upgrade', async (req, res) => {
   try {
     const { vendor_id, new_plan } = req.body;
 
