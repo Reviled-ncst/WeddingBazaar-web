@@ -148,9 +148,16 @@ export const VendorServices: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [highlightedServiceId, setHighlightedServiceId] = useState<string | null>(null);
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
+  
+  // Upgrade prompt modal state
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradeModalMessage, setUpgradeModalMessage] = useState('');
-  const [suggestedPlan, setSuggestedPlan] = useState<'premium' | 'pro' | 'enterprise'>('premium');
+  const [upgradePromptConfig, setUpgradePromptConfig] = useState({
+    message: '',
+    currentPlan: 'basic',
+    suggestedPlan: 'premium',
+    currentLimit: 5,
+    isBlocking: true
+  });
   
   // FIXED: Track Firebase email verification status directly (same as VendorProfile.tsx)
   const [firebaseEmailVerified, setFirebaseEmailVerified] = useState(false);
@@ -416,27 +423,33 @@ export const VendorServices: React.FC = () => {
       }
       
       // ✅ FRONTEND CHECK: Verify subscription limits before API call
-      if (!editingService) { // Only check on new service creation
+      if (!editingService) { // Only check on create, not edit
         const maxServices = subscription?.plan?.limits?.max_services || 5;
         const currentServicesCount = services.length;
         
         if (currentServicesCount >= maxServices) {
-          const planName = subscription?.plan?.name || 'Free';
-          const message = `You've reached your plan limit of ${maxServices} services. Upgrade to add more!`;
+          const planName = subscription?.plan?.name || 'Basic';
+          const nextPlan = subscription?.plan?.tier === 'basic' ? 'Premium' : 'Pro';
           
-          console.log('⚠️ [VendorServices] Service limit reached:', {
+          console.log('🚫 [VendorServices] Service limit reached:', {
             current: currentServicesCount,
             limit: maxServices,
             plan: planName
           });
           
           // Show upgrade modal
-          setUpgradeModalMessage(message);
-          setSuggestedPlan(subscription?.plan?.tier === 'basic' ? 'premium' : 'pro');
+          setUpgradePromptConfig({
+            message: `You've reached the maximum of ${maxServices} services for your ${planName} plan.`,
+            currentPlan: planName.toLowerCase(),
+            suggestedPlan: nextPlan.toLowerCase(),
+            currentLimit: maxServices,
+            isBlocking: true
+          });
           setShowUpgradeModal(true);
           
-          // Throw error to prevent form submission
-          throw new Error(message);
+          // Close the add service form
+          setIsCreating(false);
+          return;
         }
       }
       
@@ -496,26 +509,31 @@ export const VendorServices: React.FC = () => {
         throw new Error(`Invalid JSON response: ${responseText}`);
       }
 
-      // ✅ BACKEND ERROR HANDLING: Check for 403 subscription limit errors
+      // ✅ BACKEND CHECK: Handle 403 subscription limit errors
+      if (response.status === 403 && result.error?.includes('limit')) {
+        console.log('🚫 [VendorServices] Backend subscription limit reached:', result);
+        
+        const planName = subscription?.plan?.name || 'Basic';
+        const nextPlan = subscription?.plan?.tier === 'basic' ? 'Premium' : 'Pro';
+        const maxServices = subscription?.plan?.limits?.max_services || 5;
+        
+        // Show upgrade modal
+        setUpgradePromptConfig({
+          message: result.error || `You've reached the maximum of ${maxServices} services for your ${planName} plan.`,
+          currentPlan: planName.toLowerCase(),
+          suggestedPlan: result.suggested_plan || nextPlan.toLowerCase(),
+          currentLimit: maxServices,
+          isBlocking: true
+        });
+        setShowUpgradeModal(true);
+        
+        // Close the add service form
+        setIsCreating(false);
+        return;
+      }
+
       if (!response.ok) {
         console.error('❌ [VendorServices] API Error Response:', result);
-        
-        // Handle subscription limit error specifically
-        if (response.status === 403 && result.upgrade_required) {
-          console.log('⚠️ [VendorServices] Subscription upgrade required:', result);
-          
-          // Show upgrade modal with backend message
-          setUpgradeModalMessage(
-            result.error || 
-            result.message || 
-            'Upgrade your plan to add more services'
-          );
-          setSuggestedPlan(result.suggested_plan || 'premium');
-          setShowUpgradeModal(true);
-          
-          throw new Error(result.error || 'Service limit reached. Please upgrade your plan.');
-        }
-        
         throw new Error(result.error || result.message || `Failed to ${editingService ? 'update' : 'create'} service`);
       }
 
@@ -2227,20 +2245,20 @@ export const VendorServices: React.FC = () => {
         requiredTier={upgradePrompt.requiredTier}
       />
 
-      {/* Service Limit Upgrade Modal */}
+      {/* Subscription Limit Upgrade Modal */}
       <UpgradePromptModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        currentPlan={subscription?.plan?.name || 'basic'}
+        currentPlan={upgradePromptConfig.currentPlan}
         currentCount={services.length}
-        limit={subscription?.plan?.limits?.max_services || 5}
-        message={upgradeModalMessage}
-        recommendedPlan={suggestedPlan}
-        availablePlans={['premium', 'pro', 'enterprise']}
+        limit={upgradePromptConfig.currentLimit}
+        message={upgradePromptConfig.message}
+        recommendedPlan={upgradePromptConfig.suggestedPlan}
         onUpgrade={(planId) => {
           console.log('🚀 Upgrading to plan:', planId);
+          // Navigate to subscription upgrade page
+          navigate('/vendor/subscription/upgrade');
           setShowUpgradeModal(false);
-          navigate('/vendor/subscription');
         }}
       />
     </div>
