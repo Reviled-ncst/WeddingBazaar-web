@@ -2288,12 +2288,32 @@ export const VendorServices: React.FC = () => {
             // Show loading state
             setLoading(true);
             
+            // Get Firebase authentication token
+            const { getAuth } = await import('firebase/auth');
+            const auth = getAuth();
+            const firebaseUser = auth.currentUser;
+            
+            let authToken = null;
+            if (firebaseUser) {
+              authToken = await firebaseUser.getIdToken();
+              console.log('🔑 Using Firebase token for authentication');
+            } else {
+              console.warn('⚠️  No Firebase user found, trying localStorage token');
+              authToken = localStorage.getItem('token');
+            }
+            
+            if (!authToken) {
+              throw new Error('Authentication required. Please login again.');
+            }
+            
+            console.log('📡 Calling upgrade API with vendor_id:', user?.vendorId);
+            
             // Call backend API to process upgrade
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/subscriptions/upgrade`, {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Authorization': `Bearer ${authToken}`
               },
               body: JSON.stringify({
                 vendor_id: user?.vendorId,
@@ -2301,9 +2321,12 @@ export const VendorServices: React.FC = () => {
               })
             });
 
+            console.log('📡 Upgrade API response status:', response.status);
+
             if (!response.ok) {
               const errorData = await response.json();
-              throw new Error(errorData.error || 'Failed to upgrade subscription');
+              console.error('❌ Upgrade API error:', errorData);
+              throw new Error(errorData.error || errorData.message || 'Failed to upgrade subscription');
             }
 
             const result = await response.json();
