@@ -371,6 +371,76 @@ router.post('/', async (req, res) => {
     const finalVendorId = vendor_id || vendorId;
     const finalTitle = title || name;
 
+    // ✅ SUBSCRIPTION LIMIT CHECK - Check if vendor can create more services
+    console.log('🔍 [Subscription Check] Checking service limits for vendor:', finalVendorId);
+    
+    try {
+      // 1. Count vendor's current active services
+      const vendorServiceCount = await sql`
+        SELECT COUNT(*) as count 
+        FROM services 
+        WHERE vendor_id = ${finalVendorId} 
+        AND is_active = true
+      `;
+      const currentCount = parseInt(vendorServiceCount[0].count);
+      console.log(`📊 [Subscription Check] Current services: ${currentCount}`);
+      
+      // 2. Get vendor's subscription plan and limits
+      const { neon } = require('@neondatabase/serverless');
+      const subSql = neon(process.env.DATABASE_URL);
+      
+      const subscription = await subSql`
+        SELECT 
+          vs.plan_name,
+          vs.status
+        FROM vendor_subscriptions vs
+        WHERE vs.vendor_id = ${finalVendorId}
+        AND vs.status IN ('active', 'trial')
+        ORDER BY vs.created_at DESC
+        LIMIT 1
+      `;
+      
+      // Default to basic plan if no subscription found
+      const planName = subscription.length > 0 ? subscription[0].plan_name : 'basic';
+      console.log(`📋 [Subscription Check] Plan: ${planName}`);
+      
+      // Define plan limits (matching subscription system)
+      const planLimits = {
+        basic: { max_services: 5, price_display: 'Free' },
+        premium: { max_services: -1, price_display: '₱999/month' },
+        pro: { max_services: -1, price_display: '₱1,999/month' },
+        enterprise: { max_services: -1, price_display: '₱4,999/month' }
+      };
+      
+      const maxServices = planLimits[planName]?.max_services || 5;
+      
+      // 3. Enforce limit (if not unlimited)
+      if (maxServices !== -1 && currentCount >= maxServices) {
+        console.log(`❌ [Subscription Check] Service limit reached: ${currentCount}/${maxServices}`);
+        return res.status(403).json({
+          success: false,
+          error: 'Service limit reached',
+          message: `You have reached your ${planName} plan limit of ${maxServices} services. Please upgrade to add more services.`,
+          current_count: currentCount,
+          limit: maxServices,
+          upgrade_required: true,
+          current_plan: planName,
+          available_plans: planName === 'basic' ? ['premium', 'pro', 'enterprise'] : ['pro', 'enterprise'],
+          recommended_plan: planName === 'basic' ? 'premium' : 'pro',
+          upgrade_benefits: planName === 'basic' 
+            ? 'Unlimited services, 50 portfolio images, priority support, featured listings'
+            : 'Unlimited everything, custom branding, API access, advanced analytics'
+        });
+      }
+      
+      console.log(`✅ [Subscription Check] Service creation allowed: ${currentCount + 1}/${maxServices === -1 ? '∞' : maxServices}`);
+      
+    } catch (subError) {
+      console.warn('⚠️  [Subscription Check] Could not verify limits:', subError.message);
+      // Continue with creation if subscription check fails (graceful degradation)
+      // This ensures service creation still works if subscription system has issues
+    }
+
     // Generate service ID (format: SRV-XXXXX)
     const countResult = await sql`SELECT COUNT(*) as count FROM services`;
     const serviceCount = parseInt(countResult[0].count) + 1;
