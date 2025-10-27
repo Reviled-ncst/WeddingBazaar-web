@@ -110,16 +110,20 @@ router.post('/:bookingId/mark-completed', async (req, res) => {
 
     // Check if BOTH sides have now confirmed - if so, mark as completed
     let finalStatus = updated.status;
+    let fullyCompleted = false;
     if (updated.vendor_completed && updated.couple_completed && updated.status !== 'completed') {
       const completedBooking = await sql`
         UPDATE bookings
         SET 
           status = 'completed',
+          fully_completed = TRUE,
+          fully_completed_at = NOW(),
           updated_at = NOW()
         WHERE id = ${bookingId}
         RETURNING *
       `;
       finalStatus = 'completed';
+      fullyCompleted = true;
       console.log(`✅ Both sides confirmed! Booking ${bookingId} is now COMPLETED`);
     }
 
@@ -135,6 +139,8 @@ router.post('/:bookingId/mark-completed', async (req, res) => {
         vendor_completed_at: updated.vendor_completed_at,
         couple_completed: updated.couple_completed,
         couple_completed_at: updated.couple_completed_at,
+        fully_completed: fullyCompleted || (updated.vendor_completed && updated.couple_completed),
+        fully_completed_at: fullyCompleted ? new Date().toISOString() : updated.fully_completed_at,
         completion_notes: updated.completion_notes,
         both_completed: updated.vendor_completed && updated.couple_completed
       },
@@ -171,6 +177,8 @@ router.get('/:bookingId/completion-status', async (req, res) => {
         vendor_completed_at,
         couple_completed,
         couple_completed_at,
+        fully_completed,
+        fully_completed_at,
         completion_notes
       FROM bookings
       WHERE id = ${bookingId}
@@ -195,6 +203,8 @@ router.get('/:bookingId/completion-status', async (req, res) => {
         vendor_completed_at: b.vendor_completed_at,
         couple_completed: b.couple_completed,
         couple_completed_at: b.couple_completed_at,
+        fully_completed: b.fully_completed || (b.vendor_completed && b.couple_completed),
+        fully_completed_at: b.fully_completed_at,
         both_completed: b.vendor_completed && b.couple_completed,
         completion_notes: b.completion_notes,
         waiting_for: b.vendor_completed && b.couple_completed
