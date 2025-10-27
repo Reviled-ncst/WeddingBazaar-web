@@ -302,12 +302,25 @@ root/
     - Other statuses: Requires vendor/admin approval (pending_cancellation)
   - Frontend service: `bookingActionsService.ts` with all handlers
   - UI buttons integrated in booking cards with proper logic
+
+- **Two-Sided Completion System**: ✅ LIVE IN PRODUCTION (Oct 27, 2025)
+  - **Database**: 6 new columns in `bookings` table (vendor_completed, couple_completed, fully_completed, timestamps, notes)
+  - **Backend API**: POST `/api/bookings/:bookingId/mark-completed` and GET `/api/bookings/:bookingId/completion-status`
+  - **Frontend**: "Mark as Complete" button on IndividualBookings.tsx (green gradient, checkmark icon)
+  - **Logic**: Both vendor AND couple must confirm for booking to be fully completed
+  - **States**: 
+    - Fully Paid → Awaiting Confirmation (yellow badge)
+    - One Confirmed → Awaiting Other Party (disabled button)
+    - Both Confirmed → Completed ✓ (pink badge with heart icon)
+  - **Services**: `completionService.ts` and `bookingCompletionService.ts`
+  - **Deployment**: Backend on Render, Frontend on Firebase
+  - **Status**: Couple side implemented ✅, Vendor side pending 🚧
   
 - **Individual Module Complete**: All 13 individual user pages with CoupleHeader
-  - Dashboard, Services, Bookings (with payment + actions), Profile, Settings
+  - Dashboard, Services, Bookings (with payment + actions + completion), Profile, Settings
   - Help, Premium, Registry, Reviews, Guest Management, Budget Management
   - Wedding Planning with header integration
-  - **Bookings Page**: View Receipt and Cancel/Request Cancellation buttons
+  - **Bookings Page**: View Receipt, Cancel/Request Cancellation, and Mark as Complete buttons
   
 - **Service Discovery**: Advanced service browsing with modal details and gallery integration
 - **Router**: Complete routing system with protected routes
@@ -317,8 +330,9 @@ root/
 1. **Payment Flow**: TEST keys active, ready to switch to LIVE keys
 2. **Receipt System**: Database table + viewing endpoint operational
 3. **Cancellation System**: Smart logic based on booking status
-4. **Status Mapping**: Frontend/backend alignment complete
-5. **Error Handling**: Comprehensive logging and user feedback
+4. **Completion System**: ✅ Two-sided booking completion LIVE (couple side operational)
+5. **Status Mapping**: Frontend/backend alignment complete
+6. **Error Handling**: Comprehensive logging and user feedback
 
 ### 🔧 MINOR ISSUES (Non-Critical)
 1. **Featured Vendors Display**: API format mismatch (cosmetic, not blocking)
@@ -327,7 +341,25 @@ root/
 
 ### 🚧 IMMEDIATE PRIORITIES (Quick Fixes)
 
-#### Priority 1: Test Receipt Viewing in Production
+#### Priority 1: Implement Vendor-Side Completion Button
+**Status**: Backend ready, frontend pending implementation
+**Action**: 
+1. Add "Mark as Complete" button to VendorBookings.tsx
+2. Use same completion service (`completionService.ts`)
+3. Test vendor → couple confirmation flow
+4. Deploy and verify in production
+**File**: `src/pages/users/vendor/bookings/VendorBookings.tsx`
+
+#### Priority 2: Test Full Two-Sided Completion Flow
+**Status**: Couple side deployed, ready for end-to-end testing
+**Action**:
+1. Create test booking and mark as fully paid
+2. Couple marks as complete (verify database update)
+3. Vendor marks as complete (verify status changes to 'completed')
+4. Verify both completion timestamps recorded
+5. Test edge cases (double-click, network errors)
+
+#### Priority 3: Test Receipt Viewing in Production
 **Status**: Implementation complete, needs testing
 **Action**: 
 1. Make a test payment in production
@@ -335,7 +367,7 @@ root/
 3. Verify receipt data displays correctly
 4. Test receipt formatting and download functionality
 
-#### Priority 2: Test Cancellation Flow
+#### Priority 4: Test Cancellation Flow
 **Status**: Implementation complete, needs testing
 **Action**:
 1. Test direct cancellation for "Awaiting Quote" bookings
@@ -343,7 +375,7 @@ root/
 3. Verify status updates correctly in database
 4. Test vendor/admin approval workflow (when implemented)
 
-#### Priority 3: Fix Featured Vendors Display (Optional)
+#### Priority 5: Fix Featured Vendors Display (Optional)
 **File**: `src/pages/homepage/components/FeaturedVendors.tsx`
 **Issue**: API format mismatch (cosmetic issue)
 **Status**: Non-blocking, vendors exist in DB but may not display
@@ -357,7 +389,7 @@ interface VendorDisplay {
 }
 ```
 
-#### Priority 4: Switch to LIVE PayMongo Keys (When Ready)
+#### Priority 6: Switch to LIVE PayMongo Keys (When Ready)
 **Current**: Using TEST keys (sk_test_*, pk_test_*)
 **Production**: Switch to LIVE keys (sk_live_*, pk_live_*)
 **Location**: Render environment variables
@@ -403,110 +435,6 @@ interface VendorDisplay {
 2. **Performance Optimization**: Bundle analysis, lazy loading
 3. **SEO Optimization**: Meta tags, structured data
 4. **Security Audit**: Authentication flows, data validation
-
-### 🌐 DEPLOYMENT STATUS
-
-**Backend**: ✅ FULLY DEPLOYED TO PRODUCTION
-- **Production URL**: https://weddingbazaar-web.onrender.com
-- **Status**: Live and operational with all endpoints
-- **Health Check**: ✅ API responding correctly
-- **Authentication**: ✅ bcrypt password hashing working
-- **Database**: ✅ Connected to Neon PostgreSQL
-- **Payment Integration**: ✅ PayMongo TEST keys active, LIVE keys ready
-- **New Endpoints**:
-  - `GET /api/payment/receipts/:bookingId` - Fetch receipts
-  - `POST /api/bookings/:bookingId/cancel` - Direct cancellation
-  - `POST /api/bookings/:bookingId/request-cancellation` - Approval required
-- **Last Deploy**: October 2024 (Payment + Receipt + Cancellation features)
-- **Build Status**: ✅ All dependencies resolved, no compilation errors
-
-**Frontend**: ✅ FULLY DEPLOYED TO PRODUCTION  
-- **Production URL**: https://weddingbazaar-web.web.app
-- **Platform**: Firebase Hosting
-- **Status**: Live and operational
-- **API Integration**: ✅ Using production backend URLs
-- **Authentication**: ✅ Login/register flows working
-- **Payment System**: ✅ Real PayMongo integration (TEST mode)
-- **Booking Actions**: ✅ Receipt viewing + cancellation buttons
-- **Features**: 
-  - PayMongo card payments with automatic receipt generation
-  - Booking status updates after payment
-  - Smart cancellation logic (direct vs. approval-required)
-  - Receipt viewing with formatted display
-  - E-wallet payment support (GCash, PayMaya, GrabPay)
-
-**Database**: ✅ Neon PostgreSQL
-- **Status**: Connected and operational in production
-- **Data**: 5 vendors, multiple services, proper schema
-- **New Tables**: 
-  - `receipts` - Payment receipts with full details
-  - `receipt_display` view - Formatted receipt data
-- **Connection**: ✅ Backend successfully connecting to database
-### 🎯 Micro Frontend Architecture
-- **Module Separation**: Each user type (individual, vendor, admin) should be developed as separate micro frontends
-- **Shared Components**: Common UI components in `src/shared/components/`
-- **API Gateway**: Centralized API management for all micro frontends
-- **State Management**: Use React Context for local state, consider Redux Toolkit for complex global state
-- **Module Federation**: Prepare for Webpack Module Federation implementation
-
-### 🛠️ Technical Implementation
-- **Database**: PostgreSQL with Neon hosting, use Prisma ORM for type-safe database operations
-- **Backend**: Node.js with Express, implement RESTful APIs with OpenAPI documentation
-- **Authentication**: JWT-based authentication with refresh tokens
-- **File Storage**: AWS S3 or similar for image/document storage
-- **Search**: Elasticsearch or PostgreSQL full-text search for vendor discovery
-- **Caching**: Redis for session management and API caching
-
-### 📱 Frontend Development
-- **Component Structure**: Each major feature should have its own folder with components, hooks, types, and tests
-- **State Management**: Use custom hooks for component state, Context API for feature-level state
-- **Form Handling**: React Hook Form with Zod validation
-- **Data Fetching**: TanStack Query (React Query) for server state management
-- **Testing**: Jest + Testing Library for unit tests, Cypress for E2E tests
-
-### 🎨 UI/UX Implementation
-- **Design System**: Create reusable components with consistent styling
-- **Responsive Design**: Mobile-first approach with Tailwind breakpoints
-- **Accessibility**: ARIA labels, keyboard navigation, screen reader support
-- **Performance**: Image optimization, lazy loading, code splitting
-- **Animations**: Framer Motion for complex animations, CSS transitions for simple ones
-
-### 📊 Analytics & Monitoring
-- **User Analytics**: Track user interactions, conversion funnels, feature usage
-- **Performance Monitoring**: Core Web Vitals, API response times, error tracking
-- **Business Metrics**: Booking rates, vendor signups, user retention
-- **A/B Testing**: Feature flags for testing new functionality
-
-## Next Development Priorities
-### Phase 1: Core Vendor Features (2-3 weeks)
-1. **Vendor Dashboard**: Analytics, booking overview, profile management
-2. **Vendor Profile**: Portfolio galleries, service listings, availability calendar
-3. **Vendor Bookings**: Manage client requests, availability, pricing
-4. **Vendor Analytics**: Revenue tracking, client feedback, performance metrics
-
-### Phase 2: Admin Platform (2-3 weeks)
-1. **Admin Dashboard**: Platform analytics, user metrics, vendor oversight
-2. **User Management**: Approve vendors, manage user accounts, handle disputes
-3. **Content Management**: Manage service categories, featured vendors, platform content
-4. **Analytics Dashboard**: Platform KPIs, revenue tracking, user engagement
-
-### Phase 3: Advanced Features (3-4 weeks)
-1. **Real-time Messaging**: WebSocket implementation, file sharing, chat history
-2. **Payment Integration**: Stripe/PayPal integration, booking deposits, vendor payouts
-3. **Calendar System**: Appointment scheduling, availability management, reminders
-4. **Review System**: Rating and review functionality, moderation, analytics
-
-### Phase 4: Micro Frontend Migration (2-3 weeks)
-1. **Module Federation Setup**: Configure Webpack Module Federation
-2. **Shared Library**: Extract common components and utilities
-3. **Independent Deployment**: Set up CI/CD for each micro frontend
-4. **API Gateway**: Implement centralized API management
-
-### Phase 5: Production Optimization (1-2 weeks)
-1. **Performance Optimization**: Bundle analysis, lazy loading, caching strategies
-2. **SEO Optimization**: Meta tags, structured data, sitemap generation
-3. **Security Audit**: Authentication flows, data validation, XSS protection
-4. **Load Testing**: Stress testing, database optimization, CDN setup
 
 ## File Structure Guidelines
 ```
@@ -1013,3 +941,240 @@ const receipts = await getBookingReceipts(bookingId);
 const formatted = formatReceipt(receipts[0]);
 console.log(formatted); // Formatted receipt text
 ```
+
+---
+
+## 🎉 Two-Sided Booking Completion System
+
+### Overview
+The two-sided completion system requires BOTH the vendor and the couple to confirm that a booking is complete before it's marked as "completed" in the system. This ensures mutual agreement and satisfaction before finalizing the booking.
+
+### Database Schema
+
+**New Columns in `bookings` table**:
+```sql
+vendor_completed BOOLEAN DEFAULT FALSE
+vendor_completed_at TIMESTAMP
+couple_completed BOOLEAN DEFAULT FALSE  
+couple_completed_at TIMESTAMP
+fully_completed BOOLEAN DEFAULT FALSE
+fully_completed_at TIMESTAMP
+completion_notes TEXT
+
+-- Index for performance
+CREATE INDEX idx_bookings_completion 
+ON bookings(vendor_completed, couple_completed, fully_completed);
+```
+
+### API Endpoints
+
+**Mark as Complete**:
+```
+POST /api/bookings/:bookingId/mark-completed
+Body: {
+  "completed_by": "couple" | "vendor",
+  "notes": "Optional completion notes"
+}
+```
+
+**Check Completion Status**:
+```
+GET /api/bookings/:bookingId/completion-status
+```
+
+### Frontend Implementation
+
+**Location**: `src/pages/users/individual/bookings/IndividualBookings.tsx`
+
+**Button Rendering**:
+```tsx
+{/* Mark as Complete Button - Show for fully paid bookings */}
+{(booking.status === 'fully_paid' || booking.status === 'paid_in_full') && (
+  <button
+    onClick={() => handleMarkComplete(booking)}
+    className="w-full px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 
+               text-white rounded-lg hover:shadow-lg transition-all 
+               hover:scale-105 flex items-center justify-center gap-2"
+  >
+    <CheckCircle className="w-4 h-4" />
+    Mark as Complete
+  </button>
+)}
+
+{/* Completed Badge - Show when both confirmed */}
+{booking.status === 'completed' && (
+  <div className="w-full px-3 py-2 bg-gradient-to-r from-pink-100 to-purple-100 
+                  border-2 border-pink-300 text-pink-700 rounded-lg 
+                  flex items-center justify-center gap-2 font-semibold text-sm">
+    <Heart className="w-4 h-4 fill-current" />
+    Completed ✓
+  </div>
+)}
+```
+
+**Handler Function**:
+```typescript
+const handleMarkComplete = async (booking: Booking) => {
+  // Check current completion status
+  const completionStatus = await checkCompletionStatus(booking.id);
+  
+  // Show confirmation modal with context-aware message
+  setConfirmationModal({
+    isOpen: true,
+    title: '✅ Complete Booking',
+    message: completionStatus?.vendorCompleted
+      ? 'Vendor already confirmed. By confirming, booking will be FULLY COMPLETED.'
+      : 'Booking only fully completed when both you and vendor confirm.',
+    onConfirm: async () => {
+      const result = await markBookingComplete(booking.id, 'couple');
+      if (result.success) {
+        setSuccessMessage(result.message);
+        await loadBookings(); // Refresh
+      }
+    }
+  });
+};
+```
+
+### Service Layer
+
+**File**: `src/shared/services/completionService.ts`
+
+**Key Functions**:
+```typescript
+// Mark booking as completed
+export const markBookingComplete = async (
+  bookingId: string,
+  completedBy: 'vendor' | 'couple'
+): Promise<CompletionResponse>;
+
+// Check completion status
+export const checkCompletionStatus = async (
+  bookingId: string
+): Promise<CompletionStatus>;
+
+// Get button text based on state
+export const getCompletionButtonText = (
+  completionStatus: CompletionStatus,
+  userRole: 'vendor' | 'couple'
+): string;
+
+// Check if user can mark complete
+export const canMarkComplete = (
+  booking: Booking,
+  userRole: 'vendor' | 'couple'
+): boolean;
+```
+
+### Completion Flow
+
+**Step 1**: Booking is fully paid
+- Status: `fully_paid` or `paid_in_full`
+- Button: "Mark as Complete" (green, active)
+
+**Step 2**: One party marks complete
+- If couple: `couple_completed = TRUE`, `couple_completed_at = NOW()`
+- If vendor: `vendor_completed = TRUE`, `vendor_completed_at = NOW()`
+- Status: Still `fully_paid`
+- Button: "Waiting for [Other Party]" (gray, disabled)
+
+**Step 3**: Other party confirms
+- Both flags now `TRUE`
+- Status: Changes to `completed`
+- `fully_completed = TRUE`, `fully_completed_at = NOW()`
+- Button: Hidden, replaced with "Completed ✓" badge
+
+### UI States
+
+| State | Couple Status | Vendor Status | Button Text | Button Color | Badge |
+|-------|--------------|---------------|-------------|--------------|-------|
+| **Initial** | ❌ | ❌ | "Mark as Complete" | Green | "Fully Paid" (Blue) |
+| **Couple Done** | ✅ | ❌ | "Waiting for Vendor" | Gray (disabled) | "Awaiting Vendor" (Yellow) |
+| **Vendor Done** | ❌ | ✅ | "Confirm Completion" | Green | "Vendor Confirmed" (Yellow) |
+| **Both Done** | ✅ | ✅ | Hidden | - | "Completed ✓" (Pink) |
+
+### Backend Logic
+
+**File**: `backend-deploy/routes/booking-completion.cjs`
+
+**Validation**:
+1. Check booking exists
+2. Verify booking is fully paid
+3. Confirm party hasn't already marked complete
+4. Update appropriate completion flag
+5. If both flags TRUE, update status to 'completed'
+
+**Response Structure**:
+```json
+{
+  "success": true,
+  "message": "Booking marked as completed by couple",
+  "booking": {
+    "id": "uuid",
+    "status": "completed",
+    "couple_completed": true,
+    "vendor_completed": true,
+    "fully_completed": true,
+    "couple_completed_at": "2025-10-27T14:30:00Z",
+    "vendor_completed_at": "2025-10-27T14:35:00Z"
+  },
+  "bothConfirmed": true
+}
+```
+
+### Deployment Status
+
+**✅ LIVE IN PRODUCTION** (October 27, 2025)
+
+- **Database**: Migration complete, columns added
+- **Backend**: API endpoints deployed to Render
+- **Frontend (Couple)**: Button deployed to Firebase
+- **Frontend (Vendor)**: ⚠️ Pending implementation
+
+**Testing URLs**:
+- Frontend: https://weddingbazaarph.web.app/individual/bookings
+- Backend: https://weddingbazaar-web.onrender.com/api/bookings/:id/mark-completed
+
+### Next Steps
+
+1. **Implement Vendor Side** (Priority 1)
+   - Add button to `VendorBookings.tsx`
+   - Use same service layer
+   - Test vendor → couple flow
+
+2. **Add Notifications** (Priority 2)
+   - Email when other party confirms
+   - SMS notifications (optional)
+   - In-app notification badge
+
+3. **Review Integration** (Priority 3)
+   - Auto-prompt for reviews after completion
+   - Review reminder emails
+   - Link to review page
+
+### Troubleshooting
+
+**Button Not Appearing**:
+- Check booking status is `fully_paid` or `paid_in_full`
+- Clear browser cache (Ctrl+Shift+Delete)
+- Verify user is logged in
+- Check browser console for errors
+
+**API Errors**:
+- Verify booking ID is valid
+- Check user has permission
+- Ensure backend is deployed
+- Check network tab in DevTools
+
+**State Not Updating**:
+- Refresh booking list manually
+- Check completion status endpoint
+- Verify database update succeeded
+- Check backend logs in Render
+
+### Documentation Files
+
+- **Deployment Guide**: `TWO_SIDED_COMPLETION_DEPLOYED_LIVE.md`
+- **System Design**: `TWO_SIDED_COMPLETION_SYSTEM.md`
+- **API Spec**: `backend-deploy/routes/booking-completion.cjs`
+- **Service Layer**: `src/shared/services/completionService.ts`
