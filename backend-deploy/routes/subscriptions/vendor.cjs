@@ -336,6 +336,7 @@ router.put('/upgrade', async (req, res) => {
       const result = await sql`
         INSERT INTO vendor_subscriptions (
           vendor_id,
+          plan_id,
           plan_name,
           billing_cycle,
           status,
@@ -343,6 +344,7 @@ router.put('/upgrade', async (req, res) => {
           end_date
         ) VALUES (
           ${vendor_id},
+          ${new_plan},
           ${new_plan},
           'monthly',
           'active',
@@ -371,6 +373,7 @@ router.put('/upgrade', async (req, res) => {
     const result = await sql`
       UPDATE vendor_subscriptions
       SET 
+        plan_id = ${new_plan},
         plan_name = ${new_plan},
         updated_at = NOW()
       WHERE vendor_id = ${vendor_id}
