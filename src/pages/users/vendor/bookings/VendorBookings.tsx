@@ -692,6 +692,15 @@ export const VendorBookings: React.FC = () => {
       // Get current completion status
       const completionStatus = await getCompletionStatus(booking.id);
 
+      // If booking is already completed, show appropriate message
+      if (booking.status === 'completed') {
+        showInfo(
+          'Already Completed',
+          'This booking has already been marked as complete by both parties.'
+        );
+        return;
+      }
+
       // Check if booking is fully paid
       const isFullyPaid = booking.status === 'fully_paid' || 
                          booking.status === 'paid_in_full' || 

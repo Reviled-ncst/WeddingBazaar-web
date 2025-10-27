@@ -102,13 +102,14 @@ export function canMarkComplete(
   userRole: 'vendor' | 'couple',
   completionStatus?: CompletionStatus
 ): boolean {
-  // Must be fully paid
-  if (!['paid_in_full', 'fully_paid'].includes(booking.status)) {
+  // If already fully completed, can't mark again
+  if (completionStatus?.fullyCompleted || booking.status === 'completed') {
     return false;
   }
 
-  // If already fully completed, can't mark again
-  if (completionStatus?.fullyCompleted) {
+  // Must be fully paid or in completion process
+  const validStatuses = ['paid_in_full', 'fully_paid', 'deposit_paid'];
+  if (!validStatuses.includes(booking.status)) {
     return false;
   }
 
