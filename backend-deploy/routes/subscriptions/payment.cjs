@@ -434,12 +434,23 @@ router.put('/upgrade', async (req, res) => {
     // Process payment for proration
     let payment_intent_id = null;
     
-    // Check if payment was already processed by frontend (payment_reference provided)
-    const paymentAlreadyProcessed = payment_method_details?.payment_reference;
+    // Check if payment was already processed by frontend
+    // Frontend sends: transactionId, sourceId, paymentIntent.id, or payment.id
+    const paymentAlreadyProcessed = payment_method_details?.transactionId || 
+                                    payment_method_details?.sourceId ||
+                                    payment_method_details?.paymentIntent?.id ||
+                                    payment_method_details?.payment?.id;
     
     if (paymentAlreadyProcessed) {
-      console.log(`✅ Payment already processed by frontend, using reference:`, payment_method_details.payment_reference);
-      payment_intent_id = payment_method_details.payment_reference;
+      console.log(`✅ Payment already processed by frontend, using reference:`, paymentAlreadyProcessed);
+      console.log(`💳 Payment details from frontend:`, {
+        transactionId: payment_method_details?.transactionId,
+        sourceId: payment_method_details?.sourceId,
+        paymentIntentId: payment_method_details?.paymentIntent?.id,
+        paymentId: payment_method_details?.payment?.id,
+        status: payment_method_details?.status
+      });
+      payment_intent_id = paymentAlreadyProcessed;
     } else if (prorationAmount > 0) {
       // Only process payment if not already paid and proration > 0
       try {
