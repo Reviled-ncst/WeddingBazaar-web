@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Crown, Check, ArrowRight, Zap } from 'lucide-react';
 import { PayMongoPaymentModal } from '../PayMongoPaymentModal';
 import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useAuth } from '../../contexts/HybridAuthContext';
 
 interface CustomPlan {
   id: string;
@@ -44,6 +45,9 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
 
   // Access subscription context to ensure upgrade prompt is properly closed
   const { hideUpgradePrompt } = useSubscription();
+  
+  // Get logged-in user for vendor ID
+  const { user } = useAuth();
 
   // Comprehensive close handler that ensures prompt is hidden in all cases
   const handleClose = () => {
@@ -51,6 +55,16 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
     hideUpgradePrompt();
     onClose();
   };
+
+  // Debug: Monitor payment modal state changes
+  useEffect(() => {
+    console.log('📊 [UpgradePrompt] Payment Modal State Changed:', {
+      paymentModalOpen,
+      selectedPlanName: selectedPlan?.name,
+      selectedPlanPrice: selectedPlan?.price,
+      timestamp: new Date().toISOString()
+    });
+  }, [paymentModalOpen, selectedPlan]);
 
   // Currency detection and conversion
   useEffect(() => {
@@ -241,23 +255,34 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
 
   // Payment handlers
   const handleUpgradeClick = (plan: any) => {
+    console.log('🎯 [UpgradePrompt] handleUpgradeClick called', { 
+      planName: plan.name, 
+      planPrice: plan.price, 
+      isProcessing 
+    });
+    
     if (isProcessing) {
-      console.log('⚠️ Payment already in progress, ignoring click');
+      console.log('⚠️ [UpgradePrompt] Payment already in progress, ignoring click');
       return;
     }
 
     setIsProcessing(true);
     
     if (plan.price === 0) {
+      console.log('🆓 [UpgradePrompt] Free plan selected, processing direct upgrade');
       // Handle free plan upgrade directly
       handleFreeUpgrade(plan);
     } else {
       // Open PayMongo payment modal for paid plans
       const convertedAmount = plan.price * currency.rate;
-      console.log(`🚀 Opening payment for ${plan.name}`);
-      console.log(`💰 Amount to charge: ${currency.symbol}${convertedAmount.toFixed(2)} (${currency.code})`);
+      console.log(`🚀 [UpgradePrompt] Opening payment modal for ${plan.name}`);
+      console.log(`💰 [UpgradePrompt] Amount to charge: ${currency.symbol}${convertedAmount.toFixed(2)} (${currency.code})`);
+      console.log(`📋 [UpgradePrompt] Setting selectedPlan and paymentModalOpen=true`);
+      
       setSelectedPlan(plan);
       setPaymentModalOpen(true);
+      
+      console.log('✅ [UpgradePrompt] Payment modal state updated');
       
       // Reset processing state after a brief delay
       setTimeout(() => setIsProcessing(false), 1000);
@@ -266,19 +291,34 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
 
   const handleFreeUpgrade = async (plan: any) => {
     try {
-      // API call to upgrade to free plan
-      const response = await fetch('/api/subscriptions/upgrade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      // Get vendor ID from authenticated user
+      const vendorId = user?.vendorId || user?.id;
+      if (!vendorId) {
+        throw new Error('Vendor ID not found. Please log in again.');
+      }
+      
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token not found. Please log in again.');
+      }
+      
+      console.log(`🔑 Free upgrade for vendor ID: ${vendorId} to plan: ${plan.id}`);
+      
+      // API call to upgrade to free plan (no payment required)
+      // ✅ FIXED: Using correct endpoint with authentication
+      const backendUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+      const upgradeUrl = `${backendUrl}/api/subscriptions/upgrade`;
+      
+      const response = await fetch(upgradeUrl, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // ✅ Include JWT token
+        },
         body: JSON.stringify({ 
-          vendorId: '2-2025-003', // TODO: Get actual vendor ID from auth context
-          subscriptionType: plan.name.toLowerCase(),
-          billingCycle: 'monthly',
-          paymentData: {
-            payment_method: 'free',
-            amount: 0,
-            currency: 'PHP'
-          }
+          vendor_id: vendorId, // ✅ Use actual logged-in vendor ID
+          new_plan: plan.id // Use plan ID: 'basic', 'premium', 'pro', 'enterprise'
         })
       });
       
@@ -312,59 +352,199 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
   };
 
   const handlePaymentSuccess = async (paymentData: any) => {
+    console.log('🎯🎯🎯 [UPGRADE] handlePaymentSuccess CALLED!');
+    console.log('🎯 [UPGRADE] Payment Data:', JSON.stringify(paymentData, null, 2));
+    console.log('🎯 [UPGRADE] Selected Plan:', JSON.stringify(selectedPlan, null, 2));
+    console.log('🎯 [UPGRADE] User:', JSON.stringify(user, null, 2));
+    console.log('🎯 [UPGRADE] Currency:', JSON.stringify(currency, null, 2));
+    
     try {
+      // Step 1: Validate selectedPlan exists
+      if (!selectedPlan) {
+        console.error('❌ CRITICAL: selectedPlan is null/undefined!');
+        throw new Error('No plan selected. Please try again.');
+      }
+      console.log('✅ Step 1: selectedPlan validated');
+      
+      // Step 2: Calculate converted amount
       const convertedAmount = selectedPlan.price * currency.rate;
-      console.log(`💳 Payment Success: ${selectedPlan.name} plan`);
+      console.log(`💳 Step 2: Payment Success for ${selectedPlan.name} plan`);
       console.log(`💰 Original PHP: ₱${selectedPlan.price}`);
       console.log(`💰 Converted ${currency.code}: ${currency.symbol}${convertedAmount.toFixed(2)}`);
       
-      // API call to upgrade subscription after successful payment
-      const response = await fetch('/api/subscriptions/upgrade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vendorId: '2-2025-003', // TODO: Get actual vendor ID from auth context
-          subscriptionType: selectedPlan.name.toLowerCase(),
-          billingCycle: 'monthly',
-          paymentData: {
-            payment_method: 'paymongo',
-            amount: convertedAmount,
-            currency: currency.code,
-            original_amount_php: selectedPlan.price,
-            payment_reference: paymentData.id,
-            ...paymentData
-          }
-        })
-      });
+      // Step 3: Get vendor ID from authenticated user
+      const vendorId = user?.vendorId || user?.id;
+      console.log(`🔍 Step 3: Checking vendor ID...`);
+      console.log(`🔍 user?.vendorId:`, user?.vendorId);
+      console.log(`🔍 user?.id:`, user?.id);
+      console.log(`🔍 Final vendorId:`, vendorId);
+      
+      if (!vendorId) {
+        console.error('❌ CRITICAL: No vendor ID found!');
+        console.error('❌ User object:', user);
+        throw new Error('Vendor ID not found. Please log in again.');
+      }
+      console.log(`✅ Step 3: Vendor ID validated: ${vendorId}`);
+    
+    // Step 4: Build upgrade payload (NO JWT REQUIRED - backend validates vendor_id)
+    console.log('📦 Step 4: Building upgrade payload...');
+    const upgradePayload = {
+      vendor_id: vendorId,
+      new_plan: selectedPlan.id,
+      payment_method_details: {
+        payment_method: 'paymongo',
+        amount: convertedAmount,
+        currency: currency.code,
+        original_amount_php: selectedPlan.price,
+        payment_reference: paymentData.id,
+        ...paymentData
+      }
+    };
+    console.log('📦 Step 4: Payload built:', JSON.stringify(upgradePayload, null, 2));
+      
+      // Step 5: Make API call (NO JWT REQUIRED - backend validates vendor_id)
+      const backendUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+      const fullApiUrl = `${backendUrl}/api/subscriptions/payment/upgrade`;
+      
+      console.log('📤 Step 5: Making API call to upgrade endpoint');
+      console.log('🌐 Backend URL:', backendUrl);
+      console.log('🌐 Full API URL:', fullApiUrl);
+      console.log('🔧 Method: PUT');
+      console.log('� No JWT required - vendor_id validated by backend');
+      
+      let response;
+      try {
+        response = await fetch(fullApiUrl, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(upgradePayload)
+        });
+        console.log('✅ Step 5: Fetch completed without throwing');
+      } catch (fetchError) {
+        console.error('❌❌❌ Step 5: Fetch threw an error!', fetchError);
+        console.error('❌ Fetch error stack:', fetchError instanceof Error ? fetchError.stack : 'No stack');
+        throw new Error(`Network error: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
+      }
+      
+      // Step 6: Check response
+      console.log('📥 Step 6: Analyzing response...');
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response OK:', response.ok);
+      console.log('📥 Response statusText:', response.statusText);
+      console.log('📥 Response type:', response.type);
+      console.log('📥 Response redirected:', response.redirected);
+      console.log('📥 Response url:', response.url);
       
       if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Subscription upgrade successful:', result);
+        console.log('✅ Step 7: Response is OK, about to call response.json()...');
+        console.log('🔍 Step 7: Response headers:', Object.fromEntries(response.headers.entries()));
+        console.log('🔍 Step 7: Response bodyUsed:', response.bodyUsed);
+        console.log('🔍 Step 7: Response body exists:', !!response.body);
+        console.log('🔍 Step 7: Content-Type:', response.headers.get('content-type'));
         
-        // Log success
-        console.log(`✅ Successfully upgraded to the ${selectedPlan.name} plan! Features are now available.`);
+        // Check if body is already used
+        if (response.bodyUsed) {
+          console.error('❌❌❌ CRITICAL: Response body already consumed!');
+          throw new Error('Response body was already read');
+        }
         
+        let result;
+        try {
+          console.log('🔄 Step 7: Calling response.json() NOW with 10-second timeout...');
+          console.log('🔄 Step 7: Timestamp before json():', new Date().toISOString());
+          
+          // Try to clone the response to read it as text first for debugging
+          const responseClone = response.clone();
+          let responseText = '';
+          try {
+            responseText = await responseClone.text();
+            console.log('📄 Step 7: Response body as text:', responseText.substring(0, 500)); // First 500 chars
+            console.log('📄 Step 7: Response body length:', responseText.length);
+          } catch (textError) {
+            console.error('❌ Failed to read response as text:', textError);
+          }
+          
+          // Race between JSON parsing and timeout
+          const jsonPromise = response.json();
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('JSON parsing timed out after 10 seconds')), 10000);
+          });
+          
+          result = await Promise.race([jsonPromise, timeoutPromise]);
+          
+          console.log('✅✅✅ Step 7.5: JSON parsing COMPLETE!');
+          console.log('✅✅✅ Step 7.5: Timestamp after json():', new Date().toISOString());
+          console.log('✅✅✅ Step 7.5: Result type:', typeof result);
+          console.log('✅✅✅ Step 7.5: Result keys:', Object.keys(result || {}));
+          console.log('✅✅✅ Step 7.5: Full result:', JSON.stringify(result, null, 2));
+        } catch (jsonError) {
+          console.error('❌❌❌ Step 7: JSON parsing FAILED!');
+          console.error('❌ JSON error type:', jsonError?.constructor?.name);
+          console.error('❌ JSON error message:', jsonError instanceof Error ? jsonError.message : String(jsonError));
+          console.error('❌ JSON error stack:', jsonError instanceof Error ? jsonError.stack : 'No stack');
+          
+          // If it's a timeout, log special message
+          if (jsonError instanceof Error && jsonError.message.includes('timed out')) {
+            console.error('⏰⏰⏰ TIMEOUT DETECTED: response.json() never completed!');
+            console.error('⏰ This suggests the response body is malformed or empty');
+          }
+          
+          throw new Error('Invalid response from server');
+        }
+        
+        // Step 8: Handle success
+        console.log('🎊🎊🎊 Step 8: ENTERING SUCCESS HANDLER...');
+        console.log('📊 Step 8: Full API Response:', JSON.stringify(result, null, 2));
+        console.log('📊 Step 8: result.success:', result?.success);
+        console.log('📊 Step 8: result.message:', result?.message);
+        console.log('📊 Step 8: result.subscription:', result?.subscription);
+        console.log('📊 Step 8: New Plan:', result?.subscription?.plan_id || result?.plan_id || 'Unknown');
+        console.log('📊 Step 8: Subscription Status:', result?.subscription?.status || result?.status || 'Unknown');
+        console.log(`✅ Step 8: Successfully upgraded vendor ${vendorId} to the ${selectedPlan.name} plan!`);
+        
+        console.log('🔄 Step 8: Closing payment modal...');
         setPaymentModalOpen(false);
+        console.log('✅ Step 8: Payment modal closed');
         
         // Trigger a custom event to refresh subscription status
+        console.log('📢 Step 8: Dispatching subscriptionUpdated event...');
         window.dispatchEvent(new CustomEvent('subscriptionUpdated'));
+        console.log('✅ Step 8: subscriptionUpdated event dispatched');
         
+        console.log('⏰ Step 8: Setting 3-second timeout to close upgrade prompt...');
         // Close the upgrade prompt using both methods to ensure it's properly closed
         setTimeout(() => {
-          // Call the subscription context's hide function directly
+          console.log('⏰⏰⏰ Timeout fired! Closing upgrade prompt now...');
           hideUpgradePrompt();
-          
-          // Also call the prop onClose for backward compatibility
           onClose();
+          console.log('✅✅✅ Upgrade prompt closed successfully!');
         }, 3000);
       } else {
-        const errorData = await response.json();
-        console.error('❌ Subscription upgrade error response:', errorData);
+        console.error('❌❌❌ Step 7: Response is NOT OK');
+        console.error('❌ Status code:', response.status);
+        console.error('❌ Status text:', response.statusText);
+        
+        let errorData;
+        try {
+          errorData = await response.json();
+          console.error('❌ Error response body:', errorData);
+        } catch (jsonError) {
+          console.error('❌ Failed to parse error response:', jsonError);
+          errorData = { error: 'Unknown server error' };
+        }
+        
         throw new Error(errorData.error || 'Failed to complete subscription upgrade');
       }
     } catch (error) {
-      console.error('Subscription upgrade error:', error);
+      console.error('🚨🚨🚨 [UPGRADE] Subscription upgrade EXCEPTION:', error);
+      console.error('🚨 Error message:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('🚨 Error stack:', error instanceof Error ? error.stack : 'No stack');
+      console.error('🚨 Error type:', typeof error);
+      console.error('🚨 Error constructor:', error?.constructor?.name);
       alert('Payment successful but subscription upgrade failed. Please contact support.');
+      throw error; // Re-throw to propagate to payment modal
     }
   };
 
@@ -617,10 +797,16 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
       )}
       
       {/* PayMongo Payment Modal */}
+      {console.log('🔍 [UpgradePrompt] Checking PayMongoPaymentModal render condition:', { 
+        hasSelectedPlan: !!selectedPlan, 
+        paymentModalOpen,
+        selectedPlanName: selectedPlan?.name 
+      })}
       {selectedPlan && (
         <PayMongoPaymentModal
           isOpen={paymentModalOpen}
           onClose={() => {
+            console.log('🚪 [UpgradePrompt] Payment modal onClose called');
             setPaymentModalOpen(false);
             setSelectedPlan(null); // Clear selected plan
             setIsProcessing(false); // Reset processing state

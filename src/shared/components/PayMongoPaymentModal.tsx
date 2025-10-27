@@ -1556,28 +1556,35 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.7 }}
-                      onClick={() => {
+                      onClick={async () => {
                         console.log('🎉 User confirmed successful payment, calling callback and closing modal');
                         
-                        // Call success callback with payment data
-                        onPaymentSuccess({
-                          payment: {
-                            id: paymentIntent?.id || source?.id,
-                            status: 'succeeded',
+                        try {
+                          // Call success callback with payment data and WAIT for it to complete
+                          console.log('⏳ Calling onPaymentSuccess callback...');
+                          await onPaymentSuccess({
+                            payment: {
+                              id: paymentIntent?.id || source?.id,
+                              status: 'succeeded',
+                              amount: amount,
+                              currency: currency
+                            },
+                            paymentIntent: paymentIntent,
                             amount: amount,
-                            currency: currency
-                          },
-                          paymentIntent: paymentIntent,
-                          amount: amount,
-                          currency: currency,
-                          method: selectedMethod || 'card',
-                          status: 'succeeded',
-                          transactionId: paymentIntent?.id || source?.id || `txn_${Date.now()}`,
-                          formattedAmount: formatAmount(amount),
-                          sourceId: source?.id
-                        });
+                            currency: currency,
+                            method: selectedMethod || 'card',
+                            status: 'succeeded',
+                            transactionId: paymentIntent?.id || source?.id || `txn_${Date.now()}`,
+                            formattedAmount: formatAmount(amount),
+                            sourceId: source?.id
+                          });
+                          console.log('✅ onPaymentSuccess callback completed successfully');
+                        } catch (error) {
+                          console.error('❌ onPaymentSuccess callback failed:', error);
+                          alert('Payment successful but subscription upgrade failed. Please contact support.');
+                        }
                         
-                        // Close modal after callback
+                        // Close modal after callback completes
                         handleClose();
                       }}
                       className="w-full px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-semibold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"

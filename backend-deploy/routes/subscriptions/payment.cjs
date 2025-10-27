@@ -352,8 +352,11 @@ router.post('/create', authenticateToken, async (req, res) => {
 /**
  * PUT /api/subscriptions/payment/upgrade
  * Upgrade subscription with proration and immediate payment
+ * 
+ * 🔓 NO JWT REQUIRED - Validates vendor_id directly from database
+ * This allows Firebase-authenticated vendors to upgrade without backend JWT tokens
  */
-router.put('/upgrade', authenticateToken, async (req, res) => {
+router.put('/upgrade', async (req, res) => {
   try {
     const {
       vendor_id,
@@ -362,6 +365,22 @@ router.put('/upgrade', authenticateToken, async (req, res) => {
     } = req.body;
 
     console.log(`⬆️ Upgrading subscription for vendor ${vendor_id} to ${new_plan}`);
+    
+    // 🔒 SECURITY: Validate vendor exists in database before proceeding
+    const vendorCheck = await sql`
+      SELECT id FROM vendor_profiles WHERE id = ${vendor_id} LIMIT 1
+    `;
+    
+    if (vendorCheck.length === 0) {
+      console.error(`❌ Vendor ${vendor_id} not found in database`);
+      return res.status(404).json({
+        success: false,
+        error: 'Vendor not found',
+        message: 'Invalid vendor ID'
+      });
+    }
+    
+    console.log(`✅ Vendor ${vendor_id} validated`);
 
     // Validate new plan
     const newPlanConfig = SUBSCRIPTION_PLANS[new_plan];

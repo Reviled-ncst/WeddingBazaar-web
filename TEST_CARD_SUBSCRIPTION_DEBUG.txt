@@ -1,0 +1,117 @@
+╔══════════════════════════════════════════════════════════════════╗
+║  🐛 SUBSCRIPTION UPGRADE BUG - ENHANCED DEBUG TEST CARD         ║
+╚══════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────┐
+│ 🎯 QUICK TEST INSTRUCTIONS                                      │
+└─────────────────────────────────────────────────────────────────┘
+
+1. Open: https://weddingbazaarph.web.app
+2. F12 → Console → Filter: "[UPGRADE]"
+3. Login: test@test.com / Test@12345
+4. Go to: Vendor Services
+5. Click: "Add Service"
+6. Select: "Pro" plan
+7. Card: 4343434343434345, 12/25, 123
+8. Pay → Continue
+9. WATCH CONSOLE!
+
+┌─────────────────────────────────────────────────────────────────┐
+│ 📊 WHAT YOU'LL SEE                                              │
+└─────────────────────────────────────────────────────────────────┘
+
+✅ SUCCESS:
+   🎯🎯🎯 [UPGRADE] handlePaymentSuccess CALLED!
+   📤 [UPGRADE] Making API call
+   📥 [UPGRADE] API Response Status: 200
+   ✅✅✅ [UPGRADE] Subscription upgrade successful!
+
+❌ VENDOR ID ERROR:
+   🎯🎯🎯 [UPGRADE] handlePaymentSuccess CALLED!
+   ❌ CRITICAL: No vendor ID found!
+   🚨🚨🚨 [UPGRADE] EXCEPTION: Vendor ID not found
+
+❌ TOKEN ERROR:
+   🎯🎯🎯 [UPGRADE] handlePaymentSuccess CALLED!
+   🔑 Using vendor ID...
+   ❌ CRITICAL: No JWT token found!
+   🚨🚨🚨 [UPGRADE] EXCEPTION: Authentication token not found
+
+❌ API 404:
+   📤 [UPGRADE] Making API call
+   📥 [UPGRADE] API Response Status: 404
+   ❌❌❌ [UPGRADE] error: Endpoint not found
+
+❌ NOT CALLED:
+   (No logs with 🎯🎯🎯)
+   = Callback connection issue
+
+┌─────────────────────────────────────────────────────────────────┐
+│ 🔍 WHAT TO REPORT                                               │
+└─────────────────────────────────────────────────────────────────┘
+
+Copy and paste ALL console logs that contain:
+- [UPGRADE]
+- Any emoji markers (🎯, 📤, 📥, ✅, ❌, 🚨)
+- Error messages
+- Stack traces
+
+Include:
+- Which scenario occurred (Success, Vendor ID Error, etc.)
+- Full console output
+- Any alerts/modals shown
+- Database query result (if checking manually)
+
+┌─────────────────────────────────────────────────────────────────┐
+│ 🛠️ QUICK FIXES                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+IF: No 🎯🎯🎯 logs
+THEN: Check PayMongoPaymentModal → UpgradePrompt connection
+
+IF: ❌ CRITICAL: No vendor ID
+THEN: Update HybridAuthContext to include vendorId
+
+IF: ❌ CRITICAL: No JWT token  
+THEN: Fix login flow to store token in localStorage
+
+IF: 📥 Status: 404
+THEN: Implement /api/subscriptions/upgrade-with-payment endpoint
+
+IF: 📥 Status: 500
+THEN: Check Render backend logs
+
+IF: ✅✅✅ Success
+THEN: Query database to verify subscription updated!
+
+┌─────────────────────────────────────────────────────────────────┐
+│ 🗄️ DATABASE CHECK                                               │
+└─────────────────────────────────────────────────────────────────┘
+
+After test, check vendor_subscriptions table:
+
+SELECT 
+  vendor_id,
+  current_plan,
+  max_services,
+  max_images_per_service,
+  updated_at
+FROM vendor_subscriptions
+WHERE vendor_id = 'ac8df757-0a1a-4e99-ac41-159743730569';
+
+Expected after Pro upgrade:
+- current_plan: 'pro'
+- max_services: 50
+- max_images_per_service: 30
+
+┌─────────────────────────────────────────────────────────────────┐
+│ 📌 DEPLOYMENT INFO                                              │
+└─────────────────────────────────────────────────────────────────┘
+
+Frontend: ✅ weddingbazaarph.web.app (Jan 2025)
+Backend:  ✅ weddingbazaar-web.onrender.com (Running)
+Enhanced: ✅ Triple emoji logging + error propagation
+
+╔══════════════════════════════════════════════════════════════════╗
+║  Ready to test! Run the steps above and report findings. 🚀     ║
+╚══════════════════════════════════════════════════════════════════╝

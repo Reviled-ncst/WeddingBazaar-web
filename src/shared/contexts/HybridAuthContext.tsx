@@ -107,6 +107,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const backendUser = await response.json();
         console.log('✅ User found in Neon database:', backendUser);
         
+        // 🔐 CRITICAL FIX: Store JWT token from profile sync
+        if (backendUser.token) {
+          localStorage.setItem('auth_token', backendUser.token);
+          localStorage.setItem('jwt_token', backendUser.token); // Backward compatibility
+          console.log('✅ JWT token stored for vendor/couple:', backendUser.user.email);
+        }
+        
         // DEBUG: Log the exact backend user data structure
         console.log('🔧 Backend user structure:', JSON.stringify(backendUser, null, 2));
         console.log('🔧 Backend user.user:', backendUser.user);

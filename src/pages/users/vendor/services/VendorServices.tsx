@@ -34,7 +34,7 @@ import { VendorHeader } from '../../../../shared/components/layout/VendorHeader'
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { useSubscription } from '../../../../shared/contexts/SubscriptionContext';
 import { UpgradePrompt } from '../../../../shared/components/subscription/UpgradePrompt';
-import { UpgradePromptModal } from '../../../../shared/components/modals/UpgradePromptModal';
+// Removed unused import: UpgradePromptModal (now using centralized UpgradePrompt)
 import { AddServiceForm } from './components/AddServiceForm';
 import { useVendorProfile } from '../../../../hooks/useVendorData';
 import { cn } from '../../../../utils/cn';
@@ -149,15 +149,9 @@ export const VendorServices: React.FC = () => {
   const [highlightedServiceId, setHighlightedServiceId] = useState<string | null>(null);
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
   
-  // Upgrade prompt modal state
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradePromptConfig, setUpgradePromptConfig] = useState({
-    message: '',
-    currentPlan: 'basic',
-    suggestedPlan: 'premium',
-    currentLimit: 5,
-    isBlocking: true
-  });
+  // REMOVED: Old custom upgrade modal state (now using centralized UpgradePrompt)
+  // const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  // const [upgradePromptConfig, setUpgradePromptConfig] = useState({...});
   
   // FIXED: Track Firebase email verification status directly (same as VendorProfile.tsx)
   const [firebaseEmailVerified, setFirebaseEmailVerified] = useState(false);
@@ -179,21 +173,25 @@ export const VendorServices: React.FC = () => {
   // Get API base URL
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
-  // Handle upgrade modal opening
+  // Handle upgrade modal opening - FIXED to use centralized UpgradePrompt
   const handleOpenUpgradeModal = () => {
-    console.log('🚀 Opening upgrade modal from VendorServices');
+    console.log('🚀 [VendorServices] Opening centralized upgrade modal (with payment)');
     
-    // Set upgrade config for manual upgrade (Basic -> Premium)
+    const currentTier = subscription?.plan?.tier || 'basic';
     const maxServices = subscription?.plan?.limits?.max_services || 5;
-    setUpgradePromptConfig({
-      message: 'Upgrade to Premium to unlock unlimited services and advanced features!',
-      currentPlan: subscription?.plan?.tier || 'basic',
-      suggestedPlan: 'premium',
-      currentLimit: maxServices,
-      isBlocking: false
+    
+    console.log('📊 Current subscription:', {
+      tier: currentTier,
+      maxServices: maxServices === -1 ? 'Unlimited' : maxServices,
+      currentCount: services.length
     });
     
-    setShowUpgradeModal(true);
+    // Use the centralized showUpgradePrompt from SubscriptionContext
+    // This will show the REAL payment modal for paid plans
+    showUpgradePrompt(
+      `Upgrade to unlock unlimited services and advanced features! (Currently ${services.length}/${maxServices === -1 ? '∞' : maxServices} services)`,
+      'premium' // Suggested tier
+    );
   };
 
   // FIXED: Poll Firebase email verification status (same as VendorProfile.tsx)
@@ -440,7 +438,7 @@ export const VendorServices: React.FC = () => {
         
         if (currentServicesCount >= maxServices) {
           const planName = subscription?.plan?.name || 'Basic';
-          const nextPlan = subscription?.plan?.tier === 'basic' ? 'Premium' : 'Pro';
+          const nextPlan = subscription?.plan?.tier === 'basic' ? 'premium' : 'pro';
           
           console.log('🚫 [VendorServices] Service limit reached:', {
             current: currentServicesCount,
@@ -448,15 +446,11 @@ export const VendorServices: React.FC = () => {
             plan: planName
           });
           
-          // Show upgrade modal
-          setUpgradePromptConfig({
-            message: `You've reached the maximum of ${maxServices} services for your ${planName} plan.`,
-            currentPlan: planName.toLowerCase(),
-            suggestedPlan: nextPlan.toLowerCase(),
-            currentLimit: maxServices,
-            isBlocking: true
-          });
-          setShowUpgradeModal(true);
+          // Show centralized upgrade modal (with payment integration)
+          showUpgradePrompt(
+            `You've reached the maximum of ${maxServices} services for your ${planName} plan. Upgrade to unlock more!`,
+            nextPlan
+          );
           
           // Close the add service form
           setIsCreating(false);
@@ -538,18 +532,14 @@ export const VendorServices: React.FC = () => {
         console.log('🚫 [VendorServices] Backend subscription limit reached:', result);
         
         const planName = subscription?.plan?.name || 'Basic';
-        const nextPlan = subscription?.plan?.tier === 'basic' ? 'Premium' : 'Pro';
+        const nextPlan = subscription?.plan?.tier === 'basic' ? 'premium' : 'pro';
         const maxServices = subscription?.plan?.limits?.max_services || 5;
         
-        // Show upgrade modal
-        setUpgradePromptConfig({
-          message: result.error || `You've reached the maximum of ${maxServices} services for your ${planName} plan.`,
-          currentPlan: planName.toLowerCase(),
-          suggestedPlan: result.suggested_plan || nextPlan.toLowerCase(),
-          currentLimit: maxServices,
-          isBlocking: true
-        });
-        setShowUpgradeModal(true);
+        // Show centralized upgrade modal (with payment integration)
+        showUpgradePrompt(
+          result.error || `You've reached the maximum of ${maxServices} services for your ${planName} plan. Upgrade now!`,
+          result.suggested_plan || nextPlan
+        );
         
         // Close the add service form
         setIsCreating(false);
@@ -2262,95 +2252,12 @@ export const VendorServices: React.FC = () => {
       </motion.div>
 
       {/* Upgrade Prompt Modal */}
+      {/* ✅ Centralized Upgrade Prompt with Payment Integration */}
       <UpgradePrompt
         isOpen={upgradePrompt.show}
         onClose={hideUpgradePrompt}
         message={upgradePrompt.message}
         requiredTier={upgradePrompt.requiredTier}
-      />
-
-      {/* Subscription Limit Upgrade Modal */}
-      <UpgradePromptModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        currentPlan={upgradePromptConfig.currentPlan}
-        currentCount={services.length}
-        limit={upgradePromptConfig.currentLimit}
-        message={upgradePromptConfig.message}
-        recommendedPlan={upgradePromptConfig.suggestedPlan}
-        onUpgrade={async (planId) => {
-          console.log('🚀 Processing upgrade to plan:', planId);
-          
-          try {
-            // Close the modal immediately for better UX
-            setShowUpgradeModal(false);
-            
-            // Show loading state
-            setLoading(true);
-            
-            // Get Firebase authentication token
-            const { getAuth } = await import('firebase/auth');
-            const auth = getAuth();
-            const firebaseUser = auth.currentUser;
-            
-            let authToken = null;
-            if (firebaseUser) {
-              authToken = await firebaseUser.getIdToken();
-              console.log('🔑 Using Firebase token for authentication');
-            } else {
-              console.warn('⚠️  No Firebase user found, trying localStorage token');
-              authToken = localStorage.getItem('token');
-            }
-            
-            if (!authToken) {
-              throw new Error('Authentication required. Please login again.');
-            }
-            
-            // ✅ CRITICAL FIX: Use vendorId (UUID format) for subscription table
-            // Database stores subscriptions with vendor UUID, not user_id
-            const correctVendorId = user?.vendorId || vendorId;
-            console.log('📡 Calling upgrade API with vendor_id:', correctVendorId, '(vendorId UUID format)');
-            
-            // Call backend API to process upgrade
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/subscriptions/upgrade`, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-              },
-              body: JSON.stringify({
-                vendor_id: correctVendorId,
-                new_plan: planId
-              })
-            });
-
-            console.log('📡 Upgrade API response status:', response.status);
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              console.error('❌ Upgrade API error:', errorData);
-              throw new Error(errorData.error || errorData.message || 'Failed to upgrade subscription');
-            }
-
-            const result = await response.json();
-            console.log('✅ Upgrade successful:', result);
-
-            // Update subscription state by refreshing the component
-            // The useSubscription hook will fetch the new subscription info
-            
-            // Show success message
-            alert(`🎉 Successfully upgraded to ${planId.toUpperCase()} plan!\n\nYou now have unlimited services and access to premium features.\n\nThe page will refresh to show your new limits.`);
-            
-            // Reload the page to refresh all subscription data
-            window.location.reload();
-            
-          } catch (error) {
-            console.error('❌ Upgrade failed:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-            alert(`Failed to upgrade subscription: ${errorMessage}\n\nPlease try again or contact support.`);
-            setLoading(false);
-          }
-        }}
       />
     </div>
   );

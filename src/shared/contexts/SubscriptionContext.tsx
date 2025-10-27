@@ -90,21 +90,30 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
       if (data.success && data.subscription) {
         console.log('✅ [SubscriptionContext] Subscription loaded:', data.subscription.plan_name);
         
-        // Find the predefined plan to get the correct features
-        const predefinedPlan = SUBSCRIPTION_PLANS.find(p => p.id === data.subscription.plan_id);
-        const planFeatures = predefinedPlan ? predefinedPlan.features : JSON.parse(data.subscription.plan_features || '[]');
+        // ✅ CRITICAL FIX: Prioritize API response limits over hardcoded predefined limits
+        const apiPlanData = data.subscription.plan; // From backend API
+        const predefinedPlan = SUBSCRIPTION_PLANS.find(p => p.id === data.subscription.plan_name);
         
-        console.log('🔧 [SubscriptionContext] Using features from predefined plan:', predefinedPlan?.name, 'Features count:', planFeatures.length);
+        // Use API limits as PRIMARY source, predefined as FALLBACK
+        const planLimits = apiPlanData?.limits || predefinedPlan?.limits || SUBSCRIPTION_PLANS[0].limits;
+        const planFeatures = apiPlanData?.features || predefinedPlan?.features || [];
         
-        // Map backend response to frontend interface
+        console.log('🎯 [SubscriptionContext] Using DYNAMIC limits from API:', {
+          max_services: planLimits.max_services,
+          max_portfolio_items: planLimits.max_portfolio_items,
+          unlimited_services: planLimits.max_services === -1,
+          tier: data.subscription.plan_name,
+          source: apiPlanData?.limits ? 'API (dynamic)' : 'predefined (fallback)'
+        });
+        
         const mappedSubscription: VendorSubscription = {
           id: data.subscription.id,
           vendor_id: data.subscription.vendor_id,
-          plan_id: data.subscription.plan_id,
+          plan_id: data.subscription.plan_name, // Use plan_name from DB (basic, premium, pro, enterprise)
           status: data.subscription.status,
-          current_period_start: data.subscription.current_period_start,
-          current_period_end: data.subscription.current_period_end,
-          trial_end: data.subscription.trial_end,
+          current_period_start: data.subscription.current_period_start || data.subscription.start_date,
+          current_period_end: data.subscription.current_period_end || data.subscription.end_date,
+          trial_end: data.subscription.trial_end || data.subscription.trial_end_date,
           stripe_subscription_id: data.subscription.stripe_subscription_id,
           created_at: data.subscription.created_at,
           updated_at: data.subscription.updated_at,
@@ -122,37 +131,39 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
             last_updated: data.subscription.last_updated || new Date().toISOString()
           },
           plan: {
-            id: data.subscription.plan_id,
-            name: data.subscription.plan_name,
-            description: data.subscription.plan_description,
-            price: 0, // Will be populated from SUBSCRIPTION_PLANS
-            billing_cycle: 'monthly',
-            tier: data.subscription.plan_id as 'basic' | 'premium' | 'pro' | 'enterprise',
+            id: data.subscription.plan_name,
+            name: apiPlanData?.name || predefinedPlan?.name || data.subscription.plan_name,
+            description: predefinedPlan?.description || '',
+            price: apiPlanData?.price ?? predefinedPlan?.price ?? 0,
+            billing_cycle: data.subscription.billing_cycle || 'monthly',
+            tier: data.subscription.plan_name as 'basic' | 'premium' | 'pro' | 'enterprise',
             features: planFeatures,
+            // ✅ USE DYNAMIC LIMITS FROM API (NOT HARDCODED)
+            // The planLimits variable now prioritizes API limits over predefined limits
             limits: {
-              max_services: data.subscription.max_services || 5,
-              max_service_images: data.subscription.max_images_per_service || 3,
-              max_portfolio_items: data.subscription.max_gallery_images || 10,
-              max_monthly_bookings: data.subscription.max_bookings_per_month || 20,
-              max_concurrent_bookings: 5,
-              booking_advance_days: 90,
-              max_monthly_messages: 100,
-              max_message_attachments: 1,
-              video_call_duration: 0,
-              featured_listing_days: data.subscription.includes_featured_listing ? 7 : 0,
-              max_social_media_integrations: 1,
-              custom_branding: data.subscription.includes_custom_branding || false,
-              seo_tools: false,
-              analytics_history_days: 30,
-              export_data: false,
-              advanced_reports: data.subscription.includes_analytics || false,
-              multi_location: false,
-              team_members: 1,
-              custom_contracts: false,
-              payment_processing: data.subscription.includes_payment_processing || true,
-              api_calls_per_month: 1000,
-              webhook_endpoints: 1,
-              third_party_integrations: 2
+              max_services: planLimits.max_services,
+              max_service_images: planLimits.max_service_images,
+              max_portfolio_items: planLimits.max_portfolio_items,
+              max_monthly_bookings: planLimits.max_monthly_bookings,
+              max_concurrent_bookings: planLimits.max_concurrent_bookings,
+              booking_advance_days: planLimits.booking_advance_days,
+              max_monthly_messages: planLimits.max_monthly_messages,
+              max_message_attachments: planLimits.max_message_attachments,
+              video_call_duration: planLimits.video_call_duration,
+              featured_listing_days: planLimits.featured_listing_days,
+              max_social_media_integrations: planLimits.max_social_media_integrations,
+              custom_branding: planLimits.custom_branding,
+              seo_tools: planLimits.seo_tools,
+              analytics_history_days: planLimits.analytics_history_days,
+              export_data: planLimits.export_data,
+              advanced_reports: planLimits.advanced_reports,
+              multi_location: planLimits.multi_location,
+              team_members: planLimits.team_members,
+              custom_contracts: planLimits.custom_contracts,
+              payment_processing: planLimits.payment_processing,
+              api_calls_per_month: planLimits.api_calls_per_month,
+              webhook_endpoints: planLimits.webhook_endpoints,
+              third_party_integrations: planLimits.third_party_integrations
             }
           }
         };

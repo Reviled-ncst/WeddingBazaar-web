@@ -176,7 +176,10 @@ const CardPayment: React.FC<CardPaymentProps> = ({
       console.log(`💰 Amount: ${currencySymbol}${amount}`);
       
       // API call to upgrade subscription after successful payment
-      const response = await fetch('/api/subscriptions/upgrade', {
+      const backendUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+      const upgradeUrl = `${backendUrl}/api/subscriptions/upgrade`;
+      
+      const response = await fetch(upgradeUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
