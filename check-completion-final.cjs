@@ -11,7 +11,9 @@ async function checkCompletion() {
       vendor_completed,
       vendor_completed_at,
       couple_completed,
-      couple_completed_at
+      couple_completed_at,
+      fully_completed,
+      fully_completed_at
     FROM bookings 
     WHERE id = 1761577140
   `;
