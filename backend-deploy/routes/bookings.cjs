@@ -472,7 +472,7 @@ router.get('/enhanced', async (req, res) => {
     
     try {
       if (coupleId) {
-        console.log(`🔍 Searching enhanced bookings for couple: ${coupleId}`);      rawBookings = await sql`
+        console.log(`🔍 Searching enhanced bookings for couple: ${coupleId}`);        rawBookings = await sql`
         SELECT 
           b.id,
           b.service_id,
@@ -520,7 +520,14 @@ router.get('/enhanced', async (req, res) => {
           b.payment_progress,
           b.last_payment_date,
           b.payment_method,
-          b.transaction_id
+          b.transaction_id,
+          b.vendor_completed,
+          b.vendor_completed_at,
+          b.couple_completed,
+          b.couple_completed_at,
+          b.fully_completed,
+          b.fully_completed_at,
+          b.completion_notes
         FROM bookings b
         LEFT JOIN vendors v ON b.vendor_id = v.id
         WHERE b.couple_id = ${coupleId}
@@ -580,7 +587,14 @@ router.get('/enhanced', async (req, res) => {
             b.payment_progress,
             b.last_payment_date,
             b.payment_method,
-            b.transaction_id
+            b.transaction_id,
+            b.vendor_completed,
+            b.vendor_completed_at,
+            b.couple_completed,
+            b.couple_completed_at,
+            b.fully_completed,
+            b.fully_completed_at,
+            b.completion_notes
           FROM bookings b
           LEFT JOIN vendors v ON (b.vendor_id = v.id OR b.vendor_id = ${legacyVendorId})
           WHERE (b.vendor_id = ${vendorId} OR b.vendor_id = ${legacyVendorId})
