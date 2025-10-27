@@ -2306,10 +2306,10 @@ export const VendorServices: React.FC = () => {
               throw new Error('Authentication required. Please login again.');
             }
             
-            // ✅ CRITICAL FIX: Use user.id (format: '2-2025-003') NOT user.vendorId (UUID)
-            // The subscription table uses vendor_id that matches the user.id format
-            const correctVendorId = user?.id || vendorId;
-            console.log('📡 Calling upgrade API with vendor_id:', correctVendorId, '(user.id format)');
+            // ✅ CRITICAL FIX: Use vendorId (UUID format) for subscription table
+            // Database stores subscriptions with vendor UUID, not user_id
+            const correctVendorId = user?.vendorId || vendorId;
+            console.log('📡 Calling upgrade API with vendor_id:', correctVendorId, '(vendorId UUID format)');
             
             // Call backend API to process upgrade
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/subscriptions/upgrade`, {

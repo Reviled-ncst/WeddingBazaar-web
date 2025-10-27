@@ -67,19 +67,19 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     return () => {
       window.removeEventListener('subscriptionUpdated', handleSubscriptionUpdate);
     };
-  }, [user?.id]);
+  }, [user?.vendorId]);
 
   const fetchSubscription = async () => {
-    if (!user?.id) return;
+    if (!user?.vendorId) return;
     
     try {
       setLoading(true);
       setError(null);
       
-      console.log('🔔 [SubscriptionContext] Fetching subscription for vendor:', user.id);
+      console.log('🔔 [SubscriptionContext] Fetching subscription for vendor:', user.vendorId);
       
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/subscriptions/vendor/${user.id}`);
+      const response = await fetch(`${apiUrl}/api/subscriptions/vendor/${user.vendorId}`);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: Failed to fetch subscription`);
