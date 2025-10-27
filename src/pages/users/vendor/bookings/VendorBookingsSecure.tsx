@@ -21,7 +21,8 @@ import {
   FileText,
   Users,
   Mail,
-  Phone
+  Phone,
+  Heart
 } from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
@@ -117,6 +118,70 @@ const handleContactClient = (booking: UIBooking) => {
     window.open(`mailto:${booking.contactEmail}?subject=Regarding your booking for ${booking.serviceType}`);
   } else {
     alert('No contact email available for this client.');
+  }
+};
+
+/**
+ * Handle booking completion (vendor side)
+ * Two-sided completion: Both vendor and couple must confirm
+ */
+const handleMarkComplete = async (booking: UIBooking) => {
+  console.log('🎉 [VendorBookingsSecure] Mark Complete clicked for booking:', booking.id);
+
+  // Check if booking is fully paid
+  const isFullyPaid = (booking.status as string) === 'fully_paid' || 
+                     (booking.status as string) === 'paid_in_full' || 
+                     (booking.status as string) === 'deposit_paid';
+
+  if (!isFullyPaid) {
+    alert('This booking must be fully paid before marking as complete.');
+    return;
+  }
+
+  // Show confirmation dialog
+  const confirmed = window.confirm(
+    `✅ Mark Booking Complete\n\n` +
+    `Mark this booking for ${booking.coupleName || 'the couple'} as complete?\n\n` +
+    `Note: The booking will only be fully completed when both you and the couple confirm completion.\n\n` +
+    `Do you want to proceed?`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    // Call the completion API
+    const API_URL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+    const response = await fetch(`${API_URL}/api/bookings/${booking.id}/mark-completed`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ completed_by: 'vendor' }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || data.message || 'Failed to mark booking as completed');
+    }
+
+    console.log('✅ [VendorBookingsSecure] Booking completion updated:', data);
+
+    // Show success message
+    const successMsg = data.waiting_for === null
+      ? '🎉 Booking Fully Completed!\n\nBoth you and the couple have confirmed. The booking is now marked as completed.'
+      : '✅ Completion Confirmed!\n\nYour confirmation has been recorded. The booking will be fully completed once the couple also confirms.';
+
+    alert(successMsg);
+
+    // Reload bookings to reflect new status
+    await loadBookings(true); // Silent refresh
+
+  } catch (error: any) {
+    console.error('❌ [VendorBookingsSecure] Error marking complete:', error);
+    alert(`Error: ${error.message || 'An error occurred while marking the booking as complete.'}`);
   }
 };
 
@@ -271,6 +336,21 @@ export const VendorBookingsSecure: React.FC = () => {
 
       const data = await response.json();
 
+      // 🔍 DETAILED STATUS DEBUG: Log raw booking data from API
+      if (data.bookings && data.bookings.length > 0) {
+        console.log('🔍 [VendorBookingsSecure] RAW BOOKING DATA FROM API:', data.bookings.map((b: any) => ({
+          id: b.id,
+          status: b.status,
+          statusType: typeof b.status,
+          statusLength: b.status?.length,
+          statusTrimmed: b.status?.trim(),
+          payment_status: b.payment_status,
+          total_amount: b.total_amount,
+          total_paid: b.total_paid,
+          couple_name: b.couple_name
+        })));
+      }
+
       // SECURITY VALIDATION: Verify response integrity
       if (data.vendorId && data.vendorId !== vendorId) {
         console.error('🚨 SECURITY WARNING: Vendor ID mismatch in response');
@@ -292,6 +372,15 @@ export const VendorBookingsSecure: React.FC = () => {
 
         return mapVendorBookingToUI(booking, vendorId);
       }).filter(Boolean);
+
+      // 🔍 DEBUG: Log transformed booking statuses
+      console.log('🎯 [VendorBookingsSecure] TRANSFORMED BOOKING STATUSES:', mappedBookings.map((b: any) => ({
+        id: b.id,
+        originalStatus: data.bookings.find((rb: any) => rb.id === b.id)?.status,
+        transformedStatus: b.status,
+        statusMatch: data.bookings.find((rb: any) => rb.id === b.id)?.status === b.status,
+        coupleName: b.coupleName
+      })));
 
       setBookings(mappedBookings);
       console.log(`✅ Loaded ${mappedBookings.length} secure bookings`);
@@ -639,7 +728,22 @@ export const VendorBookingsSecure: React.FC = () => {
           ) : (
             <div className="space-y-4">
               <AnimatePresence>
-                {filteredBookings.map((booking, index) => (
+                {filteredBookings.map((booking, index) => {
+                  // 🔍 DEBUG: Log booking status before rendering
+                  console.log(`🎯 [VendorBookingsSecure] RENDERING BOOKING #${index}:`, {
+                    id: booking.id,
+                    status: booking.status,
+                    statusType: typeof booking.status,
+                    coupleName: booking.coupleName,
+                    willShowAs: booking.status === 'fully_paid' ? 'Fully Paid (should be blue)' : 
+                               booking.status === 'cancelled' ? 'Cancelled (red)' :
+                               booking.status === 'request' ? 'New Request (blue)' :
+                               booking.status === 'pending_review' ? 'Pending Review (yellow)' :
+                               booking.status === 'completed' ? 'Completed (gray)' :
+                               `${booking.status} (check mapping...)`
+                  });
+                  
+                  return (
                   <motion.div
                     key={booking.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -671,6 +775,9 @@ export const VendorBookingsSecure: React.FC = () => {
                           booking.status === 'confirmed' ? 'bg-green-100 text-green-800 border border-green-200' :
                           booking.status === 'in_progress' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
                           booking.status === 'completed' ? 'bg-gray-100 text-gray-800 border border-gray-200' :
+                          booking.status === 'fully_paid' ? 'bg-cyan-100 text-cyan-800 border border-cyan-200' :
+                          booking.status === 'paid_in_full' ? 'bg-cyan-100 text-cyan-800 border border-cyan-200' :
+                          booking.status === 'downpayment_paid' ? 'bg-teal-100 text-teal-800 border border-teal-200' :
                           'bg-red-100 text-red-800 border border-red-200'
                         }`}>
                           {booking.status === 'request' ? '📨 New Request' :
@@ -679,6 +786,9 @@ export const VendorBookingsSecure: React.FC = () => {
                            booking.status === 'confirmed' ? '✅ Confirmed' :
                            booking.status === 'in_progress' ? '🔄 In Progress' :
                            booking.status === 'completed' ? '✓ Completed' :
+                           booking.status === 'fully_paid' ? '💰 Fully Paid' :
+                           booking.status === 'paid_in_full' ? '💰 Fully Paid' :
+                           booking.status === 'downpayment_paid' ? '💵 Downpayment Paid' :
                            '❌ Cancelled'}
                         </span>
                       </div>
@@ -945,10 +1055,31 @@ export const VendorBookingsSecure: React.FC = () => {
                             <span>Send Quote</span>
                           </button>
                         )}
+
+                        {/* Mark as Complete Button - For Fully Paid Bookings */}
+                        {(booking.status === 'fully_paid' || booking.status === 'paid_in_full') && (
+                          <button
+                            onClick={() => handleMarkComplete(booking)}
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-200 font-semibold shadow-md hover:shadow-lg"
+                            title="Mark this booking as completed (requires couple confirmation)"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            <span>Mark Complete</span>
+                          </button>
+                        )}
+
+                        {/* Completed Badge - Show when fully completed */}
+                        {booking.status === 'completed' && (
+                          <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-100 to-purple-100 border-2 border-pink-300 text-pink-700 rounded-xl font-semibold">
+                            <Heart className="h-4 w-4 fill-current" />
+                            <span>Completed ✓</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </motion.div>
-                ))}
+                );
+                })}
               </AnimatePresence>
             </div>
           )}

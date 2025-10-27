@@ -35,7 +35,7 @@ export async function markBookingComplete(
   try {
     console.log(`📋 [CompletionService] Marking booking ${bookingId} complete by ${completedBy}`);
 
-    const response = await fetch(`${API_URL}/api/bookings/${bookingId}/complete`, {
+    const response = await fetch(`${API_URL}/api/bookings/${bookingId}/mark-completed`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

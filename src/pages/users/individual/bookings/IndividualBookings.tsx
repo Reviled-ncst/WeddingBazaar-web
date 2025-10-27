@@ -167,13 +167,15 @@ export const IndividualBookings: React.FC = () => {
     isOpen: boolean;
     title: string;
     message: string;
-    type: 'info' | 'warning' | 'danger';
+    type: 'info' | 'warning' | 'danger' | 'complete';
     onConfirm: () => void;
     confirmText?: string;
     cancelText?: string;
     showInput?: boolean;
     inputPlaceholder?: string;
     inputValue?: string;
+    bookingData?: EnhancedBooking; // For enhanced completion modal
+    completionStatus?: CompletionStatus | null; // For completion progress
   }>({
     isOpen: false,
     title: '',
@@ -521,12 +523,14 @@ export const IndividualBookings: React.FC = () => {
       ? `The vendor has already confirmed completion.\n\nBy confirming, you agree that the service was delivered satisfactorily and the booking will be FULLY COMPLETED.`
       : `Mark this booking with ${booking.vendorName || 'the vendor'} as complete?\n\nNote: The booking will only be fully completed when both you and the vendor confirm completion.`;
 
-    // Show confirmation modal
+    // Show ENHANCED confirmation modal with booking data
     setConfirmationModal({
       isOpen: true,
       title: '✅ Complete Booking',
       message: confirmMessage,
-      type: 'info',
+      type: 'complete', // New type for completion modal
+      bookingData: booking, // Pass booking data for enhanced UI
+      completionStatus: completionStatus, // Pass completion status
       onConfirm: async () => {
         setConfirmationModal(prev => ({ ...prev, isOpen: false }));
         
@@ -1645,66 +1649,279 @@ export const IndividualBookings: React.FC = () => {
 
       {/* Confirmation Modal */}
       {confirmationModal.isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
-            <div className="text-center">
-              <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${
-                confirmationModal.type === 'danger' ? 'bg-red-100' : 
-                confirmationModal.type === 'warning' ? 'bg-yellow-100' : 
-                'bg-blue-100'
-              }`}>
-                {confirmationModal.type === 'danger' ? (
-                  <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                ) : confirmationModal.type === 'warning' ? (
-                  <svg className="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                ) : (
-                  <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                )}
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{confirmationModal.title}</h3>
-              <p className="text-gray-600 mb-4 whitespace-pre-line">{confirmationModal.message}</p>
-              
-              {confirmationModal.showInput && (
-                <textarea
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent mb-4"
-                  rows={3}
-                  placeholder={confirmationModal.inputPlaceholder}
-                  value={confirmationModal.inputValue}
-                  onChange={(e) => setConfirmationModal(prev => ({ ...prev, inputValue: e.target.value }))}
-                />
-              )}
-              
-              <div className="flex gap-3">
-                {confirmationModal.cancelText && (
-                  <button
-                    onClick={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
-                    className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-                  >
-                    {confirmationModal.cancelText}
-                  </button>
-                )}
-                <button
-                  onClick={confirmationModal.onConfirm}
-                  className={`flex-1 px-4 py-2 rounded-lg transition-colors font-medium ${
-                    confirmationModal.type === 'danger' 
-                      ? 'bg-red-600 text-white hover:bg-red-700' 
-                      : confirmationModal.type === 'warning'
-                      ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                      : 'bg-pink-600 text-white hover:bg-pink-700'
-                  }`}
-                >
-                  {confirmationModal.confirmText}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <AnimatePresence>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          >
+            {confirmationModal.type === 'complete' && confirmationModal.bookingData ? (
+              // ✨ ENHANCED COMPLETION MODAL WITH WEDDING THEME
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                transition={{ type: "spring", duration: 0.5 }}
+                className="bg-gradient-to-br from-white via-pink-50 to-rose-50 rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden border-2 border-pink-200"
+              >
+                {/* Header with gradient */}
+                <div className="bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 p-6 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
+                  <div className="relative z-10">
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.2, type: "spring" }}
+                      className="flex items-center justify-center mb-3"
+                    >
+                      <div className="bg-white/20 backdrop-blur-md rounded-full p-4 shadow-lg">
+                        <CheckCircle className="w-10 h-10 text-white" />
+                      </div>
+                    </motion.div>
+                    <h3 className="text-2xl font-bold text-white text-center">
+                      Complete Your Booking
+                    </h3>
+                    <p className="text-pink-100 text-center text-sm mt-1">
+                      {confirmationModal.completionStatus?.vendorCompleted 
+                        ? '🎉 Final Step - Confirm Service Completion' 
+                        : '📋 Mark Service as Complete'
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                {/* Booking Information Card */}
+                <div className="p-6">
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 mb-6 border border-pink-100 shadow-md">
+                    <div className="flex items-start gap-4">
+                      <div className="bg-gradient-to-br from-pink-100 to-rose-100 rounded-xl p-3 flex-shrink-0">
+                        <Package className="w-6 h-6 text-pink-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-lg text-gray-900 mb-1">
+                          {confirmationModal.bookingData.serviceName}
+                        </h4>
+                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+                          <span className="font-medium">{confirmationModal.bookingData.vendorName}</span>
+                          {confirmationModal.bookingData.vendorRating && (
+                            <span className="flex items-center gap-1 text-yellow-600">
+                              <Star className="w-3 h-3 fill-current" />
+                              {confirmationModal.bookingData.vendorRating.toFixed(1)}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-pink-500" />
+                            <span className="text-gray-700">{confirmationModal.bookingData.formattedEventDate || confirmationModal.bookingData.eventDate}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-pink-500" />
+                            <span className="text-gray-700 truncate">{confirmationModal.bookingData.eventLocation}</span>
+                          </div>
+                          {confirmationModal.bookingData.totalAmount && (
+                            <div className="flex items-center gap-2 col-span-2">
+                              <DollarSign className="w-4 h-4 text-green-600" />
+                              <span className="font-semibold text-green-700">
+                                ₱{confirmationModal.bookingData.totalAmount.toLocaleString()}
+                              </span>
+                              <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                                Fully Paid
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Completion Progress */}
+                  <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl p-5 mb-6 border border-pink-200">
+                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-pink-600" />
+                      Completion Progress
+                    </h4>
+                    <div className="space-y-3">
+                      {/* Couple Completion */}
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          confirmationModal.completionStatus?.coupleCompleted 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-gray-200 text-gray-400'
+                        }`}>
+                          {confirmationModal.completionStatus?.coupleCompleted ? (
+                            <CheckCircle2 className="w-5 h-5" />
+                          ) : (
+                            <Heart className="w-5 h-5" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm text-gray-900">You (Couple)</p>
+                          <p className="text-xs text-gray-500">
+                            {confirmationModal.completionStatus?.coupleCompleted 
+                              ? '✅ Confirmed completion' 
+                              : '⏳ Awaiting confirmation'
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ 
+                            width: confirmationModal.completionStatus?.coupleCompleted 
+                              ? (confirmationModal.completionStatus?.vendorCompleted ? '100%' : '50%')
+                              : '0%'
+                          }}
+                          transition={{ duration: 0.8, ease: "easeOut" }}
+                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-pink-500 to-rose-500"
+                        />
+                      </div>
+
+                      {/* Vendor Completion */}
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          confirmationModal.completionStatus?.vendorCompleted 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-gray-200 text-gray-400'
+                        }`}>
+                          {confirmationModal.completionStatus?.vendorCompleted ? (
+                            <CheckCircle2 className="w-5 h-5" />
+                          ) : (
+                            <Users className="w-5 h-5" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm text-gray-900">
+                            {confirmationModal.bookingData.vendorName || 'Vendor'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {confirmationModal.completionStatus?.vendorCompleted 
+                              ? '✅ Confirmed completion' 
+                              : '⏳ Awaiting confirmation'
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Message */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                    <div className="flex gap-3">
+                      <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {confirmationModal.completionStatus?.vendorCompleted ? (
+                            <>
+                              <span className="font-semibold text-blue-900">Great news!</span> The vendor has already confirmed completion. 
+                              By confirming, you agree that the service was delivered satisfactorily and this booking will be <span className="font-semibold text-green-600">FULLY COMPLETED</span>.
+                            </>
+                          ) : (
+                            <>
+                              <span className="font-semibold text-blue-900">Note:</span> The booking will only be fully completed when <span className="font-semibold">both you and the vendor</span> confirm completion. 
+                              This ensures both parties are satisfied with the service delivery.
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+                      className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-200 transition-colors font-semibold shadow-sm border border-gray-200"
+                    >
+                      {confirmationModal.cancelText || 'Cancel'}
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={confirmationModal.onConfirm}
+                      className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all font-semibold flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                      {confirmationModal.confirmText || 'Confirm'}
+                    </motion.button>
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              // 📋 STANDARD CONFIRMATION MODAL (for other actions)
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full"
+              >
+                <div className="text-center">
+                  <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${
+                    confirmationModal.type === 'danger' ? 'bg-red-100' : 
+                    confirmationModal.type === 'warning' ? 'bg-yellow-100' : 
+                    'bg-blue-100'
+                  }`}>
+                    {confirmationModal.type === 'danger' ? (
+                      <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    ) : confirmationModal.type === 'warning' ? (
+                      <svg className="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{confirmationModal.title}</h3>
+                  <p className="text-gray-600 mb-4 whitespace-pre-line">{confirmationModal.message}</p>
+                  
+                  {confirmationModal.showInput && (
+                    <textarea
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent mb-4"
+                      rows={3}
+                      placeholder={confirmationModal.inputPlaceholder}
+                      value={confirmationModal.inputValue}
+                      onChange={(e) => setConfirmationModal(prev => ({ ...prev, inputValue: e.target.value }))}
+                    />
+                  )}
+                  
+                  <div className="flex gap-3">
+                    {confirmationModal.cancelText && (
+                      <button
+                        onClick={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+                        className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                      >
+                        {confirmationModal.cancelText}
+                      </button>
+                    )}
+                    <button
+                      onClick={confirmationModal.onConfirm}
+                      className={`flex-1 px-4 py-2 rounded-lg transition-colors font-medium ${
+                        confirmationModal.type === 'danger' 
+                          ? 'bg-red-600 text-white hover:bg-red-700' 
+                          : confirmationModal.type === 'warning'
+                          ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                          : 'bg-pink-600 text-white hover:bg-pink-700'
+                      }`}
+                    >
+                      {confirmationModal.confirmText}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       )}
 
       {/* Receipt Modal */}

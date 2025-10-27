@@ -9,7 +9,7 @@ import {
   TrendingUp, 
   Calendar, 
   Loader2,
-
+  Heart,
   MessageSquare,
   Star,
   DollarSign,
@@ -366,6 +366,21 @@ export const VendorBookings: React.FC = () => {
         fullResponse: data
       });
       
+      // 🔍 DETAILED STATUS DEBUG: Log raw booking data from API
+      if (data.bookings && data.bookings.length > 0) {
+        console.log('🔍 [VendorBookings] RAW BOOKING DATA FROM API:', data.bookings.map((b: any) => ({
+          id: b.id,
+          status: b.status,
+          statusType: typeof b.status,
+          statusLength: b.status?.length,
+          statusTrimmed: b.status?.trim(),
+          payment_status: b.payment_status,
+          total_amount: b.total_amount,
+          total_paid: b.total_paid,
+          couple_name: b.couple_name
+        })));
+      }
+      
       if (response.status === 200 && data.success && data.bookings) {
         console.log(`✅ [VendorBookings] SUCCESS: Found ${data.bookings.length} bookings!`);
         
@@ -409,6 +424,16 @@ export const VendorBookings: React.FC = () => {
         });
         
         console.log('📋 [VendorBookings] Setting bookings in state:', uiBookings);
+        
+        // 🔍 DEBUG: Log transformed booking statuses
+        console.log('🎯 [VendorBookings] TRANSFORMED BOOKING STATUSES:', uiBookings.map(b => ({
+          id: b.id,
+          originalStatus: data.bookings.find((rb: any) => rb.id === b.id)?.status,
+          transformedStatus: b.status,
+          statusMatch: data.bookings.find((rb: any) => rb.id === b.id)?.status === b.status,
+          coupleName: b.coupleName
+        })));
+        
         setBookings(uiBookings);
         
         if (!silent) {
@@ -655,6 +680,87 @@ export const VendorBookings: React.FC = () => {
   // SECURITY: Mock activities function removed to prevent fake data display
 
 
+
+  // Handle booking completion (vendor side)
+  const handleMarkComplete = async (booking: UIBooking) => {
+    if (!workingVendorId) {
+      showError('Authentication Error', 'Vendor ID not found. Please log in again.');
+      return;
+    }
+
+    try {
+      // Get current completion status
+      const completionStatus = await getCompletionStatus(booking.id);
+
+      // Check if booking is fully paid
+      const isFullyPaid = booking.status === 'fully_paid' || 
+                         booking.status === 'paid_in_full' || 
+                         booking.status === 'deposit_paid';
+
+      if (!isFullyPaid) {
+        showError(
+          'Cannot Mark Complete',
+          'This booking must be fully paid before marking as complete.'
+        );
+        return;
+      }
+
+      // Check if vendor has already marked complete
+      if (completionStatus?.vendorCompleted) {
+        showInfo(
+          'Already Confirmed',
+          'You have already confirmed completion for this booking. Waiting for couple confirmation.'
+        );
+        return;
+      }
+
+      // Determine message based on couple completion status
+      const confirmMessage = completionStatus?.coupleCompleted
+        ? `The couple has already confirmed completion.\n\nBy confirming, you agree that the service was delivered successfully and the booking will be FULLY COMPLETED.`
+        : `Mark this booking for ${booking.coupleName || 'the couple'} as complete?\n\nNote: The booking will only be fully completed when both you and the couple confirm completion.`;
+
+      // Show confirmation dialog
+      const confirmed = window.confirm(
+        `✅ Complete Booking\n\n${confirmMessage}\n\nDo you want to proceed?`
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      // Mark booking as complete
+      setLoading(true);
+      const result = await markBookingComplete(booking.id, 'vendor');
+
+      if (result.success) {
+        const successMsg = completionStatus?.coupleCompleted
+          ? '🎉 Booking Fully Completed!\n\nBoth you and the couple have confirmed. The booking is now marked as completed.'
+          : '✅ Completion Confirmed!\n\nYour confirmation has been recorded. The booking will be fully completed once the couple also confirms.';
+
+        showSuccess(
+          'Completion Confirmed',
+          successMsg
+        );
+
+        // Reload bookings to reflect new status
+        await loadBookings(true);
+        await loadStats();
+      } else {
+        showError(
+          'Completion Failed',
+          result.error || 'Failed to mark booking as complete. Please try again.'
+        );
+      }
+    } catch (error: any) {
+      console.error('❌ [VendorBookings] Error marking complete:', error);
+      showError(
+        'Error',
+        error.message || 'An error occurred while marking the booking as complete.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Manual refresh function
   const handleRefresh = async () => {
@@ -1209,6 +1315,17 @@ export const VendorBookings: React.FC = () => {
                         }
                       })
                       .map((booking, index) => {
+                      // 🔍 DEBUG: Log booking status before rendering
+                      console.log(`🎯 [VendorBookings] RENDERING BOOKING #${index}:`, {
+                        id: booking.id,
+                        status: booking.status,
+                        statusType: typeof booking.status,
+                        coupleName: booking.coupleName,
+                        willShowAs: booking.status === 'fully_paid' ? 'Fully Paid (Blue)' : 
+                                   booking.status === 'cancelled' ? 'Cancelled (Red)' : 
+                                   `${booking.status} (checking...)`
+                      });
+                      
                       return (
                         <motion.div
                           key={booking.id}
@@ -1237,9 +1354,17 @@ export const VendorBookings: React.FC = () => {
                                     booking.status === 'quote_sent' ? 'bg-blue-100 text-blue-800' :
                                     (booking.status === 'request' || booking.status === 'quote_requested') ? 'bg-yellow-100 text-yellow-800' :
                                     booking.status === 'completed' ? 'bg-purple-100 text-purple-800' :
+                                    (booking.status === 'fully_paid' || booking.status === 'paid_in_full') ? 'bg-blue-100 text-blue-800' :
+                                    booking.status === 'downpayment_paid' ? 'bg-cyan-100 text-cyan-800' :
+                                    booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                    booking.status === 'pending_cancellation' ? 'bg-orange-100 text-orange-800' :
                                     'bg-gray-100 text-gray-800'
                                   }`}>
-                                    {booking.status === 'request' ? 'New Request' : booking.status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                                    {booking.status === 'request' ? 'New Request' : 
+                                     booking.status === 'fully_paid' ? 'Fully Paid' :
+                                     booking.status === 'paid_in_full' ? 'Fully Paid' :
+                                     booking.status === 'downpayment_paid' ? 'Downpayment Paid' :
+                                     booking.status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                                   </span>
                                 </div>
                               </div>
@@ -1287,59 +1412,23 @@ export const VendorBookings: React.FC = () => {
                             
                             {/* Action Buttons */}
                             <div className="flex flex-row lg:flex-col gap-2 lg:min-w-[200px]">
-                              {/* TEST BUTTON - Simple state toggle to verify button functionality */}
-                              <button> {
-                                type="button" [VendorBookings] View Details clicked for booking:', booking.id);
-                                onClick={() => {ndorBookings] Booking data:', {
-                                  console.log('🧪 [TEST] Simple button clicked!');
-                                  alert('Button is working! Booking ID: ' + booking.id);
-                                }}
-                                className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-300 text-sm font-medium"
-                              >
-                                🧪 Test
-                              </button>
-
-                              <buttontate updated: showDetails=true');
+                              {/* View Details Button */}
+                              <button
                                 type="button"
-                                onClick={(e) => {items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-lg hover:from-rose-600 hover:to-pink-600 transition-all duration-300 text-sm font-medium"
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  console.log('🔍 [VendorBookings] ========== VIEW DETAILS CLICKED ==========');
-                                  console.log('🔍 [VendorBookings] Event object:', e);
-                                  console.log('🔍 [VendorBookings] Booking ID:', booking.id);
-                                  console.log('📋 [VendorBookings] Full Booking data:', JSON.stringify({sted') && (
-                                    id: booking.id,
-                                    coupleName: booking.coupleName,{
-                                    status: booking.status,  setSelectedBooking(booking);
-                                    eventLocation: booking.eventLocation,erviceDataForQuote(booking);
-                                    guestCount: booking.guestCount,ceData(serviceData);
-                                    serviceType: booking.serviceType
-                                  }, null, 2));
-                                  console.log('🔍 [VendorBookings] Current states BEFORE update:');er gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-300 text-sm font-medium"
-                                  console.log('   - showDetails:', showDetails);
-                                  console.log('   - selectedBooking:', selectedBooking?.id || 'null');Square className="h-4 w-4" />
-                                  Send Quote
-                                  // Use setTimeout to ensure state updates happen in next tick
-                                  setSelectedBooking(booking);}
+                                onClick={() => {
+                                  setSelectedBooking(booking);
                                   setShowDetails(true);
-                                  
-                                  // Check state after a short delay={() => {
-                                  setTimeout(() => {    const coupleName = booking.coupleName && booking.coupleName !== 'Unknown Couple' ? booking.coupleName : 'there';
-                                    console.log('✅ [VendorBookings] States after update (async check):'););
-                                    console.log('   - showDetails should be true'); emailBody = encodeURIComponent(`Hi ${coupleName},\import { getVendorIdForUser, debugVendorIdResolution } from '../../../../utils/vendorIdMapping';\nn\nThank you for your inquiry about our ${booking.serviceType} services for your special day.\n\nBest regards`);
-                                    console.log('   - selectedBooking should be:', booking.id);booking.contactEmail}?subject=${emailSubject}&body=${emailBody}`);
-                                    console.log('🔍 [VendorBookings] ========== END VIEW DETAILS CLICK ==========');
-                                  }, 100);gap-2 px-4 py-2 bg-white border border-rose-200 text-rose-600 rounded-lg hover:bg-rose-50 transition-all duration-300 text-sm font-medium"
                                 }}
                                 className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-lg hover:from-rose-600 hover:to-pink-600 transition-all duration-300 text-sm font-medium"
-                              >act
+                              >
                                 <Eye className="h-4 w-4" />
-                                View Details>
+                                View Details
                               </button>
                               
-                              {(booking.status === 'request' || booking.status === 'quote_requested') && (ver overlay */}
-                                <buttonlassName="absolute inset-0 bg-gradient-to-r from-rose-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"></div>
-                                  onClick={async () => {on.div>
+                              {/* Send Quote Button - For new requests */}
+                              {(booking.status === 'request' || booking.status === 'quote_requested') && (
+                                <button
+                                  onClick={async () => {
                                     setSelectedBooking(booking);
                                     const serviceData = await fetchServiceDataForQuote(booking);
                                     setSelectedServiceData(serviceData);
@@ -1348,87 +1437,107 @@ export const VendorBookings: React.FC = () => {
                                   className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-300 text-sm font-medium"
                                 >
                                   <MessageSquare className="h-4 w-4" />
-                                  Send Quote{ opacity: 1 }}
-                                </button>ose-200/30 bg-gradient-to-r from-rose-50/30 to-pink-50/20"
+                                  Send Quote
+                                </button>
                               )}
-                              lex flex-col sm:flex-row items-center justify-between gap-4">
-                              <buttonName="flex items-center gap-4">
-                                onClick={() => {ssName="text-sm text-gray-600">
-                                  const coupleName = booking.coupleName && booking.coupleName !== 'Unknown Couple' ? booking.coupleName : 'there';  Showing <span className="font-semibold text-gray-900">{((currentPage - 1) * 10) + 1}</span> to{' '}
-                                  const emailSubject = encodeURIComponent('Regarding your wedding booking');ld text-gray-900">{Math.min(currentPage * 10, pagination.total_items)}</span> of{' '}
-                                  const emailBody = encodeURIComponent(`Hi ${coupleName},\import { getVendorIdForUser, debugVendorIdResolution } from '../../../../utils/vendorIdMapping';\nn\nThank you for your inquiry about our ${booking.serviceType} services for your special day.\n\nBest regards`);
+                              
+                              {/* Mark as Complete Button - For fully paid bookings */}
+                              {(booking.status === 'fully_paid' || booking.status === 'paid_in_full') && (
+                                <button
+                                  onClick={() => handleMarkComplete(booking)}
+                                  className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-300 text-sm font-medium hover:shadow-lg hover:scale-105"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                  Mark as Complete
+                                </button>
+                              )}
+                              
+                              {/* Completed Badge - For completed bookings */}
+                              {booking.status === 'completed' && (
+                                <div className="flex-1 lg:flex-none px-4 py-2 bg-gradient-to-r from-pink-100 to-purple-100 border-2 border-pink-300 text-pink-700 rounded-lg flex items-center justify-center gap-2 font-semibold text-sm">
+                                  <Heart className="h-4 w-4 fill-current" />
+                                  Completed ✓
+                                </div>
+                              )}
+                              
+                              {/* Contact Button */}
+                              <button
+                                onClick={() => {
+                                  const coupleName = booking.coupleName && booking.coupleName !== 'Unknown Couple' ? booking.coupleName : 'there';
+                                  const emailSubject = encodeURIComponent('Regarding your wedding booking');
+                                  const emailBody = encodeURIComponent(`Hi ${coupleName},\n\nThank you for your inquiry about our ${booking.serviceType} services for your special day.\n\nBest regards`);
                                   window.open(`mailto:${booking.contactEmail}?subject=${emailSubject}&body=${emailBody}`);
-                                }}  
-                                className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-rose-200 text-rose-600 rounded-lg hover:bg-rose-50 transition-all duration-300 text-sm font-medium"   {/* Results per page selector */}
-                              >  <select 
-                                <Mail className="h-4 w-4" />                            className="text-sm bg-white border border-rose-200 rounded-lg px-2 py-1"
-                                Contactpage"
-                              </button>er page"
+                                }}
+                                className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-rose-200 text-rose-600 rounded-lg hover:bg-rose-50 transition-all duration-300 text-sm font-medium"
+                              >
+                                <Mail className="h-4 w-4" />
+                                Contact
+                              </button>
                             </div>
-                          </div>>10 per page</option>
-                          >25 per page</option>
+                          </div>
+                          
                           {/* Enhanced hover overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-rose-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"></div>     </select>
+                          <div className="absolute inset-0 bg-gradient-to-r from-rose-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"></div>
                         </motion.div>
                       );
-                    })}-x-2">
+                    })}
                   </div>
 
                   {/* Enhanced Pagination */}
-                  {pagination && pagination.total_pages > 1 && (assName="px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"
-                    <motion.div   title="First page"
+                  {pagination && pagination.total_pages > 1 && (
+                    <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       className="px-6 py-6 border-t border-rose-200/30 bg-gradient-to-r from-rose-50/30 to-pink-50/20"
                     >
                       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-4"> onClick={() => setCurrentPage(currentPage - 1)}
+                        <div className="flex items-center gap-4">
                           <p className="text-sm text-gray-600">
-                            Showing <span className="font-semibold text-gray-900">{((currentPage - 1) * 10) + 1}</span> to{' '}der-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"
+                            Showing <span className="font-semibold text-gray-900">{((currentPage - 1) * 10) + 1}</span> to{' '}
                             <span className="font-semibold text-gray-900">{Math.min(currentPage * 10, pagination.total_items)}</span> of{' '}
-                            <span className="font-semibold text-gray-900">{pagination.total_items}</span> bookingss
-                          </p>tton>
+                            <span className="font-semibold text-gray-900">{pagination.total_items}</span> bookings
+                          </p>
                             
                           {/* Results per page selector */}
-                          <select assName="flex items-center space-x-1">
-                            className="text-sm bg-white border border-rose-200 rounded-lg px-2 py-1" pagination.total_pages) }, (_, i) => {
-                            title="Items per page"e - 2 + i;
+                          <select
+                            className="text-sm bg-white border border-rose-200 rounded-lg px-2 py-1"
+                            title="Items per page"
                             aria-label="Select number of items per page"
                           >
-                            <option value="10">10 per page</option>   return (
-                            <option value="25">25 per page</option>button
-                            <option value="50">50 per page</option>ey={pageNum}
-                          </select>        onClick={() => setCurrentPage(pageNum)}
-                        </div> className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                            <option value="10">10 per page</option>
+                            <option value="25">25 per page</option>
+                            <option value="50">50 per page</option>
+                          </select>
+                        </div>
                         
-                        <div className="flex items-center space-x-2">from-rose-500 to-pink-500 text-white shadow-lg'
+                        <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => setCurrentPage(1)}       }`}
+                            onClick={() => setCurrentPage(1)}
                             disabled={currentPage === 1}
-                            className="px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"pageNum}
-                            title="First page"      </button>
+                            className="px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"
+                            title="First page"
                           >
                             First
                           </button>
                           
                           <button
-                            onClick={() => setCurrentPage(currentPage - 1)}Click={() => setCurrentPage(currentPage + 1)}
-                            disabled={!pagination.hasPrev}!pagination.hasNext}
-                            className="px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={!pagination.hasPrev}
+                            className="px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"
                           >
                             Previous
                           </button>
                           
                           {/* Page numbers */}
-                          <div className="flex items-center space-x-1">}
-                            {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {{currentPage === pagination.total_pages}
-                              const pageNum = currentPage - 2 + i;Name="px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"
-                              if (pageNum < 1 || pageNum > pagination.total_pages) return null;e"
+                          <div className="flex items-center space-x-1">
+                            {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                              const pageNum = currentPage - 2 + i;
+                              if (pageNum < 1 || pageNum > pagination.total_pages) return null;
                               
                               return (
-                                <buttonton>
+                                <button
                                   key={pageNum}
-                                  onClick={() => setCurrentPage(pageNum)}v>
+                                  onClick={() => setCurrentPage(pageNum)}
                                   className={`px-3 py-2 text-sm rounded-lg transition-colors ${
                                     pageNum === currentPage
                                       ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg'
@@ -1439,48 +1548,39 @@ export const VendorBookings: React.FC = () => {
                                 </button>
                               );
                             })}
-                          </div>, {
+                          </div>
                           
                           <button
-                            onClick={() => setCurrentPage(currentPage + 1)}Booking?.id,
-                            disabled={!pagination.hasNext}ooking?.eventLocation
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={!pagination.hasNext}
                             className="px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"
-                          >al
-                            Nextking ? {
+                          >
+                            Next
                           </button>
-                          selectedBooking.vendorId,
-                          <button selectedBooking.coupleId,
-                            onClick={() => setCurrentPage(pagination.total_pages)}Name: selectedBooking.coupleName,
-                            disabled={currentPage === pagination.total_pages}mail: selectedBooking.contactEmail,
-                            className="px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors" selectedBooking.contactPhone,
-                            title="Last page"iceType: selectedBooking.serviceType,
-                          >entDate: selectedBooking.eventDate,
-                            Last          eventTime: selectedBooking.eventTime,
-                          </button>ventLocation,
-                        </div>Count: selectedBooking.guestCount,
+                          
+                          <button
+                            onClick={() => setCurrentPage(pagination.total_pages)}
+                            disabled={currentPage === pagination.total_pages}
+                            className="px-3 py-2 text-sm border border-rose-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rose-50 transition-colors"
+                            title="Last page"
+                          >
+                            Last
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
                   )}
                 </>
               )}
             </div>
-          </motion.div> selectedBooking.updatedAt,
-        </div>enueDetails: (selectedBooking as any).venueDetails || undefined,
-      </div>: selectedBooking.preferredContactMethod,
-ng.budgetRange,
-      {/* Vendor Booking Details Modal */}edBooking.responseMessage,
-      {(() => {d
-        console.log('🎭 [VendorBookings] ===== MODAL RENDER CHECK =====');
-        console.log('🎭 [VendorBookings] isOpen (showDetails):', showDetails);
-        console.log('🎭 [VendorBookings] selectedBooking exists:', !!selectedBooking);
-        console.log('🎭 [VendorBookings] selectedBooking:', selectedBooking);: string, message?: string) => {
-        console.log('🎭 [VendorBookings] Should modal render?', showDetails && !!selectedBooking);s BookingStatus, message);
-        console.log('🎭 [VendorBookings] ===== END MODAL RENDER CHECK =====');
-        return null;
-      })()}
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Vendor Booking Details Modal */}
       <VendorBookingDetailsModal
         booking={selectedBooking ? {
-          id: selectedBooking.id,ServiceDataForQuote(booking as UIBooking);
+          id: selectedBooking.id,
           vendorId: selectedBooking.vendorId,
           coupleId: selectedBooking.coupleId,
           coupleName: selectedBooking.coupleName,
@@ -1491,199 +1591,54 @@ ng.budgetRange,
           eventTime: selectedBooking.eventTime,
           eventLocation: selectedBooking.eventLocation,
           guestCount: selectedBooking.guestCount,
-          specialRequests: selectedBooking.specialRequests,ote Modal */}
-          status: selectedBooking.status,ectedBooking && (
+          specialRequests: selectedBooking.specialRequests,
+          status: selectedBooking.status,
           quoteAmount: selectedBooking.quoteAmount,
           totalAmount: selectedBooking.totalAmount,
           totalPaid: selectedBooking.totalPaid,
-          createdAt: selectedBooking.createdAt,booking={selectedBooking}
+          createdAt: selectedBooking.createdAt,
           updatedAt: selectedBooking.updatedAt,
           venueDetails: (selectedBooking as any).venueDetails || undefined,
-          preferredContactMethod: selectedBooking.preferredContactMethod,  try {
-          budgetRange: selectedBooking.budgetRange, Sending quote:', quoteData);
+          preferredContactMethod: selectedBooking.preferredContactMethod,
+          budgetRange: selectedBooking.budgetRange,
           responseMessage: selectedBooking.responseMessage,
-          formatted: selectedBooking.formattedsummary for the booking record
-        } : null}    const quoteItemsSummary = quoteData.serviceItems.map((item: any) => 
-        isOpen={showDetails}ormatPHP(item.total)} (${item.quantity}x ${formatPHP(item.unitPrice)})`
-        onClose={() => setShowDetails(false)}    ).join('; ');
-        onUpdateStatus={(bookingId: string, newStatus: string, message?: string) => {
-              const quoteSummary = [
-                `ITEMIZED QUOTE: ${quoteData.serviceItems.length} items`,
-                `Items: ${quoteItemsSummary}`,
-                `Subtotal: ${formatPHP(quoteData.pricing.subtotal)}`,
-                quoteData.pricing.tax > 0 ? `Tax: ${formatPHP(quoteData.pricing.tax)}` : null,
-                `TOTAL: ${formatPHP(quoteData.pricing.total)}`,
-                quoteData.message ? `Message: ${quoteData.message}` : null,
-                `Valid until: ${quoteData.validUntil}`,
-                quoteData.terms ? `Terms: ${quoteData.terms}` : null
-              ].filter(Boolean).join(' | ');
-              
-              console.log('📋 [VendorBookings] Quote summary prepared:', quoteSummary);
-              
-              // Update booking status to 'quote_sent' with the detailed quote information
-              try {
-                console.log('🔄 [VendorBookings] Updating booking status to quote_sent with quote details...');
-                
-                // Try to update the status using the centralized API
-                let statusUpdateSucceeded = false;
-                try {
-                  const updateResult = await bookingApiService.updateBookingStatus(selectedBooking.id, 'quote_sent', quoteSummary);
-                  console.log('📡 [VendorBookings] Backend status update response:', updateResult);
-                  
-                  // Check if the backend actually updated the status
-                  if (updateResult && updateResult.status === 'quote_sent') {
-                    console.log('✅ [VendorBookings] Backend confirmed status change to quote_sent');
-                    statusUpdateSucceeded = true;
-                  } else {
-                    console.warn('⚠️ [VendorBookings] Backend did not confirm status change. Response status:', updateResult?.status);
-                    console.warn('⚠️ [VendorBookings] Full backend response:', updateResult);
-                    statusUpdateSucceeded = false;
-                  }
-                } catch (backendError) {
-                  console.error('💥 [VendorBookings] Backend status update failed:', backendError);
-                  statusUpdateSucceeded = false;
-                }
-                
-                // If backend update failed, update the local booking state directly
-                if (!statusUpdateSucceeded) {
-                  console.log('� [VendorBookings] Backend status update failed, updating local state directly');
-                  
-                  // Update the selected booking in local state
-                  const updatedBooking = {
-                    ...selectedBooking,
-                    status: 'quote_sent',
-                    vendorNotes: quoteSummary,
-                    quoteSentDate: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                  };
-                  
-                  // Update bookings list with the new status
-                  setBookings(currentBookings => 
-                    currentBookings.map(booking => 
-                      booking.id === selectedBooking.id 
-                        ? updatedBooking
-                        : booking
-                    )
-                  );
-                  
-                  console.log('✅ [VendorBookings] Local booking state updated to quote_sent');
-                } else {
-                  // Backend update succeeded, reload from server
-                  console.log('🔄 [VendorBookings] Backend update succeeded, reloading from server...');
-                  
-                  // Add a small delay to ensure backend has fully processed
-                  await new Promise(resolve => setTimeout(resolve, 500));
-                  
-                  // Reload bookings and stats
-                  await loadBookings(true); // Silent reload
-                  await loadStats();
-                  
-                  // Update the selected booking for the details modal
-                  const refreshedBookings = await fetch(`${apiUrl}/api/bookings/vendor/${workingVendorId}`);
-                  const refreshedData = await refreshedBookings.json();
-                  if (refreshedData.success && refreshedData.bookings) {
-                    const updatedBooking = refreshedData.bookings.find((b: any) => b.id.toString() === selectedBooking.id.toString());
-                    if (updatedBooking) {
-                      // Convert to UI format for consistency
-                      const coupleName = await getCoupleDisplayName(updatedBooking);
-                      const uiUpdatedBooking = {
-                        id: updatedBooking.id,
-                        vendorId: updatedBooking.vendor_id || workingVendorId,
-                        vendorName: updatedBooking.vendor_name || 'Vendor',
-                        coupleId: updatedBooking.couple_id,
-                        coupleName: coupleName,
-                        contactEmail: updatedBooking.contact_email || 'no-email@example.com',
-                        contactPhone: updatedBooking.contact_phone || 'N/A',
-                        serviceType: updatedBooking.service_type || updatedBooking.service_name || 'Service',
-                        eventDate: updatedBooking.event_date ? updatedBooking.event_date.split('T')[0] : 'Not specified',
-                        eventTime: updatedBooking.event_time || 'Not specified',
-                        eventLocation: updatedBooking.event_location || 'Location not provided',
-                        guestCount: updatedBooking.guest_count || 0,
-                        specialRequests: updatedBooking.special_requests || '',
-                        status: updatedBooking.status || 'pending',
-                        budgetRange: updatedBooking.budget_range || 'To be discussed',
-                        totalAmount: updatedBooking.total_amount || 0,
-                        quoteAmount: updatedBooking.quote_amount,
-                        downpaymentAmount: updatedBooking.deposit_amount,
-                        totalPaid: updatedBooking.total_paid || 0,
-                        remainingBalance: (updatedBooking.total_amount || 0) - (updatedBooking.total_paid || 0),
-                        paymentProgressPercentage: updatedBooking.total_amount ? ((updatedBooking.total_paid || 0) / updatedBooking.total_amount) * 100 : 0,
-                        createdAt: updatedBooking.created_at,
-                        updatedAt: updatedBooking.updated_at,
-                        preferredContactMethod: updatedBooking.preferred_contact_method || 'email',
-                        responseMessage: updatedBooking.response_message,
-                        formatted: {
-                          totalAmount: formatPHP(updatedBooking.total_amount || 0),
-                          totalPaid: formatPHP(updatedBooking.total_paid || 0),
-                          remainingBalance: formatPHP((updatedBooking.total_amount || 0) - (updatedBooking.total_paid || 0)),
-                          downpaymentAmount: formatPHP(updatedBooking.deposit_amount || 0)
-                        }
-                      };
-                      setSelectedBooking(uiUpdatedBooking as any);
-                      console.log('✅ [VendorBookings] Selected booking updated with latest status:', uiUpdatedBooking.status);
-                    }
-                  }
-                }
-                
-                // Show appropriate success message based on what actually worked
-                const statusMessage = statusUpdateSucceeded 
-                  ? "They will receive an email notification and the booking status has been updated to 'Quote Sent'."
-                  : "They will receive an email notification and the booking status has been updated locally to 'Quote Sent'.";
-                
-                showSuccess(
-                  'Quote Sent Successfully!', 
-                  `Your detailed quote with ${quoteData.serviceItems.length} items totaling ${formatPHP(quoteData.pricing.total)} has been sent to the client. ${statusMessage}`
-                );
-                
-              } catch (statusError) {
-                console.error('💥 [VendorBookings] Failed to update booking status after quote send:', statusError);
-                console.error('💥 [VendorBookings] Status error details:', {
-                  bookingId: selectedBooking.id,
-                  newStatus: 'quote_sent',
-                  message: quoteSummary,
-                  error: statusError instanceof Error ? statusError.message : String(statusError)
-                });
-                
-                // Show success for quote creation but error for status update
-                showSuccess(
-                  'Quote Sent Successfully!', 
-                  `Your detailed quote with ${quoteData.serviceItems.length} items totaling ${formatPHP(quoteData.pricing.total)} has been sent to the client. They will receive an email notification.`
-                );
-                
-                // Show separate error for status update
-                showError(
-                  'Update Failed', 
-                  'Failed to update booking status. Please try again.'
-                );
-                
-                // Don't throw error - the quote was created successfully
-                console.log('⚠️ [VendorBookings] Quote created successfully but status update failed');
-              }
-              
-              // Close modals with a small delay to allow success message to show
-              setTimeout(() => {
-                setShowQuoteModal(false);
-                // Also close details modal so user can see the updated booking list
-                setShowDetails(false);
-              }, 1000);
-              
-            } catch (error) {
-              console.error('💥 [VendorBookings] Quote sending failure:', error);
-              showError(
-                'Quote Send Failed', 
-                (error as Error)?.message || 'Failed to send quote. Please check your connection and try again.'
-              );
-            }
+          formatted: selectedBooking.formatted
+        } : null}
+        isOpen={showDetails}
+        onClose={() => setShowDetails(false)}
+        onUpdateStatus={async (bookingId: string, newStatus: string, message?: string) => {
+          try {
+            console.log(' [VendorBookings] Updating booking status:', { bookingId, newStatus, message });
+            await bookingApiService.updateBookingStatus(bookingId, newStatus as BookingStatus, message);
+            await loadBookings(true);
+            await loadStats();
+            showSuccess('Status Updated', `Booking status updated to ${newStatus}`);
+          } catch (error) {
+            console.error('💥 [VendorBookings] Status update failed:', error);
+            showError('Update Failed', 'Failed to update booking status');
+          }
+        }}
+      />
+
+      {/* Send Quote Modal */}
+      {showQuoteModal && selectedBooking && (
+        <SendQuoteModal
+          booking={selectedBooking}
+          serviceData={selectedServiceData}
+          isOpen={showQuoteModal}
+          onClose={() => {
+            setShowQuoteModal(false);
+            setSelectedServiceData(null);
+          }}
+          onSendQuote={async () => {
+            setShowQuoteModal(false);
+            setSelectedServiceData(null);
+            await loadBookings(true);
+            await loadStats();
+            showSuccess('Quote Sent', 'Your quote has been sent successfully');
           }}
         />
       )}
-
-      {/* DEPRECATED - Old inline modal - Remove this entire section */}
-      {/* TODO: Remove this old inline modal implementation 
-      {showDetails && selectedBooking && (
-        // ...existing code...
-      )}
-      */}
     </div>
   );
 };
