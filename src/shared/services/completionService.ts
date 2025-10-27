@@ -50,9 +50,22 @@ export async function markBookingComplete(
       throw new Error(data.error || data.message || 'Failed to mark booking as completed');
     }
 
-    // Map backend response to frontend format
     const backendBooking = data.booking;
-    const completionStatus: CompletionStatus = {
+    
+    // Check if response is already in camelCase
+    const alreadyCamelCase = backendBooking.vendorCompleted !== undefined;
+    
+    const completionStatus: CompletionStatus = alreadyCamelCase ? {
+      vendorCompleted: backendBooking.vendorCompleted,
+      vendorCompletedAt: backendBooking.vendorCompletedAt,
+      coupleCompleted: backendBooking.coupleCompleted,
+      coupleCompletedAt: backendBooking.coupleCompletedAt,
+      fullyCompleted: backendBooking.fullyCompleted,
+      fullyCompletedAt: backendBooking.fullyCompletedAt,
+      currentStatus: backendBooking.status,
+      canComplete: !backendBooking.fullyCompleted,
+      waitingFor: data.waiting_for || data.waitingFor,
+    } : {
       vendorCompleted: backendBooking.vendor_completed,
       vendorCompletedAt: backendBooking.vendor_completed_at,
       coupleCompleted: backendBooking.couple_completed,
@@ -105,21 +118,34 @@ export async function getCompletionStatus(bookingId: string): Promise<Completion
       return null;
     }
 
-    // Backend returns snake_case, map to camelCase
-    const backendStatus = data.completion_status;
+    // Support both camelCase (new backend) and snake_case (old backend)
+    const status = data.completionStatus || data.completion_status;
+    
+    if (!status) {
+      console.error('❌ [CompletionService] No completion status in response');
+      return null;
+    }
+
+    // If already in camelCase, use directly
+    if (status.vendorCompleted !== undefined) {
+      console.log('✅ [CompletionService] Using camelCase format:', status);
+      return status;
+    }
+
+    // Otherwise map from snake_case to camelCase
     const mapped: CompletionStatus = {
-      vendorCompleted: backendStatus.vendor_completed,
-      vendorCompletedAt: backendStatus.vendor_completed_at,
-      coupleCompleted: backendStatus.couple_completed,
-      coupleCompletedAt: backendStatus.couple_completed_at,
-      fullyCompleted: backendStatus.fully_completed,
-      fullyCompletedAt: backendStatus.fully_completed_at,
-      currentStatus: backendStatus.status,
-      canComplete: !backendStatus.fully_completed,
-      waitingFor: backendStatus.waiting_for,
+      vendorCompleted: status.vendor_completed,
+      vendorCompletedAt: status.vendor_completed_at,
+      coupleCompleted: status.couple_completed,
+      coupleCompletedAt: status.couple_completed_at,
+      fullyCompleted: status.fully_completed,
+      fullyCompletedAt: status.fully_completed_at,
+      currentStatus: status.status,
+      canComplete: !status.fully_completed,
+      waitingFor: status.waiting_for,
     };
 
-    console.log('✅ [CompletionService] Completion status:', mapped);
+    console.log('✅ [CompletionService] Mapped from snake_case:', mapped);
     return mapped;
 
   } catch (error: any) {
