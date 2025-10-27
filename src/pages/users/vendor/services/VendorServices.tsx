@@ -847,12 +847,12 @@ export const VendorServices: React.FC = () => {
               </div>
               
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                {/* Upgrade Plan Button - Only show for free tier */}
-                {subscription?.plan?.tier === 'basic' && (
+                {/* Upgrade Plan Button - Show for all tiers except enterprise */}
+                {subscription?.plan?.tier !== 'enterprise' && (
                   <button
                     onClick={handleOpenUpgradeModal}
                     className="group w-full sm:w-auto px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white hover:from-purple-700 hover:via-pink-700 hover:to-rose-700 hover:scale-105 relative overflow-hidden"
-                    title="Upgrade to unlock unlimited services"
+                    title={subscription?.plan?.tier === 'basic' ? 'Upgrade to unlock unlimited services' : 'Upgrade to access more premium features'}
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <Crown size={20} className="group-hover:rotate-12 transition-transform duration-300" />
