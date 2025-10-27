@@ -162,26 +162,41 @@ export function canMarkComplete(
   userRole: 'vendor' | 'couple',
   completionStatus?: CompletionStatus
 ): boolean {
+  console.log('🔍 [canMarkComplete] Checking if user can mark complete:', {
+    bookingId: booking.id,
+    bookingStatus: booking.status,
+    userRole,
+    completionStatus,
+    fullyCompleted: completionStatus?.fullyCompleted,
+    vendorCompleted: completionStatus?.vendorCompleted,
+    coupleCompleted: completionStatus?.coupleCompleted
+  });
+
   // If already fully completed, can't mark again
   if (completionStatus?.fullyCompleted || booking.status === 'completed') {
+    console.log('❌ [canMarkComplete] Already fully completed');
     return false;
   }
 
   // Must be fully paid or in completion process
   const validStatuses = ['paid_in_full', 'fully_paid', 'deposit_paid'];
   if (!validStatuses.includes(booking.status)) {
+    console.log('❌ [canMarkComplete] Invalid status. Status:', booking.status, 'Valid:', validStatuses);
     return false;
   }
 
   // Check if this user has already marked complete
   if (userRole === 'vendor' && completionStatus?.vendorCompleted) {
+    console.log('❌ [canMarkComplete] Vendor already marked complete');
     return false;
   }
 
   if (userRole === 'couple' && completionStatus?.coupleCompleted) {
+    console.log('❌ [canMarkComplete] Couple already marked complete');
     return false;
   }
 
+  console.log('✅ [canMarkComplete] User CAN mark complete');
   return true;
 }
 

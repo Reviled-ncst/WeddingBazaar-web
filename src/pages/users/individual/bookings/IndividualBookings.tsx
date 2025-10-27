@@ -496,6 +496,12 @@ export const IndividualBookings: React.FC = () => {
 
   // Handle booking completion (couple side)
   const handleMarkComplete = async (booking: EnhancedBooking) => {
+    console.log('🔍 [handleMarkComplete] Starting completion check for booking:', {
+      id: booking.id,
+      status: booking.status,
+      vendorName: booking.vendorName
+    });
+
     if (!user?.id) {
       setConfirmationModal({
         isOpen: true,
@@ -510,10 +516,17 @@ export const IndividualBookings: React.FC = () => {
     }
 
     // Get current completion status
+    console.log('📋 [handleMarkComplete] Fetching completion status...');
     const completionStatus = await getCompletionStatus(booking.id);
+    console.log('📋 [handleMarkComplete] Completion status result:', completionStatus);
 
     // Check if can mark complete
-    if (!canMarkComplete(booking, 'couple', completionStatus || undefined)) {
+    console.log('🔍 [handleMarkComplete] Checking canMarkComplete...');
+    const canComplete = canMarkComplete(booking, 'couple', completionStatus || undefined);
+    console.log('🔍 [handleMarkComplete] canMarkComplete result:', canComplete);
+
+    if (!canComplete) {
+      console.error('❌ [handleMarkComplete] Cannot mark complete. Booking status:', booking.status, 'Completion status:', completionStatus);
       setErrorMessage('This booking cannot be marked as complete yet. It must be fully paid first.');
       setShowErrorModal(true);
       return;
@@ -1313,7 +1326,9 @@ export const IndividualBookings: React.FC = () => {
                         )}
 
                         {/* Mark as Complete Button - Show for fully paid bookings (two-sided completion) */}
-                        {(booking.status === 'fully_paid' || booking.status === 'paid_in_full') && (
+                        {/* Only show if status is fully_paid/paid_in_full AND not already completed */}
+                        {(booking.status === 'fully_paid' || booking.status === 'paid_in_full') && 
+                         booking.status !== 'completed' && (
                           <button
                             onClick={() => handleMarkComplete(booking)}
                             className="w-full px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
