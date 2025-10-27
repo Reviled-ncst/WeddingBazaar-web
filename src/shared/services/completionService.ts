@@ -50,8 +50,28 @@ export async function markBookingComplete(
       throw new Error(data.error || data.message || 'Failed to mark booking as completed');
     }
 
-    console.log('✅ [CompletionService] Booking completion updated:', data.completionStatus);
-    return data;
+    // Map backend response to frontend format
+    const backendBooking = data.booking;
+    const completionStatus: CompletionStatus = {
+      vendorCompleted: backendBooking.vendor_completed,
+      vendorCompletedAt: backendBooking.vendor_completed_at,
+      coupleCompleted: backendBooking.couple_completed,
+      coupleCompletedAt: backendBooking.couple_completed_at,
+      fullyCompleted: backendBooking.fully_completed,
+      fullyCompletedAt: backendBooking.fully_completed_at,
+      currentStatus: backendBooking.status,
+      canComplete: !backendBooking.fully_completed,
+      waitingFor: data.waiting_for,
+    };
+
+    console.log('✅ [CompletionService] Booking completion updated:', completionStatus);
+    
+    return {
+      success: true,
+      message: data.message,
+      booking: backendBooking,
+      completionStatus,
+    };
 
   } catch (error: any) {
     console.error('❌ [CompletionService] Error:', error);
@@ -85,8 +105,22 @@ export async function getCompletionStatus(bookingId: string): Promise<Completion
       return null;
     }
 
-    console.log('✅ [CompletionService] Completion status:', data.completionStatus);
-    return data.completionStatus;
+    // Backend returns snake_case, map to camelCase
+    const backendStatus = data.completion_status;
+    const mapped: CompletionStatus = {
+      vendorCompleted: backendStatus.vendor_completed,
+      vendorCompletedAt: backendStatus.vendor_completed_at,
+      coupleCompleted: backendStatus.couple_completed,
+      coupleCompletedAt: backendStatus.couple_completed_at,
+      fullyCompleted: backendStatus.fully_completed,
+      fullyCompletedAt: backendStatus.fully_completed_at,
+      currentStatus: backendStatus.status,
+      canComplete: !backendStatus.fully_completed,
+      waitingFor: backendStatus.waiting_for,
+    };
+
+    console.log('✅ [CompletionService] Completion status:', mapped);
+    return mapped;
 
   } catch (error: any) {
     console.error('❌ [CompletionService] Error fetching status:', error);
