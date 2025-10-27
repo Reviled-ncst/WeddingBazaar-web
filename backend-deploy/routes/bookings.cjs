@@ -390,7 +390,27 @@ router.get('/couple/:userId', async (req, res) => {
       // Ensure vendor name is properly mapped
       processedBooking.vendor_name = booking.vendor_business_name || booking.vendor_name || `vendor ${booking.vendor_id}`;
       
-      // Enhanced status processing for complete payment workflow
+      // ✅ CRITICAL FIX: If booking is already marked as 'completed' (two-sided completion),
+      // DO NOT override the status based on notes!
+      if (booking.status === 'completed') {
+        // Preserve the 'completed' status and just extract notes
+        if (booking.notes) {
+          const notesPrefixes = ['QUOTE_SENT:', 'QUOTE_ACCEPTED:', 'DEPOSIT_PAID:', 'FULLY_PAID:', 'BALANCE_PAID:'];
+          for (const prefix of notesPrefixes) {
+            if (booking.notes.startsWith(prefix)) {
+              processedBooking.vendor_notes = booking.notes.substring(prefix.length).trim();
+              break;
+            }
+          }
+          if (!processedBooking.vendor_notes) {
+            processedBooking.vendor_notes = booking.notes;
+          }
+        }
+        // Status remains 'completed' - DO NOT override!
+        return processedBooking;
+      }
+      
+      // Enhanced status processing for complete payment workflow (only for non-completed bookings)
       if (booking.notes) {
         if (booking.notes.startsWith('QUOTE_SENT:')) {
           processedBooking.status = 'quote_sent';
@@ -619,7 +639,27 @@ router.get('/enhanced', async (req, res) => {
       // Ensure vendor name is properly mapped
       processedBooking.vendor_name = booking.vendor_business_name || booking.vendor_name || `vendor ${booking.vendor_id}`;
       
-      // Enhanced status processing for complete payment workflow
+      // ✅ CRITICAL FIX: If booking is already marked as 'completed' (two-sided completion),
+      // DO NOT override the status based on notes!
+      if (booking.status === 'completed') {
+        // Preserve the 'completed' status and just extract notes
+        if (booking.notes) {
+          const notesPrefixes = ['QUOTE_SENT:', 'QUOTE_ACCEPTED:', 'DEPOSIT_PAID:', 'FULLY_PAID:', 'BALANCE_PAID:'];
+          for (const prefix of notesPrefixes) {
+            if (booking.notes.startsWith(prefix)) {
+              processedBooking.vendor_notes = booking.notes.substring(prefix.length).trim();
+              break;
+            }
+          }
+          if (!processedBooking.vendor_notes) {
+            processedBooking.vendor_notes = booking.notes;
+          }
+        }
+        // Status remains 'completed' - DO NOT override!
+        return processedBooking;
+      }
+      
+      // Enhanced status processing for complete payment workflow (only for non-completed bookings)
       if (booking.notes) {
         if (booking.notes.startsWith('QUOTE_SENT:')) {
           processedBooking.status = 'quote_sent';
