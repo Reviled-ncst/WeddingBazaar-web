@@ -433,7 +433,15 @@ router.put('/upgrade', async (req, res) => {
 
     // Process payment for proration
     let payment_intent_id = null;
-    if (prorationAmount > 0) {
+    
+    // Check if payment was already processed by frontend (payment_reference provided)
+    const paymentAlreadyProcessed = payment_method_details?.payment_reference;
+    
+    if (paymentAlreadyProcessed) {
+      console.log(`✅ Payment already processed by frontend, using reference:`, payment_method_details.payment_reference);
+      payment_intent_id = payment_method_details.payment_reference;
+    } else if (prorationAmount > 0) {
+      // Only process payment if not already paid and proration > 0
       try {
         const paymentIntent = await createSubscriptionPaymentIntent(
           prorationAmount,
@@ -483,6 +491,8 @@ router.put('/upgrade', async (req, res) => {
           message: paymentError.message
         });
       }
+    } else {
+      console.log(`ℹ️ No proration payment needed (amount: ₱0 or downgrade)`);
     }
 
     // Update subscription
