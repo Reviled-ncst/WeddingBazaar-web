@@ -890,11 +890,25 @@ router.get('/profile', async (req, res) => {
       updatedAt: user.updated_at
     };
     
+    // 🔐 Generate JWT token for authenticated API calls
+    // This enables vendors/couples to make authenticated requests without separate login
+    const token = jwt.sign(
+      { 
+        userId: user.id, 
+        email: user.email, 
+        userType: user.user_type 
+      },
+      process.env.JWT_SECRET || 'wedding-bazaar-secret-key',
+      { expiresIn: '7d' } // 7-day expiry for better UX
+    );
+    
     console.log('✅ Profile data retrieved:', { email: profileData.email, role: profileData.role });
+    console.log('🔐 JWT token generated for user:', user.email);
     
     res.json({
       success: true,
-      user: profileData
+      user: profileData,
+      token: token // ✅ ADD JWT TOKEN TO RESPONSE
     });
     
   } catch (error) {
