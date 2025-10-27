@@ -520,6 +520,22 @@ export const IndividualBookings: React.FC = () => {
     const completionStatus = await getCompletionStatus(booking.id);
     console.log('📋 [handleMarkComplete] Completion status result:', completionStatus);
 
+    // CRITICAL: Check if booking is already fully completed
+    if (completionStatus?.fullyCompleted || completionStatus?.currentStatus === 'completed') {
+      console.log('✅ [handleMarkComplete] Booking already fully completed! Refreshing list...');
+      
+      // Show success message - booking is already done!
+      setSuccessMessage(
+        'This booking is already marked as complete by both you and the vendor. ' +
+        'Refreshing your booking list to show the correct status...'
+      );
+      setShowSuccessModal(true);
+      
+      // Reload bookings to sync the status
+      await loadBookings();
+      return;
+    }
+
     // Check if can mark complete
     console.log('🔍 [handleMarkComplete] Checking canMarkComplete...');
     const canComplete = canMarkComplete(booking, 'couple', completionStatus || undefined);
@@ -527,8 +543,19 @@ export const IndividualBookings: React.FC = () => {
 
     if (!canComplete) {
       console.error('❌ [handleMarkComplete] Cannot mark complete. Booking status:', booking.status, 'Completion status:', completionStatus);
-      setErrorMessage('This booking cannot be marked as complete yet. It must be fully paid first.');
-      setShowErrorModal(true);
+      
+      // Check if couple already marked complete
+      if (completionStatus?.coupleCompleted) {
+        setSuccessMessage(
+          'You have already confirmed completion for this booking. ' +
+          'Waiting for the vendor to confirm. Refreshing your booking list...'
+        );
+        setShowSuccessModal(true);
+        await loadBookings();
+      } else {
+        setErrorMessage('This booking cannot be marked as complete yet. It must be fully paid first.');
+        setShowErrorModal(true);
+      }
       return;
     }
 
