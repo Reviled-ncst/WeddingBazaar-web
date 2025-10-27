@@ -25,7 +25,8 @@ import {
   Users,
   Package,
   FileText,
-  Eye
+  Eye,
+  CheckCircle
 } from 'lucide-react';
 
 // Import modular components
@@ -50,6 +51,16 @@ import { mapToEnhancedBooking } from '../../../../shared/utils/booking-data-mapp
 
 // Import custom hooks
 import { useBookingPreferences } from './hooks';
+
+// Import booking completion service (two-sided completion system)
+import { 
+  markBookingComplete,
+  getCompletionStatus,
+  canMarkComplete,
+  getCompletionButtonText,
+  getCompletionButtonVariant,
+  type CompletionStatus
+} from '../../../../shared/services/completionService';
 
 // Import booking actions service
 import { 
@@ -478,6 +489,70 @@ export const IndividualBookings: React.FC = () => {
       },
       confirmText: isDirectCancel ? 'Yes, Cancel Booking' : 'Submit Cancellation Request',
       cancelText: 'Keep Booking'
+    });
+  };
+
+  // Handle booking completion (couple side)
+  const handleMarkComplete = async (booking: EnhancedBooking) => {
+    if (!user?.id) {
+      setConfirmationModal({
+        isOpen: true,
+        title: 'Login Required',
+        message: 'You must be logged in to mark a booking as complete.',
+        type: 'warning',
+        onConfirm: () => setConfirmationModal(prev => ({ ...prev, isOpen: false })),
+        confirmText: 'OK',
+        cancelText: ''
+      });
+      return;
+    }
+
+    // Get current completion status
+    const completionStatus = await getCompletionStatus(booking.id);
+
+    // Check if can mark complete
+    if (!canMarkComplete(booking, 'couple', completionStatus || undefined)) {
+      setErrorMessage('This booking cannot be marked as complete yet. It must be fully paid first.');
+      setShowErrorModal(true);
+      return;
+    }
+
+    const confirmMessage = completionStatus?.vendorCompleted
+      ? `The vendor has already confirmed completion.\n\nBy confirming, you agree that the service was delivered satisfactorily and the booking will be FULLY COMPLETED.`
+      : `Mark this booking with ${booking.vendorName || 'the vendor'} as complete?\n\nNote: The booking will only be fully completed when both you and the vendor confirm completion.`;
+
+    // Show confirmation modal
+    setConfirmationModal({
+      isOpen: true,
+      title: '✅ Complete Booking',
+      message: confirmMessage,
+      type: 'info',
+      onConfirm: async () => {
+        setConfirmationModal(prev => ({ ...prev, isOpen: false }));
+        
+        try {
+          setLoading(true);
+          
+          const result = await markBookingComplete(booking.id, 'couple');
+          
+          if (result.success) {
+            setSuccessMessage(result.message);
+            setShowSuccessModal(true);
+            await loadBookings();
+          } else {
+            setErrorMessage(result.error || 'Failed to mark booking as complete');
+            setShowErrorModal(true);
+          }
+        } catch (error: any) {
+          console.error('❌ [MarkComplete] Error:', error);
+          setErrorMessage(error.message || 'Failed to mark booking as complete');
+          setShowErrorModal(true);
+        } finally {
+          setLoading(false);
+        }
+      },
+      confirmText: completionStatus?.vendorCompleted ? 'Yes, Confirm Completion' : 'Mark as Complete',
+      cancelText: 'Not Yet'
     });
   };
 
@@ -1231,6 +1306,25 @@ export const IndividualBookings: React.FC = () => {
                             <FileText className="w-4 h-4" />
                             View Receipt
                           </button>
+                        )}
+
+                        {/* Mark as Complete Button - Show for fully paid bookings (two-sided completion) */}
+                        {(booking.status === 'fully_paid' || booking.status === 'paid_in_full') && (
+                          <button
+                            onClick={() => handleMarkComplete(booking)}
+                            className="w-full px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            Mark as Complete
+                          </button>
+                        )}
+
+                        {/* Fully Completed Badge - Show when both sides confirmed */}
+                        {booking.status === 'completed' && (
+                          <div className="w-full px-3 py-2 bg-gradient-to-r from-pink-100 to-purple-100 border-2 border-pink-300 text-pink-700 rounded-lg flex items-center justify-center gap-2 font-semibold text-sm">
+                            <Heart className="w-4 h-4 fill-current" />
+                            Completed ✓
+                          </div>
                         )}
 
                         {/* Cancel + Contact buttons in 2-column grid */}

@@ -1858,6 +1858,178 @@ router.put('/:bookingId/send-quote', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/bookings/:id/complete
+ * Mark booking as completed (vendor or couple side)
+ * Two-sided completion system: both must confirm
+ */
+router.post('/:id/complete', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { completed_by } = req.body; // 'vendor' or 'couple'
+
+    console.log(`📋 [COMPLETION] Request to complete booking: ${id} by ${completed_by}`);
+
+    // Fetch current booking
+    const bookings = await sql`
+      SELECT * FROM bookings WHERE id = ${id}
+    `;
+
+    if (bookings.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+
+    const booking = bookings[0];
+
+    // Validate booking is fully paid
+    if (!['paid_in_full', 'fully_paid'].includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Booking must be fully paid before completion',
+        currentStatus: booking.status,
+        message: 'Only fully paid bookings can be marked as completed'
+      });
+    }
+
+    // Determine which field to update
+    let updatedBooking;
+    
+    if (completed_by === 'vendor') {
+      updatedBooking = await sql`
+        UPDATE bookings 
+        SET vendor_completed = true,
+            vendor_completed_at = NOW(),
+            updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `;
+    } else if (completed_by === 'couple') {
+      updatedBooking = await sql`
+        UPDATE bookings 
+        SET couple_completed = true,
+            couple_completed_at = NOW(),
+            updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `;
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid completed_by value. Must be "vendor" or "couple"'
+      });
+    }
+
+    const updated = updatedBooking[0];
+
+    // Check if both sides have completed
+    if (updated.vendor_completed && updated.couple_completed) {
+      // Mark as fully completed
+      const final = await sql`
+        UPDATE bookings 
+        SET fully_completed = true,
+            fully_completed_at = NOW(),
+            status = 'completed',
+            updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `;
+
+      console.log(`✅ [COMPLETION] Booking ${id} FULLY COMPLETED by both sides`);
+
+      return res.json({
+        success: true,
+        message: 'Booking fully completed! Both vendor and couple confirmed completion.',
+        booking: final[0],
+        completionStatus: {
+          vendorCompleted: true,
+          coupleCompleted: true,
+          fullyCompleted: true,
+          completedAt: final[0].fully_completed_at
+        }
+      });
+    } else {
+      console.log(`⏳ [COMPLETION] Booking ${id} marked complete by ${completed_by}, waiting for other party`);
+
+      return res.json({
+        success: true,
+        message: `Booking marked as completed by ${completed_by}. Waiting for ${completed_by === 'vendor' ? 'couple' : 'vendor'} confirmation.`,
+        booking: updated,
+        completionStatus: {
+          vendorCompleted: updated.vendor_completed || false,
+          coupleCompleted: updated.couple_completed || false,
+          fullyCompleted: false,
+          waitingFor: completed_by === 'vendor' ? 'couple' : 'vendor'
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ [COMPLETION] Error marking booking complete:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to mark booking as completed',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/bookings/:id/completion-status
+ * Get completion status for a booking
+ */
+router.get('/:id/completion-status', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const bookings = await sql`
+      SELECT 
+        id,
+        status,
+        vendor_completed,
+        vendor_completed_at,
+        couple_completed,
+        couple_completed_at,
+        fully_completed,
+        fully_completed_at
+      FROM bookings 
+      WHERE id = ${id}
+    `;
+
+    if (bookings.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+
+    const booking = bookings[0];
+
+    res.json({
+      success: true,
+      completionStatus: {
+        vendorCompleted: booking.vendor_completed || false,
+        vendorCompletedAt: booking.vendor_completed_at,
+        coupleCompleted: booking.couple_completed || false,
+        coupleCompletedAt: booking.couple_completed_at,
+        fullyCompleted: booking.fully_completed || false,
+        fullyCompletedAt: booking.fully_completed_at,
+        currentStatus: booking.status,
+        canComplete: ['paid_in_full', 'fully_paid'].includes(booking.status)
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [COMPLETION] Error fetching completion status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch completion status'
+    });
+  }
+});
+
 module.exports = router;
 
 // Force deploy - workaround fix

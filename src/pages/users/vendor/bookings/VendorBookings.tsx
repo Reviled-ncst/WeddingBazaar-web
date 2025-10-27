@@ -65,6 +65,15 @@ import { userAPIService, type UserData } from '../../../../services/api/userAPIS
 // Import auth context to get the real vendor ID
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 
+// Import completion service for two-sided completion
+import { 
+  markBookingComplete,
+  getCompletionStatus,
+  canMarkComplete,
+  getCompletionButtonText,
+  type CompletionStatus
+} from '../../../../shared/services/completionService';
+
 // Import currency formatting utility
 import { formatPHP } from '../../../../utils/currency';
 
@@ -1488,7 +1497,7 @@ ng.budgetRange,
           totalAmount: selectedBooking.totalAmount,
           totalPaid: selectedBooking.totalPaid,
           createdAt: selectedBooking.createdAt,booking={selectedBooking}
-          updatedAt: selectedBooking.updatedAt,a}
+          updatedAt: selectedBooking.updatedAt,
           venueDetails: (selectedBooking as any).venueDetails || undefined,
           preferredContactMethod: selectedBooking.preferredContactMethod,  try {
           budgetRange: selectedBooking.budgetRange, Sending quote:', quoteData);

@@ -20,6 +20,7 @@ const receiptsRoutes = require('./routes/receipts.cjs');
 const notificationRoutes = require('./routes/notifications.cjs');
 const debugRoutes = require('./routes/debug.cjs');
 const bookingsTestRoutes = require('./routes/bookings-test.cjs');
+const bookingCompletionRoutes = require('./routes/booking-completion.cjs'); // Two-sided completion system
 const adminRoutes = require('./routes/admin.cjs'); // Old admin routes
 const adminUserRoutes = require('./routes/admin/index.cjs'); // New modular admin routes
 const dssRoutes = require('./routes/dss.cjs'); // Decision Support System routes
@@ -191,8 +192,10 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/vendor-profile', vendorProfileRoutes);
 app.use('/api/couple-profile', coupleProfileRoutes);
-app.use('/api/vendors', vendorOffDaysRoutes);  app.use('/api/bookings', bookingRoutes);
-  app.use('/api/bookings-test', bookingsTestRoutes);
+app.use('/api/vendors', vendorOffDaysRoutes);  
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/bookings', bookingCompletionRoutes); // Two-sided completion endpoints
+app.use('/api/bookings-test', bookingsTestRoutes);
   app.use('/api/payment', paymentsRoutes);  // Changed from /api/payments to /api/payment
   app.use('/api/receipts', receiptsRoutes);
 app.use('/api/notifications', notificationRoutes);
