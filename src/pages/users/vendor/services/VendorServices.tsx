@@ -2306,7 +2306,10 @@ export const VendorServices: React.FC = () => {
               throw new Error('Authentication required. Please login again.');
             }
             
-            console.log('📡 Calling upgrade API with vendor_id:', user?.vendorId);
+            // ✅ CRITICAL FIX: Use user.id (format: '2-2025-003') NOT user.vendorId (UUID)
+            // The subscription table uses vendor_id that matches the user.id format
+            const correctVendorId = user?.id || vendorId;
+            console.log('📡 Calling upgrade API with vendor_id:', correctVendorId, '(user.id format)');
             
             // Call backend API to process upgrade
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/subscriptions/upgrade`, {
@@ -2316,7 +2319,7 @@ export const VendorServices: React.FC = () => {
                 'Authorization': `Bearer ${authToken}`
               },
               body: JSON.stringify({
-                vendor_id: user?.vendorId,
+                vendor_id: correctVendorId,
                 new_plan: planId
               })
             });
