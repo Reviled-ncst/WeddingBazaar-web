@@ -123,9 +123,9 @@ router.post('/', authenticateToken, async (req, res) => {
     
     console.log('✅ [REVIEWS] Review created successfully:', newReview[0].id);
     
-    // Update vendor's average rating
+    // Update vendor's average rating and review count
     const vendorReviews = await sql`
-      SELECT AVG(rating)::numeric(3,2) as avg_rating, COUNT(*) as total_reviews
+      SELECT AVG(rating)::numeric(3,2) as avg_rating, COUNT(*) as review_count
       FROM reviews
       WHERE vendor_id = ${vendorId}
     `;
@@ -134,14 +134,14 @@ router.post('/', authenticateToken, async (req, res) => {
       UPDATE vendors
       SET 
         rating = ${vendorReviews[0].avg_rating},
-        total_reviews = ${vendorReviews[0].total_reviews},
+        review_count = ${vendorReviews[0].review_count},
         updated_at = NOW()
       WHERE id = ${vendorId}
     `;
     
     console.log('✅ [REVIEWS] Vendor rating updated:', {
       avgRating: vendorReviews[0].avg_rating,
-      totalReviews: vendorReviews[0].total_reviews
+      reviewCount: vendorReviews[0].review_count
     });
     
     res.json({
