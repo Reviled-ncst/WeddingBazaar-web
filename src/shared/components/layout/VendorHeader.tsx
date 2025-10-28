@@ -158,6 +158,14 @@ export const VendorHeader: React.FC = () => {
   ];
 
   const handleLogout = () => {
+    // Close all dropdowns before showing modal
+    setIsProfileDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+    setShowBusinessDropdown(false);
+    setShowServicesDropdown(false);
+    setShowNotifications(false);
+    
+    // Show logout confirmation modal
     setShowLogoutConfirm(true);
   };
 
@@ -635,65 +643,81 @@ export const VendorHeader: React.FC = () => {
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-red-100 to-orange-100 rounded-xl flex items-center justify-center">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ type: "spring", duration: 0.3 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
+          >
+            {/* Animated border glow */}
+            <div className="absolute inset-0 bg-gradient-to-r from-red-500/20 via-orange-500/20 to-red-500/20 rounded-2xl blur-xl animate-pulse"></div>
+            
+            <div className="relative z-10">
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <motion.div 
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    className="w-14 h-14 bg-gradient-to-br from-red-100 to-orange-100 rounded-xl flex items-center justify-center shadow-lg"
+                  >
+                    <AlertTriangle className="h-7 w-7 text-red-600" />
+                  </motion.div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Sign Out?</h3>
+                    <p className="text-sm text-gray-500">Confirm logout from your vendor account</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">Sign Out?</h3>
-                  <p className="text-sm text-gray-500">Confirm logout from your account</p>
-                </div>
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  aria-label="Close logout confirmation"
+                  title="Close"
+                >
+                  <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                </button>
               </div>
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-                aria-label="Close logout confirmation"
-              >
-                <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-              </button>
-            </div>
 
-            {/* Content */}
-            <div className="mb-6 bg-gradient-to-r from-red-50/50 to-orange-50/50 rounded-xl p-4 border border-red-100">
-              <p className="text-sm text-gray-700 mb-2">
-                Are you sure you want to sign out of your vendor account?
-              </p>
-              <ul className="text-xs text-gray-600 space-y-1 ml-4">
-                <li className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>You'll need to log in again to access your dashboard</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>Any unsaved changes will be lost</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>Active sessions will be terminated</span>
-                </li>
-              </ul>
-            </div>
+              {/* Content */}
+              <div className="mb-6 bg-gradient-to-r from-red-50/70 to-orange-50/70 rounded-xl p-4 border-2 border-red-200">
+                <p className="text-sm text-gray-700 font-medium mb-3">
+                  Are you sure you want to sign out of your vendor account?
+                </p>
+                <ul className="text-xs text-gray-600 space-y-2 ml-1">
+                  <li className="flex items-start">
+                    <span className="mr-2 text-red-500">•</span>
+                    <span>You'll need to log in again to access your dashboard</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2 text-red-500">•</span>
+                    <span>Any unsaved changes will be lost</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2 text-red-500">•</span>
+                    <span>Active sessions will be terminated</span>
+                  </li>
+                </ul>
+              </div>
 
-            {/* Actions */}
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200 hover:scale-105"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmLogout}
-                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
-              >
-                Sign Out
-              </button>
+              {/* Actions */}
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 px-5 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmLogout}
+                  className="flex-1 px-5 py-3 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
     </header>

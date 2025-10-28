@@ -25,6 +25,7 @@ export const ProfileDropdownModal: React.FC<ProfileDropdownModalProps> = ({
   onInstructionOpen
 }) => {
   const { user, logout } = useAuth();
+  const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
 
   const profileMenuItems = [
     {
@@ -93,6 +94,20 @@ export const ProfileDropdownModal: React.FC<ProfileDropdownModalProps> = ({
     isPremium?: boolean;
     isAction?: boolean;
   }>;
+
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutConfirm(false);
+    logout();
+    onClose();
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false);
+  };
 
   if (!isOpen) return null;
 
@@ -183,11 +198,9 @@ export const ProfileDropdownModal: React.FC<ProfileDropdownModalProps> = ({
       {/* Logout - Compact */}
       <div className="border-t border-gray-100 pt-1 mt-1">
         <button
-          onClick={() => {
-            logout();
-            onClose();
-          }}
+          onClick={handleLogoutClick}
           className="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-red-50 hover:text-red-700 transition-all duration-200 w-full group rounded-xl"
+          aria-label="Logout from your account"
         >
           <div className="p-2 rounded-xl bg-gray-100 group-hover:bg-red-100 transition-all duration-200">
             <LogOut className="h-4 w-4 text-gray-600 group-hover:text-red-600" />
@@ -198,6 +211,39 @@ export const ProfileDropdownModal: React.FC<ProfileDropdownModalProps> = ({
           </div>
         </button>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-red-100 rounded-full">
+                <LogOut className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Confirm Logout</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to logout? You'll need to sign in again to access your account.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleLogoutCancel}
+                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogoutConfirm}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-xl"
+              >
+                Yes, Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
