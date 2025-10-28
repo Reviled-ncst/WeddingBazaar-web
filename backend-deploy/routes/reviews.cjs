@@ -86,6 +86,9 @@ router.post('/', authenticateToken, async (req, res) => {
     }
     
     // Create the review
+    // Generate review ID (REV-{timestamp}-{random})
+    const reviewId = `REV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     // Convert images array to PostgreSQL array format
     const imagesArray = images && images.length > 0 
       ? `{${images.map(img => `"${img.replace(/"/g, '\\"')}"`).join(',')}}` 
@@ -93,6 +96,7 @@ router.post('/', authenticateToken, async (req, res) => {
     
     const newReview = await sql`
       INSERT INTO reviews (
+        id,
         booking_id,
         vendor_id,
         user_id,
@@ -103,6 +107,7 @@ router.post('/', authenticateToken, async (req, res) => {
         created_at,
         updated_at
       ) VALUES (
+        ${reviewId},
         ${bookingId},
         ${vendorId},
         ${userId},
