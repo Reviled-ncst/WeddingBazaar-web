@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Crown, 
@@ -20,7 +20,9 @@ import {
   LogOut,
   Building,
   Phone,
-  Gift
+  Gift,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 import { useAuth } from '../../../../../../shared/contexts/HybridAuthContext';
 
@@ -36,6 +38,7 @@ export const VendorProfileDropdownModal: React.FC<VendorProfileDropdownModalProp
   onSubscriptionOpen
 }) => {
   const { user, logout } = useAuth();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Mock subscription data - replace with actual subscription context
   const currentPlan = {
@@ -348,10 +351,7 @@ export const VendorProfileDropdownModal: React.FC<VendorProfileDropdownModalProp
       {/* Logout */}
       <div className="border-t border-gray-100 pt-1">
         <button
-          onClick={() => {
-            logout();
-            onClose();
-          }}
+          onClick={() => setShowLogoutConfirm(true)}
           className="flex items-center space-x-3 px-3 py-3 text-gray-700 hover:bg-red-50 hover:text-red-700 transition-all duration-200 w-full group rounded-xl"
         >
           <div className="p-2 rounded-xl bg-gray-100 group-hover:bg-red-100 transition-all duration-200">
@@ -363,6 +363,74 @@ export const VendorProfileDropdownModal: React.FC<VendorProfileDropdownModalProp
           </div>
         </button>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-red-100 to-orange-100 rounded-xl flex items-center justify-center">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Sign Out?</h3>
+                  <p className="text-sm text-gray-500">Confirm logout from your account</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Close logout confirmation"
+              >
+                <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="mb-6 bg-gradient-to-r from-red-50/50 to-orange-50/50 rounded-xl p-4 border border-red-100">
+              <p className="text-sm text-gray-700 mb-2">
+                Are you sure you want to sign out of your vendor account?
+              </p>
+              <ul className="text-xs text-gray-600 space-y-1 ml-4">
+                <li className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>You'll need to log in again to access your dashboard</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>Any unsaved changes will be lost</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>Active sessions will be terminated</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200 hover:scale-105"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  logout();
+                  setShowLogoutConfirm(false);
+                  onClose();
+                }}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
