@@ -10,7 +10,11 @@ import {
   Mail,
   CheckCircle,
   AlertCircle,
-  Loader
+  Loader,
+  Shield,
+  Info,
+  User,
+  Lock
 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import BookingConfirmationModal from './BookingConfirmationModal';
@@ -1868,96 +1872,101 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
               
               {/* Right Column - Contact & Preferences */}
               <div className="space-y-6">
-                {/* Contact Information Section - Enhanced */}
-                <div className="bg-gradient-to-br from-purple-50 via-indigo-50/30 to-purple-50/20 rounded-2xl p-6 border border-gray-200/50 shadow-sm hover:shadow-md transition-shadow duration-300">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="p-3 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl shadow-sm">
-                  <Phone className="h-6 w-6 text-purple-600" />
+                {/* Contact Information Section - Read-Only (From User Profile) */}
+                <div className="bg-gradient-to-br from-purple-50 via-indigo-50/30 to-purple-50/20 rounded-2xl p-6 border border-gray-200/50 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl shadow-sm">
+                    <Phone className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-bold text-gray-900">Contact Information</h4>
+                    <p className="text-sm text-gray-600">From your profile (secured)</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xl font-bold text-gray-900">Contact Information</h4>
-                  <p className="text-sm text-gray-600">How should the vendor reach you?</p>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 border border-green-200 rounded-full">
+                  <Shield className="h-4 w-4 text-green-600" />
+                  <span className="text-xs font-semibold text-green-700">Verified</span>
                 </div>
               </div>
               
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                {/* Info Notice */}
+                <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                  <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-semibold mb-1">Contact information is auto-filled from your profile</p>
+                    <p className="text-blue-700">To update your contact details, please edit your profile settings after submitting this booking.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Contact Person - Read Only */}
                   <div className="group">
                     <label className="flex items-center space-x-2 text-sm font-bold text-gray-800 mb-3">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <User className="h-4 w-4 text-purple-600" />
                       <span>Contact Person</span>
-                      <span className="text-gray-400 font-normal text-xs">(Optional)</span>
                     </label>
                     <div className="relative">
                       <input
                         type="text"
-                        value={formData.contactPerson}
-                        onChange={(e) => handleInputChange('contactPerson', e.target.value)}
-                        placeholder="e.g., Maria Santos (Bride)"
-                        className="w-full px-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm hover:shadow-md text-lg font-medium group-focus-within:scale-[1.01]"
-                        aria-label="Contact person name"
+                        value={formData.contactPerson || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Not provided'}
+                        disabled
+                        readOnly
+                        className="w-full px-4 py-4 border-2 border-gray-200 rounded-2xl bg-gray-50 text-gray-700 font-medium cursor-not-allowed"
+                        aria-label="Contact person name (read-only)"
                       />
-                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none"></div>
+                      <Lock className="absolute right-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     </div>
                   </div>
 
+                  {/* Contact Email - Read Only */}
                   <div className="group">
                     <label className="flex items-center space-x-2 text-sm font-bold text-gray-800 mb-3">
                       <Mail className="h-4 w-4 text-purple-600" />
                       <span>Contact Email</span>
-                      <span className="text-gray-400 font-normal text-xs">(Optional)</span>
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-400 h-5 w-5 group-focus-within:text-purple-600 transition-colors" />
+                      <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                       <input
                         type="email"
-                        value={formData.contactEmail}
-                        onChange={(e) => handleInputChange('contactEmail', e.target.value)}
-                        placeholder="maria.santos@example.com"
-                        className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm hover:shadow-md text-lg font-medium group-focus-within:scale-[1.01]"
-                        aria-label="Contact email address"
+                        value={formData.contactEmail || user?.email || 'Not provided'}
+                        disabled
+                        readOnly
+                        className="w-full pl-12 pr-12 py-4 border-2 border-gray-200 rounded-2xl bg-gray-50 text-gray-700 font-medium cursor-not-allowed"
+                        aria-label="Contact email address (read-only)"
                       />
-                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none"></div>
+                      <Lock className="absolute right-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     </div>
                   </div>
                 </div>
 
+                {/* Phone Number - Read Only */}
                 <div className="group">
                   <label className="flex items-center space-x-2 text-sm font-bold text-gray-800 mb-3">
                     <Phone className="h-4 w-4 text-purple-600" />
                     <span>Phone Number</span>
-                    <span className="text-red-500 text-xs">*</span>
+                    <span className="text-green-600 text-xs flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Required
+                    </span>
                   </label>
                   <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-400 h-5 w-5 group-focus-within:text-purple-600 transition-colors" />
+                    <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                     <input
                       type="tel"
-                      value={formData.contactPhone}
-                      onChange={(e) => handleInputChangeWithValidation('contactPhone', e.target.value)}
-                      placeholder="e.g., +63 917 123 4567"
-                      required
-                      className={cn(
-                        "w-full pl-12 pr-4 py-4 border-2 rounded-2xl focus:ring-4 transition-all duration-300 bg-white shadow-sm hover:shadow-md text-lg font-medium group-focus-within:scale-[1.01]",
-                        formErrors.contactPhone 
-                          ? "border-red-300 focus:ring-red-500/20 focus:border-red-500" 
-                          : "border-gray-200 focus:ring-purple-500/20 focus:border-purple-500"
-                      )}
-                      aria-label="Contact phone number"
-                      aria-describedby={formErrors.contactPhone ? "contactPhone-error" : undefined}
+                      value={formData.contactPhone || user?.phone || 'Not provided'}
+                      disabled
+                      readOnly
+                      className="w-full pl-12 pr-12 py-4 border-2 border-gray-200 rounded-2xl bg-gray-50 text-gray-700 font-medium cursor-not-allowed"
+                      aria-label="Contact phone number (read-only)"
                     />
-                    {formErrors.contactPhone && (
-                      <div id="contactPhone-error" className="mt-2 flex items-center gap-2 text-sm text-red-600">
-                        <AlertCircle className="h-4 w-4" />
-                        <span>{formErrors.contactPhone}</span>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none"></div>
+                    <Lock className="absolute right-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   </div>
-                  {!formErrors.contactPhone && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      📱 {user?.phone ? 'Using your registered phone number' : 'We\'ll use this to confirm your booking details'}
-                    </p>
-                  )}
+                  <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                    <Shield className="h-3 w-3 text-green-600" />
+                    📱 This is your verified phone number from your profile
+                  </p>
                 </div>
 
                 <div>
