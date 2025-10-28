@@ -42,7 +42,7 @@ router.post('/', authenticateToken, async (req, res) => {
     
     // Check if booking exists and belongs to user
     const booking = await sql`
-      SELECT id, user_id, vendor_id, status 
+      SELECT id, couple_id, vendor_id, status 
       FROM bookings 
       WHERE id = ${bookingId}
     `;
@@ -55,7 +55,7 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
     
-    if (booking[0].user_id !== userId) {
+    if (booking[0].couple_id !== userId) {
       console.error('❌ [REVIEWS] User does not own this booking');
       return res.status(403).json({
         success: false,
