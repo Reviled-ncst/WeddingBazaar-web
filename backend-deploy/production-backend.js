@@ -26,6 +26,7 @@ const adminUserRoutes = require('./routes/admin/index.cjs'); // New modular admi
 const dssRoutes = require('./routes/dss.cjs'); // Decision Support System routes
 const categoryRoutes = require('./routes/categories.cjs'); // Dynamic categories system
 const subscriptionRoutes = require('./routes/subscriptions/index.cjs'); // NEW MODULAR subscription system with PayMongo
+const reviewRoutes = require('./routes/reviews.cjs'); // Reviews and ratings system
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -202,6 +203,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/categories', categoryRoutes); // Dynamic categories system
 app.use('/api/subscriptions', subscriptionRoutes); // Vendor subscription management
+app.use('/api/reviews', reviewRoutes); // Reviews and ratings system
 
 // Admin routes - New modular user management system
 app.use('/api/admin', adminUserRoutes); // User management, stats, etc.

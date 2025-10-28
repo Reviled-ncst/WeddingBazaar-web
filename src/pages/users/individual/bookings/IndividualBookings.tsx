@@ -34,7 +34,8 @@ import {
   BookingDetailsModal,
   QuoteDetailsModal,
   QuoteConfirmationModal,
-  ReceiptModal
+  ReceiptModal,
+  RatingModal
 } from './components';
 
 // Import payment components
@@ -70,6 +71,9 @@ import {
   formatReceipt,
   type Receipt 
 } from '../../../../shared/services/bookingActionsService';
+
+// Import review service for modular review functionality
+import { reviewService } from '../../../../shared/services/reviewService';
 
 import type { 
   Booking
@@ -161,6 +165,13 @@ export const IndividualBookings: React.FC = () => {
   // Receipt modal state
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptBooking, setReceiptBooking] = useState<EnhancedBooking | null>(null);
+  
+  // Rating modal state
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingBooking, setRatingBooking] = useState<EnhancedBooking | null>(null);
+  
+  // Track which bookings have been reviewed (to hide "Rate & Review" button)
+  const [reviewedBookings, setReviewedBookings] = useState<Set<string>>(new Set());
   
   // Confirmation modal state
   const [confirmationModal, setConfirmationModal] = useState<{
@@ -311,6 +322,28 @@ export const IndividualBookings: React.FC = () => {
     return 'text-gray-600';
   };
 
+  // Check which bookings have been reviewed
+  const checkReviewedBookings = useCallback(async (bookingIds: string[]) => {
+    console.log('🔍 [CheckReviews] Checking review status for', bookingIds.length, 'bookings');
+    
+    const reviewed = new Set<string>();
+    
+    // Check each completed booking to see if it has been reviewed
+    for (const bookingId of bookingIds) {
+      try {
+        const hasReview = await reviewService.hasBookingBeenReviewed(bookingId);
+        if (hasReview) {
+          reviewed.add(bookingId);
+        }
+      } catch (error) {
+        console.error('❌ [CheckReviews] Error checking review for booking:', bookingId, error);
+      }
+    }
+    
+    console.log('✅ [CheckReviews] Found', reviewed.size, 'reviewed bookings');
+    setReviewedBookings(reviewed);
+  }, []);
+
   // Load bookings function
   const loadBookings = useCallback(async () => {
     
@@ -355,6 +388,15 @@ export const IndividualBookings: React.FC = () => {
         setBookings(enhancedBookings);
         console.log('✅ [IndividualBookings] Bookings loaded successfully:', enhancedBookings);
         console.log('🔍 [IndividualBookings] Updated bookings state with', enhancedBookings.length, 'bookings');
+        
+        // Check which completed bookings have been reviewed
+        const completedBookingIds = enhancedBookings
+          .filter(b => b.status === 'completed')
+          .map(b => b.id);
+        
+        if (completedBookingIds.length > 0) {
+          checkReviewedBookings(completedBookingIds);
+        }
       } else {
         console.log('⚠️ [IndividualBookings] No bookings found');
         setBookings([]);
@@ -492,6 +534,59 @@ export const IndividualBookings: React.FC = () => {
       confirmText: isDirectCancel ? 'Yes, Cancel Booking' : 'Submit Cancellation Request',
       cancelText: 'Keep Booking'
     });
+  };
+
+  // Handle opening rating modal for completed bookings
+  const handleRateBooking = (booking: EnhancedBooking) => {
+    console.log('📝 [RateBooking] Opening rating modal for booking:', {
+      id: booking.id,
+      status: booking.status,
+      vendorName: booking.vendorName
+    });
+    
+    setRatingBooking(booking);
+    setShowRatingModal(true);
+  };
+
+  // Handle review submission - modular function (matching RatingModal interface)
+  const handleSubmitReview = async (reviewData: {
+    bookingId: string;
+    rating: number;
+    comment: string;
+    images?: string[];
+  }) => {
+    if (!ratingBooking) return;
+
+    try {
+      console.log('🌟 [SubmitReview] Submitting review for booking:', reviewData.bookingId);
+      
+      // Note: Images are already Cloudinary URLs from RatingModal
+      const reviewPayload = {
+        bookingId: reviewData.bookingId,
+        vendorId: (ratingBooking as any).vendorId || '',
+        rating: reviewData.rating,
+        comment: reviewData.comment,
+        images: reviewData.images || []
+      };
+
+      const response = await reviewService.submitReview(reviewPayload);
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to submit review');
+      }
+
+      // Show success message
+      setSuccessMessage(`Thank you for your ${reviewData.rating}-star review! Your feedback helps other couples make informed decisions.`);
+      setShowSuccessModal(true);
+
+      // Reload bookings to update status
+      await loadBookings();
+      
+    } catch (error: any) {
+      console.error('❌ [SubmitReview] Error:', error);
+      setErrorMessage(error.message || 'Failed to submit review. Please try again.');
+      setShowErrorModal(true);
+    }
   };
 
   // Handle booking completion (couple side)
@@ -1367,36 +1462,24 @@ export const IndividualBookings: React.FC = () => {
 
                         {/* Fully Completed Badge - Show when both sides confirmed */}
                         {booking.status === 'completed' && (
-                          <div className="w-full px-3 py-2 bg-gradient-to-r from-pink-100 to-purple-100 border-2 border-pink-300 text-pink-700 rounded-lg flex items-center justify-center gap-2 font-semibold text-sm">
-                            <Heart className="w-4 h-4 fill-current" />
-                            Completed ✓
-                          </div>
+                          <>
+                            <div className="w-full px-3 py-2 bg-gradient-to-r from-pink-100 to-purple-100 border-2 border-pink-300 text-pink-700 rounded-lg flex items-center justify-center gap-2 font-semibold text-sm">
+                              <Heart className="w-4 h-4 fill-current" />
+                              Completed ✓
+                            </div>
+                            
+                            {/* Rate & Review Button - Only show if not already reviewed */}
+                            {!reviewedBookings.has(booking.id) && (
+                              <button
+                                onClick={() => handleRateBooking(booking)}
+                                className="w-full px-3 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
+                              >
+                                <Star className="w-4 h-4 fill-current" />
+                                Rate & Review
+                              </button>
+                            )}
+                          </>
                         )}
-
-                        {/* Cancel + Contact buttons in 2-column grid */}
-                        <div className="grid grid-cols-2 gap-2">
-                          {/* Cancel Button */}
-                          {booking.status !== 'cancelled' && booking.status !== 'completed' && (
-                            <button
-                              onClick={() => handleCancelBooking(booking)}
-                              className="px-3 py-2 bg-white border-2 border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-all flex items-center justify-center gap-1.5 font-medium text-sm"
-                            >
-                              <XCircle className="w-4 h-4" />
-                              {(booking.status === 'request' || booking.status === 'quote_requested') ? 'Cancel' : 'Request Cancel'}
-                            </button>
-                          )}
-
-                          {/* Contact vendor */}
-                          {booking.vendorPhone && (
-                            <button
-                              onClick={() => window.open(`tel:${booking.vendorPhone}`)}
-                              className="px-3 py-2 bg-white border-2 border-pink-200 text-pink-600 rounded-lg hover:bg-pink-50 transition-all flex items-center justify-center gap-1.5 font-medium text-sm"
-                            >
-                              <Phone className="w-4 h-4" />
-                              Contact
-                            </button>
-                          )}
-                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -1731,7 +1814,7 @@ export const IndividualBookings: React.FC = () => {
                       }
                     </p>
                   </div>
-                </div>
+                               </div>
 
                 {/* Booking Information Card */}
                 <div className="p-6">
@@ -1861,7 +1944,7 @@ export const IndividualBookings: React.FC = () => {
                           {confirmationModal.completionStatus?.vendorCompleted ? (
                             <>
                               <span className="font-semibold text-blue-900">Great news!</span> The vendor has already confirmed completion. 
-                              By confirming, you agree that the service was delivered satisfactorily and this booking will be <span className="font-semibold text-green-600">FULLY COMPLETED</span>.
+                              By confirming, you agree that the service was delivered satisfactorily and the booking will be <span className="font-semibold text-green-600">FULLY COMPLETED</span>.
                             </>
                           ) : (
                             <>
@@ -1880,7 +1963,7 @@ export const IndividualBookings: React.FC = () => {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
-                      className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-200 transition-colors font-semibold shadow-sm border border-gray-200"
+                      className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-200 transition-colors"
                     >
                       {confirmationModal.cancelText || 'Cancel'}
                     </motion.button>
@@ -1974,6 +2057,22 @@ export const IndividualBookings: React.FC = () => {
           setShowReceiptModal(false);
           setReceiptBooking(null);
         }}
+      />
+
+      {/* Rating Modal - Modular Review System */}
+      <RatingModal
+        isOpen={showRatingModal}
+        onClose={() => {
+          setShowRatingModal(false);
+          setRatingBooking(null);
+        }}
+        booking={ratingBooking ? {
+          id: ratingBooking.id,
+          vendorName: ratingBooking.vendorName || ratingBooking.vendorBusinessName || 'Vendor',
+          serviceType: ratingBooking.serviceType,
+          eventDate: ratingBooking.formattedEventDate || ratingBooking.eventDate
+        } : null}
+        onSubmitReview={handleSubmitReview}
       />
     </div>
   );

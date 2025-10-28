@@ -1,7 +1,214 @@
 const express = require('express');
 const { sql } = require('../config/database.cjs');
+const { authenticateToken } = require('../middleware/auth.cjs');
 
 const router = express.Router();
+
+// POST - Create a new review (protected route)
+router.post('/', authenticateToken, async (req, res) => {
+  console.log('📝 [REVIEWS] POST /api/reviews called');
+  console.log('📦 [REVIEWS] Request body:', req.body);
+  console.log('👤 [REVIEWS] Authenticated user:', req.user);
+  
+  try {
+    const { bookingId, vendorId, rating, comment, images = [] } = req.body;
+    const userId = req.user.id;
+    
+    // Validate required fields
+    if (!bookingId || !vendorId || !rating) {
+      console.error('❌ [REVIEWS] Missing required fields');
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: bookingId, vendorId, and rating are required'
+      });
+    }
+    
+    // Validate rating range
+    if (rating < 1 || rating > 5) {
+      console.error('❌ [REVIEWS] Invalid rating:', rating);
+      return res.status(400).json({
+        success: false,
+        error: 'Rating must be between 1 and 5'
+      });
+    }
+    
+    console.log('🔍 [REVIEWS] Creating review for booking:', bookingId);
+    
+    // Check if booking exists and belongs to user
+    const booking = await sql`
+      SELECT id, user_id, vendor_id, status 
+      FROM bookings 
+      WHERE id = ${bookingId}
+    `;
+    
+    if (booking.length === 0) {
+      console.error('❌ [REVIEWS] Booking not found:', bookingId);
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+    
+    if (booking[0].user_id !== userId) {
+      console.error('❌ [REVIEWS] User does not own this booking');
+      return res.status(403).json({
+        success: false,
+        error: 'You can only review your own bookings'
+      });
+    }
+    
+    if (booking[0].status !== 'completed') {
+      console.error('❌ [REVIEWS] Booking is not completed:', booking[0].status);
+      return res.status(400).json({
+        success: false,
+        error: 'You can only review completed bookings'
+      });
+    }
+    
+    // Check if user already reviewed this booking
+    const existingReview = await sql`
+      SELECT id FROM reviews 
+      WHERE booking_id = ${bookingId} AND user_id = ${userId}
+    `;
+    
+    if (existingReview.length > 0) {
+      console.error('❌ [REVIEWS] User already reviewed this booking');
+      return res.status(400).json({
+        success: false,
+        error: 'You have already reviewed this booking'
+      });
+    }
+    
+    // Create the review
+    const newReview = await sql`
+      INSERT INTO reviews (
+        booking_id,
+        vendor_id,
+        user_id,
+        rating,
+        comment,
+        images,
+        is_verified,
+        created_at,
+        updated_at
+      ) VALUES (
+        ${bookingId},
+        ${vendorId},
+        ${userId},
+        ${rating},
+        ${comment || ''},
+        ${sql.array(images)},
+        true,
+        NOW(),
+        NOW()
+      )
+      RETURNING *
+    `;
+    
+    console.log('✅ [REVIEWS] Review created successfully:', newReview[0].id);
+    
+    // Update vendor's average rating
+    const vendorReviews = await sql`
+      SELECT AVG(rating)::numeric(3,2) as avg_rating, COUNT(*) as total_reviews
+      FROM reviews
+      WHERE vendor_id = ${vendorId}
+    `;
+    
+    await sql`
+      UPDATE vendors
+      SET 
+        rating = ${vendorReviews[0].avg_rating},
+        total_reviews = ${vendorReviews[0].total_reviews},
+        updated_at = NOW()
+      WHERE id = ${vendorId}
+    `;
+    
+    console.log('✅ [REVIEWS] Vendor rating updated:', {
+      avgRating: vendorReviews[0].avg_rating,
+      totalReviews: vendorReviews[0].total_reviews
+    });
+    
+    res.json({
+      success: true,
+      review: {
+        id: newReview[0].id,
+        bookingId: newReview[0].booking_id,
+        vendorId: newReview[0].vendor_id,
+        userId: newReview[0].user_id,
+        rating: newReview[0].rating,
+        comment: newReview[0].comment,
+        images: newReview[0].images,
+        createdAt: newReview[0].created_at
+      },
+      message: 'Review submitted successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ [REVIEWS] Error creating review:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to create review'
+    });
+  }
+});
+
+// GET - Check if booking has been reviewed by user (protected route)
+router.get('/booking/:bookingId', authenticateToken, async (req, res) => {
+  console.log('🔍 [REVIEWS] GET /api/reviews/booking/:bookingId called');
+  
+  try {
+    const { bookingId } = req.params;
+    const userId = req.user.id;
+    
+    console.log('🔍 [REVIEWS] Checking review for booking:', bookingId, 'user:', userId);
+    
+    const review = await sql`
+      SELECT 
+        id,
+        booking_id,
+        vendor_id,
+        user_id,
+        rating,
+        comment,
+        images,
+        created_at
+      FROM reviews 
+      WHERE booking_id = ${bookingId} AND user_id = ${userId}
+      LIMIT 1
+    `;
+    
+    if (review.length === 0) {
+      console.log('❌ [REVIEWS] No review found for this booking');
+      return res.status(404).json({
+        success: false,
+        error: 'Review not found'
+      });
+    }
+    
+    console.log('✅ [REVIEWS] Review found:', review[0].id);
+    
+    res.json({
+      success: true,
+      review: {
+        id: review[0].id,
+        bookingId: review[0].booking_id,
+        vendorId: review[0].vendor_id,
+        userId: review[0].user_id,
+        rating: review[0].rating,
+        comment: review[0].comment,
+        images: review[0].images,
+        createdAt: review[0].created_at
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ [REVIEWS] Error checking booking review:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to check review status'
+    });
+  }
+});
 
 // Get reviews for a specific service
 router.get('/service/:serviceId', async (req, res) => {
