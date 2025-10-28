@@ -5,6 +5,7 @@ export { BookingDetailsModal } from './BookingDetailsModal';
 export { QuoteDetailsModal } from './QuoteDetailsModal';
 export { QuoteConfirmationModal } from './QuoteConfirmationModal';
 export { ReceiptModal } from './ReceiptModal';
+export { RatingModal } from './RatingModal';
 export { VendorImage } from './VendorImage';
 export { ServiceImage } from './ServiceImage';
 export { EnhancedEventLocationMap } from './EnhancedEventLocationMap';

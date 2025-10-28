@@ -106,12 +106,11 @@ router.post('/:bookingId/mark-completed', async (req, res) => {
       `;
     }
 
-    const updated = updatedBooking[0];
+    let updated = updatedBooking[0];
 
     // Check if BOTH sides have now confirmed - if so, mark as completed
-    let finalStatus = updated.status;
-    let fullyCompleted = false;
     if (updated.vendor_completed && updated.couple_completed && updated.status !== 'completed') {
+      console.log(`🎉 Both sides confirmed! Updating booking ${bookingId} to COMPLETED status`);
       const completedBooking = await sql`
         UPDATE bookings
         SET 
@@ -122,9 +121,8 @@ router.post('/:bookingId/mark-completed', async (req, res) => {
         WHERE id = ${bookingId}
         RETURNING *
       `;
-      finalStatus = 'completed';
-      fullyCompleted = true;
-      console.log(`✅ Both sides confirmed! Booking ${bookingId} is now COMPLETED`);
+      updated = completedBooking[0]; // Use the updated record with 'completed' status
+      console.log(`✅ Booking ${bookingId} is now COMPLETED. Status: ${updated.status}`);
     }
 
     res.json({
@@ -134,13 +132,13 @@ router.post('/:bookingId/mark-completed', async (req, res) => {
         : 'Couple marked booking as completed',
       booking: {
         id: updated.id,
-        status: finalStatus,
+        status: updated.status, // Now returns correct 'completed' status
         vendor_completed: updated.vendor_completed,
         vendor_completed_at: updated.vendor_completed_at,
         couple_completed: updated.couple_completed,
         couple_completed_at: updated.couple_completed_at,
-        fully_completed: fullyCompleted || (updated.vendor_completed && updated.couple_completed),
-        fully_completed_at: fullyCompleted ? new Date().toISOString() : updated.fully_completed_at,
+        fully_completed: updated.fully_completed || false,
+        fully_completed_at: updated.fully_completed_at,
         completion_notes: updated.completion_notes,
         both_completed: updated.vendor_completed && updated.couple_completed
       },

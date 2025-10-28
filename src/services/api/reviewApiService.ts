@@ -130,41 +130,44 @@ export class ReviewApiService {
   }
   
   /**
-   * Create a new review for a service
+   * Create a new review for a booking/service
    */
-  static async createReview(serviceId: string, userId: string, reviewData: {
+  static async createReview(reviewData: {
+    booking_id: string;
+    service_id: string;
+    vendor_id: string;
     rating: number;
     title: string;
     comment: string;
-  }): Promise<Review | null> {
+    user_name?: string;
+    user_email?: string;
+  }): Promise<{ success: boolean; review?: any; message?: string }> {
+    console.log('📝 [ReviewAPI] Creating review:', reviewData);
+    
     try {
-      console.log('📝 [ReviewAPI] Creating review for service:', serviceId);
-      
+      const token = localStorage.getItem('jwt_token');
       const response = await fetch(`${API_BASE_URL}/api/reviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Accept': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
-        body: JSON.stringify({
-          service_id: serviceId,
-          user_id: userId,
-          ...reviewData
-        })
+        body: JSON.stringify(reviewData)
       });
+
+      const data = await response.json();
       
       if (!response.ok) {
-        console.error('❌ [ReviewAPI] Failed to create review:', response.status);
-        return null;
+        console.error('❌ [ReviewAPI] Create review failed:', data);
+        return { success: false, message: data.message || 'Failed to create review' };
       }
-      
-      const review = await response.json();
-      console.log('✅ [ReviewAPI] Review created successfully:', review.id);
-      
-      return review;
+
+      console.log('✅ [ReviewAPI] Review created successfully:', data);
+      return { success: true, review: data.review, message: 'Review submitted successfully!' };
     } catch (error) {
       console.error('❌ [ReviewAPI] Error creating review:', error);
-      return null;
+      return { success: false, message: 'Network error. Please try again.' };
     }
   }
   
@@ -209,6 +212,31 @@ export class ReviewApiService {
       rating: Math.round(rating * 10) / 10, // Round to 1 decimal
       reviewCount
     };
+  }
+
+  /**
+   * Check if user has already reviewed a booking
+   */
+  static async checkUserReview(bookingId: string): Promise<{ hasReviewed: boolean; review?: any }> {
+    console.log('🔍 [ReviewAPI] Checking if user has reviewed booking:', bookingId);
+    
+    try {
+      const token = localStorage.getItem('jwt_token');
+      const response = await fetch(`${API_BASE_URL}/api/reviews/check/${bookingId}`, {
+        headers: {
+          'Accept': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
+      });
+      
+      const data = await response.json();
+      
+      console.log('✅ [ReviewAPI] Review check result:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ [ReviewAPI] Error checking review:', error);
+      return { hasReviewed: false };
+    }
   }
 }
 

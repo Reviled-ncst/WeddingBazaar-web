@@ -110,10 +110,19 @@ export const submitReview = async (reviewData: ReviewData): Promise<ReviewRespon
       body: JSON.stringify(reviewData)
     });
 
+    console.log('📡 [ReviewService] Response status:', response.status, response.statusText);
+
     const data = await response.json();
+    console.log('📦 [ReviewService] Response data:', data);
 
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to submit review');
+      console.error('❌ [ReviewService] Backend error:', {
+        status: response.status,
+        error: data.error,
+        message: data.message,
+        fullResponse: data
+      });
+      throw new Error(data.error || data.message || 'Failed to submit review');
     }
 
     console.log('✅ [ReviewService] Review submitted successfully:', data.review?.id);

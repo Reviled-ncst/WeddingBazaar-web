@@ -717,7 +717,8 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
   let processedStatus = booking.status;
   
   // Backend stores enhanced statuses in notes field with prefixes
-  if (booking.notes) {
+  // ⚠️ IMPORTANT: Do NOT override 'completed' status - it's the highest priority status!
+  if (booking.notes && booking.status !== 'completed') {
     if (booking.notes.startsWith('QUOTE_SENT:')) {
       processedStatus = 'quote_sent';
     } else if (booking.notes.startsWith('QUOTE_ACCEPTED:')) {

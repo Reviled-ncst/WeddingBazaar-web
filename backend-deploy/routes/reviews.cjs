@@ -94,7 +94,7 @@ router.post('/', authenticateToken, async (req, res) => {
         rating,
         comment,
         images,
-        is_verified,
+        verified,
         created_at,
         updated_at
       ) VALUES (
