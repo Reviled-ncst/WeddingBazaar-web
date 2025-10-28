@@ -47,7 +47,7 @@ const authenticateToken = async (req, res, next) => {
     const users = await sql`
       SELECT 
         id, email, user_type, first_name, last_name,
-        email_verified, is_verified, verification_level
+        email_verified
       FROM users 
       WHERE id = ${decoded.userId}
     `;
