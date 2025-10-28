@@ -18,6 +18,15 @@ const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY || 'sk_test_YOUR_KEY
 const PAYMONGO_PUBLIC_KEY = process.env.PAYMONGO_PUBLIC_KEY || 'pk_test_YOUR_KEY';
 const PAYMONGO_API_URL = 'https://api.paymongo.com/v1';
 
+// 🔍 DEBUGGING: Log all incoming payment route requests
+router.use((req, res, next) => {
+  console.log(`🔍 [PAYMENT ROUTE] ${req.method} ${req.originalUrl}`);
+  console.log(`🔍 [PAYMENT ROUTE] Base URL: ${req.baseUrl}`);
+  console.log(`🔍 [PAYMENT ROUTE] Path: ${req.path}`);
+  console.log(`🔍 [PAYMENT ROUTE] Full URL: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
+  next();
+});
+
 // Helper function to make PayMongo API calls
 const paymongoRequest = async (endpoint, method = 'GET', data = null) => {
   const url = `${PAYMONGO_API_URL}${endpoint}`;
@@ -519,6 +528,22 @@ router.put('/upgrade', async (req, res) => {
 
     const updatedSub = updatedSubResult[0];
 
+    // 🔥 CRITICAL FIX: Update vendor_profiles.subscription_tier
+    // This is what the frontend reads to display the current plan
+    try {
+      await sql`
+        UPDATE vendor_profiles
+        SET 
+          subscription_tier = ${new_plan},
+          updated_at = NOW()
+        WHERE id = ${vendor_id}
+      `;
+      console.log(`✅ Vendor profile subscription_tier updated to: ${new_plan}`);
+    } catch (profileError) {
+      console.error('⚠️ Failed to update vendor_profiles.subscription_tier:', profileError);
+      // Continue anyway - subscription is upgraded in vendor_subscriptions
+    }
+
     // Log transaction
     await logSubscriptionTransaction(
       updatedSub.id,
@@ -561,6 +586,89 @@ router.put('/upgrade', async (req, res) => {
       success: false,
       error: 'Failed to upgrade subscription',
       message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/subscriptions/payment/manual-intervention
+ * Create manual intervention ticket when payment succeeds but upgrade fails
+ * NO AUTH REQUIRED - vendor_id provided in body
+ */
+router.post('/manual-intervention', async (req, res) => {
+  try {
+    const {
+      vendor_id,
+      payment_reference,
+      issue,
+      requested_plan,
+      amount_paid,
+      currency = 'PHP'
+    } = req.body;
+    
+    console.log('🚨 Creating manual intervention ticket:', {
+      vendor_id,
+      payment_reference,
+      issue,
+      requested_plan,
+      amount_paid
+    });
+    
+    // Validate vendor exists
+    const vendorCheck = await sql`
+      SELECT id FROM vendor_profiles WHERE id = ${vendor_id} LIMIT 1
+    `;
+    
+    if (vendorCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Vendor not found'
+      });
+    }
+    
+    // Create intervention record
+    const intervention = await sql`
+      INSERT INTO subscription_manual_interventions (
+        vendor_id,
+        issue_type,
+        payment_reference,
+        requested_plan,
+        amount_paid,
+        currency,
+        status
+      ) VALUES (
+        ${vendor_id},
+        ${issue},
+        ${payment_reference},
+        ${requested_plan},
+        ${amount_paid},
+        ${currency},
+        'pending'
+      ) RETURNING *
+    `;
+    
+    console.log('✅ Manual intervention ticket created:', intervention[0].id);
+    
+    // TODO: Send notification to admin
+    // TODO: Send email to vendor
+    
+    res.json({
+      success: true,
+      intervention: intervention[0],
+      message: 'Manual intervention ticket created. Support will process your upgrade within 24 hours.',
+      reference: intervention[0].id
+    });
+    
+  } catch (error) {
+    console.error('❌ Error creating manual intervention:', error);
+    
+    // Even if table doesn't exist, return success for user experience
+    // Admin will see the error logs
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create intervention ticket',
+      message: error.message,
+      fallback: 'Please contact support with your payment reference'
     });
   }
 });
@@ -836,5 +944,34 @@ router.get('/health', async (req, res) => {
     });
   }
 });
+
+// 🚨 404 CATCH-ALL: Log unmatched routes for debugging
+router.use((req, res) => {
+  console.error(`❌ [PAYMENT 404] ${req.method} ${req.path} not found`);
+  console.error(`❌ [PAYMENT 404] Original URL: ${req.originalUrl}`);
+  console.error(`❌ [PAYMENT 404] Base URL: ${req.baseUrl}`);
+  console.error(`❌ [PAYMENT 404] Available routes: PUT /upgrade, POST /create, POST /cancel, GET /health`);
+  
+  res.status(404).json({
+    success: false,
+    error: 'Route not found',
+    message: `${req.method} /api/subscriptions/payment${req.path} not found`,
+    requestedPath: req.path,
+    requestedMethod: req.method,
+    availableRoutes: {
+      upgrade: 'PUT /api/subscriptions/payment/upgrade',
+      create: 'POST /api/subscriptions/payment/create',
+      cancel: 'POST /api/subscriptions/payment/cancel',
+      health: 'GET /api/subscriptions/payment/health'
+    },
+    hint: 'Check if you are using the correct HTTP method (PUT/POST/GET)'
+  });
+});
+
+console.log('✅ Payment routes registered:');
+console.log('   - PUT  /upgrade');
+console.log('   - POST /create');
+console.log('   - POST /cancel');
+console.log('   - GET  /health');
 
 module.exports = router;
