@@ -10,7 +10,12 @@ const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
+    console.log('🔐 [Auth Middleware] Authenticating request');
+    console.log('🔐 [Auth Middleware] Authorization header:', authHeader ? 'Present' : 'Missing');
+    console.log('🔐 [Auth Middleware] Token extracted:', token ? `Yes (length: ${token.length})` : 'No');
+
     if (!token) {
+      console.error('❌ [Auth Middleware] No token provided');
       return res.status(401).json({
         success: false,
         error: 'Access token required',
@@ -19,12 +24,26 @@ const authenticateToken = async (req, res, next) => {
     }
 
     // Verify token
+    console.log('🔐 [Auth Middleware] Verifying token with JWT_SECRET...');
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET || 'wedding-bazaar-secret-key'
     );
+    
+    console.log('✅ [Auth Middleware] Token decoded successfully:', {
+      userId: decoded.userId,
+      email: decoded.email,
+      userType: decoded.userType
+    });
+
+    console.log('✅ [Auth Middleware] Token decoded successfully:', {
+      userId: decoded.userId,
+      email: decoded.email,
+      userType: decoded.userType
+    });
 
     // Fetch user from database
+    console.log('🔍 [Auth Middleware] Fetching user from database with ID:', decoded.userId);
     const users = await sql`
       SELECT 
         id, email, user_type, first_name, last_name,
@@ -34,6 +53,7 @@ const authenticateToken = async (req, res, next) => {
     `;
 
     if (users.length === 0) {
+      console.error('❌ [Auth Middleware] User not found in database for ID:', decoded.userId);
       return res.status(401).json({
         success: false,
         error: 'User not found',
@@ -41,14 +61,23 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
+    console.log('✅ [Auth Middleware] User found in database:', {
+      id: users[0].id,
+      email: users[0].email,
+      user_type: users[0].user_type
+    });
+
     // Attach user to request
     req.user = users[0];
     req.userId = users[0].id;
     req.userType = users[0].user_type;
 
+    console.log('✅ [Auth Middleware] Request authenticated successfully');
     next();
   } catch (error) {
     console.error('❌ [Auth Middleware] Token verification failed:', error.message);
+    console.error('❌ [Auth Middleware] Error name:', error.name);
+    console.error('❌ [Auth Middleware] Full error:', error);
     
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({
