@@ -5,6 +5,17 @@
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
+// Completion proof file interface
+export interface CompletionProofFile {
+  url: string;
+  publicId: string;
+  uploadedAt: string;
+  fileType: string;
+  size: number;
+  duration?: number; // For videos
+  description?: string;
+}
+
 export interface CompletionStatus {
   vendorCompleted: boolean;
   vendorCompletedAt?: string;
@@ -15,6 +26,11 @@ export interface CompletionStatus {
   currentStatus: string;
   canComplete: boolean;
   waitingFor?: 'vendor' | 'couple';
+  // NEW: Completion proof fields
+  vendorCompletionProof?: CompletionProofFile[];
+  coupleCompletionProof?: CompletionProofFile[];
+  vendorCompletionNotes?: string;
+  coupleCompletionNotes?: string;
 }
 
 export interface CompletionResponse {
@@ -27,20 +43,47 @@ export interface CompletionResponse {
 
 /**
  * Mark booking as completed from vendor or couple side
+ * NOW WITH COMPLETION PROOF SUPPORT
  */
 export async function markBookingComplete(
   bookingId: string,
-  completedBy: 'vendor' | 'couple'
+  completedBy: 'vendor' | 'couple',
+  completionProof?: CompletionProofFile[], // NEW: Optional completion proof
+  completionNotes?: string // NEW: Optional notes
 ): Promise<CompletionResponse> {
   try {
     console.log(`📋 [CompletionService] Marking booking ${bookingId} complete by ${completedBy}`);
+
+    const payload: Record<string, unknown> = {
+      completed_by: completedBy,
+    };
+
+    // Add completion proof if provided
+    if (completionProof && completionProof.length > 0) {
+      if (completedBy === 'vendor') {
+        payload.vendor_completion_proof = completionProof;
+      } else {
+        payload.couple_completion_proof = completionProof;
+      }
+      console.log(`📸 [CompletionService] Uploading ${completionProof.length} proof files`);
+    }
+
+    // Add notes if provided
+    if (completionNotes) {
+      if (completedBy === 'vendor') {
+        payload.vendor_completion_notes = completionNotes;
+      } else {
+        payload.couple_completion_notes = completionNotes;
+      }
+      console.log(`📝 [CompletionService] Adding completion notes`);
+    }
 
     const response = await fetch(`${API_URL}/api/bookings/${bookingId}/mark-completed`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ completed_by: completedBy }),
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();
@@ -65,6 +108,11 @@ export async function markBookingComplete(
       currentStatus: backendBooking.status,
       canComplete: !backendBooking.fullyCompleted,
       waitingFor: data.waiting_for || data.waitingFor,
+      // NEW: Include completion proof
+      vendorCompletionProof: backendBooking.vendorCompletionProof || [],
+      coupleCompletionProof: backendBooking.coupleCompletionProof || [],
+      vendorCompletionNotes: backendBooking.vendorCompletionNotes,
+      coupleCompletionNotes: backendBooking.coupleCompletionNotes,
     } : {
       vendorCompleted: backendBooking.vendor_completed,
       vendorCompletedAt: backendBooking.vendor_completed_at,
@@ -75,6 +123,11 @@ export async function markBookingComplete(
       currentStatus: backendBooking.status,
       canComplete: !backendBooking.fully_completed,
       waitingFor: data.waiting_for,
+      // NEW: Include completion proof
+      vendorCompletionProof: backendBooking.vendor_completion_proof || [],
+      coupleCompletionProof: backendBooking.couple_completion_proof || [],
+      vendorCompletionNotes: backendBooking.vendor_completion_notes,
+      coupleCompletionNotes: backendBooking.couple_completion_notes,
     };
 
     console.log('✅ [CompletionService] Booking completion updated:', completionStatus);
