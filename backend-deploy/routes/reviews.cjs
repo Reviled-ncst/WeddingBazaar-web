@@ -9,10 +9,16 @@ router.post('/', authenticateToken, async (req, res) => {
   console.log('📝 [REVIEWS] POST /api/reviews called');
   console.log('📦 [REVIEWS] Request body:', req.body);
   console.log('👤 [REVIEWS] Authenticated user:', req.user);
+  console.log('🔑 [REVIEWS] User ID fields:', { 
+    'req.userId': req.userId, 
+    'req.user?.id': req.user?.id,
+    'req.user': req.user ? Object.keys(req.user) : 'undefined'
+  });
   
   try {
     const { bookingId, vendorId, rating, comment, images = [] } = req.body;
-    const userId = req.user.id;
+    // Use req.userId (set by auth middleware) instead of req.user.id
+    const userId = req.userId || req.user?.id;
     
     // Validate required fields
     if (!bookingId || !vendorId || !rating) {
@@ -158,7 +164,8 @@ router.get('/booking/:bookingId', authenticateToken, async (req, res) => {
   
   try {
     const { bookingId } = req.params;
-    const userId = req.user.id;
+    // Use req.userId (set by auth middleware) instead of req.user.id
+    const userId = req.userId || req.user?.id;
     
     console.log('🔍 [REVIEWS] Checking review for booking:', bookingId, 'user:', userId);
     
