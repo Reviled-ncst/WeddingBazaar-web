@@ -86,6 +86,11 @@ router.post('/', authenticateToken, async (req, res) => {
     }
     
     // Create the review
+    // Convert images array to PostgreSQL array format
+    const imagesArray = images && images.length > 0 
+      ? `{${images.map(img => `"${img.replace(/"/g, '\\"')}"`).join(',')}}` 
+      : '{}';
+    
     const newReview = await sql`
       INSERT INTO reviews (
         booking_id,
@@ -103,7 +108,7 @@ router.post('/', authenticateToken, async (req, res) => {
         ${userId},
         ${rating},
         ${comment || ''},
-        ${sql.array(images)},
+        ${imagesArray}::text[],
         true,
         NOW(),
         NOW()
