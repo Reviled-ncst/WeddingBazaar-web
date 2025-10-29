@@ -708,6 +708,7 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.85, y: 40 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              onClick={(e) => e.stopPropagation()}
               className="relative bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden z-10"
             >
               {/* Header - Matching Subscription Modal Design */}

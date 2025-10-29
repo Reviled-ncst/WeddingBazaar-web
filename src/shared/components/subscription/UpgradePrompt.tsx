@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Crown, Check, ArrowRight, Zap } from 'lucide-react';
 import { PayMongoPaymentModal } from '../PayMongoPaymentModal';
@@ -797,13 +798,13 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
         </div>
       )}
       
-      {/* PayMongo Payment Modal */}
+      {/* PayMongo Payment Modal - Rendered as Portal to avoid nesting issues */}
       {console.log('🔍 [UpgradePrompt] Checking PayMongoPaymentModal render condition:', { 
         hasSelectedPlan: !!selectedPlan, 
         paymentModalOpen,
         selectedPlanName: selectedPlan?.name 
       })}
-      {selectedPlan && (
+      {selectedPlan && paymentModalOpen && createPortal(
         <PayMongoPaymentModal
           isOpen={paymentModalOpen}
           onClose={() => {
@@ -825,7 +826,8 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
           currencySymbol={currency.symbol}
           onPaymentSuccess={handlePaymentSuccess}
           onPaymentError={handlePaymentError}
-        />
+        />,
+        document.body
       )}
     </AnimatePresence>
   );

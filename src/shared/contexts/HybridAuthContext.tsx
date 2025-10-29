@@ -263,6 +263,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const newUserLoggedIn = fbUser !== null;
       
       if (currentUserLoggedIn === newUserLoggedIn && !newUserLoggedIn) {
+        // 🔐 ADMIN FIX: Check if admin is logged in via JWT (backend-only)
+        const hasJWT = localStorage.getItem('jwt_token');
+        const hasBackendUser = localStorage.getItem('backend_user');
+        
+        if (hasJWT && hasBackendUser && user?.role === 'admin') {
+          console.log('✅ Admin user logged in via backend - ignoring Firebase logged out state');
+          setIsLoading(false);
+          return;
+        }
+        
         // Both null (logged out) - no change, don't update isLoading
         console.log('✅ Auth state unchanged (both logged out) - skipping update');
         return;
@@ -280,6 +290,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.log('📧 User email not verified - limited access until verification');
         }
       } else {
+        // 🔐 ADMIN FIX: Don't clear admin user if they're logged in via backend JWT
+        const hasJWT = localStorage.getItem('jwt_token');
+        const hasBackendUser = localStorage.getItem('backend_user');
+        
+        if (hasJWT && hasBackendUser && user?.role === 'admin') {
+          console.log('✅ Preserving admin user - backend JWT session active');
+          setIsLoading(false);
+          return;
+        }
+        
         setFirebaseUser(null);
         setUser(null);
       }
@@ -288,7 +308,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     return unsubscribe;
-  }, [isRegistering, isLoginInProgress]);
+  }, [isRegistering, isLoginInProgress, user]);
 
   // Check for stored session on app load (ONCE)
   // This handles BOTH admin (JWT) and regular Firebase users
