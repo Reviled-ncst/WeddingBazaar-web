@@ -24,6 +24,7 @@ router.use((req, res, next) => {
   console.log(`🔍 [PAYMENT ROUTE] Base URL: ${req.baseUrl}`);
   console.log(`🔍 [PAYMENT ROUTE] Path: ${req.path}`);
   console.log(`🔍 [PAYMENT ROUTE] Full URL: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
+  console.log(`🔍 [PAYMENT ROUTE] Body preview:`, JSON.stringify(req.body).substring(0, 100));
   next();
 });
 
@@ -359,6 +360,20 @@ router.post('/create', authenticateToken, async (req, res) => {
 });
 
 /**
+ * GET /api/subscriptions/payment/upgrade-test
+ * Test endpoint to verify upgrade route is accessible
+ */
+router.get('/upgrade-test', (req, res) => {
+  console.log('✅ Upgrade test endpoint hit!');
+  res.json({
+    success: true,
+    message: 'Upgrade route is accessible',
+    method: 'PUT /api/subscriptions/payment/upgrade should work',
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
  * PUT /api/subscriptions/payment/upgrade
  * Upgrade subscription with proration and immediate payment
  * 
@@ -366,6 +381,10 @@ router.post('/create', authenticateToken, async (req, res) => {
  * This allows Firebase-authenticated vendors to upgrade without backend JWT tokens
  */
 router.put('/upgrade', async (req, res) => {
+  console.log('🎯🎯🎯 [UPGRADE ROUTE HIT] Request received!');
+  console.log('📦 [UPGRADE] Request body:', JSON.stringify(req.body, null, 2));
+  console.log('🔍 [UPGRADE] Request headers:', JSON.stringify(req.headers, null, 2));
+  
   try {
     const {
       vendor_id,
@@ -970,8 +989,10 @@ router.use((req, res) => {
 
 console.log('✅ Payment routes registered:');
 console.log('   - PUT  /upgrade');
+console.log('   - GET  /upgrade-test (diagnostic)');
 console.log('   - POST /create');
-console.log('   - POST /cancel');
+console.log('   - POST /manual-intervention');
 console.log('   - GET  /health');
+console.log('📍 Full upgrade URL: PUT /api/subscriptions/payment/upgrade');
 
 module.exports = router;
