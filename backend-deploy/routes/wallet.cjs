@@ -57,9 +57,9 @@ router.get('/:vendorId', authenticateToken, async (req, res) => {
         COALESCE(SUM(amount), 0) as total
       FROM wallet_transactions
       WHERE vendor_id = ${vendorId}
-        AND transaction_type = 'deposit'
+        AND transaction_type = 'earning'
         AND status = 'completed'
-        AND transaction_date >= ${currentMonthStart.toISOString()}
+        AND created_at >= ${currentMonthStart.toISOString()}
     `;
 
     const previousMonthTransactions = await sql`
@@ -68,10 +68,10 @@ router.get('/:vendorId', authenticateToken, async (req, res) => {
         COALESCE(SUM(amount), 0) as total
       FROM wallet_transactions
       WHERE vendor_id = ${vendorId}
-        AND transaction_type = 'deposit'
+        AND transaction_type = 'earning'
         AND status = 'completed'
-        AND transaction_date >= ${previousMonthStart.toISOString()}
-        AND transaction_date <= ${previousMonthEnd.toISOString()}
+        AND created_at >= ${previousMonthStart.toISOString()}
+        AND created_at <= ${previousMonthEnd.toISOString()}
     `;
 
     const currentMonthEarnings = parseInt(currentMonthTransactions[0]?.total || 0);
@@ -91,15 +91,15 @@ router.get('/:vendorId', authenticateToken, async (req, res) => {
     // Get category breakdown
     const categoryBreakdownQuery = await sql`
       SELECT 
-        service_type as category,
+        service_category as category,
         COUNT(*) as transactions,
         COALESCE(SUM(amount), 0) as earnings
       FROM wallet_transactions
       WHERE vendor_id = ${vendorId}
-        AND transaction_type = 'deposit'
+        AND transaction_type = 'earning'
         AND status = 'completed'
-        AND service_type IS NOT NULL
-      GROUP BY service_type
+        AND service_category IS NOT NULL
+      GROUP BY service_category
       ORDER BY earnings DESC
     `;
 
@@ -189,11 +189,11 @@ router.get('/:vendorId/transactions', authenticateToken, async (req, res) => {
     let conditions = [sql`vendor_id = ${vendorId}`];
 
     if (start_date) {
-      conditions.push(sql`transaction_date >= ${start_date}`);
+      conditions.push(sql`created_at >= ${start_date}`);
     }
 
     if (end_date) {
-      conditions.push(sql`transaction_date <= ${end_date}`);
+      conditions.push(sql`created_at <= ${end_date}`);
     }
 
     if (status && status !== 'all') {
