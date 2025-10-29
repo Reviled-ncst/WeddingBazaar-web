@@ -204,31 +204,45 @@ router.get('/:vendorId/transactions', authenticateToken, async (req, res) => {
     const { start_date, end_date, status, payment_method, transaction_type } = req.query;
 
     console.log('📜 Fetching transactions for vendor:', vendorId);
+    console.log('📜 Query params:', { start_date, end_date, status, payment_method, transaction_type });
 
-    // Build query with filters
-    let conditions = [sql`vendor_id = ${vendorId}`];
+    // Build WHERE clause parts
+    let whereConditions = ['vendor_id = $1'];
+    let params = [vendorId];
+    let paramIndex = 2;
 
     if (start_date) {
-      conditions.push(sql`created_at >= ${start_date}`);
+      whereConditions.push(`created_at >= $${paramIndex}`);
+      params.push(start_date);
+      paramIndex++;
     }
 
     if (end_date) {
-      conditions.push(sql`created_at <= ${end_date}`);
+      whereConditions.push(`created_at <= $${paramIndex}`);
+      params.push(end_date);
+      paramIndex++;
     }
 
     if (status && status !== 'all') {
-      conditions.push(sql`status = ${status}`);
+      whereConditions.push(`status = $${paramIndex}`);
+      params.push(status);
+      paramIndex++;
     }
 
     if (payment_method && payment_method !== 'all') {
-      conditions.push(sql`payment_method = ${payment_method}`);
+      whereConditions.push(`payment_method = $${paramIndex}`);
+      params.push(payment_method);
+      paramIndex++;
     }
 
     if (transaction_type && transaction_type !== 'all') {
-      conditions.push(sql`transaction_type = ${transaction_type}`);
+      whereConditions.push(`transaction_type = $${paramIndex}`);
+      params.push(transaction_type);
+      paramIndex++;
     }
 
-    const transactions = await sql`
+    const whereClause = whereConditions.join(' AND ');
+    const query = `
       SELECT 
         id,
         transaction_id,
@@ -243,10 +257,15 @@ router.get('/:vendorId/transactions', authenticateToken, async (req, res) => {
         created_at,
         updated_at
       FROM wallet_transactions
-      WHERE ${sql.join(conditions, ' AND ')}
+      WHERE ${whereClause}
       ORDER BY created_at DESC
       LIMIT 100
     `;
+
+    console.log('📜 Executing query:', query);
+    console.log('📜 With params:', params);
+
+    const transactions = await sql(query, params);
 
     console.log(`✅ Found ${transactions.length} transactions`);
 
@@ -429,46 +448,52 @@ router.get('/:vendorId/export', authenticateToken, async (req, res) => {
 
     console.log('📥 Exporting transactions for vendor:', vendorId);
 
-    let conditions = [sql`vendor_id = ${vendorId}`];
+    // Build WHERE clause
+    let whereConditions = ['vendor_id = $1'];
+    let params = [vendorId];
+    let paramIndex = 2;
 
     if (start_date) {
-      conditions.push(sql`created_at >= ${start_date}`);
+      whereConditions.push(`created_at >= $${paramIndex}`);
+      params.push(start_date);
+      paramIndex++;
     }
 
     if (end_date) {
-      conditions.push(sql`created_at <= ${end_date}`);
+      whereConditions.push(`created_at <= $${paramIndex}`);
+      params.push(end_date);
+      paramIndex++;
     }
 
-    const transactions = await sql`
+    const whereClause = whereConditions.join(' AND ');
+    const query = `
       SELECT 
         created_at as transaction_date,
         transaction_id,
         transaction_type,
-        service_name,
+        service_category as service_name,
         service_category,
         payment_method,
         amount,
         status,
-        customer_name,
-        event_date,
-        description
+        description,
+        created_at as event_date
       FROM wallet_transactions
-      WHERE ${sql.join(conditions, ' AND ')}
+      WHERE ${whereClause}
       ORDER BY created_at DESC
     `;
+
+    const transactions = await sql(query, params);
 
     // Build CSV
     const headers = [
       'Date',
       'Transaction ID',
       'Type',
-      'Service',
-      'Category',
+      'Service Category',
       'Payment Method',
       'Amount (PHP)',
       'Status',
-      'Customer',
-      'Event Date',
       'Description'
     ];
 
@@ -479,13 +504,10 @@ router.get('/:vendorId/export', authenticateToken, async (req, res) => {
         t.transaction_date,
         t.transaction_id,
         t.transaction_type,
-        `"${t.service_name || 'N/A'}"`,
         t.service_category || 'N/A',
         t.payment_method || 'N/A',
-        t.amount,
+        (parseInt(t.amount) / 100).toFixed(2),
         t.status,
-        `"${t.customer_name || 'N/A'}"`,
-        t.event_date || 'N/A',
         `"${t.description || 'N/A'}"`
       ];
       csv += row.join(',') + '\n';
