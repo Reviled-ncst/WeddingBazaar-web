@@ -8,14 +8,14 @@
 const express = require('express');
 const router = express.Router();
 const { neon } = require('@neondatabase/serverless');
-const authMiddleware = require('../middleware/auth.cjs');
+const { authenticateToken, requireVendor, requireAdmin } = require('../middleware/auth.cjs');
 
 const sql = neon(process.env.DATABASE_URL);
 
 // ============================================================================
 // GET /api/wallet/:vendorId - Get vendor wallet summary
 // ============================================================================
-router.get('/:vendorId', authMiddleware, async (req, res) => {
+router.get('/:vendorId', authenticateToken, async (req, res) => {
   try {
     const { vendorId } = req.params;
 
@@ -197,7 +197,7 @@ router.get('/:vendorId', authMiddleware, async (req, res) => {
 // ============================================================================
 // GET /api/wallet/:vendorId/transactions - Get transaction history
 // ============================================================================
-router.get('/:vendorId/transactions', authMiddleware, async (req, res) => {
+router.get('/:vendorId/transactions', authenticateToken, async (req, res) => {
   try {
     const { vendorId } = req.params;
     const { start_date, end_date, status, payment_method } = req.query;
@@ -291,7 +291,7 @@ router.get('/:vendorId/transactions', authMiddleware, async (req, res) => {
 // ============================================================================
 // POST /api/wallet/:vendorId/withdraw - Request withdrawal
 // ============================================================================
-router.post('/:vendorId/withdraw', authMiddleware, async (req, res) => {
+router.post('/:vendorId/withdraw', authenticateToken, async (req, res) => {
   try {
     const { vendorId } = req.params;
     const {
@@ -375,7 +375,7 @@ router.post('/:vendorId/withdraw', authMiddleware, async (req, res) => {
 // ============================================================================
 // GET /api/wallet/:vendorId/export - Export transactions to CSV
 // ============================================================================
-router.get('/:vendorId/export', authMiddleware, async (req, res) => {
+router.get('/:vendorId/export', authenticateToken, async (req, res) => {
   try {
     const { vendorId } = req.params;
     const { start_date, end_date } = req.query;
