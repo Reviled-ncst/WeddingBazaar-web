@@ -122,70 +122,6 @@ const handleContactClient = (booking: UIBooking) => {
   }
 };
 
-/**
- * Handle booking completion (vendor side)
- * Two-sided completion: Both vendor and couple must confirm
- */
-const handleMarkComplete = async (booking: UIBooking) => {
-  console.log('🎉 [VendorBookingsSecure] Mark Complete clicked for booking:', booking.id);
-
-  // Check if booking is fully paid
-  const isFullyPaid = (booking.status as string) === 'fully_paid' || 
-                     (booking.status as string) === 'paid_in_full' || 
-                     (booking.status as string) === 'deposit_paid';
-
-  if (!isFullyPaid) {
-    alert('This booking must be fully paid before marking as complete.');
-    return;
-  }
-
-  // Show confirmation dialog
-  const confirmed = window.confirm(
-    `✅ Mark Booking Complete\n\n` +
-    `Mark this booking for ${booking.coupleName || 'the couple'} as complete?\n\n` +
-    `Note: The booking will only be fully completed when both you and the couple confirm completion.\n\n` +
-    `Do you want to proceed?`
-  );
-
-  if (!confirmed) {
-    return;
-  }
-
-  try {
-    // Call the completion API
-    const API_URL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-    const response = await fetch(`${API_URL}/api/bookings/${booking.id}/mark-completed`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ completed_by: 'vendor' }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || data.message || 'Failed to mark booking as completed');
-    }
-
-    console.log('✅ [VendorBookingsSecure] Booking completion updated:', data);
-
-    // Show success message
-    const successMsg = data.waiting_for === null
-      ? '🎉 Booking Fully Completed!\n\nBoth you and the couple have confirmed. The booking is now marked as completed.'
-      : '✅ Completion Confirmed!\n\nYour confirmation has been recorded. The booking will be fully completed once the couple also confirms.';
-
-    alert(successMsg);
-
-    // Reload bookings to reflect new status
-    await loadBookings(true); // Silent refresh
-
-  } catch (error: any) {
-    console.error('❌ [VendorBookingsSecure] Error marking complete:', error);
-    alert(`Error: ${error.message || 'An error occurred while marking the booking as complete.'}`);
-  }
-};
-
 // Types
 interface UIBooking {
   id: string;
@@ -424,6 +360,95 @@ export const VendorBookingsSecure: React.FC = () => {
       console.error('Failed to load stats:', error);
     }
   }, [vendorId, apiUrl]); // FIX: Memoize with dependencies
+
+  /**
+   * Handle booking completion (vendor side)
+   * Two-sided completion: Both vendor and couple must confirm
+   */
+  const handleMarkComplete = useCallback(async (booking: UIBooking) => {
+    console.log('🎉 [VendorBookingsSecure] Mark Complete clicked for booking:', booking.id);
+
+    // Check if booking is fully paid
+    const isFullyPaid = (booking.status as string) === 'fully_paid' || 
+                       (booking.status as string) === 'paid_in_full' || 
+                       (booking.status as string) === 'deposit_paid';
+
+    if (!isFullyPaid) {
+      alert('This booking must be fully paid before marking as complete.');
+      return;
+    }
+
+    // Format customer name (extract from email if needed)
+    let customerName = booking.coupleName || 'the customer';
+    if (customerName.includes('@')) {
+      // Extract name from email (e.g., "john.doe@example.com" -> "John Doe")
+      const emailName = customerName.split('@')[0];
+      customerName = emailName
+        .split(/[._-]/)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join(' ');
+    }
+
+    // Format booking details
+    const eventDate = new Date(booking.eventDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    const amount = booking.totalAmount ? `₱${booking.totalAmount.toLocaleString()}` : 'N/A';
+
+    // Show confirmation dialog with booking details
+    const confirmed = window.confirm(
+      `✅ Mark Booking Complete\n\n` +
+      `Client: ${customerName}\n` +
+      `Service: ${booking.serviceType}\n` +
+      `Event Date: ${eventDate}\n` +
+      `Amount: ${amount}\n\n` +
+      `Mark this booking as complete?\n\n` +
+      `Note: The booking will only be fully completed when both you and the couple confirm completion.\n\n` +
+      `Do you want to proceed?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      // Call the completion API
+      const API_URL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+      const response = await fetch(`${API_URL}/api/bookings/${booking.id}/mark-completed`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ completed_by: 'vendor' }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Failed to mark booking as completed');
+      }
+
+      console.log('✅ [VendorBookingsSecure] Booking completion updated:', data);
+
+      // Show success message
+      const successMsg = data.waiting_for === null
+        ? '🎉 Booking Fully Completed!\n\nBoth you and the couple have confirmed. The booking is now marked as completed.'
+        : '✅ Completion Confirmed!\n\nYour confirmation has been recorded. The booking will be fully completed once the couple also confirms.';
+
+      alert(successMsg);
+
+      // Reload bookings to reflect new status
+      await loadBookings(true); // Silent refresh
+
+    } catch (error: unknown) {
+      console.error('❌ [VendorBookingsSecure] Error marking complete:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while marking the booking as complete.';
+      alert(`Error: ${errorMessage}`);
+    }
+  }, [loadBookings]);
 
   /**
    * Initialize component with auth context
