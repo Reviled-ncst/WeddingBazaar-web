@@ -73,10 +73,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Firebase Auth State Listener
   useEffect(() => {
-    console.log('🔧 Setting up Firebase Auth state listener');
+    
     
     const unsubscribe = firebaseAuthService.onAuthStateChanged((authUser) => {
-      console.log('🔧 Firebase Auth state changed:', authUser);
+      
       setFirebaseUser(authUser);
       
       if (authUser) {
@@ -112,10 +112,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             firebaseUid: firebaseUser.uid
           };
           setUser(updatedUser);
-          console.log('✅ Synced cached user data with Firebase user');
+          
           return;
         } catch (e) {
-          console.log('❌ Failed to parse cached user data');
+          
         }
       }
 
@@ -133,7 +133,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       setUser(backendUser);
       localStorage.setItem('cached_user_data', JSON.stringify(backendUser));
-      console.log('✅ Created user from Firebase data');
+      
 
     } catch (error) {
       console.error('❌ Error syncing with backend user:', error);
@@ -144,7 +144,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      console.log('🔧 Starting Firebase registration process');
+      
       
       // Register with Firebase Auth
       const userCredential = await firebaseAuthService.registerWithEmailVerification({
@@ -159,7 +159,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         location: userData.location
       });
 
-      console.log('✅ Firebase registration successful');
+      
 
       // Create user object for our app
       const newUser: User = {
@@ -178,7 +178,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem('cached_user_data', JSON.stringify(newUser));
       
       // Note: setUser will be called by the Firebase auth state listener
-      console.log('✅ Registration completed - verification email sent');
+      
 
     } catch (error: any) {
       console.error('❌ Registration error:', error);
@@ -191,12 +191,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      console.log('🔧 Starting Firebase login process');
+      
       
       // Sign in with Firebase
       const userCredential = await firebaseAuthService.signIn(email, password);
       
-      console.log('✅ Firebase login successful');
+      
       
       // User data will be set by the Firebase auth state listener
       // For now, return a basic user object
@@ -221,7 +221,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async (): Promise<void> => {
     try {
-      console.log('🔧 Starting logout process');
+      
       
       // Sign out from Firebase
       await firebaseAuthService.signOut();
@@ -232,7 +232,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('cached_user_data');
       
-      console.log('✅ Logout successful');
+      
     } catch (error) {
       console.error('❌ Logout error:', error);
       // Clear local state even if Firebase logout fails
@@ -246,7 +246,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const sendEmailVerification = async (): Promise<void> => {
     try {
       await firebaseAuthService.sendEmailVerification();
-      console.log('✅ Email verification sent');
+      
     } catch (error) {
       console.error('❌ Error sending email verification:', error);
       throw error;
@@ -256,7 +256,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const reloadUser = async (): Promise<void> => {
     try {
       await firebaseAuthService.reloadUser();
-      console.log('✅ User data reloaded');
+      
     } catch (error) {
       console.error('❌ Error reloading user:', error);
       throw error;

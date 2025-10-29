@@ -23,7 +23,7 @@ class Analytics {
     // Check if we're in development mode
     const isDev = import.meta.env.DEV;
     if (isDev) {
-      console.log('[Analytics] Initialized in development mode');
+      
     }
   }
 
@@ -236,7 +236,7 @@ class Analytics {
    */
   clearQueue(): void {
     this.eventQueue = [];
-    console.log('[Analytics] Event queue cleared');
+    
   }
 
   /**
@@ -244,11 +244,7 @@ class Analytics {
    */
   private logEvent(event: AnalyticsEvent): void {
     if (import.meta.env.DEV) {
-      console.log(
-        `[Analytics] ${event.event}`,
-        event.metadata || '',
-        event.timestamp
-      );
+      
     }
   }
 
@@ -269,7 +265,7 @@ class Analytics {
    */
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
-    console.log(`[Analytics] Tracking ${enabled ? 'enabled' : 'disabled'}`);
+    
   }
 }
 

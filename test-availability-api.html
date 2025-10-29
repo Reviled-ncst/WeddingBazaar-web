@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Availability API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        pre {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Availability API Diagnostic Tool</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Fetch Vendor Bookings</h2>
+        <p>This tests if the backend API is returning bookings for vendor 2-2025-001</p>
+        <button onclick="testVendorBookings()">Run Test</button>
+        <pre id="test1-result">Click button to run test...</pre>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Check Known Booked Date (2025-10-29)</h2>
+        <p>This date should show as UNAVAILABLE (has completed booking)</p>
+        <button onclick="testBookedDate()">Run Test</button>
+        <pre id="test2-result">Click button to run test...</pre>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Check Available Date (2025-12-25)</h2>
+        <p>This date should show as AVAILABLE (no bookings)</p>
+        <button onclick="testAvailableDate()">Run Test</button>
+        <pre id="test3-result">Click button to run test...</pre>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 4: Frontend Availability Service</h2>
+        <p>Test the actual frontend service that the calendar uses</p>
+        <button onclick="testFrontendService()">Run Test</button>
+        <pre id="test4-result">Click button to run test...</pre>
+    </div>
+
+    <script>
+        const API_URL = 'https://weddingbazaar-web.onrender.com';
+        const LOCAL_API_URL = 'http://localhost:3001';
+        const VENDOR_ID = '2-2025-001';
+        
+        // Try production first, fallback to local
+        let activeApiUrl = API_URL;
+        
+        async function testVendorBookings() {
+            const resultEl = document.getElementById('test1-result');
+            resultEl.textContent = '⏳ Testing...';
+            
+            try {
+                const url = `${activeApiUrl}/api/bookings/vendor/${VENDOR_ID}`;
+                console.log('Fetching:', url);
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const bookings = data.bookings || data || [];
+                const bookingDates = bookings.map(b => ({
+                    date: b.event_date?.split('T')[0],
+                    status: b.status,
+                    service: b.service_id
+                }));
+                
+                resultEl.innerHTML = `<span class="success">✅ SUCCESS</span>
+                
+URL: ${url}
+Status: ${response.status}
+Total Bookings: ${bookings.length}
+
+Booking Dates:
+${JSON.stringify(bookingDates, null, 2)}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                resultEl.innerHTML = `<span class="error">❌ ERROR</span>
+                
+${error.message}
+
+Stack: ${error.stack}`;
+            }
+        }
+        
+        async function testBookedDate() {
+            const resultEl = document.getElementById('test2-result');
+            resultEl.textContent = '⏳ Testing...';
+            
+            const testDate = '2025-10-29';
+            
+            try {
+                // Fetch all vendor bookings
+                const url = `${activeApiUrl}/api/bookings/vendor/${VENDOR_ID}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                const bookings = data.bookings || data || [];
+                
+                // Filter for test date
+                const bookingsOnDate = bookings.filter(b => {
+                    const bookingDate = b.event_date?.split('T')[0];
+                    return bookingDate === testDate;
+                });
+                
+                const confirmed = bookingsOnDate.filter(b => 
+                    ['confirmed', 'fully_paid', 'paid_in_full', 'completed', 'approved'].includes(b.status)
+                ).length;
+                
+                const isAvailable = confirmed === 0;
+                const expected = false; // Should be unavailable
+                
+                resultEl.innerHTML = `<span class="${isAvailable === expected ? 'success' : 'error'}">
+${isAvailable === expected ? '✅ CORRECT' : '❌ WRONG'}</span>
+
+Date: ${testDate}
+Bookings on Date: ${bookingsOnDate.length}
+Confirmed Bookings: ${confirmed}
+Is Available: ${isAvailable}
+Expected: ${expected}
+
+Details:
+${JSON.stringify(bookingsOnDate, null, 2)}`;
+            } catch (error) {
+                resultEl.innerHTML = `<span class="error">❌ ERROR</span>
+
+${error.message}`;
+            }
+        }
+        
+        async function testAvailableDate() {
+            const resultEl = document.getElementById('test3-result');
+            resultEl.textContent = '⏳ Testing...';
+            
+            const testDate = '2025-12-25';
+            
+            try {
+                const url = `${activeApiUrl}/api/bookings/vendor/${VENDOR_ID}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                const bookings = data.bookings || data || [];
+                
+                const bookingsOnDate = bookings.filter(b => {
+                    const bookingDate = b.event_date?.split('T')[0];
+                    return bookingDate === testDate;
+                });
+                
+                const isAvailable = bookingsOnDate.length === 0;
+                const expected = true; // Should be available
+                
+                resultEl.innerHTML = `<span class="${isAvailable === expected ? 'success' : 'error'}">
+${isAvailable === expected ? '✅ CORRECT' : '❌ WRONG'}</span>
+
+Date: ${testDate}
+Bookings on Date: ${bookingsOnDate.length}
+Is Available: ${isAvailable}
+Expected: ${expected}
+
+${bookingsOnDate.length > 0 ? 'Unexpected bookings found:' : 'No bookings - date is available ✅'}
+${JSON.stringify(bookingsOnDate, null, 2)}`;
+            } catch (error) {
+                resultEl.innerHTML = `<span class="error">❌ ERROR</span>
+
+${error.message}`;
+            }
+        }
+        
+        async function testFrontendService() {
+            const resultEl = document.getElementById('test4-result');
+            resultEl.textContent = '⏳ Testing... (This simulates what the calendar does)';
+            
+            try {
+                // Simulate the availability service logic
+                const startDate = '2025-10-20';
+                const endDate = '2025-11-10';
+                
+                const url = `${activeApiUrl}/api/bookings/vendor/${VENDOR_ID}?startDate=${startDate}&endDate=${endDate}`;
+                console.log('Testing range fetch:', url);
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                const bookings = data.bookings || data || [];
+                
+                // Build availability map like the service does
+                const bookingsByDate = new Map();
+                bookings.forEach(booking => {
+                    const dateKey = booking.event_date?.split('T')[0];
+                    if (dateKey) {
+                        if (!bookingsByDate.has(dateKey)) {
+                            bookingsByDate.set(dateKey, []);
+                        }
+                        bookingsByDate.get(dateKey).push(booking);
+                    }
+                });
+                
+                // Generate all dates in range
+                const allDates = [];
+                const current = new Date(startDate);
+                const end = new Date(endDate);
+                while (current <= end) {
+                    allDates.push(current.toISOString().split('T')[0]);
+                    current.setDate(current.getDate() + 1);
+                }
+                
+                // Check each date
+                const dateStatus = allDates.map(date => {
+                    const dateBookings = bookingsByDate.get(date) || [];
+                    const confirmed = dateBookings.filter(b => 
+                        ['confirmed', 'fully_paid', 'paid_in_full', 'completed', 'approved'].includes(b.status)
+                    ).length;
+                    
+                    return {
+                        date,
+                        bookings: dateBookings.length,
+                        confirmed,
+                        available: confirmed === 0,
+                        status: dateBookings.map(b => b.status).join(', ') || 'none'
+                    };
+                });
+                
+                const unavailableDates = dateStatus.filter(d => !d.available);
+                
+                resultEl.innerHTML = `<span class="success">✅ SIMULATION COMPLETE</span>
+
+Date Range: ${startDate} to ${endDate}
+Total Dates: ${allDates.length}
+Dates with Bookings: ${bookingsByDate.size}
+Unavailable Dates: ${unavailableDates.length}
+
+<strong>Unavailable Dates (should show as red in calendar):</strong>
+${unavailableDates.map(d => `  ${d} - ${d.bookings} bookings (${d.status})`).join('\n')}
+
+<strong>Full Date Status:</strong>
+${dateStatus.filter(d => d.bookings > 0).map(d => 
+    `${d.date}: ${d.available ? '✅ Available' : '❌ Booked'} (${d.status})`
+).join('\n')}`;
+                
+            } catch (error) {
+                resultEl.innerHTML = `<span class="error">❌ ERROR</span>
+
+${error.message}
+
+Stack: ${error.stack}`;
+            }
+        }
+        
+        // Test API connectivity on load
+        async function testConnectivity() {
+            try {
+                const response = await fetch(`${API_URL}/api/health`);
+                if (response.ok) {
+                    console.log('✅ Connected to production API');
+                    activeApiUrl = API_URL;
+                } else {
+                    throw new Error('Production API not responding');
+                }
+            } catch (error) {
+                console.log('⚠️ Production API not available, trying local...');
+                try {
+                    const response = await fetch(`${LOCAL_API_URL}/api/health`);
+                    if (response.ok) {
+                        console.log('✅ Connected to local API');
+                        activeApiUrl = LOCAL_API_URL;
+                        document.body.insertAdjacentHTML('afterbegin', 
+                            '<div style="background: orange; color: white; padding: 10px; margin-bottom: 20px;">⚠️ Using LOCAL API (not production)</div>'
+                        );
+                    }
+                } catch (localError) {
+                    console.error('❌ Both APIs unavailable');
+                    document.body.insertAdjacentHTML('afterbegin', 
+                        '<div style="background: red; color: white; padding: 10px; margin-bottom: 20px;">❌ Cannot connect to API</div>'
+                    );
+                }
+            }
+        }
+        
+        testConnectivity();
+    </script>
+</body>
+</html>

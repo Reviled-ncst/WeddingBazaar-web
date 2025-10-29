@@ -58,7 +58,7 @@ class PaymentWebhookHandler {
    * Handle incoming webhook event
    */
   handleWebhookEvent(event: PayMongoWebhookEvent) {
-    console.log('📡 PayMongo Webhook Event Received:', event);
+    
 
     try {
       const webhookData = this.parseWebhookEvent(event);

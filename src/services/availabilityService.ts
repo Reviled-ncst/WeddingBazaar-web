@@ -397,6 +397,17 @@ class AvailabilityService {
       // CRITICAL: Log the EXACT fetch URL being called
       const bookingsUrl = `${this.apiUrl}/api/bookings/vendor/${bookingVendorId}?startDate=${startDate}&endDate=${endDate}`;
       const offDaysUrl = `${this.apiUrl}/api/vendors/${vendorId}/off-days`;
+      
+      // 🔍 DEBUG: Log API request details
+      console.log('🔍 [AvailabilityService] Fetching bookings:', {
+        vendorId,
+        bookingVendorId,
+        dateRange: { startDate, endDate },
+        serviceId: serviceId || 'ALL (no filter)',
+        bookingsUrl,
+        offDaysUrl
+      });
+      
       // Parallel API calls for efficiency
       const [bookingsResponse, offDaysResponse] = await Promise.all([
         // Get all bookings for vendor in date range
@@ -428,10 +439,25 @@ class AvailabilityService {
       if (bookingsResponse.ok) {
         const bookingsData = await bookingsResponse.json();
         bookings = bookingsData.bookings || bookingsData || [];
+        
+        // 🔍 DEBUG: Log bookings received
+        console.log('📊 [AvailabilityService] Received bookings:', {
+          total: bookings.length,
+          dates: [...new Set(bookings.map((b: any) => b.event_date?.split('T')[0]))].sort(),
+          statuses: [...new Set(bookings.map((b: any) => b.status))],
+          serviceIds: [...new Set(bookings.map((b: any) => b.service_id))].filter(Boolean)
+        });
+        
         if (bookings.length > 0) {
+          console.log('📝 [AvailabilityService] Sample booking:', bookings[0]);
         }
       } else {
         const errorText = await bookingsResponse.text();
+        console.error('❌ [AvailabilityService] Bookings API error:', {
+          status: bookingsResponse.status,
+          statusText: bookingsResponse.statusText,
+          error: errorText
+        });
       }
 
       // Process off days response
@@ -449,6 +475,12 @@ class AvailabilityService {
       bookings.forEach((booking: any) => {
         // SERVICE-SPECIFIC FILTERING: Only include bookings for this specific service
         if (serviceId && booking.service_id !== serviceId) {
+          // 🔍 DEBUG: Log filtered bookings
+          console.log(`🔍 [AvailabilityService] Filtering out booking for different service:`, {
+            bookingServiceId: booking.service_id,
+            requestedServiceId: serviceId,
+            date: booking.event_date?.split('T')[0]
+          });
           return; // Skip bookings for other services
         }
         
@@ -460,6 +492,17 @@ class AvailabilityService {
           }
           bookingsByDate.get(dateKey)!.push(booking);
         }
+      });
+      
+      // 🔍 DEBUG: Log bookings by date after filtering
+      console.log('📅 [AvailabilityService] Bookings grouped by date:', {
+        totalDatesWithBookings: bookingsByDate.size,
+        dates: Array.from(bookingsByDate.keys()).sort(),
+        details: Array.from(bookingsByDate.entries()).map(([date, bookings]) => ({
+          date,
+          count: bookings.length,
+          statuses: bookings.map(b => b.status).join(', ')
+        }))
       });
       // Create off days set
       const offDayDates = new Set<string>();

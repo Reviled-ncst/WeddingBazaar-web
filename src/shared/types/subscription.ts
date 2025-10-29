@@ -319,7 +319,7 @@ export class SubscriptionAccess {
     // Check if feature is explicitly defined in the plan
     const hasExplicitFeature = subscription.plan.features.some(f => f.id === featureId && f.enabled);
     
-    console.log(`🔍 [SubscriptionAccess] Feature check: ${featureId}, Plan: ${subscription.plan.id}, Has explicit: ${hasExplicitFeature}`);
+    
     
     return hasExplicitFeature;
   }

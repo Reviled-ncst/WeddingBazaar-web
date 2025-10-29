@@ -6,7 +6,7 @@ export const silent = {
   info: (...args: any[]) => {
     // Silent in production
     if (process.env.NODE_ENV === 'development') {
-      console.info(...args);
+      
     }
   },
   warn: (...args: any[]) => {
@@ -22,7 +22,7 @@ export const silent = {
   log: (...args: any[]) => {
     // Silent in production
     if (process.env.NODE_ENV === 'development') {
-      console.log(...args);
+      
     }
   }
 };

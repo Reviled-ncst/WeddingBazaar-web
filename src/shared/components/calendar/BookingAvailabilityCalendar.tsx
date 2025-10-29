@@ -98,10 +98,34 @@ export const BookingAvailabilityCalendar: React.FC<BookingAvailabilityCalendarPr
       
       console.log('📅 [BookingCalendar] Loading availability for:', { vendorId, serviceId, startStr, endStr });
       
+      // 🔍 DEBUG: Log what we're passing to the service
+      console.log('🔍 [BookingCalendar] Calling checkAvailabilityRange with:', {
+        vendorId,
+        serviceId,
+        startStr,
+        endStr,
+        'service filtering': serviceId ? 'ENABLED - only showing bookings for this service' : 'DISABLED - showing all vendor bookings'
+      });
+      
       const availabilityMap = await availabilityService.checkAvailabilityRange(vendorId, startStr, endStr, serviceId);
       setAvailabilityData(availabilityMap);
       
       console.log('✅ [BookingCalendar] Loaded availability for', availabilityMap.size, 'dates');
+      
+      // 🔍 DEBUG: Log unavailable dates
+      const unavailableDates = Array.from(availabilityMap.entries())
+        .filter(([date, availability]) => !availability.isAvailable)
+        .map(([date, availability]) => ({ 
+          date, 
+          reason: availability.reason,
+          bookings: availability.currentBookings 
+        }));
+      
+      if (unavailableDates.length > 0) {
+        console.log('🔴 [BookingCalendar] Unavailable dates found:', unavailableDates);
+      } else {
+        console.log('⚠️ [BookingCalendar] NO unavailable dates found - all dates showing as available!');
+      }
     } catch (error) {
       console.error('❌ [BookingCalendar] Error loading availability:', error);
       // Set empty map on error to prevent crashes

@@ -2,7 +2,7 @@
 // Usage: Run this in browser console to test location accuracy
 
 async function testEnhancedGeolocation() {
-  console.log('🇵🇭 Testing Enhanced Philippine Geolocation...');
+  
   
   // Test coordinates for various Philippine locations
   const testLocations = [
@@ -15,43 +15,43 @@ async function testEnhancedGeolocation() {
     { name: 'Calamba, Laguna', lat: 14.2118, lng: 121.1653 }
   ];
   
-  console.log('📍 Testing reverse geocoding for Philippine locations:');
+  
   
   for (const location of testLocations) {
     try {
-      console.log(`\n🏢 Testing: ${location.name}`);
-      console.log(`📍 Coordinates: ${location.lat}, ${location.lng}`);
+      
+      
       
       // Import and test the enhanced reverse geocoding
       const { reverseGeocode } = await import('./geolocation-enhanced');
       const address = await reverseGeocode(location.lat, location.lng);
       
-      console.log(`✅ Enhanced Address: ${address}`);
+      
       
       // Test bounds checking
       const { isWithinPhilippines } = await import('./geolocation-enhanced');
       const isValid = isWithinPhilippines(location.lat, location.lng);
-      console.log(`🌏 Within Philippines: ${isValid ? '✅ Yes' : '❌ No'}`);
+      
       
     } catch (error) {
       console.error(`❌ Error for ${location.name}:`, error);
     }
   }
   
-  console.log('\n🎯 Testing current location detection...');
+  
   try {
     const { getCurrentLocationWithAddress } = await import('./geolocation-enhanced');
     const result = await getCurrentLocationWithAddress();
-    // console.log('✅ Current location result:', result);
+    // 
   } catch (error) {
-    console.log('ℹ️ Current location test (requires user permission):', error instanceof Error ? error.message : 'Unknown error');
+    :', error instanceof Error ? error.message : 'Unknown error');
   }
 }
 
 // For browser testing
 if (typeof window !== 'undefined') {
   (window as any).testEnhancedGeolocation = testEnhancedGeolocation;
-  console.log('🚀 Enhanced geolocation test loaded! Run: testEnhancedGeolocation()');
+  ');
 }
 
 export { testEnhancedGeolocation };

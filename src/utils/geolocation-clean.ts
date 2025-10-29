@@ -45,11 +45,7 @@ export const getCurrentPosition = (): Promise<GeolocationPosition> => {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        console.log('GPS Position obtained:', {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy
-        });
+        
         resolve(position);
       },
       (error) => {
@@ -108,7 +104,7 @@ const formatPhilippineProvinceName = (province: string): string => {
  */
 export const reverseGeocode = async (latitude: number, longitude: number): Promise<string> => {
   try {
-    console.log(`Reverse geocoding for: ${latitude}, ${longitude}`);
+    
     
     // Primary: Nominatim with detailed address components
     const response = await fetch(
@@ -120,7 +116,7 @@ export const reverseGeocode = async (latitude: number, longitude: number): Promi
     }
     
     const data = await response.json();
-    console.log('Nominatim response:', data);
+    
     
     // Enhanced formatting for Philippine addresses
     if (data.address) {
@@ -156,7 +152,7 @@ export const reverseGeocode = async (latitude: number, longitude: number): Promi
       parts.push('Philippines');
       
       const formattedAddress = parts.join(', ');
-      console.log('Formatted address:', formattedAddress);
+      
       return formattedAddress;
     }
     
@@ -173,11 +169,11 @@ export const reverseGeocode = async (latitude: number, longitude: number): Promi
  */
 export const getCurrentLocationWithAddress = async (): Promise<GeolocationResult> => {
   try {
-    console.log('Getting current location...');
+    
     const position = await getCurrentPosition();
     const { latitude, longitude, accuracy } = position.coords;
     
-    console.log(`Position obtained: ${latitude}, ${longitude} (accuracy: ${accuracy}m)`);
+    `);
     
     if (!isWithinPhilippines(latitude, longitude)) {
       throw new Error('Your current location appears to be outside the Philippines. Please select a location within the Philippines manually.');

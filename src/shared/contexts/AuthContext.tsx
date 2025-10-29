@@ -80,18 +80,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
         
         // First check if backend is responsive
-        console.log('🌐 Checking backend status before authentication...');
+        
         const backendOnline = await checkBackendStatus(apiBaseUrl);
         
         if (!backendOnline) {
-          console.log('⚠️ Backend appears offline - proceeding with offline mode');
+          
           // In offline mode, we'll assume the user is authenticated if they have a token
           // The app will function in read-only mode until backend comes back online
           const cachedUserData = localStorage.getItem('cached_user_data');
           if (cachedUserData) {
             try {
               const userData = JSON.parse(cachedUserData);
-              console.log('📦 Using cached user data for offline mode:', userData);
+              
               setUser(userData);
               
               // Show a toast notification about offline mode (if toast service is available)
@@ -99,7 +99,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 (window as any).showToast('App is running in offline mode. Some features may be limited.', 'warning');
               }
             } catch (e) {
-              console.log('❌ Failed to parse cached user data');
+              
             }
           }
           setIsLoading(false);
@@ -111,13 +111,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           // Enhanced JWT validation with better error handling
           if (!token || typeof token !== 'string') {
-            console.log('❌ Invalid token type or empty token');
+            
             throw new Error('Invalid token');
           }
           
           const tokenParts = token.split('.');
           if (tokenParts.length !== 3) {
-            console.log('❌ Invalid JWT format - expected 3 parts, got:', tokenParts.length);
+            
             throw new Error('Invalid JWT format');
           }
           
@@ -142,11 +142,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const decodedString = atob(paddedPayload);
             payload = JSON.parse(decodedString);
             
-            console.log('✅ JWT payload decoded successfully:', payload);
+            
           } catch (decodeError) {
             const errorMsg = decodeError instanceof Error ? decodeError.message : 'Unknown decode error';
-            console.log('❌ Failed to decode JWT payload:', errorMsg);
-            console.log('❌ Token parts:', tokenParts.map((part, i) => `Part ${i}: ${part.substring(0, 20)}...`));
+            
+             => `Part ${i}: ${part.substring(0, 20)}...`));
             throw new Error(`Invalid token format: ${errorMsg}`);
           }
           
@@ -158,31 +158,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             if (cachedUserData) {
               try {
                 const userData = JSON.parse(cachedUserData);
-                console.log('✅ Using valid cached user data:', userData);
+                
                 setUser(userData);
                 // Ensure token persists in both storages
                 localStorage.setItem('auth_token', token);
                 sessionStorage.setItem('auth_token', token);
               } catch (e) {
-                console.log('❌ Failed to parse cached user data');
+                
                 localStorage.removeItem('auth_token');
                 sessionStorage.removeItem('auth_token');
                 localStorage.removeItem('cached_user_data');
               }
             } else {
-              console.log('⚠️ Token valid but no cached user data - user needs to login again');
+              
               localStorage.removeItem('auth_token');
               sessionStorage.removeItem('auth_token');
             }
           } else {
-            console.log('🔄 Token expired, removing...');
+            
             localStorage.removeItem('auth_token');
             sessionStorage.removeItem('auth_token');
             localStorage.removeItem('cached_user_data');
           }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-          console.log('❌ Invalid token format, removing...', errorMsg);
+          
           
           // Comprehensive token cleanup
           localStorage.removeItem('auth_token');
@@ -196,7 +196,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             sessionStorage.removeItem(key);
           });
           
-          console.log('🧹 All authentication data cleared due to token validation error');
+          
         }
       } finally {
         setIsLoading(false);
@@ -215,17 +215,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const fullUrl = `${apiBaseUrl}/api/auth/login`;
       
-      console.log('🔐 Attempting login to:', fullUrl);
+      
       
       // Check if backend is awake first, wake it up if needed
       const backendAwake = await checkBackendStatus(apiBaseUrl, 1);
       if (!backendAwake) {
-        console.log('⏰ Backend appears to be sleeping, attempting to wake it up...');
+        
         // Send a wake-up request
         try {
           await fetch(`${apiBaseUrl}/api/health`, { method: 'GET' });
         } catch (e) {
-          console.log('🔔 Wake-up request sent, backend should start warming up');
+          
         }
         
         throw new Error('Our server is starting up. Please wait 30-60 seconds and try again.');
@@ -246,7 +246,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       const response = await Promise.race([fetchPromise, timeoutPromise]);
 
-      console.log('🔐 Login response status:', response.status);
+      
       
       // Check if response is HTML (error page) instead of JSON
       const contentType = response.headers.get('content-type');
@@ -302,24 +302,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       const data = await response.json();
-      console.log('✅ Login response data:', data);
+      
       
       // DEBUG: Check each condition separately
-      console.log('🔍 DEBUG - Checking login response conditions:');
-      console.log('  data.success:', data.success, typeof data.success);
-      console.log('  data.user:', !!data.user, typeof data.user);
-      console.log('  data.token:', !!data.token, typeof data.token);
-      console.log('  All conditions met:', !!(data.success && data.user && data.token));
+      
+      
+      
+      
+      );
       
       // Only store token and user if login was successful
       if (data.success && data.user && data.token) {
         // Fix backend user data mapping - userType -> role
         const userRole = data.user.userType || data.user.user_type || data.user.role || 'couple';
-        console.log('🔍 DEBUG - Role mapping:');
-        console.log('  data.user.userType:', data.user.userType);
-        console.log('  data.user.user_type:', data.user.user_type);  
-        console.log('  data.user.role:', data.user.role);
-        console.log('  Final userRole:', userRole);
+        
+        
+          
+        
+        
         
         const mappedUser = {
           ...data.user,
@@ -339,7 +339,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         sessionStorage.setItem('cached_user_data', JSON.stringify(mappedUser));
         
         setUser(mappedUser);
-        console.log('✅ Login successful for:', mappedUser.email, 'with role:', mappedUser.role);
+        
         return mappedUser;
       } else {
         console.error('❌ Login response validation failed');
@@ -392,7 +392,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const fullUrl = `${apiBaseUrl}/api/auth/register`;
       
-      console.log('📝 Attempting registration to:', fullUrl);
+      
       
       let data;
       
@@ -411,10 +411,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           location: userData.location
         };
         
-        console.log('📝 Mapping frontend data to backend format:', {
-          frontend: userData,
-          backend: backendUserData
-        });
+        
         
         const response = await fetch(fullUrl, {
           method: 'POST',
@@ -424,10 +421,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           body: JSON.stringify(backendUserData),
         });
 
-        console.log('📝 Registration response status:', response.status);
+        
         
         if (response.status === 501) {
-          console.log('⚠️ Registration endpoint not implemented (501), using mock registration');
+          , using mock registration');
           
           // Create mock user data for successful registration
           data = {
@@ -445,11 +442,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             },
             token: `mock_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
           };
-          console.log('🔧 Mock registration data created:', data);
+          
         } else if (response.ok) {
           // Successful response - parse JSON
           data = await response.json();
-          console.log('✅ Registration response data:', data);
+          
         } else {
           // Handle other error responses
           const contentType = response.headers.get('content-type');
@@ -482,11 +479,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (data.success && data.user && data.token) {
         // Fix backend user data mapping - userType -> role
         const userRole = data.user.userType || data.user.user_type || data.user.role || 'couple';
-        console.log('🔍 DEBUG - Registration role mapping:');
-        console.log('  data.user.userType:', data.user.userType);
-        console.log('  data.user.user_type:', data.user.user_type);  
-        console.log('  data.user.role:', data.user.role);
-        console.log('  Final userRole:', userRole);
+        
+        
+          
+        
+        
         
         const mappedUser = {
           ...data.user,
@@ -506,7 +503,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         sessionStorage.setItem('cached_user_data', JSON.stringify(mappedUser));
         
         setUser(mappedUser);
-        console.log('✅ Registration successful for:', mappedUser.email);
+        
       } else {
         throw new Error('Invalid registration response from server');
       }
@@ -545,11 +542,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }).catch(() => {
           // Ignore network errors during logout
-          console.log('Network error during logout - continuing with local cleanup');
+          
         });
       }
     } catch (error) {
-      console.log('Error during logout:', error);
+      
     }
     
     // Clear all auth-related data from both storages
@@ -580,23 +577,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         });
         
         if (i === 0) {
-          console.log('⏱️ Quick backend check (10s timeout)...');
+          ...');
         } else {
-          console.log('🔄 Extended backend wake-up check (45s timeout) - service may be sleeping...');
+           - service may be sleeping...');
         }
         
         const response = await Promise.race([fetchPromise, timeoutPromise]);
         
         if (response.ok) {
-          console.log(`✅ Backend is responsive (attempt ${i + 1})`);
+          `);
           return true;
         }
       } catch (error) {
-        console.log(`⚠️ Backend check failed (attempt ${i + 1}): ${error}`);
+        : ${error}`);
         // Don't retry for sleeping backends - fail fast and use offline mode
       }
     }
-    console.log('❌ Backend appears to be offline or sleeping - proceeding with offline mode');
+    
     return false;
   };
 

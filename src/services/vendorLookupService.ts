@@ -77,7 +77,7 @@ class VendorLookupService {
           return vendorInfo;
         }
       } catch (individualError) {
-        console.log('Individual vendor lookup not available:', individualError);
+        
       }
 
       return null;
@@ -113,7 +113,7 @@ class VendorLookupService {
               location: vendor.location
             };
           });
-          // console.log('✅ Preloaded', data.vendors.length, 'vendors into cache');
+          // 
         }
       }
     } catch (error) {
