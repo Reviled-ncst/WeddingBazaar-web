@@ -547,21 +547,9 @@ router.put('/upgrade', async (req, res) => {
 
     const updatedSub = updatedSubResult[0];
 
-    // 🔥 CRITICAL FIX: Update vendor_profiles.subscription_tier
-    // This is what the frontend reads to display the current plan
-    try {
-      await sql`
-        UPDATE vendor_profiles
-        SET 
-          subscription_tier = ${new_plan},
-          updated_at = NOW()
-        WHERE id = ${vendor_id}
-      `;
-      console.log(`✅ Vendor profile subscription_tier updated to: ${new_plan}`);
-    } catch (profileError) {
-      console.error('⚠️ Failed to update vendor_profiles.subscription_tier:', profileError);
-      // Continue anyway - subscription is upgraded in vendor_subscriptions
-    }
+    // ✅ Subscription tier is tracked in vendor_subscriptions table
+    // Frontend reads from /api/subscriptions/:vendorId endpoint
+    console.log(`✅ Subscription record updated in vendor_subscriptions`);
 
     // Log transaction
     await logSubscriptionTransaction(
