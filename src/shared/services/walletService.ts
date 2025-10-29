@@ -21,7 +21,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onren
  */
 export const getVendorWallet = async (vendorId: string): Promise<WalletResponse> => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token');
     
     const response = await fetch(`${API_URL}/api/wallet/${vendorId}`, {
       method: 'GET',
@@ -55,7 +55,7 @@ export const getWalletTransactions = async (
   filters?: WalletFilters
 ): Promise<WalletResponse> => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token');
     
     // Build query parameters
     const queryParams = new URLSearchParams();
@@ -111,7 +111,7 @@ export const requestWithdrawal = async (
   }
 ): Promise<WithdrawalResponse> => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token');
     
     const response = await fetch(`${API_URL}/api/wallet/${vendorId}/withdraw`, {
       method: 'POST',
@@ -147,7 +147,7 @@ export const getWithdrawalHistory = async (vendorId: string): Promise<{
   error?: string;
 }> => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token');
     
     const response = await fetch(`${API_URL}/api/wallet/${vendorId}/withdrawals`, {
       method: 'GET',
@@ -181,7 +181,7 @@ export const cancelWithdrawal = async (
   withdrawalId: string
 ): Promise<WithdrawalResponse> => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token');
     
     const response = await fetch(`${API_URL}/api/wallet/${vendorId}/withdrawals/${withdrawalId}/cancel`, {
       method: 'POST',
@@ -215,7 +215,7 @@ export const exportTransactions = async (
   filters?: WalletFilters
 ): Promise<Blob | null> => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token');
     
     // Build query parameters
     const queryParams = new URLSearchParams();
