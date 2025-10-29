@@ -121,60 +121,56 @@ export const CustomDepositModal: React.FC<CustomDepositModalProps> = ({
             transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
             className="relative bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border-2 border-pink-100"
           >
-            {/* Decorative Background Elements */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-pink-200/30 to-purple-200/30 rounded-full blur-3xl -translate-y-32 translate-x-32 pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-purple-200/30 to-pink-200/30 rounded-full blur-3xl translate-y-24 -translate-x-24 pointer-events-none" />
+            {/* Decorative Background Elements - Symmetrical */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-pink-200/20 to-purple-200/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-80 h-80 bg-gradient-to-tr from-purple-200/20 to-pink-200/20 rounded-full blur-3xl pointer-events-none" />
 
-            {/* Header */}
+            {/* Header - Centered and Symmetrical */}
             <div className="relative bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 p-8">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                      <Heart className="w-6 h-6 text-white fill-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-white flex items-center gap-2">
-                        Custom Deposit
-                        <Sparkles className="w-5 h-5 text-yellow-300" />
-                      </h3>
-                    </div>
+              <div className="flex flex-col items-center text-center">
+                <div className="flex items-center justify-center gap-3 mb-3">
+                  <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <Heart className="w-6 h-6 text-white fill-white" />
                   </div>
-                  <p className="text-pink-100 text-sm leading-relaxed">
-                    Choose your preferred deposit amount for <span className="font-bold text-white">{vendorName}</span>
-                  </p>
+                  <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                    Custom Deposit
+                    <Sparkles className="w-5 h-5 text-yellow-300" />
+                  </h3>
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.1, rotate: 90 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleClose}
-                  className="text-white/90 hover:text-white hover:bg-white/20 rounded-xl p-2.5 transition-all"
-                  aria-label="Close modal"
-                >
-                  <X className="w-6 h-6" />
-                </motion.button>
+                <p className="text-pink-100 text-sm leading-relaxed max-w-md">
+                  Choose your preferred deposit amount for <span className="font-bold text-white">{vendorName}</span>
+                </p>
               </div>
+              <motion.button
+                whileHover={{ scale: 1.1, rotate: 90 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleClose}
+                className="absolute top-6 right-6 text-white/90 hover:text-white hover:bg-white/20 rounded-xl p-2.5 transition-all"
+                aria-label="Close modal"
+              >
+                <X className="w-6 h-6" />
+              </motion.button>
             </div>
 
             {/* Content */}
             <div className="relative p-8 space-y-6">
-              {/* Total Amount Display */}
+              {/* Total Amount Display - Centered */}
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.1 }}
                 className="relative bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 rounded-2xl p-6 border-2 border-purple-200 shadow-lg overflow-hidden"
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-pink-300/20 to-purple-300/20 rounded-full blur-2xl" />
-                <div className="relative flex items-center justify-between">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-gradient-to-br from-pink-300/30 to-purple-300/30 rounded-full blur-3xl" />
+                <div className="relative flex flex-col items-center text-center gap-3">
+                  <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl p-4 shadow-lg">
+                    <TrendingUp className="w-8 h-8 text-white" />
+                  </div>
                   <div>
                     <p className="text-xs font-semibold text-purple-600 uppercase tracking-wider mb-1">Total Booking Amount</p>
                     <p className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600">
                       {currencySymbol}{totalAmount.toLocaleString()}
                     </p>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl p-4 shadow-lg">
-                    <TrendingUp className="w-8 h-8 text-white" />
                   </div>
                 </div>
               </motion.div>
@@ -218,13 +214,13 @@ export const CustomDepositModal: React.FC<CustomDepositModalProps> = ({
                 </div>
               </div>
 
-              {/* Percentage Slider */}
+              {/* Percentage Slider - Centered */}
               <div>
-                <label className="block text-sm font-bold text-gray-800 mb-3">
+                <label className="block text-sm font-bold text-gray-800 mb-3 text-center">
                   Deposit Percentage
                 </label>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1 relative">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-full relative">
                     <input
                       type="range"
                       min={minPercentage}
@@ -241,26 +237,26 @@ export const CustomDepositModal: React.FC<CustomDepositModalProps> = ({
                       }}
                     />
                   </div>
-                  <div className="flex items-center gap-2 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl px-4 py-2 border-2 border-purple-200">
+                  <div className="flex items-center gap-2 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl px-6 py-3 border-2 border-purple-200">
                     <input
                       type="number"
                       min={minPercentage}
                       max={maxPercentage}
                       value={percentage}
                       onChange={handlePercentageChange}
-                      className="w-16 px-2 py-1 bg-white border-2 border-purple-300 rounded-lg text-center font-bold text-gray-800 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      className="w-20 px-3 py-2 bg-white border-2 border-purple-300 rounded-lg text-center font-bold text-gray-800 text-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                     />
-                    <span className="text-purple-600 font-bold text-lg">%</span>
+                    <span className="text-purple-600 font-bold text-xl">%</span>
                   </div>
                 </div>
               </div>
 
-              {/* Amount Input */}
+              {/* Amount Input - Centered */}
               <div>
-                <label className="block text-sm font-bold text-gray-800 mb-3">
+                <label className="block text-sm font-bold text-gray-800 mb-3 text-center">
                   Deposit Amount
                 </label>
-                <div className="relative">
+                <div className="relative max-w-sm mx-auto">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-600 font-bold text-xl pointer-events-none">
                     {currencySymbol}
                   </div>
@@ -268,7 +264,7 @@ export const CustomDepositModal: React.FC<CustomDepositModalProps> = ({
                     type="text"
                     value={customAmount.toLocaleString()}
                     onChange={handleAmountChange}
-                    className={`w-full pl-12 pr-6 py-4 border-2 rounded-2xl font-bold text-xl focus:ring-4 focus:ring-pink-500/20 focus:border-pink-500 transition-all ${
+                    className={`w-full pl-12 pr-14 py-4 border-2 rounded-2xl font-bold text-xl text-center focus:ring-4 focus:ring-pink-500/20 focus:border-pink-500 transition-all ${
                       !isValid 
                         ? 'border-red-500 bg-red-50 text-red-700' 
                         : 'border-purple-300 bg-gradient-to-br from-purple-50/50 to-pink-50/50 text-gray-800'
