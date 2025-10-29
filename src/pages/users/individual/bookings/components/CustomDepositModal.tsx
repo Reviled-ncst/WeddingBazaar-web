@@ -231,8 +231,8 @@ export const CustomDepositModal: React.FC<CustomDepositModalProps> = ({
                       style={{
                         background: `linear-gradient(to right, 
                           rgb(236, 72, 153) 0%, 
-                          rgb(168, 85, 247) ${percentage}%, 
-                          rgb(229, 231, 235) ${percentage}%, 
+                          rgb(168, 85, 247) ${((percentage - minPercentage) / (maxPercentage - minPercentage)) * 100}%, 
+                          rgb(229, 231, 235) ${((percentage - minPercentage) / (maxPercentage - minPercentage)) * 100}%, 
                           rgb(229, 231, 235) 100%)`
                       }}
                     />
