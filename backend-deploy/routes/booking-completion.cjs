@@ -123,6 +123,139 @@ router.post('/:bookingId/mark-completed', async (req, res) => {
       `;
       updated = completedBooking[0]; // Use the updated record with 'completed' status
       console.log(`✅ Booking ${bookingId} is now COMPLETED. Status: ${updated.status}`);
+
+      // 💰 CREATE WALLET TRANSACTION FOR VENDOR EARNINGS
+      try {
+        console.log(`💰 Creating wallet transaction for vendor: ${updated.vendor_id}`);
+        
+        // Generate transaction ID
+        const transactionId = `TXN-${bookingId}-${Date.now()}`;
+        
+        // Get vendor and customer details for the transaction
+        const bookingAmount = parseFloat(updated.amount || updated.total_amount || 0);
+        const paymentMethod = updated.payment_method || 'card';
+        const serviceType = updated.service_type || 'Wedding Service';
+        
+        // Get couple name (try different field variations)
+        let coupleName = updated.couple_name || updated.client_name || updated.user_name || 'Customer';
+        
+        // If we have user_id, try to fetch the actual name
+        if (updated.user_id) {
+          try {
+            const userResult = await sql`
+              SELECT full_name, name FROM users WHERE id = ${updated.user_id} LIMIT 1
+            `;
+            if (userResult.length > 0) {
+              coupleName = userResult[0].full_name || userResult[0].name || coupleName;
+            }
+          } catch (err) {
+            console.log('⚠️ Could not fetch user name, using default');
+          }
+        }
+
+        console.log(`💰 Transaction details:`, {
+          transactionId,
+          vendorId: updated.vendor_id,
+          bookingId: updated.id,
+          amount: bookingAmount,
+          serviceType,
+          coupleName,
+          paymentMethod
+        });
+
+        // Create wallet transaction
+        await sql`
+          INSERT INTO wallet_transactions (
+            transaction_id,
+            vendor_id,
+            booking_id,
+            transaction_type,
+            amount,
+            currency,
+            status,
+            description,
+            payment_method,
+            service_name,
+            service_category,
+            customer_name,
+            event_date,
+            created_at,
+            updated_at
+          ) VALUES (
+            ${transactionId},
+            ${updated.vendor_id},
+            ${updated.id},
+            'earning',
+            ${bookingAmount},
+            'PHP',
+            'completed',
+            ${'Booking payment for ' + serviceType},
+            ${paymentMethod},
+            ${serviceType},
+            ${serviceType},
+            ${coupleName},
+            ${updated.event_date || null},
+            NOW(),
+            NOW()
+          )
+          ON CONFLICT (transaction_id) DO NOTHING
+        `;
+
+        console.log(`✅ Wallet transaction created: ${transactionId}`);
+
+        // Update or create vendor wallet
+        // First, check if wallet exists
+        const existingWallet = await sql`
+          SELECT * FROM vendor_wallets WHERE vendor_id = ${updated.vendor_id} LIMIT 1
+        `;
+
+        if (existingWallet.length === 0) {
+          // Create new wallet
+          console.log(`💰 Creating new wallet for vendor: ${updated.vendor_id}`);
+          await sql`
+            INSERT INTO vendor_wallets (
+              vendor_id,
+              total_earnings,
+              available_balance,
+              pending_balance,
+              withdrawn_amount,
+              currency,
+              created_at,
+              updated_at
+            ) VALUES (
+              ${updated.vendor_id},
+              ${bookingAmount},
+              ${bookingAmount},
+              0.00,
+              0.00,
+              'PHP',
+              NOW(),
+              NOW()
+            )
+          `;
+          console.log(`✅ New wallet created with balance: ₱${bookingAmount}`);
+        } else {
+          // Update existing wallet
+          console.log(`💰 Updating existing wallet for vendor: ${updated.vendor_id}`);
+          await sql`
+            UPDATE vendor_wallets
+            SET 
+              total_earnings = total_earnings + ${bookingAmount},
+              available_balance = available_balance + ${bookingAmount},
+              updated_at = NOW()
+            WHERE vendor_id = ${updated.vendor_id}
+          `;
+          console.log(`✅ Wallet updated. Added: ₱${bookingAmount}`);
+        }
+
+        console.log(`🎉 Wallet integration complete for booking ${bookingId}`);
+
+      } catch (walletError) {
+        // Log error but don't fail the completion
+        console.error('❌ Error creating wallet transaction:', walletError);
+        console.error('⚠️ Booking is still marked as completed, but wallet was not updated');
+        // Continue execution - booking is still completed
+      }
     }
 
     res.json({
