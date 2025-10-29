@@ -239,7 +239,18 @@ interface UIBookingStats {
   conversionRate: number;
 }
 
-type BookingStatus = 'request' | 'pending_review' | 'quote_sent' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
+type BookingStatus = 
+  | 'request' 
+  | 'pending_review' 
+  | 'quote_sent' 
+  | 'confirmed' 
+  | 'in_progress' 
+  | 'completed' 
+  | 'cancelled'
+  | 'deposit_paid'
+  | 'downpayment_paid'
+  | 'fully_paid'
+  | 'paid_in_full';
 
 /**
  * SECURITY-ENHANCED VENDOR BOOKINGS COMPONENT
@@ -430,12 +441,17 @@ export const VendorBookingsSecure: React.FC = () => {
       return;
     }
 
-    // Load data
-    Promise.all([
-      loadBookings(),
-      loadStats()
-    ]);
-  }, [user, vendorId, loadBookings, loadStats]); // FIX: Include all dependencies
+    // Load data - properly handle Promise to avoid infinite loop
+    const initializeData = async () => {
+      await Promise.all([
+        loadBookings(),
+        loadStats()
+      ]);
+    };
+
+    initializeData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role, vendorId]); // Only depend on stable values that should trigger reloads
 
   /**
    * Handle security alerts
