@@ -728,13 +728,6 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
       )}
       
       {/* PayMongo Payment Modal - Rendered as Portal to avoid nesting issues */}
-      {(() => {
-        const hasSelectedPlan = !!selectedPlan;
-        const willRender = hasSelectedPlan && paymentModalOpen;
-        
-        // Removed repetitive render evaluation logs
-        return null;
-      })()}
       {selectedPlan && paymentModalOpen && createPortal(
         <PayMongoPaymentModal
           isOpen={paymentModalOpen}

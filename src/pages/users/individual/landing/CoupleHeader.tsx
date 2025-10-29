@@ -20,6 +20,7 @@ export const CoupleHeader: React.FC = () => {
   const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
   const [instructionType, setInstructionType] = useState<'full' | 'quick'>('full');
   const [notificationCount, setNotificationCount] = useState(0);
+  const [preventDropdownClose, setPreventDropdownClose] = useState(false);
 
   // Hooks
   const { user } = useAuth();
@@ -29,6 +30,21 @@ export const CoupleHeader: React.FC = () => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Don't close if we're preventing closure (e.g., logout confirmation is open)
+      if (preventDropdownClose) {
+        return;
+      }
+      
+      // Check if the click is inside a confirmation modal (z-index 9999)
+      const target = event.target as HTMLElement;
+      const isInsideConfirmModal = target.closest('[class*="z-[9999]"]') || 
+                                    target.closest('[style*="z-index: 9999"]');
+      
+      // Don't close dropdown if clicking inside a confirmation modal
+      if (isInsideConfirmModal) {
+        return;
+      }
+      
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsProfileDropdownOpen(false);
       }
@@ -38,7 +54,7 @@ export const CoupleHeader: React.FC = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [preventDropdownClose]);
 
   // Fetch pending bookings count for notification badge
   useEffect(() => {
@@ -136,6 +152,7 @@ export const CoupleHeader: React.FC = () => {
                   isOpen={isProfileDropdownOpen}
                   onClose={handleProfileDropdownClose}
                   onInstructionOpen={handleInstructionOpen}
+                  onPreventClose={setPreventDropdownClose}
                 />
               </div>
             </div>

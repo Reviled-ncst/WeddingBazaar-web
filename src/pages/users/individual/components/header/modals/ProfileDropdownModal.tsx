@@ -18,15 +18,42 @@ interface ProfileDropdownModalProps {
   isOpen: boolean;
   onClose: () => void;
   onInstructionOpen: (type: 'full' | 'quick') => void;
+  onPreventClose?: (prevent: boolean) => void;
 }
 
 export const ProfileDropdownModal: React.FC<ProfileDropdownModalProps> = ({
   isOpen,
   onClose,
-  onInstructionOpen
+  onInstructionOpen,
+  onPreventClose
 }) => {
   const { user, logout } = useAuth();
   const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
+  const confirmModalRef = React.useRef<HTMLDivElement>(null);
+
+  // Notify parent when logout confirmation is shown/hidden
+  React.useEffect(() => {
+    if (onPreventClose) {
+      onPreventClose(showLogoutConfirm);
+    }
+  }, [showLogoutConfirm, onPreventClose]);
+
+  // Prevent dropdown from closing when confirmation modal is open
+  React.useEffect(() => {
+    if (showLogoutConfirm) {
+      const handleClickOutside = (event: MouseEvent) => {
+        // If clicking inside the confirmation modal, don't close anything
+        if (confirmModalRef.current && confirmModalRef.current.contains(event.target as Node)) {
+          event.stopPropagation();
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside, true);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside, true);
+      };
+    }
+  }, [showLogoutConfirm]);
 
   const profileMenuItems = [
     {
@@ -215,8 +242,15 @@ export const ProfileDropdownModal: React.FC<ProfileDropdownModalProps> = ({
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+          onClick={(e) => {
+            // Don't close when clicking the backdrop
+            e.stopPropagation();
+          }}
+        >
           <div 
+            ref={confirmModalRef}
             className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all"
             onClick={(e) => e.stopPropagation()}
           >
