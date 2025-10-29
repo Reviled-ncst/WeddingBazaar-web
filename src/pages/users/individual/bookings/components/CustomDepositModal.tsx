@@ -103,7 +103,7 @@ export const CustomDepositModal: React.FC<CustomDepositModalProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
           {/* Enhanced Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -119,7 +119,7 @@ export const CustomDepositModal: React.FC<CustomDepositModalProps> = ({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.8, opacity: 0, y: 50 }}
             transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-            className="relative bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border-2 border-pink-100"
+            className="relative bg-white rounded-3xl shadow-2xl max-w-lg w-full my-8 max-h-[90vh] overflow-y-auto border-2 border-pink-100"
           >
             {/* Decorative Background Elements - Symmetrical */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-pink-200/20 to-purple-200/20 rounded-full blur-3xl pointer-events-none" />
