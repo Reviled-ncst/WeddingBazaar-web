@@ -35,7 +35,8 @@ import {
   QuoteDetailsModal,
   QuoteConfirmationModal,
   ReceiptModal,
-  RatingModal
+  RatingModal,
+  CustomDepositModal
 } from './components';
 
 // Import payment components
@@ -203,6 +204,13 @@ export const IndividualBookings: React.FC = () => {
     booking: null as Booking | null,
     paymentType: 'downpayment' as PaymentType,
     loading: false
+  });
+
+  // Custom deposit modal state
+  const [customDepositModal, setCustomDepositModal] = useState({
+    isOpen: false,
+    booking: null as Booking | null,
+    totalAmount: 0
   });
 
   // Helper functions for UI
@@ -449,15 +457,50 @@ export const IndividualBookings: React.FC = () => {
       totalAmount: booking.totalAmount
     });
 
-    // Opening PayMongo payment modal
+    // For deposit/downpayment, show custom deposit modal first
+    if (paymentType === 'downpayment') {
+      setCustomDepositModal({
+        isOpen: true,
+        booking: booking as any,
+        totalAmount: booking.totalAmount || 0
+      });
+    } else {
+      // For full payment or remaining balance, go directly to payment modal
+      setPaymentModal({
+        isOpen: true,
+        booking: booking as any,
+        paymentType,
+        loading: false
+      });
+    }
+
+    console.log('💳 [PAYMENT MODAL] Payment modal state updated');
+  };
+
+  // Handle custom deposit confirmation
+  const handleCustomDepositConfirm = (depositAmount: number, percentage: number) => {
+    console.log('💰 [CUSTOM DEPOSIT] Confirmed:', { depositAmount, percentage });
+    
+    const booking = customDepositModal.booking;
+    if (!booking) return;
+
+    // Close custom deposit modal
+    setCustomDepositModal({ isOpen: false, booking: null, totalAmount: 0 });
+
+    // Open PayMongo payment modal with custom amount
     setPaymentModal({
       isOpen: true,
-      booking: booking as any,
-      paymentType,
+      booking: {
+        ...booking,
+        // Store custom deposit amount temporarily for the payment modal
+        customDepositAmount: depositAmount,
+        customDepositPercentage: percentage
+      } as any,
+      paymentType: 'downpayment',
       loading: false
     });
 
-    console.log('💳 [PAYMENT MODAL] Payment modal state updated');
+    console.log('💳 [PAYMENT MODAL] Opened with custom deposit amount:', depositAmount);
   };
 
   // Handle viewing receipts
@@ -1402,7 +1445,7 @@ export const IndividualBookings: React.FC = () => {
                               className="px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex flex-col items-center justify-center gap-1 font-medium text-sm"
                             >
                               <CreditCard className="w-4 h-4" />
-                              <span>Deposit 30%</span>
+                              <span>Pay Deposit</span>
                             </button>
                             <button
                               onClick={() => handlePayment(booking as any, 'full_payment')}
@@ -1528,7 +1571,12 @@ export const IndividualBookings: React.FC = () => {
           }
           
           if (paymentModal.paymentType === 'downpayment') {
-            // Downpayment calculation (30% of total)
+            // Check if there's a custom deposit amount from the CustomDepositModal
+            if (booking.customDepositAmount && Number(booking.customDepositAmount) > 0) {
+              return Number(booking.customDepositAmount);
+            }
+            
+            // Downpayment calculation (30% of total by default)
             let amount = 0;
             
             // Try downpaymentAmount first (mapped from backend downPayment)
@@ -1739,6 +1787,7 @@ export const IndividualBookings: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Success!</h3>
               <p className="text-gray-600 mb-6">{successMessage}</p>
               <button
+
                 onClick={() => setShowSuccessModal(false)}
                 className="w-full bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition-colors"
               >
@@ -1763,7 +1812,7 @@ export const IndividualBookings: React.FC = () => {
               <p className="text-gray-600 mb-6">{errorMessage}</p>
               <button
                 onClick={() => setShowErrorModal(false)}
-                className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                               className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
               >
                 Close
               </button>
@@ -2073,6 +2122,20 @@ export const IndividualBookings: React.FC = () => {
           eventDate: ratingBooking.formattedEventDate || ratingBooking.eventDate
         } : null}
         onSubmitReview={handleSubmitReview}
+      />
+
+      {/* Custom Deposit Modal */}
+      <CustomDepositModal
+        isOpen={customDepositModal.isOpen}
+        onClose={() => setCustomDepositModal({ isOpen: false, booking: null, totalAmount: 0 })}
+        totalAmount={customDepositModal.totalAmount}
+        onConfirm={handleCustomDepositConfirm}
+        vendorName={
+          customDepositModal.booking
+            ? ((customDepositModal.booking as any).vendorName || (customDepositModal.booking as any).vendorBusinessName || 'Vendor')
+            : 'Vendor'
+        }
+        currencySymbol="₱"
       />
     </div>
   );

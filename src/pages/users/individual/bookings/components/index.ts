@@ -3,6 +3,7 @@ export { BookingFilters } from './BookingFilters';
 export { default as BookingCard } from './BookingCard';
 export { BookingDetailsModal } from './BookingDetailsModal';
 export { QuoteDetailsModal } from './QuoteDetailsModal';
+export { CustomDepositModal } from './CustomDepositModal';
 export { QuoteConfirmationModal } from './QuoteConfirmationModal';
 export { ReceiptModal } from './ReceiptModal';
 export { RatingModal } from './RatingModal';
