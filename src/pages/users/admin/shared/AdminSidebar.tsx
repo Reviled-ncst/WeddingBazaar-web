@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import {
   LayoutDashboard,
   Users,
@@ -92,6 +93,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const isActive = (href: string) => {
     if (href === '/admin') {
@@ -100,9 +102,18 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     return location.pathname.startsWith(href);
   };
 
-  const handleLogout = () => {
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleConfirmLogout = () => {
+    setShowLogoutConfirm(false);
     logout();
     navigate('/');
+  };
+
+  const handleCancelLogout = () => {
+    setShowLogoutConfirm(false);
   };
 
   return (
@@ -166,7 +177,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         {/* Logout Button - Bottom of Sidebar */}
         <div className="pt-4 mt-4 border-t border-slate-200">
           <button
-            onClick={handleLogout}
+            onClick={handleLogoutClick}
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all duration-200 w-full',
               'text-red-600 hover:bg-red-50 hover:text-red-700',
@@ -181,6 +192,53 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           </button>
         </div>
       </nav>
+
+      {/* Logout Confirmation Modal - Rendered as Portal */}
+      {showLogoutConfirm &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]"
+            onClick={handleCancelLogout}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center">
+                  <LogOut className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Confirm Logout</h3>
+                  <p className="text-sm text-slate-500">Admin Panel</p>
+                </div>
+              </div>
+
+              {/* Message */}
+              <p className="text-slate-600 mb-6">
+                Are you sure you want to sign out from the admin panel? You'll need to log in again to access admin features.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCancelLogout}
+                  className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmLogout}
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white font-medium rounded-lg transition-all shadow-lg hover:shadow-xl"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </aside>
   );
 };
