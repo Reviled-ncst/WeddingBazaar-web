@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
@@ -277,16 +277,10 @@ export const VendorBookingsSecure: React.FC = () => {
   // Backend returns: user.id = '2-2025-001' (vendor profile ID from vendor_profiles)
   //                  user.vendorId = 'eb5c...' (UUID from users table)
   // Bookings are stored with vendor_id = '2-2025-001' in database
-  const vendorId = user?.id || user?.vendorId;
+  // Memoize vendorId to prevent re-renders
+  const vendorId = useMemo(() => user?.id || user?.vendorId, [user?.id, user?.vendorId]);
   
   const apiUrl = process.env.REACT_APP_API_URL || 'https://weddingbazaar-web.onrender.com';
-  
-  console.log('🔍 [VendorBookingsSecure] Vendor ID resolution:', {
-    userId: user?.id,
-    vendorIdUUID: user?.vendorId,
-    selectedVendorId: vendorId,
-    willQueryWith: vendorId
-  });
 
   /**
    * SECURITY-ENHANCED: Load bookings with proper access control
