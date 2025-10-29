@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   esbuild: {
-    drop: ['console', 'debugger'], // Drop all console calls and debuggers in production
+    // TEMPORARILY DISABLED FOR DEBUGGING: drop: ['console', 'debugger'], // Drop all console calls and debuggers in production
   },
   server: {
     host: true, // Always expose to network
