@@ -29,6 +29,7 @@ import { VendorHeader } from '../../../../shared/components/layout/VendorHeader'
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { SendQuoteModal } from './components/SendQuoteModal';
 import { VendorBookingDetailsModal } from './components/VendorBookingDetailsModal';
+import { MarkCompleteModal } from './components/MarkCompleteModal';
 
 // Helper function to format service type display
 const formatServiceType = (serviceType: string, serviceName?: string): string => {
@@ -219,6 +220,8 @@ export const VendorBookingsSecure: React.FC = () => {
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<UIBooking | null>(null);
+  const [showMarkCompleteModal, setShowMarkCompleteModal] = useState(false);
+  const [bookingToComplete, setBookingToComplete] = useState<UIBooking | null>(null);
 
   // 🔧 CRITICAL FIX: Use user.id (2-2025-001) which IS the vendor profile ID
   // Backend returns: user.id = '2-2025-001' (vendor profile ID from vendor_profiles)
@@ -378,46 +381,21 @@ export const VendorBookingsSecure: React.FC = () => {
       return;
     }
 
-    // Format customer name (extract from email if needed)
-    let customerName = booking.coupleName || 'the customer';
-    if (customerName.includes('@')) {
-      // Extract name from email (e.g., "john.doe@example.com" -> "John Doe")
-      const emailName = customerName.split('@')[0];
-      customerName = emailName
-        .split(/[._-]/)
-        .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-        .join(' ');
-    }
+    // Store the booking and show modal
+    setBookingToComplete(booking);
+    setShowMarkCompleteModal(true);
+  }, []);
 
-    // Format booking details
-    const eventDate = new Date(booking.eventDate).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    
-    const amount = booking.totalAmount ? `₱${booking.totalAmount.toLocaleString()}` : 'N/A';
-
-    // Show confirmation dialog with booking details
-    const confirmed = window.confirm(
-      `✅ Mark Booking Complete\n\n` +
-      `Client: ${customerName}\n` +
-      `Service: ${booking.serviceType}\n` +
-      `Event Date: ${eventDate}\n` +
-      `Amount: ${amount}\n\n` +
-      `Mark this booking as complete?\n\n` +
-      `Note: The booking will only be fully completed when both you and the couple confirm completion.\n\n` +
-      `Do you want to proceed?`
-    );
-
-    if (!confirmed) {
-      return;
-    }
+  const handleConfirmMarkComplete = useCallback(async () => {
+    if (!bookingToComplete) return;
 
     try {
+      // Close modal first
+      setShowMarkCompleteModal(false);
+
       // Call the completion API
       const API_URL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      const response = await fetch(`${API_URL}/api/bookings/${booking.id}/mark-completed`, {
+      const response = await fetch(`${API_URL}/api/bookings/${bookingToComplete.id}/mark-completed`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -443,12 +421,15 @@ export const VendorBookingsSecure: React.FC = () => {
       // Reload bookings to reflect new status
       await loadBookings(true); // Silent refresh
 
+      // Clear booking state
+      setBookingToComplete(null);
+
     } catch (error: unknown) {
       console.error('❌ [VendorBookingsSecure] Error marking complete:', error);
       const errorMessage = error instanceof Error ? error.message : 'An error occurred while marking the booking as complete.';
       alert(`Error: ${errorMessage}`);
     }
-  }, [loadBookings]);
+  }, [bookingToComplete, loadBookings]);
 
   /**
    * Initialize component with auth context
@@ -1179,6 +1160,19 @@ export const VendorBookingsSecure: React.FC = () => {
             setShowQuoteModal(false);
             setSelectedBooking(null);
           }}
+        />
+      )}
+
+      {/* Mark Complete Modal */}
+      {showMarkCompleteModal && bookingToComplete && (
+        <MarkCompleteModal
+          isOpen={showMarkCompleteModal}
+          booking={bookingToComplete}
+          onClose={() => {
+            setShowMarkCompleteModal(false);
+            setBookingToComplete(null);
+          }}
+          onConfirm={handleConfirmMarkComplete}
         />
       )}
     </div>
