@@ -43,6 +43,9 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [currency, setCurrency] = useState({ code: 'PHP', symbol: '₱', rate: 1 });
   const [isLoadingCurrency, setIsLoadingCurrency] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successPlanName, setSuccessPlanName] = useState('');
 
   // Access subscription context to ensure upgrade prompt is properly closed
   const { hideUpgradePrompt } = useSubscription();
@@ -246,9 +249,6 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
     ];
   }, [currency, isLoadingCurrency, requiredTier, customPlans, currentPlanId]);
 
-  // State for preventing double clicks
-  const [isProcessing, setIsProcessing] = useState(false);
-
   // Payment handlers
   const handleUpgradeClick = (plan: any) => {
     console.log('🎯 [Subscription] Upgrade clicked:', plan.name, `(${currency.symbol}${plan.price})`);
@@ -310,12 +310,18 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
         const result = await response.json();
 
         // Log success
+        console.log('✅ Free upgrade successful:', result);
 
+        // Show success message
+        setSuccessPlanName(plan.name);
+        setShowSuccessMessage(true);
+        
         // Trigger a custom event to refresh subscription status
         window.dispatchEvent(new CustomEvent('subscriptionUpdated'));
         
-        // Close the upgrade prompt using both methods to ensure it's properly closed
+        // Close the upgrade prompt after showing success message
         setTimeout(() => {
+          setShowSuccessMessage(false);
           // Call the subscription context's hide function directly
           hideUpgradePrompt();
           
@@ -371,7 +377,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
 
       // Step 5: Make API call (NO JWT REQUIRED - backend validates vendor_id)
       const backendUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      const fullApiUrl = `${backendUrl}/api/subscriptions/payment/upgrade`;
+      const fullApiUrl = `${backendUrl}/api/subscriptions/upgrade`;
 
       let response;
       try {
@@ -437,16 +443,23 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
         }
         
         // Step 8: Handle success
+        console.log('✅✅✅ Step 8: Subscription upgrade successful!', result);
 
+        // Close payment modal first
         setPaymentModalOpen(false);
 
-        // Trigger a custom event to refresh subscription status
+        // Show success message
+        setSuccessPlanName(selectedPlan.name);
+        setShowSuccessMessage(true);
 
+        // Trigger a custom event to refresh subscription status
+        console.log('🔄 Dispatching subscriptionUpdated event');
         window.dispatchEvent(new CustomEvent('subscriptionUpdated'));
 
-        // Close the upgrade prompt using both methods to ensure it's properly closed
+        // Close the upgrade prompt after showing success message
         setTimeout(() => {
-
+          console.log('🚪 Closing upgrade prompt after success delay');
+          setShowSuccessMessage(false);
           hideUpgradePrompt();
           onClose();
 
@@ -497,6 +510,35 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
               onClick={handleClose}
               className="fixed inset-0 bg-black/70 backdrop-blur-md"
             />
+            
+            {/* Success Message Overlay */}
+            <AnimatePresence>
+              {showSuccessMessage && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="fixed inset-0 z-[100000] flex items-center justify-center p-4"
+                >
+                  <div className="bg-white rounded-3xl shadow-2xl p-12 max-w-md text-center">
+                    <div className="mb-6 flex justify-center">
+                      <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+                        <Check className="w-12 h-12 text-white" />
+                      </div>
+                    </div>
+                    <h3 className="text-3xl font-bold text-gray-800 mb-4">
+                      🎉 Upgrade Successful!
+                    </h3>
+                    <p className="text-xl text-gray-600 mb-2">
+                      You are now on the <span className="font-bold text-pink-600">{successPlanName}</span> plan
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Your subscription has been activated. Enjoy your new features!
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             
             {/* Modal */}
             <motion.div
@@ -727,8 +769,8 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
         </div>
       )}
       
-      {/* PayMongo Payment Modal - Rendered as Portal to avoid nesting issues */}
-      {selectedPlan && paymentModalOpen && createPortal(
+      {/* PayMongo Payment Modal - SIMPLEST APPROACH: Direct render */}
+      {selectedPlan && paymentModalOpen && (
         <PayMongoPaymentModal
           isOpen={paymentModalOpen}
           onClose={() => {
@@ -749,8 +791,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
           currencySymbol={currency.symbol}
           onPaymentSuccess={handlePaymentSuccess}
           onPaymentError={handlePaymentError}
-        />,
-        document.body
+        />
       )}
     </AnimatePresence>
   );

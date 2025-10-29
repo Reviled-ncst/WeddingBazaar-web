@@ -1,3 +1,5 @@
+console.log('🚀 [PayMongoModal] MODULE LOADED - File is being imported');
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -21,6 +23,8 @@ import bookingProcessService from '../../services/booking-process-tracking';
 import QRCodeDisplay from './payment/QRCodeDisplay';
 import type { PaymentWebhookData } from '../../services/paymentWebhookHandler';
 import { useAuth } from '../contexts/HybridAuthContext';
+
+console.log('✅ [PayMongoModal] All imports successful');
 
 // Local type definitions for payment state
 interface PayMongoPaymentIntent {
@@ -62,6 +66,8 @@ interface PaymentMethod {
   available: boolean;
 }
 
+console.log('📦 [PayMongoModal] About to define component function');
+
 export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
   isOpen,
   onClose,
@@ -73,6 +79,9 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
   onPaymentSuccess,
   onPaymentError,
 }) => {
+  // 🔍 DEBUG: Log when modal renders
+  console.log('🎬 [PayMongoModal] Component render', { isOpen, amount, booking: booking.id });
+  
   const { user } = useAuth(); // Get authenticated user
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -658,10 +667,31 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
     }
   };
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[999999] overflow-auto">
+  // 🔥 BYPASS AnimatePresence for testing
+  if (!isOpen) {
+    console.log('❌ [PayMongoModal] isOpen is FALSE, not rendering');
+    return null;
+  }
+  
+  console.log('✅ [PayMongoModal] isOpen is TRUE, rendering modal');
+  console.log('🔍 [PayMongoModal] About to return JSX, booking:', booking);
+  console.log('🔍 [PayMongoModal] Payment step:', paymentStep);
+  
+  try {
+    return (
+    <div 
+      className="fixed inset-0 z-[999999] overflow-auto"
+      style={{ 
+        position: 'fixed', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0, 
+        zIndex: 999999,
+        pointerEvents: 'auto',
+        backgroundColor: 'rgba(0,0,0,0.7)' // Force visible backdrop
+      }}
+    >
           {/* Perfect Center Container */}
           <div className="min-h-screen flex items-center justify-center p-4">
             {/* Backdrop */}
@@ -1655,7 +1685,22 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
             </motion.div>
           </div>
         </div>
-      )}
-    </AnimatePresence>
   );
+  } catch (error) {
+    console.error('❌ [PayMongoModal] Error rendering modal:', error);
+    return (
+      <div className="fixed inset-0 z-[999999] bg-black/80 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg">
+          <h3 className="text-xl font-bold text-red-600 mb-4">Payment Modal Error</h3>
+          <p className="text-gray-700">Failed to render payment modal. Please try again.</p>
+          <button
+            onClick={onClose}
+            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 };

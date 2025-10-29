@@ -1,8 +1,8 @@
 // ============================================================================
-// Wedding Bazaar - Vendor Wallet API Routes
+// Wedding Bazaar - Vendor Wallet API Routes (Updated with New Tables)
 // ============================================================================
 // Express routes for vendor wallet and earnings management
-// Integrated with PayMongo receipts and completed bookings
+// Uses vendor_wallets and wallet_transactions tables
 // ============================================================================
 
 const express = require('express');
@@ -21,160 +21,141 @@ router.get('/:vendorId', authenticateToken, async (req, res) => {
 
     console.log('📊 Fetching wallet data for vendor:', vendorId);
 
-    // Get all completed bookings for this vendor
-    const completedBookingsQuery = `
-      SELECT 
-        b.*,
-        r.amount_paid,
-        r.payment_method,
-        r.payment_date,
-        r.receipt_number,
-        r.paymongo_payment_id
-      FROM bookings b
-      LEFT JOIN receipts r ON b.id = r.booking_id
-      WHERE b.vendor_id = $1
-        AND b.status = 'completed'
-        AND b.fully_completed = true
-        AND b.vendor_completed = true
-        AND b.couple_completed = true
-      ORDER BY b.completed_at DESC
+    // Get or create vendor wallet
+    let wallets = await sql`
+      SELECT * FROM vendor_wallets WHERE vendor_id = ${vendorId}
     `;
 
-    const completedBookings = await sql(completedBookingsQuery, [vendorId]);
+    if (wallets.length === 0) {
+      // Create wallet if it doesn't exist
+      await sql`
+        INSERT INTO vendor_wallets (vendor_id)
+        VALUES (${vendorId})
+      `;
+      wallets = await sql`
+        SELECT * FROM vendor_wallets WHERE vendor_id = ${vendorId}
+      `;
+    }
 
-    console.log(`✅ Found ${completedBookings.length} completed bookings`);
+    const walletData = wallets[0];
 
-    // Calculate wallet totals
-    let totalEarnings = 0;
-    let availableBalance = 0;
-    let pendingBalance = 0;
-    let withdrawnAmount = 0;
-
-    completedBookings.forEach(booking => {
-      const amount = booking.amount_paid || 0;
-      totalEarnings += amount;
-      
-      // For now, all completed earnings are available
-      // In future, implement withdrawal logic
-      availableBalance += amount;
-    });
-
-    // Get pending bookings (fully paid but not yet completed by both parties)
-    const pendingQuery = `
-      SELECT 
-        b.*,
-        r.amount_paid
-      FROM bookings b
-      LEFT JOIN receipts r ON b.id = r.booking_id
-      WHERE b.vendor_id = $1
-        AND (b.status = 'fully_paid' OR b.status = 'paid_in_full')
-        AND (b.fully_completed = false OR b.vendor_completed = false OR b.couple_completed = false)
-    `;
-
-    const pendingBookings = await sql(pendingQuery, [vendorId]);
-
-    pendingBookings.forEach(booking => {
-      const amount = booking.amount_paid || 0;
-      pendingBalance += amount;
-    });
+    console.log(`✅ Found wallet for vendor ${vendorId}`);
 
     // Get vendor details
-    const vendorQuery = `SELECT * FROM vendors WHERE id = $1`;
-    const vendors = await sql(vendorQuery, [vendorId]);
+    const vendors = await sql`SELECT * FROM vendors WHERE id = ${vendorId}`;
     const vendor = vendors[0];
 
-    // Calculate current and previous month earnings
+    // Get transaction statistics for current and previous month
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-    const currentMonthBookings = completedBookings.filter(b => 
-      new Date(b.completed_at) >= currentMonthStart
-    );
-    const previousMonthBookings = completedBookings.filter(b => 
-      new Date(b.completed_at) >= previousMonthStart && 
-      new Date(b.completed_at) <= previousMonthEnd
-    );
+    const currentMonthTransactions = await sql`
+      SELECT 
+        COUNT(*) as count,
+        COALESCE(SUM(amount), 0) as total
+      FROM wallet_transactions
+      WHERE vendor_id = ${vendorId}
+        AND transaction_type = 'deposit'
+        AND status = 'completed'
+        AND transaction_date >= ${currentMonthStart.toISOString()}
+    `;
 
-    const currentMonthEarnings = currentMonthBookings.reduce((sum, b) => sum + (b.amount_paid || 0), 0);
-    const previousMonthEarnings = previousMonthBookings.reduce((sum, b) => sum + (b.amount_paid || 0), 0);
+    const previousMonthTransactions = await sql`
+      SELECT 
+        COUNT(*) as count,
+        COALESCE(SUM(amount), 0) as total
+      FROM wallet_transactions
+      WHERE vendor_id = ${vendorId}
+        AND transaction_type = 'deposit'
+        AND status = 'completed'
+        AND transaction_date >= ${previousMonthStart.toISOString()}
+        AND transaction_date <= ${previousMonthEnd.toISOString()}
+    `;
+
+    const currentMonthEarnings = parseInt(currentMonthTransactions[0]?.total || 0);
+    const currentMonthBookings = parseInt(currentMonthTransactions[0]?.count || 0);
+    const previousMonthEarnings = parseInt(previousMonthTransactions[0]?.total || 0);
+    const previousMonthBookings = parseInt(previousMonthTransactions[0]?.count || 0);
 
     // Calculate growth
     const earningsGrowth = previousMonthEarnings === 0 
       ? (currentMonthEarnings > 0 ? 100 : 0)
       : ((currentMonthEarnings - previousMonthEarnings) / previousMonthEarnings) * 100;
 
-    const bookingsGrowth = previousMonthBookings.length === 0
-      ? (currentMonthBookings.length > 0 ? 100 : 0)
-      : ((currentMonthBookings.length - previousMonthBookings.length) / previousMonthBookings.length) * 100;
+    const bookingsGrowth = previousMonthBookings === 0
+      ? (currentMonthBookings > 0 ? 100 : 0)
+      : ((currentMonthBookings - previousMonthBookings) / previousMonthBookings) * 100;
 
-    // Group by service category
-    const categoryBreakdown = {};
-    completedBookings.forEach(booking => {
-      const category = booking.service_type || 'Other';
-      if (!categoryBreakdown[category]) {
-        categoryBreakdown[category] = { earnings: 0, transactions: 0 };
-      }
-      categoryBreakdown[category].earnings += (booking.amount_paid || 0);
-      categoryBreakdown[category].transactions += 1;
-    });
+    // Get category breakdown
+    const categoryBreakdownQuery = await sql`
+      SELECT 
+        service_type as category,
+        COUNT(*) as transactions,
+        COALESCE(SUM(amount), 0) as earnings
+      FROM wallet_transactions
+      WHERE vendor_id = ${vendorId}
+        AND transaction_type = 'deposit'
+        AND status = 'completed'
+        AND service_type IS NOT NULL
+      GROUP BY service_type
+      ORDER BY earnings DESC
+    `;
 
-    // Convert to array and calculate percentages
-    const breakdown = Object.entries(categoryBreakdown)
-      .map(([category, data]) => ({
-        category,
-        earnings: data.earnings,
-        transactions: data.transactions,
-        percentage: totalEarnings > 0 ? (data.earnings / totalEarnings) * 100 : 0
-      }))
-      .sort((a, b) => b.earnings - a.earnings);
+    const totalEarnings = parseInt(walletData.total_earnings || 0);
+    
+    const breakdown = categoryBreakdownQuery.map(row => ({
+      category: row.category || 'Other',
+      earnings: parseInt(row.earnings),
+      transactions: parseInt(row.transactions),
+      percentage: totalEarnings > 0 ? (parseInt(row.earnings) / totalEarnings) * 100 : 0
+    }));
 
     // Top category
     const topCategory = breakdown[0] || { category: 'N/A', earnings: 0 };
 
     // Average transaction
-    const averageTransaction = completedBookings.length > 0
-      ? totalEarnings / completedBookings.length
+    const averageTransaction = walletData.total_deposits > 0
+      ? totalEarnings / walletData.total_deposits
       : 0;
 
-    // Build wallet object
+    // Build response
     const wallet = {
       vendor_id: vendorId,
       vendor_name: vendor?.name || 'Unknown',
       business_name: vendor?.business_name || 'Unknown Business',
-      total_earnings: totalEarnings,
-      available_balance: availableBalance,
-      pending_balance: pendingBalance,
-      withdrawn_amount: withdrawnAmount,
-      currency: 'PHP',
-      currency_symbol: '₱',
-      total_transactions: completedBookings.length,
-      completed_bookings: completedBookings.length,
-      pending_bookings: pendingBookings.length,
-      last_transaction_date: completedBookings[0]?.completed_at || null,
-      created_at: vendor?.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      total_earnings: parseInt(walletData.total_earnings),
+      available_balance: parseInt(walletData.available_balance),
+      pending_balance: parseInt(walletData.pending_balance),
+      withdrawn_amount: parseInt(walletData.withdrawn_amount),
+      currency: walletData.currency,
+      currency_symbol: walletData.currency_symbol,
+      total_transactions: walletData.total_transactions,
+      completed_bookings: walletData.total_deposits,
+      pending_bookings: 0, // Can add pending logic later
+      last_transaction_date: walletData.last_transaction_date,
+      created_at: walletData.created_at,
+      updated_at: walletData.updated_at
     };
 
-    // Build summary object
     const summary = {
       current_month_earnings: currentMonthEarnings,
-      current_month_bookings: currentMonthBookings.length,
+      current_month_bookings: currentMonthBookings,
       previous_month_earnings: previousMonthEarnings,
-      previous_month_bookings: previousMonthBookings.length,
+      previous_month_bookings: previousMonthBookings,
       earnings_growth_percentage: earningsGrowth,
       bookings_growth_percentage: bookingsGrowth,
       top_category: topCategory.category,
       top_category_earnings: topCategory.earnings,
-      average_transaction_amount: averageTransaction
+      average_transaction_amount: Math.round(averageTransaction)
     };
 
     console.log('💰 Wallet Summary:', {
       totalEarnings: totalEarnings / 100,
-      availableBalance: availableBalance / 100,
-      pendingBalance: pendingBalance / 100,
-      completedBookings: completedBookings.length
+      availableBalance: parseInt(walletData.available_balance) / 100,
+      pendingBalance: parseInt(walletData.pending_balance) / 100,
+      totalTransactions: walletData.total_transactions
     });
 
     res.json({
@@ -200,82 +181,80 @@ router.get('/:vendorId', authenticateToken, async (req, res) => {
 router.get('/:vendorId/transactions', authenticateToken, async (req, res) => {
   try {
     const { vendorId } = req.params;
-    const { start_date, end_date, status, payment_method } = req.query;
+    const { start_date, end_date, status, payment_method, transaction_type } = req.query;
 
     console.log('📜 Fetching transactions for vendor:', vendorId);
 
     // Build query with filters
-    let query = `
-      SELECT 
-        r.id,
-        r.receipt_number as receipt_id,
-        r.receipt_number,
-        b.id as booking_id,
-        b.booking_reference,
-        r.payment_date as transaction_date,
-        r.amount_paid as amount,
-        r.currency,
-        r.payment_method,
-        r.payment_type,
-        r.paymongo_payment_id,
-        r.paymongo_source_id,
-        r.service_name,
-        r.service_category,
-        r.event_date,
-        r.event_location,
-        r.couple_id,
-        up.first_name || ' ' || up.last_name as couple_name,
-        u.email as couple_email,
-        r.payment_status as status,
-        r.notes,
-        r.created_at,
-        r.updated_at,
-        'earning' as transaction_type
-      FROM receipts r
-      LEFT JOIN bookings b ON r.booking_id = b.id
-      LEFT JOIN users u ON r.couple_id = u.id
-      LEFT JOIN user_profiles up ON u.id = up.user_id
-      WHERE r.vendor_id = $1
-        AND b.status = 'completed'
-        AND b.fully_completed = true
-    `;
-
-    const params = [vendorId];
-    let paramCount = 1;
+    let conditions = [sql`vendor_id = ${vendorId}`];
 
     if (start_date) {
-      paramCount++;
-      query += ` AND r.payment_date >= $${paramCount}`;
-      params.push(start_date);
+      conditions.push(sql`transaction_date >= ${start_date}`);
     }
 
     if (end_date) {
-      paramCount++;
-      query += ` AND r.payment_date <= $${paramCount}`;
-      params.push(end_date);
+      conditions.push(sql`transaction_date <= ${end_date}`);
     }
 
     if (status && status !== 'all') {
-      paramCount++;
-      query += ` AND r.payment_status = $${paramCount}`;
-      params.push(status);
+      conditions.push(sql`status = ${status}`);
     }
 
     if (payment_method && payment_method !== 'all') {
-      paramCount++;
-      query += ` AND r.payment_method = $${paramCount}`;
-      params.push(payment_method);
+      conditions.push(sql`payment_method = ${payment_method}`);
     }
 
-    query += ` ORDER BY r.payment_date DESC LIMIT 100`;
+    if (transaction_type && transaction_type !== 'all') {
+      conditions.push(sql`transaction_type = ${transaction_type}`);
+    }
 
-    const transactions = await sql(query, params);
+    const transactions = await sql`
+      SELECT 
+        id,
+        transaction_id,
+        transaction_type,
+        amount,
+        currency,
+        status,
+        booking_id,
+        payment_intent_id,
+        receipt_number,
+        service_id,
+        service_name,
+        service_type as service_category,
+        couple_id,
+        couple_name,
+        event_date,
+        payment_method,
+        withdrawal_method,
+        bank_name,
+        account_number,
+        account_name,
+        balance_before,
+        balance_after,
+        description,
+        notes,
+        transaction_date,
+        processed_at,
+        completed_at,
+        created_at
+      FROM wallet_transactions
+      WHERE ${sql.join(conditions, ' AND ')}
+      ORDER BY transaction_date DESC
+      LIMIT 100
+    `;
 
     console.log(`✅ Found ${transactions.length} transactions`);
 
     res.json({
       success: true,
-      transactions
+      transactions: transactions.map(t => ({
+        ...t,
+        amount: parseInt(t.amount),
+        balance_before: parseInt(t.balance_before),
+        balance_after: parseInt(t.balance_after),
+        receipt_id: t.receipt_number
+      }))
     });
 
   } catch (error) {
@@ -316,17 +295,19 @@ router.post('/:vendorId/withdraw', authenticateToken, async (req, res) => {
     }
 
     // Get current available balance
-    const walletQuery = `
-      SELECT SUM(r.amount_paid) as total_available
-      FROM receipts r
-      LEFT JOIN bookings b ON r.booking_id = b.id
-      WHERE r.vendor_id = $1
-        AND b.status = 'completed'
-        AND b.fully_completed = true
+    const wallets = await sql`
+      SELECT * FROM vendor_wallets WHERE vendor_id = ${vendorId}
     `;
 
-    const walletData = await sql(walletQuery, [vendorId]);
-    const availableBalance = walletData[0]?.total_available || 0;
+    if (wallets.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Wallet not found'
+      });
+    }
+
+    const walletRecord = wallets[0];
+    const availableBalance = parseInt(walletRecord.available_balance);
 
     if (amount > availableBalance) {
       return res.status(400).json({
@@ -336,30 +317,76 @@ router.post('/:vendorId/withdraw', authenticateToken, async (req, res) => {
       });
     }
 
-    // Create withdrawal request (in production, store in withdrawals table)
-    const withdrawal = {
-      id: `WD-${Date.now()}`,
-      vendor_id: vendorId,
-      amount,
-      currency: 'PHP',
-      withdrawal_method,
-      bank_name,
-      account_number,
-      account_name,
-      ewallet_number,
-      ewallet_name,
-      status: 'pending',
-      notes,
-      requested_at: new Date().toISOString()
-    };
+    // Generate transaction ID
+    const transactionId = `WD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-    console.log('✅ Withdrawal request created:', withdrawal.id);
+    // Create withdrawal transaction
+    await sql`
+      INSERT INTO wallet_transactions (
+        transaction_id,
+        wallet_id,
+        vendor_id,
+        transaction_type,
+        amount,
+        currency,
+        status,
+        withdrawal_method,
+        bank_name,
+        account_number,
+        account_name,
+        ewallet_number,
+        ewallet_name,
+        balance_before,
+        balance_after,
+        description,
+        notes,
+        transaction_date
+      ) VALUES (
+        ${transactionId},
+        ${walletRecord.id},
+        ${vendorId},
+        'withdrawal',
+        ${-amount},
+        'PHP',
+        'pending',
+        ${withdrawal_method},
+        ${bank_name || null},
+        ${account_number || null},
+        ${account_name || null},
+        ${ewallet_number || null},
+        ${ewallet_name || null},
+        ${availableBalance},
+        ${availableBalance - amount},
+        'Withdrawal request - Pending approval',
+        ${notes || null},
+        NOW()
+      )
+    `;
+
+    // Update wallet (move to pending)
+    await sql`
+      UPDATE vendor_wallets
+      SET 
+        available_balance = available_balance - ${amount},
+        pending_balance = pending_balance + ${amount},
+        total_transactions = total_transactions + 1,
+        last_transaction_date = NOW(),
+        updated_at = NOW()
+      WHERE id = ${walletRecord.id}
+    `;
+
+    console.log('✅ Withdrawal request created:', transactionId);
 
     res.json({
       success: true,
-      withdrawal,
-      new_balance: availableBalance - amount,
-      message: 'Withdrawal request submitted successfully. Processing time: 1-3 business days.'
+      withdrawal: {
+        id: transactionId,
+        amount,
+        currency: 'PHP',
+        status: 'pending',
+        message: 'Withdrawal request submitted successfully. Processing time: 1-3 business days.'
+      },
+      new_balance: availableBalance - amount
     });
 
   } catch (error) {
@@ -382,73 +409,64 @@ router.get('/:vendorId/export', authenticateToken, async (req, res) => {
 
     console.log('📥 Exporting transactions for vendor:', vendorId);
 
-    let query = `
-      SELECT 
-        r.payment_date,
-        r.receipt_number,
-        b.booking_reference,
-        r.service_name,
-        r.service_category,
-        r.payment_method,
-        r.amount_paid / 100.0 as amount,
-        r.payment_status,
-        up.first_name || ' ' || up.last_name as customer_name,
-        r.event_date
-      FROM receipts r
-      LEFT JOIN bookings b ON r.booking_id = b.id
-      LEFT JOIN users u ON r.couple_id = u.id
-      LEFT JOIN user_profiles up ON u.id = up.user_id
-      WHERE r.vendor_id = $1
-        AND b.status = 'completed'
-    `;
-
-    const params = [vendorId];
-    let paramCount = 1;
+    let conditions = [sql`vendor_id = ${vendorId}`];
 
     if (start_date) {
-      paramCount++;
-      query += ` AND r.payment_date >= $${paramCount}`;
-      params.push(start_date);
+      conditions.push(sql`transaction_date >= ${start_date}`);
     }
 
     if (end_date) {
-      paramCount++;
-      query += ` AND r.payment_date <= $${paramCount}`;
-      params.push(end_date);
+      conditions.push(sql`transaction_date <= ${end_date}`);
     }
 
-    query += ` ORDER BY r.payment_date DESC`;
-
-    const transactions = await sql(query, params);
+    const transactions = await sql`
+      SELECT 
+        transaction_date,
+        transaction_id,
+        transaction_type,
+        service_name,
+        service_type,
+        payment_method,
+        amount / 100.0 as amount,
+        status,
+        couple_name,
+        event_date,
+        description
+      FROM wallet_transactions
+      WHERE ${sql.join(conditions, ' AND ')}
+      ORDER BY transaction_date DESC
+    `;
 
     // Build CSV
     const headers = [
       'Date',
-      'Receipt Number',
-      'Booking Reference',
+      'Transaction ID',
+      'Type',
       'Service',
       'Category',
       'Payment Method',
       'Amount (PHP)',
       'Status',
       'Customer',
-      'Event Date'
+      'Event Date',
+      'Description'
     ];
 
     let csv = headers.join(',') + '\n';
 
     transactions.forEach(t => {
       const row = [
-        t.payment_date,
-        t.receipt_number,
-        t.booking_reference || 'N/A',
-        `"${t.service_name}"`,
-        t.service_category || 'N/A',
-        t.payment_method,
+        t.transaction_date,
+        t.transaction_id,
+        t.transaction_type,
+        `"${t.service_name || 'N/A'}"`,
+        t.service_type || 'N/A',
+        t.payment_method || 'N/A',
         t.amount,
-        t.payment_status,
-        `"${t.customer_name || 'N/A'}"`,
-        t.event_date || 'N/A'
+        t.status,
+        `"${t.couple_name || 'N/A'}"`,
+        t.event_date || 'N/A',
+        `"${t.description || 'N/A'}"`
       ];
       csv += row.join(',') + '\n';
     });
