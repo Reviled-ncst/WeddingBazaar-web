@@ -291,19 +291,32 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
 
   // UI helpers
   const showUpgradePrompt = (message: string, requiredTier = 'premium') => {
+    console.log('🔔 [SubscriptionContext] showUpgradePrompt called:', {
+      message,
+      requiredTier,
+      currentSubscription: subscription?.plan_id,
+      timestamp: new Date().toISOString()
+    });
+    
     setUpgradePrompt({
       show: true,
       message,
       requiredTier
     });
+    
+    console.log('✅ [SubscriptionContext] Upgrade prompt state updated to SHOW');
   };
 
   const hideUpgradePrompt = () => {
+    console.log('❌ [SubscriptionContext] hideUpgradePrompt called');
+    
     setUpgradePrompt({
       show: false,
       message: '',
       requiredTier: ''
     });
+    
+    console.log('✅ [SubscriptionContext] Upgrade prompt state updated to HIDE');
   };
 
   const value: SubscriptionContextType = {
