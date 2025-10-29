@@ -56,7 +56,7 @@ const mapVendorBookingToUI = (booking: any, vendorId: string): UIBooking => ({
   eventDate: booking.event_date || booking.date || new Date().toISOString(),
   eventLocation: booking.event_location || booking.location || 'Not specified',
   guestCount: booking.guest_count || booking.guests || 0,
-  totalAmount: booking.total_amount || booking.amount || booking.price || 0,
+  totalAmount: parseFloat(booking.amount || booking.quoted_price || booking.total_amount || 0) || 0,
   status: booking.status || 'pending_review',
   createdAt: booking.created_at || booking.createdAt || new Date().toISOString(),
   updatedAt: booking.updated_at || booking.updatedAt || new Date().toISOString(),
@@ -77,11 +77,11 @@ const mapVendorBookingToUI = (booking: any, vendorId: string): UIBooking => ({
   // Additional fields for SendQuoteModal
   downpaymentAmount: booking.downpayment_amount || booking.deposit_amount || 0,
   totalPaid: booking.total_paid || 0,
-  remainingBalance: (booking.total_amount || 0) - (booking.total_paid || 0),
+  remainingBalance: (parseFloat(booking.amount || booking.quoted_price || 0) || 0) - (parseFloat(booking.total_paid || 0) || 0),
   formatted: {
-    totalAmount: `₱${(booking.total_amount || 0).toLocaleString()}`,
-    totalPaid: `₱${(booking.total_paid || 0).toLocaleString()}`,
-    remainingBalance: `₱${((booking.total_amount || 0) - (booking.total_paid || 0)).toLocaleString()}`,
+    totalAmount: `₱${(parseFloat(booking.amount || booking.quoted_price || 0) || 0).toLocaleString()}`,
+    totalPaid: `₱${(parseFloat(booking.total_paid || 0) || 0).toLocaleString()}`,
+    remainingBalance: `₱${((parseFloat(booking.amount || booking.quoted_price || 0) || 0) - (parseFloat(booking.total_paid || 0) || 0)).toLocaleString()}`,
     downpaymentAmount: `₱${(booking.downpayment_amount || booking.deposit_amount || 0).toLocaleString()}`
   }
 });
