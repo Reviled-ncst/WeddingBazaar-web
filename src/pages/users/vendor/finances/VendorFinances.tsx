@@ -23,10 +23,11 @@ import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { getVendorWallet, getWalletTransactions, requestWithdrawal, downloadTransactionsCSV } from '../../../../shared/services/walletService';
 import type { VendorWallet, WalletTransaction, WalletSummary, EarningsBreakdown } from '../../../../shared/types/wallet.types';
 import { formatCentavos } from '../../../../shared/types/wallet.types';
+import { getVendorIdForUser } from '../../../../utils/vendorIdMapping';
 
 export const VendorFinances: React.FC = () => {
   const { user } = useAuth();
-  const vendorId = user?.vendorId || user?.id || '';
+  const vendorId = getVendorIdForUser(user) || '';
 
   // State Management
   const [wallet, setWallet] = useState<VendorWallet | null>(null);
