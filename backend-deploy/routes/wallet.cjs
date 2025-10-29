@@ -217,30 +217,20 @@ router.get('/:vendorId/transactions', authenticateToken, async (req, res) => {
         currency,
         status,
         booking_id,
-        payment_intent_id,
-        receipt_number,
-        service_id,
+        payment_reference,
         service_name,
-        service_type as service_category,
-        couple_id,
-        couple_name,
+        service_category,
+        customer_name,
+        customer_email,
         event_date,
         payment_method,
-        withdrawal_method,
-        bank_name,
-        account_number,
-        account_name,
-        balance_before,
-        balance_after,
         description,
-        notes,
-        transaction_date,
-        processed_at,
-        completed_at,
-        created_at
+        metadata,
+        created_at,
+        updated_at
       FROM wallet_transactions
       WHERE ${sql.join(conditions, ' AND ')}
-      ORDER BY transaction_date DESC
+      ORDER BY created_at DESC
       LIMIT 100
     `;
 
@@ -250,10 +240,9 @@ router.get('/:vendorId/transactions', authenticateToken, async (req, res) => {
       success: true,
       transactions: transactions.map(t => ({
         ...t,
-        amount: parseInt(t.amount),
-        balance_before: parseInt(t.balance_before),
-        balance_after: parseInt(t.balance_after),
-        receipt_id: t.receipt_number
+        amount: parseFloat(t.amount),
+        transaction_date: t.created_at,
+        receipt_id: t.transaction_id
       }))
     });
 
@@ -412,29 +401,29 @@ router.get('/:vendorId/export', authenticateToken, async (req, res) => {
     let conditions = [sql`vendor_id = ${vendorId}`];
 
     if (start_date) {
-      conditions.push(sql`transaction_date >= ${start_date}`);
+      conditions.push(sql`created_at >= ${start_date}`);
     }
 
     if (end_date) {
-      conditions.push(sql`transaction_date <= ${end_date}`);
+      conditions.push(sql`created_at <= ${end_date}`);
     }
 
     const transactions = await sql`
       SELECT 
-        transaction_date,
+        created_at as transaction_date,
         transaction_id,
         transaction_type,
         service_name,
-        service_type,
+        service_category,
         payment_method,
-        amount / 100.0 as amount,
+        amount,
         status,
-        couple_name,
+        customer_name,
         event_date,
         description
       FROM wallet_transactions
       WHERE ${sql.join(conditions, ' AND ')}
-      ORDER BY transaction_date DESC
+      ORDER BY created_at DESC
     `;
 
     // Build CSV
@@ -460,11 +449,11 @@ router.get('/:vendorId/export', authenticateToken, async (req, res) => {
         t.transaction_id,
         t.transaction_type,
         `"${t.service_name || 'N/A'}"`,
-        t.service_type || 'N/A',
+        t.service_category || 'N/A',
         t.payment_method || 'N/A',
         t.amount,
         t.status,
-        `"${t.couple_name || 'N/A'}"`,
+        `"${t.customer_name || 'N/A'}"`,
         t.event_date || 'N/A',
         `"${t.description || 'N/A'}"`
       ];
