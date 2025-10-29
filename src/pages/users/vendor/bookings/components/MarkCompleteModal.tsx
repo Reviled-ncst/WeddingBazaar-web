@@ -11,6 +11,7 @@ interface MarkCompleteModalProps {
     serviceType: string;
     eventDate: string;
     totalAmount: number;
+    amount?: number; // Fallback field
   };
 }
 
@@ -39,8 +40,9 @@ export const MarkCompleteModal: React.FC<MarkCompleteModalProps> = ({
     day: 'numeric'
   });
 
-  // Format amount
-  const amount = booking.totalAmount ? `₱${booking.totalAmount.toLocaleString()}` : 'N/A';
+  // Format amount - check multiple possible fields
+  const amountValue = booking.totalAmount || booking.amount || 0;
+  const amount = amountValue > 0 ? `₱${amountValue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '₱0.00';
 
   return (
     <AnimatePresence>
@@ -60,14 +62,15 @@ export const MarkCompleteModal: React.FC<MarkCompleteModalProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md bg-gradient-to-br from-white via-pink-50/30 to-white rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-md bg-gradient-to-br from-pink-50 via-white to-purple-50 rounded-2xl shadow-2xl overflow-hidden border border-pink-200/50"
           >
             {/* Decorative Header Background */}
-            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-pink-400/20 via-purple-400/20 to-blue-400/20 blur-3xl" />
+            <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-br from-pink-400/30 via-purple-400/30 to-pink-400/30 blur-3xl" />
 
             {/* Close Button */}
             <button
               onClick={onClose}
+              aria-label="Close modal"
               className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-colors shadow-lg"
             >
               <X className="w-5 h-5 text-gray-600" />
@@ -78,15 +81,15 @@ export const MarkCompleteModal: React.FC<MarkCompleteModalProps> = ({
               {/* Icon */}
               <div className="flex justify-center mb-6">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full blur-xl opacity-40 animate-pulse" />
-                  <div className="relative bg-gradient-to-br from-green-400 to-emerald-500 rounded-full p-4">
+                  <div className="absolute inset-0 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full blur-xl opacity-50 animate-pulse" />
+                  <div className="relative bg-gradient-to-br from-pink-500 via-purple-500 to-pink-600 rounded-full p-4 shadow-lg">
                     <CheckCircle className="w-12 h-12 text-white" />
                   </div>
                 </div>
               </div>
 
               {/* Title */}
-              <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 bg-clip-text text-transparent mb-2">
+              <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-pink-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
                 Mark Booking Complete
               </h2>
 
@@ -96,7 +99,8 @@ export const MarkCompleteModal: React.FC<MarkCompleteModalProps> = ({
               </p>
 
               {/* Booking Details Card */}
-              <div className="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-pink-100 shadow-sm mb-6">
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl p-5 border-2 border-pink-200/60 shadow-md mb-6"
+>
                 {/* Client */}
                 <div className="flex items-start gap-3 mb-4">
                   <div className="mt-1 p-2 bg-gradient-to-br from-pink-100 to-purple-100 rounded-lg">
@@ -153,7 +157,7 @@ export const MarkCompleteModal: React.FC<MarkCompleteModalProps> = ({
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="flex-1 px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm"
+                  className="flex-1 px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm"
                 >
                   Cancel
                 </button>
@@ -162,7 +166,7 @@ export const MarkCompleteModal: React.FC<MarkCompleteModalProps> = ({
                     onConfirm();
                     onClose();
                   }}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold hover:from-green-600 hover:to-emerald-600 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 via-purple-500 to-pink-600 text-white rounded-xl font-semibold hover:from-pink-600 hover:via-purple-600 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2"
                 >
                   <CheckCircle className="w-5 h-5" />
                   Confirm
