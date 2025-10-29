@@ -163,13 +163,9 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
     if (!isOpen) return;
 
     const handlePaymentUpdate = (data: PaymentWebhookData) => {
-      console.log('📡 Received real-time payment update:', data);
-      
       // Check if this update is for our current source
       if (source?.id && data.sourceId === source.id) {
         if (data.status === 'paid') {
-          console.log('🎉 Real-time payment success detected!');
-          
           const paymentData = {
             source_id: data.sourceId,
             payment_id: data.paymentId,
@@ -209,9 +205,7 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                     }
                   }
                 );
-                console.log('📋 [PROCESS] Payment logged in process tracking');
               } catch (error) {
-                console.log('⚠️ [PROCESS] Could not log payment (process tracking may not be initialized):', error);
               }
             };
             
@@ -219,13 +213,11 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
             logPaymentAsync();
             
             onPaymentSuccess(paymentData);
-            console.log('✅ Success callback called from webhook');
           }
           
           setPaymentStep('success');
           setLoading(false);
         } else if (data.status === 'failed') {
-          console.log('❌ Real-time payment failure detected');
           setErrorMessage('Payment failed. Please try again.');
           setPaymentStep('error');
           setLoading(false);
@@ -388,9 +380,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
       if (!paymentResult.success) {
         throw new Error(paymentResult.error || 'Card payment failed');
       }
-
-      console.log('✅ Card payment processed successfully:', paymentResult);
-      
       // Store payment result for success screen display
       if (paymentResult.paymentIntent) {
         setPaymentIntent(paymentResult.paymentIntent as any);
@@ -461,12 +450,10 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
   const getAmountInPHPCentavos = () => {
     if (currency === 'PHP') {
       const centavos = Math.round(amount * 100); // Convert PHP to centavos
-      console.log(`💰 Converting PHP ${amount} to ${centavos} centavos`);
       return centavos;
     } else {
       // For non-PHP currencies, assume amount is already in equivalent PHP value
       const centavos = Math.round(amount * 100);
-      console.log(`💰 Converting ${currency} ${amount} to ${centavos} centavos (assuming already converted to PHP)`);
       return centavos;
     }
   };
@@ -533,8 +520,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
     setErrorMessage('');
     
     try {
-        console.log(`🔄 Currency: ${currency}, Amount: ${amount}`);
-        
         const amountInCentavos = getAmountInPHPCentavos();
         
         // Validation: PayMongo minimum amount is 100 centavos (₱1.00)
@@ -552,18 +537,12 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
         const baseUrl = window.location.origin;
         const successUrl = `${baseUrl}/individual/bookings?payment=success&booking=${booking.id}`;
         const failedUrl = `${baseUrl}/individual/bookings?payment=failed&booking=${booking.id}`;
-        
-        console.log(`🔗 Redirect URLs - Success: ${successUrl}, Failed: ${failedUrl}`);
-
       if (selectedMethod === 'demo_payment') {
         // Demo payment simulation
-        console.log('🧪 [DEMO PAYMENT] Starting instant payment simulation...');
         setPaymentStep('processing');
         
         // Simulate payment processing delay
         setTimeout(() => {
-          console.log('🎉 [DEMO PAYMENT] Payment simulation completed successfully!');
-          
           // Store demo payment data
           setSource({
             id: `demo_${booking.id}_${Date.now()}`,
@@ -584,8 +563,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
 
       } else if (selectedMethod === 'bank_transfer') {
         // Handle bank transfer
-        console.log('🏦 Creating bank transfer payment...');
-        
         const result = await paymongoService.createBankTransferPayment(
           booking.id,
           amount,
@@ -615,14 +592,12 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
         let result: any = null;
         
         if (selectedMethod === 'grab_pay') {
-          console.log('🚗 Creating GrabPay payment...');
           result = await paymongoService.createGrabPayPayment(
             booking.id,
             amount,
             paymentType
           );
         } else if (selectedMethod === 'gcash') {
-          console.log('� Creating GCash payment...');
           result = await paymongoService.createGCashPayment(
             booking.id,
             amount,
@@ -648,15 +623,11 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
             
             setRedirectUrl(result.checkoutUrl);
             setPaymentStep('redirect');
-            
-            console.log(`🔗 Redirecting to ${selectedMethod} payment page: ${result.checkoutUrl}`);
             window.location.href = result.checkoutUrl;
             
             return;
           } else {
             // Simulated payment - mark as success
-            console.log(`✅ ${selectedMethod} payment simulation completed successfully`);
-            
             // Store source data for success screen
             setSource({
               id: result.sourceId || `${selectedMethod}_${Date.now()}`,
@@ -1287,7 +1258,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
                               onClick={() => {
-                                console.log(`🔗 Opening PayMongo checkout:`, redirectUrl);
                                 window.open(redirectUrl, '_blank', 'width=600,height=800,scrollbars=yes,resizable=yes');
                               }}
                               className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-4 px-6 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
@@ -1312,7 +1282,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => {
-                              console.log(`🔗 Opening PayMongo checkout:`, redirectUrl);
                               window.open(redirectUrl, '_blank', 'width=600,height=800,scrollbars=yes,resizable=yes');
                             }}
                             className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
@@ -1341,7 +1310,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => {
-                              console.log('✅ User manually requested payment status check');
                               setLoading(true);
                               
                               // Use the improved polling method for immediate check
@@ -1355,7 +1323,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                                   const result = await paymongoService.pollPaymentStatus(source.id);
                                   
                                   if (result.status === 'paid' && result.payment) {
-                                    console.log('🎉 Real payment confirmed immediately via enhanced polling!');
                                     const paymentData = {
                                       source_id: source.id,
                                       payment_id: result.payment.id,
@@ -1372,13 +1339,11 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                                     if (!successCallbackCalled) {
                                       setSuccessCallbackCalled(true);
                                       onPaymentSuccess(paymentData);
-                                      console.log('✅ Success callback called for confirmed e-wallet payment');
                                     }
                                     
                                     setPaymentStep('success');
                                   } else {
                                     // If not found immediately, inform user to wait
-                                    console.log('⏱️ Payment not yet detected, user should wait for automatic confirmation');
                                     setErrorMessage('Payment not yet detected. Please wait for automatic confirmation, or ensure payment was completed in your e-wallet app.');
                                   }
                                 } catch (error) {
@@ -1558,11 +1523,8 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.7 }}
                       onClick={async () => {
-                        console.log('🎉 User confirmed successful payment, calling callback and closing modal');
-                        
                         try {
                           // Call success callback with payment data and WAIT for it to complete
-                          console.log('⏳ Calling onPaymentSuccess callback...');
                           await onPaymentSuccess({
                             payment: {
                               id: paymentIntent?.id || source?.id,
@@ -1579,7 +1541,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                             formattedAmount: formatAmount(amount),
                             sourceId: source?.id
                           });
-                          console.log('✅ onPaymentSuccess callback completed successfully');
                         } catch (error) {
                           console.error('❌ onPaymentSuccess callback failed:', error);
                           alert('Payment successful but subscription upgrade failed. Please contact support.');
@@ -1597,7 +1558,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                 )}
 
                 {paymentStep === 'error' && (() => {
-                  console.log('🔍 Rendering error step with message:', errorMessage);
                   return (
                     <motion.div 
                       initial={{ opacity: 0, scale: 0.9 }}
@@ -1655,7 +1615,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                     >
                       <button
                         onClick={() => {
-                          console.log('❌ User acknowledged payment failure, calling error callback');
                           // Call error callback when user closes after seeing error
                           onPaymentError(errorMessage || 'Payment failed');
                           onClose();
@@ -1666,7 +1625,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                       </button>
                       <button
                         onClick={() => {
-                          console.log('🔄 User chose to retry payment');
                           setPaymentStep('select');
                           setErrorMessage('');
                           setSelectedMethod('');

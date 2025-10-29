@@ -82,8 +82,6 @@ class BookingProcessTrackingService {
    */
   async initializeTracking(): Promise<any> {
     try {
-      console.log('🔧 [PROCESS] Initializing booking process tracking...');
-      
       const response = await fetch(`${this.baseUrl}/api/bookings/init-tracking`, {
         method: 'POST',
         headers: {
@@ -94,9 +92,6 @@ class BookingProcessTrackingService {
       const result = await response.json();
       
       if (result.success) {
-        console.log('✅ [PROCESS] Booking process tracking initialized successfully');
-        console.log('📊 [PROCESS] Tables created:', result.tables_created);
-        console.log('🔄 [PROCESS] Columns added:', result.columns_added);
       } else {
         console.error('❌ [PROCESS] Failed to initialize tracking:', result.message);
       }
@@ -121,8 +116,6 @@ class BookingProcessTrackingService {
     createdByType?: 'couple' | 'vendor' | 'admin' | 'system'
   ): Promise<any> {
     try {
-      console.log('📋 [PROCESS] Logging process step:', processStep, 'for booking:', bookingId);
-      
       const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/log-process`, {
         method: 'POST',
         headers: {
@@ -141,8 +134,6 @@ class BookingProcessTrackingService {
       const result = await response.json();
       
       if (result.success) {
-        console.log('✅ [PROCESS] Process step logged successfully');
-        console.log('📊 [PROCESS] Progress updated:', result.progress_updated);
       } else {
         console.error('❌ [PROCESS] Failed to log process step:', result.message);
       }
@@ -172,9 +163,6 @@ class BookingProcessTrackingService {
     }
   ): Promise<any> {
     try {
-      console.log('💳 [PAYMENT] Logging payment for booking:', bookingId);
-      console.log('💰 [PAYMENT] Amount:', paymentData.amount, paymentData.currency || 'PHP');
-      
       const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/log-payment`, {
         method: 'POST',
         headers: {
@@ -186,8 +174,6 @@ class BookingProcessTrackingService {
       const result = await response.json();
       
       if (result.success) {
-        console.log('✅ [PAYMENT] Payment logged successfully');
-        console.log('📊 [PAYMENT] Process step logged:', result.process_step_logged);
       } else {
         console.error('❌ [PAYMENT] Failed to log payment:', result.message);
       }
@@ -217,9 +203,6 @@ class BookingProcessTrackingService {
     }
   ): Promise<any> {
     try {
-      console.log('💬 [COMM] Logging communication for booking:', bookingId);
-      console.log('📧 [COMM] Type:', communicationData.communication_type);
-      
       const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/log-communication`, {
         method: 'POST',
         headers: {
@@ -231,8 +214,6 @@ class BookingProcessTrackingService {
       const result = await response.json();
       
       if (result.success) {
-        console.log('✅ [COMM] Communication logged successfully');
-        console.log('📊 [COMM] Process step logged:', result.process_step_logged);
       } else {
         console.error('❌ [COMM] Failed to log communication:', result.message);
       }
@@ -249,14 +230,10 @@ class BookingProcessTrackingService {
    */
   async getProcessHistory(bookingId: number): Promise<BookingProcessHistory> {
     try {
-      console.log('📜 [PROCESS] Getting process history for booking:', bookingId);
-      
       const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/process-history`);
       const result = await response.json();
       
       if (result.success) {
-        console.log('✅ [PROCESS] Retrieved complete process history');
-        console.log('📊 [PROCESS] Summary:', result.summary);
         return result;
       } else {
         console.error('❌ [PROCESS] Failed to get process history:', result.message);

@@ -58,7 +58,7 @@ class PayMongoService {
       const paymentIntentId = intentData.payment_intent_id;
       const clientKey = intentData.client_key;
       
-      console.log('✅ [STEP 1] Payment intent created:', paymentIntentId);
+      // console.log('✅ [STEP 1] Payment intent created:', paymentIntentId);
 
       // Step 2: Create PayMongo Payment Method
       console.log('💳 [STEP 2] Creating PayMongo payment method...');
@@ -91,7 +91,7 @@ class PayMongoService {
       const paymentMethodData = await paymentMethodResponse.json();
       const paymentMethodId = paymentMethodData.payment_method_id;
       
-      console.log('✅ [STEP 2] Payment method created:', paymentMethodId);
+      // console.log('✅ [STEP 2] Payment method created:', paymentMethodId);
 
       // Step 3: Attach Payment Method to Intent
       console.log('💳 [STEP 3] Attaching payment method to intent...');
@@ -114,7 +114,7 @@ class PayMongoService {
       const attachData = await attachResponse.json();
       const paymentStatus = attachData.status;
       
-      console.log('✅ [STEP 3] Payment processed, status:', paymentStatus);
+      // console.log('✅ [STEP 3] Payment processed, status:', paymentStatus);
 
       // Step 4: Process payment and create receipt in backend
       console.log('💳 [STEP 4] Creating receipt in backend...');
@@ -169,8 +169,8 @@ class PayMongoService {
 
       const receiptData = await receiptResponse.json();
       
-      console.log('✅ [STEP 4] Receipt response received:', receiptData);
-      console.log('✅ [CARD PAYMENT - REAL] Payment completed successfully!');
+      // console.log('✅ [STEP 4] Receipt response received:', receiptData);
+      // console.log('✅ [CARD PAYMENT - REAL] Payment completed successfully!');
       console.log('🧾 [CARD PAYMENT - REAL] Receipt created:', receiptData.data?.receipt?.receipt_number);
 
       return {
@@ -209,7 +209,7 @@ class PayMongoService {
       // Simulate payment success
       const paymentId = `grabpay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      console.log('✅ [GRABPAY PAYMENT] Payment simulation completed successfully');
+      // console.log('✅ [GRABPAY PAYMENT] Payment simulation completed successfully');
       console.log('🚗 [GRABPAY PAYMENT] Transaction ID:', paymentId);
 
       return {
@@ -280,7 +280,7 @@ class PayMongoService {
       // Simulate payment success
       const paymentId = `gcash_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      console.log('✅ [GCASH PAYMENT] Payment simulation completed successfully');
+      // console.log('✅ [GCASH PAYMENT] Payment simulation completed successfully');
       console.log('📱 [GCASH PAYMENT] Transaction ID:', paymentId);
 
       return {
@@ -318,7 +318,7 @@ class PayMongoService {
       // Simulate payment success
       const paymentId = `maya_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      console.log('✅ [MAYA PAYMENT] Payment simulation completed successfully');
+      // console.log('✅ [MAYA PAYMENT] Payment simulation completed successfully');
       console.log('💳 [MAYA PAYMENT] Transaction ID:', paymentId);
 
       return {

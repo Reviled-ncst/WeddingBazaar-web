@@ -467,7 +467,7 @@ export class CentralizedServiceManager {
         console.log('📡 [ServiceManager] Fallback response received:', fallbackResponse.status);
         if (fallbackResponse.ok) {
           const fallbackData = await fallbackResponse.json();
-          console.log('✅ [ServiceManager] Fallback succeeded with data:', fallbackData.services?.length || 0, 'services');
+          // console.log('✅ [ServiceManager] Fallback succeeded with data:', fallbackData.services?.length || 0, 'services');
           
           if (fallbackData.success && fallbackData.services?.length > 0) {
             const mappedServices = fallbackData.services.map((service: any) => 
@@ -781,7 +781,7 @@ export class CentralizedServiceManager {
         // Clear cache to ensure fresh data
         this.clearVendorCache(vendorId);
         
-        console.log('✅ [ServiceManager] Service created successfully');
+        // console.log('✅ [ServiceManager] Service created successfully');
         
         return {
           success: true,

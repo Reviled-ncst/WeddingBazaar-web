@@ -58,7 +58,6 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   // Listen for subscription update events (after payment success)
   useEffect(() => {
     const handleSubscriptionUpdate = () => {
-      console.log('🔄 [SubscriptionContext] Received subscriptionUpdated event, refetching...');
       fetchSubscription();
     };
 
@@ -75,9 +74,6 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🔔 [SubscriptionContext] Fetching subscription for vendor:', user.vendorId);
-      
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const response = await fetch(`${apiUrl}/api/subscriptions/vendor/${user.vendorId}`);
       
@@ -88,8 +84,6 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
       const data = await response.json();
       
       if (data.success && data.subscription) {
-        console.log('✅ [SubscriptionContext] Subscription loaded:', data.subscription.plan_name);
-        
         // ✅ CRITICAL FIX: Prioritize API response limits over hardcoded predefined limits
         const apiPlanData = data.subscription.plan; // From backend API
         const predefinedPlan = SUBSCRIPTION_PLANS.find(p => p.id === data.subscription.plan_name);
@@ -97,15 +91,6 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
         // Use API limits as PRIMARY source, predefined as FALLBACK
         const planLimits = apiPlanData?.limits || predefinedPlan?.limits || SUBSCRIPTION_PLANS[0].limits;
         const planFeatures = apiPlanData?.features || predefinedPlan?.features || [];
-        
-        console.log('🎯 [SubscriptionContext] Using DYNAMIC limits from API:', {
-          max_services: planLimits.max_services,
-          max_portfolio_items: planLimits.max_portfolio_items,
-          unlimited_services: planLimits.max_services === -1,
-          tier: data.subscription.plan_name,
-          source: apiPlanData?.limits ? 'API (dynamic)' : 'predefined (fallback)'
-        });
-        
         const mappedSubscription: VendorSubscription = {
           id: data.subscription.id,
           vendor_id: data.subscription.vendor_id,
@@ -170,17 +155,10 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
         
         setSubscription(mappedSubscription);
         
-        // If subscription is successfully updated and an upgrade prompt is showing, hide it
-        if (upgradePrompt.show) {
-          console.log('🔄 [SubscriptionContext] Subscription updated, hiding upgrade prompt');
-          setUpgradePrompt({
-            show: false,
-            message: '',
-            requiredTier: ''
-          });
-        }
+        // ❌ REMOVED: Do not auto-hide upgrade prompt when subscription loads
+        // The upgrade prompt should only be hidden by user action (close button/backdrop)
+        // or after successful upgrade (handled in upgrade success callback)
       } else {
-        console.log('⚠️ [SubscriptionContext] No subscription found, defaulting to FREE TIER (basic)');
         // Provide a FREE TIER fallback subscription (basic plan with 5 services limit)
         const fallbackSubscription: VendorSubscription = {
           id: 'dev-fallback',
@@ -213,8 +191,6 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch subscription';
       console.error('❌ [SubscriptionContext] Error:', errorMessage);
-      console.log('🔧 [SubscriptionContext] Providing FREE TIER fallback (basic) due to error');
-      
       // Provide FREE TIER fallback on error (basic plan with 5 services limit)
       const fallbackSubscription: VendorSubscription = {
         id: 'dev-fallback-error',
@@ -255,21 +231,17 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     
     // Enterprise plan has access to everything
     if (subscription.plan.id === 'enterprise') {
-      console.log(`✅ [SubscriptionContext] Enterprise plan has access to feature: ${feature}`);
       return true;
     }
     
     // Check specific feature access for other plans
     const hasFeatureAccess = SubscriptionAccess.canUseFeature(subscription, feature);
-    console.log(`🔍 [SubscriptionContext] Feature access check for ${feature}: ${hasFeatureAccess} (Plan: ${subscription.plan.id})`);
-    
     return hasFeatureAccess;
   };
 
   const canCreateService = (): boolean => {
     // For development: allow service creation even without subscription
     if (!subscription) {
-      console.log('⚠️ [SubscriptionContext] No subscription loaded, allowing service creation for development');
       return true;
     }
     return SubscriptionAccess.canCreateService(subscription);
@@ -278,7 +250,6 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   const canUploadImages = (currentImages: number): boolean => {
     // For development: allow image uploads even without subscription
     if (!subscription) {
-      console.log('⚠️ [SubscriptionContext] No subscription loaded, allowing image uploads for development');
       return true;
     }
     return SubscriptionAccess.canUploadImages(subscription, currentImages);
@@ -287,7 +258,6 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   const canAcceptBooking = (): boolean => {
     // For development: allow bookings even without subscription
     if (!subscription) {
-      console.log('⚠️ [SubscriptionContext] No subscription loaded, allowing booking acceptance for development');
       return true;
     }
     return SubscriptionAccess.canAcceptBooking(subscription);
@@ -296,7 +266,6 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   const canSendMessage = (): boolean => {
     // For development: allow messaging even without subscription
     if (!subscription) {
-      console.log('⚠️ [SubscriptionContext] No subscription loaded, allowing messaging for development');
       return true;
     }
     return SubscriptionAccess.canSendMessage(subscription);
@@ -305,7 +274,6 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   const canUseFeature = (featureId: string): boolean => {
     // For development: allow all features even without subscription
     if (!subscription) {
-      console.log('⚠️ [SubscriptionContext] No subscription loaded, allowing feature access for development');
       return true;
     }
     return SubscriptionAccess.canUseFeature(subscription, featureId);

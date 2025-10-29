@@ -67,7 +67,7 @@ class FirebasePhoneService {
         this.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
           size: 'invisible',
           callback: (response: any) => {
-            console.log('✅ reCAPTCHA solved:', response);
+            // console.log('✅ reCAPTCHA solved:', response);
             resolve();
           },
           'expired-callback': () => {
@@ -78,7 +78,7 @@ class FirebasePhoneService {
 
         // Render the reCAPTCHA
         this.recaptchaVerifier.render().then(() => {
-          console.log('✅ reCAPTCHA initialized successfully');
+          // console.log('✅ reCAPTCHA initialized successfully');
           resolve();
         }).catch((error) => {
           console.error('❌ reCAPTCHA render error:', error);
@@ -109,7 +109,7 @@ class FirebasePhoneService {
 
       // Check if phone number is a test number
       if (this.isTestPhoneNumber(phoneNumber)) {
-        console.log('✅ Test phone number detected. Bypassing SMS sending.');
+        // console.log('✅ Test phone number detected. Bypassing SMS sending.');
         console.log(`💡 Use verification code: ${this.getTestVerificationCode(phoneNumber)} for testing`);
 
         return {
@@ -130,7 +130,7 @@ class FirebasePhoneService {
         this.recaptchaVerifier
       );
 
-      console.log('✅ SMS verification code sent successfully');
+      // console.log('✅ SMS verification code sent successfully');
 
       return {
         success: true,
@@ -160,7 +160,7 @@ class FirebasePhoneService {
       const expectedCode = this.getTestVerificationCode(phoneNumber);
       
       if (code === expectedCode) {
-        console.log('✅ Test phone number verified successfully');
+        // console.log('✅ Test phone number verified successfully');
         
         // Clean up
         this.confirmationResult = null;
@@ -190,7 +190,7 @@ class FirebasePhoneService {
       const result = await this.confirmationResult.confirm(code);
       const user = result.user;
 
-      console.log('✅ Phone number verified successfully:', user.phoneNumber);
+      // console.log('✅ Phone number verified successfully:', user.phoneNumber);
 
       // Clean up
       this.confirmationResult = null;
@@ -236,7 +236,7 @@ class FirebasePhoneService {
         this.recaptchaVerifier
       );
 
-      console.log('✅ Phone verification ID obtained:', verificationId);
+      // console.log('✅ Phone verification ID obtained:', verificationId);
 
       return {
         success: true,
@@ -267,7 +267,7 @@ class FirebasePhoneService {
       // Link credential to existing account
       const result = await linkWithCredential(auth.currentUser, credential);
 
-      console.log('✅ Phone number linked successfully:', result.user.phoneNumber);
+      // console.log('✅ Phone number linked successfully:', result.user.phoneNumber);
 
       return {
         success: true,

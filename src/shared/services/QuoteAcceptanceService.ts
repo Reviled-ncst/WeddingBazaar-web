@@ -30,7 +30,7 @@ export class QuoteAcceptanceService {
     
     localStorage.setItem(ACCEPTED_QUOTES_KEY, JSON.stringify(filteredQuotes));
     
-    console.log('✅ [QuoteAcceptance] Quote accepted and stored:', acceptedQuote);
+    // console.log('✅ [QuoteAcceptance] Quote accepted and stored:', acceptedQuote);
   }
   
   /**

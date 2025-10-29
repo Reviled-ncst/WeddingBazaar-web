@@ -39,8 +39,6 @@ class BookingStatusManager {
     };
     
     this.statusUpdates.set(bookingId, update);
-    console.log(`📊 [StatusManager] Recorded ${source} status update:`, update);
-    
     return update;
   }
   
@@ -51,7 +49,6 @@ class BookingStatusManager {
     const update = this.statusUpdates.get(bookingId);
     
     if (update) {
-      console.log(`🔍 [StatusManager] Found status override for ${bookingId}: ${update.newStatus} (${update.source})`);
       return update.newStatus;
     }
     
@@ -71,7 +68,6 @@ class BookingStatusManager {
    */
   clearStatusUpdate(bookingId: string): void {
     this.statusUpdates.delete(bookingId);
-    console.log(`🧹 [StatusManager] Cleared status update for ${bookingId}`);
   }
   
   /**
@@ -89,8 +85,6 @@ class BookingStatusManager {
     const currentStatus = this.getCurrentStatus(booking.id, booking.status);
     
     if (currentStatus !== booking.status) {
-      console.log(`🔄 [StatusManager] Applying status override for ${booking.id}: ${booking.status} → ${currentStatus}`);
-      
       return {
         ...booking,
         status: currentStatus,

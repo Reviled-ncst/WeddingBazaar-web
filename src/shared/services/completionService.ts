@@ -52,8 +52,6 @@ export async function markBookingComplete(
   completionNotes?: string // NEW: Optional notes
 ): Promise<CompletionResponse> {
   try {
-    console.log(`📋 [CompletionService] Marking booking ${bookingId} complete by ${completedBy}`);
-
     const payload: Record<string, unknown> = {
       completed_by: completedBy,
     };
@@ -65,7 +63,6 @@ export async function markBookingComplete(
       } else {
         payload.couple_completion_proof = completionProof;
       }
-      console.log(`📸 [CompletionService] Uploading ${completionProof.length} proof files`);
     }
 
     // Add notes if provided
@@ -75,7 +72,6 @@ export async function markBookingComplete(
       } else {
         payload.couple_completion_notes = completionNotes;
       }
-      console.log(`📝 [CompletionService] Adding completion notes`);
     }
 
     const response = await fetch(`${API_URL}/api/bookings/${bookingId}/mark-completed`, {
@@ -129,9 +125,6 @@ export async function markBookingComplete(
       vendorCompletionNotes: backendBooking.vendor_completion_notes,
       coupleCompletionNotes: backendBooking.couple_completion_notes,
     };
-
-    console.log('✅ [CompletionService] Booking completion updated:', completionStatus);
-    
     return {
       success: true,
       message: data.message,
@@ -161,8 +154,6 @@ export async function markBookingComplete(
  */
 export async function getCompletionStatus(bookingId: string): Promise<CompletionStatus | null> {
   try {
-    console.log(`📋 [CompletionService] Fetching completion status for ${bookingId}`);
-
     const response = await fetch(`${API_URL}/api/bookings/${bookingId}/completion-status`);
     const data = await response.json();
 
@@ -181,7 +172,6 @@ export async function getCompletionStatus(bookingId: string): Promise<Completion
 
     // If already in camelCase, use directly
     if (status.vendorCompleted !== undefined) {
-      console.log('✅ [CompletionService] Using camelCase format:', status);
       return status;
     }
 
@@ -197,8 +187,6 @@ export async function getCompletionStatus(bookingId: string): Promise<Completion
       canComplete: !status.fully_completed,
       waitingFor: status.waiting_for,
     };
-
-    console.log('✅ [CompletionService] Mapped from snake_case:', mapped);
     return mapped;
 
   } catch (error: any) {
@@ -215,41 +203,25 @@ export function canMarkComplete(
   userRole: 'vendor' | 'couple',
   completionStatus?: CompletionStatus
 ): boolean {
-  console.log('🔍 [canMarkComplete] Checking if user can mark complete:', {
-    bookingId: booking.id,
-    bookingStatus: booking.status,
-    userRole,
-    completionStatus,
-    fullyCompleted: completionStatus?.fullyCompleted,
-    vendorCompleted: completionStatus?.vendorCompleted,
-    coupleCompleted: completionStatus?.coupleCompleted
-  });
-
   // If already fully completed, can't mark again
   if (completionStatus?.fullyCompleted || booking.status === 'completed') {
-    console.log('❌ [canMarkComplete] Already fully completed');
     return false;
   }
 
   // Must be fully paid or in completion process
   const validStatuses = ['paid_in_full', 'fully_paid', 'deposit_paid'];
   if (!validStatuses.includes(booking.status)) {
-    console.log('❌ [canMarkComplete] Invalid status. Status:', booking.status, 'Valid:', validStatuses);
     return false;
   }
 
   // Check if this user has already marked complete
   if (userRole === 'vendor' && completionStatus?.vendorCompleted) {
-    console.log('❌ [canMarkComplete] Vendor already marked complete');
     return false;
   }
 
   if (userRole === 'couple' && completionStatus?.coupleCompleted) {
-    console.log('❌ [canMarkComplete] Couple already marked complete');
     return false;
   }
-
-  console.log('✅ [canMarkComplete] User CAN mark complete');
   return true;
 }
 

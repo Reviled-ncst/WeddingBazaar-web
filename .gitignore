@@ -53,3 +53,7 @@ backend/
 *.njsproj
 *.sln
 *.sw?
+
+# Email Credentials - DO NOT COMMIT
+EMAIL_CREDENTIALS.txt
+

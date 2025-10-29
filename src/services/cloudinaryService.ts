@@ -25,13 +25,6 @@ class CloudinaryService {
   constructor() {
     this.cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dht64xt1g';
     this.uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'weddingbazaarus';
-    
-    console.log('🌤️ [Cloudinary] Initialized with:', {
-      cloudName: this.cloudName,
-      uploadPreset: this.uploadPreset,
-      envCloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME,
-      envUploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
-    });
   }
 
   /**
@@ -55,21 +48,10 @@ class CloudinaryService {
       if (file.size > maxSize) {
         throw new Error('Image size must be less than 10MB');
       }
-
-      console.log('🌤️ [Cloudinary] Starting upload...', {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        folder: folder,
-        uploadPreset: this.uploadPreset,
-        cloudName: this.cloudName
-      });
-
       // Try upload without folder first, then with folder if that fails
       try {
         return await this.attemptUpload(file, false);
       } catch (error) {
-        console.log('🌤️ [Cloudinary] Upload without folder failed, trying with folder...');
         return await this.attemptUpload(file, true, folder);
       }
     } catch (error) {
@@ -93,25 +75,13 @@ class CloudinaryService {
     }
     
     // Debug: Log all form data entries
-    console.log(`🌤️ [Cloudinary] FormData contents (${includeFolder ? 'with' : 'without'} folder):`);
     for (const [key, value] of formData.entries()) {
-      console.log(`  ${key}:`, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
     }
-
-    console.log('🌤️ [Cloudinary] FormData prepared, sending request...');
-
     // Upload to Cloudinary
     const response = await fetch(`https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`, {
       method: 'POST',
       body: formData,
     });
-
-    console.log('🌤️ [Cloudinary] Response received:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok
-    });
-
     if (!response.ok) {
       const errorText = await response.text();
       console.error('🌤️ [Cloudinary] Error response body:', errorText);
@@ -130,14 +100,6 @@ class CloudinaryService {
     }
 
     const data: CloudinaryUploadResponse = await response.json();
-    console.log('🌤️ [Cloudinary] Upload successful:', {
-      secure_url: data.secure_url,
-      public_id: data.public_id,
-      format: data.format,
-      width: data.width,
-      height: data.height
-    });
-    
     return data;
   }
 
@@ -150,8 +112,6 @@ class CloudinaryService {
     try {
       // For deletion, we need to use the admin API which requires server-side implementation
       // For now, we'll just log the deletion request
-      console.log('Image deletion requested for public_id:', publicId);
-      
       // In a production app, you would:
       // 1. Send the public_id to your backend
       // 2. Backend uses Cloudinary admin API to delete the image
@@ -205,9 +165,6 @@ class CloudinaryService {
       const formData = new FormData();
       formData.append('file', testImageData);
       formData.append('upload_preset', this.uploadPreset);
-      
-      console.log('🌤️ [Cloudinary] Testing upload preset:', this.uploadPreset);
-      
       const response = await fetch(`https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`, {
         method: 'POST',
         body: formData,
@@ -215,7 +172,6 @@ class CloudinaryService {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('🌤️ [Cloudinary] Upload preset test successful:', data.public_id);
         // Clean up the test image
         return true;
       } else {
@@ -262,16 +218,6 @@ class CloudinaryService {
       if (file.size > maxSize) {
         throw new Error('Document size must be less than 25MB');
       }
-
-      console.log('🌤️ [Cloudinary] Starting document upload...', {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        folder: folder,
-        uploadPreset: this.uploadPreset,
-        cloudName: this.cloudName
-      });
-
       // Create form data for upload
       const formData = new FormData();
       formData.append('file', file);
@@ -294,15 +240,6 @@ class CloudinaryService {
       }
 
       const data = await response.json() as CloudinaryUploadResponse;
-      
-      console.log('🌤️ [Cloudinary] Document upload successful:', {
-        publicId: data.public_id,
-        secureUrl: data.secure_url,
-        format: data.format,
-        resourceType: data.resource_type,
-        bytes: data.bytes
-      });
-
       return data;
     } catch (error) {
       console.error('Cloudinary document upload error:', error);

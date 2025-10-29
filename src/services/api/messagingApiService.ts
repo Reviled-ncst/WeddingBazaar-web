@@ -36,16 +36,11 @@ export class MessagingApiService {
   static async getConversations(userId: string): Promise<Conversation[]> {
     try {
       const apiUrl = `${getApiBaseUrl()}/conversations/${userId}`;
-      console.log('🔍 Fetching conversations from:', apiUrl);
-      
       const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
-      
-      console.log('🔍 Conversations response status:', response.status);
-      
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error('404 - Conversations endpoint not found');
@@ -61,8 +56,6 @@ export class MessagingApiService {
       }
       
       const data: any = await response.json();
-      console.log('✅ Conversations data received:', data);
-      
       // Backend returns {success: true, conversations: [...]}
       if (data.success && data.conversations) {
         return data.conversations;
@@ -74,13 +67,9 @@ export class MessagingApiService {
     }
   }
 
-
-
   // VENDOR WORKAROUND: Get conversations by searching all conversations for vendor participation
   static async getVendorConversations(vendorId: string): Promise<Conversation[]> {
     try {
-      console.log('🔧 [VENDOR WORKAROUND] Fetching vendor conversations for:', vendorId);
-      
       // Try multiple approaches to find vendor conversations
       const approaches = [
         // Approach 1: Direct vendor query (standard)
@@ -88,8 +77,6 @@ export class MessagingApiService {
         
         // Approach 2: Search by scanning known user conversations
         async () => {
-          console.log('🔍 [VENDOR WORKAROUND] Trying cross-user conversation lookup...');
-          
           // Sample known user IDs to scan for vendor conversations
           const sampleUserIds = ['1-2025-001', '1-2025-002', '1-2025-003'];
           const foundConversations: any[] = [];
@@ -124,7 +111,6 @@ export class MessagingApiService {
                 foundConversations.push(...transformedConversations);
               }
             } catch (error) {
-              console.log(`⚠️ [VENDOR WORKAROUND] Failed to scan user ${userId}:`, error instanceof Error ? error.message : 'Unknown error');
             }
           }
           
@@ -132,8 +118,6 @@ export class MessagingApiService {
           const uniqueConversations = foundConversations.filter((conv, index, arr) => 
             arr.findIndex(c => c.id === conv.id) === index
           );
-          
-          console.log('✅ [VENDOR WORKAROUND] Found unique vendor conversations:', uniqueConversations.length);
           return uniqueConversations;
         }
       ];
@@ -143,16 +127,11 @@ export class MessagingApiService {
         try {
           const conversations = await approaches[i]();
           if (conversations && conversations.length > 0) {
-            console.log(`✅ [VENDOR WORKAROUND] Approach ${i + 1} succeeded with ${conversations.length} conversations`);
             return conversations;
           }
-          console.log(`⚠️ [VENDOR WORKAROUND] Approach ${i + 1} returned no conversations, trying next...`);
         } catch (error) {
-          console.log(`❌ [VENDOR WORKAROUND] Approach ${i + 1} failed:`, error instanceof Error ? error.message : 'Unknown error');
         }
       }
-      
-      console.log('⚠️ [VENDOR WORKAROUND] All approaches failed, returning empty array');
       return [];
       
     } catch (error) {
@@ -173,8 +152,6 @@ export class MessagingApiService {
   }): Promise<any> {
     try {
       const apiUrl = `${getApiBaseUrl()}/conversations`;
-      console.log('📤 Creating conversation at:', apiUrl);
-      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -183,13 +160,8 @@ export class MessagingApiService {
         },
         body: JSON.stringify(data),
       });
-      
-      console.log('📤 Create conversation response status:', response.status);
-      
       // TEMPORARY FIX: If endpoint doesn't exist (404), create a mock conversation
       if (response.status === 404) {
-        console.warn('⚠️ [MessagingApiService] POST /conversations endpoint not available, creating mock conversation');
-        
         // Create a mock conversation object that matches the expected format
         const mockConversation = {
           id: data.conversationId,
@@ -213,8 +185,6 @@ export class MessagingApiService {
           conversation_title: `${data.serviceName} - ${data.vendorName}`,
           is_mock: true
         };
-        
-        console.log('✅ [MessagingApiService] Created mock conversation for UI:', mockConversation.id);
         return mockConversation;
       }
       
@@ -268,8 +238,6 @@ export class MessagingApiService {
     }
   }
 
-
-
   // Send a new message using the compatibility endpoint
   static async sendMessage(
     conversationId: string,
@@ -298,9 +266,6 @@ export class MessagingApiService {
           attachments: attachments || []
         }),
       });
-      
-      console.log('📤 Send message response status:', response.status);
-      
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Send message failed:', response.status, errorText);
@@ -308,8 +273,6 @@ export class MessagingApiService {
       }
       
       const data: any = await response.json();
-      console.log('📨 [MessagingApiService] Send message response:', data);
-      
       // Backend returns {success: true, messageId: ..., conversationId: ..., timestamp: ...}
       // We need to construct a message object from the response
       if (data.success && data.messageId) {
@@ -324,12 +287,10 @@ export class MessagingApiService {
           type: messageType,
           attachments: attachments || []
         };
-        console.log('✅ [MessagingApiService] Constructed message object:', message);
         return message;
       }
       
       // If we get here, the API succeeded but returned unexpected format
-      console.warn('⚠️ [MessagingApiService] Unexpected API response format, creating fallback message');
       const fallbackMessage: Message = {
         id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
         conversationId,
@@ -358,8 +319,6 @@ export class MessagingApiService {
         type: messageType,
         attachments: attachments || []
       };
-      
-      console.log('✅ [MessagingApiService] Created fallback message after error:', fallbackMessage.id);
       return fallbackMessage;
     }
   }

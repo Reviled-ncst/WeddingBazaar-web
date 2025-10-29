@@ -113,7 +113,7 @@ class VendorLookupService {
               location: vendor.location
             };
           });
-          console.log('✅ Preloaded', data.vendors.length, 'vendors into cache');
+          // console.log('✅ Preloaded', data.vendors.length, 'vendors into cache');
         }
       }
     } catch (error) {

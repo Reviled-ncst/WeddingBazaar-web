@@ -44,37 +44,21 @@ export const getCurrentPosition = (): Promise<GeolocationPosition> => {
       timeout: 20000, // 20 second timeout for best GPS
       maximumAge: 0 // No cache, absolutely fresh position
     };
-
-    console.log('🎯 Attempting ultra-high accuracy GPS positioning for business location...');
-    
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const accuracy = position.coords.accuracy;
         const { latitude, longitude } = position.coords;
-        
-        console.log('✅ Ultra-high accuracy GPS success:', {
-          latitude: latitude.toFixed(6),
-          longitude: longitude.toFixed(6),
-          accuracy: `${accuracy}m`,
-          timestamp: new Date(position.timestamp).toLocaleTimeString(),
-          source: 'GPS'
-        });
-        
         // For business registration, we want the best possible accuracy
         // Accept if accuracy is better than 50m (excellent for business location)
         if (accuracy <= 50) {
-          console.log('🏆 Excellent GPS accuracy achieved for business location!');
           resolve(position);
         } else if (accuracy <= 100) {
-          console.log('✅ Good GPS accuracy for business location');
           resolve(position);
         } else {
-          console.log('⚠️ GPS accuracy not ideal for business location, trying enhanced fallback...');
           tryEnhancedFallback(resolve, reject, position);
         }
       },
       (error) => {
-        console.log('❌ Ultra-high accuracy GPS failed:', error.message);
         tryStandardGPS(resolve, reject);
       },
       ultraHighAccuracyOptions
@@ -94,19 +78,9 @@ const tryStandardGPS = (
     timeout: 15000, // 15 second timeout
     maximumAge: 30000 // Allow 30-second cache
   };
-
-  console.log('🔄 Trying standard GPS positioning...');
-  
   navigator.geolocation.getCurrentPosition(
     (position) => {
       const accuracy = position.coords.accuracy;
-      console.log('📍 Standard GPS obtained:', {
-        latitude: position.coords.latitude.toFixed(6),
-        longitude: position.coords.longitude.toFixed(6),
-        accuracy: `${accuracy}m`,
-        source: 'GPS-standard'
-      });
-      
       // Accept if accuracy is reasonable for business location
       if (accuracy <= 200) {
         resolve(position);
@@ -115,7 +89,6 @@ const tryStandardGPS = (
       }
     },
     (error) => {
-      console.log('❌ Standard GPS failed:', error.message);
       tryEnhancedFallback(resolve, reject);
     },
     standardGPSOptions
@@ -132,7 +105,6 @@ const tryEnhancedFallback = (
 ) => {
   // If we have any GPS position, even with poor accuracy, prefer it over network-based location
   if (lastGPSPosition) {
-    console.log('🎯 Using GPS position despite accuracy concerns (better than ISP location)');
     resolve(lastGPSPosition);
     return;
   }
@@ -142,27 +114,12 @@ const tryEnhancedFallback = (
     timeout: 10000,
     maximumAge: 60000 // Allow 1-minute cache
   };
-
-  console.log('⚠️ Falling back to network-based positioning (may be inaccurate for exact business location)...');
-  
   navigator.geolocation.getCurrentPosition(
     (position) => {
-      console.log('� Network-based position obtained:', {
-        latitude: position.coords.latitude.toFixed(6),
-        longitude: position.coords.longitude.toFixed(6),
-        accuracy: `${position.coords.accuracy}m`,
-        source: 'network/cellular',
-        warning: 'May be ISP location - recommend manual verification'
-      });
-      
       // Add warning that this might be ISP location
-      console.warn('⚠️ Network-based location may be inaccurate for business addresses. Consider using "Select on Map" for precise location.');
-      
       resolve(position);
     },
     (error) => {
-      console.log('❌ All positioning methods failed:', error.message);
-      
       let message = 'Unable to get your location. ';
       
       switch (error.code) {
@@ -289,10 +246,8 @@ const formatCaviteCityName = (city: string, latitude: number, longitude: number)
       const isWithinBounds = latitude >= lat[0] && latitude <= lat[1] && longitude >= lng[0] && longitude <= lng[1];
       
       if (isWithinBounds) {
-        console.log(`🎯 GPS-validated city: ${mapping.name} (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
         return mapping.name;
       } else {
-        console.log(`⚠️ Coordinate mismatch for ${mapping.name}. GPS: (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
       }
     }
     
@@ -301,18 +256,15 @@ const formatCaviteCityName = (city: string, latitude: number, longitude: number)
   
   // Coordinate-based detection for Dasmariñas (most common case)
   if (latitude >= 14.30 && latitude <= 14.35 && longitude >= 120.93 && longitude <= 120.98) {
-    console.log('🎯 GPS coordinates suggest Dasmariñas');
     return 'Dasmariñas';
   }
   
   // Other coordinate-based detections for major Cavite cities
   if (latitude >= 14.45 && latitude <= 14.48 && longitude >= 120.93 && longitude <= 120.97) {
-    console.log('🎯 GPS coordinates suggest Bacoor');
     return 'Bacoor';
   }
   
   if (latitude >= 14.40 && latitude <= 14.44 && longitude >= 120.93 && longitude <= 120.97) {
-    console.log('🎯 GPS coordinates suggest Imus');
     return 'Imus';
   }
   
@@ -326,16 +278,12 @@ const formatCaviteCityName = (city: string, latitude: number, longitude: number)
  */
 export const reverseGeocode = async (latitude: number, longitude: number): Promise<string> => {
   try {
-    console.log(`🗺️ Reverse geocoding for: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-    
     // Enhanced Cavite area detection with sub-region mapping
     const isCaviteArea = latitude >= 14.1 && latitude <= 14.7 && longitude >= 120.6 && longitude <= 121.2;
     const isDasmarinasArea = latitude >= 14.30 && latitude <= 14.35 && longitude >= 120.93 && longitude <= 120.98;
     
     if (isCaviteArea) {
-      console.log('📍 Detected Cavite province - using enhanced geocoding');
       if (isDasmarinasArea) {
-        console.log('🎯 Detected Dasmariñas area - applying specialized geocoding');
       }
     }
     
@@ -354,16 +302,13 @@ export const reverseGeocode = async (latitude: number, longitude: number): Promi
     
     for (let i = 0; i < urls.length; i++) {
       try {
-        console.log(`🌐 Attempting geocoding request ${i + 1}/${urls.length}...`);
         const response = await fetch(urls[i]);
         
         if (response.ok) {
           data = await response.json();
-          console.log(`✅ Geocoding success on attempt ${i + 1}:`, data);
           break;
         }
       } catch (err) {
-        console.log(`⚠️ Geocoding attempt ${i + 1} failed:`, err);
       }
     }
     
@@ -433,7 +378,6 @@ export const reverseGeocode = async (latitude: number, longitude: number): Promi
         parts.push(city);
       } else if (isDasmarinasArea) {
         // Force Dasmariñas if coordinates strongly suggest it
-        console.log('🎯 GPS coordinates strongly suggest Dasmariñas - adding city override');
         parts.push('Dasmariñas');
       }
       
@@ -447,7 +391,6 @@ export const reverseGeocode = async (latitude: number, longitude: number): Promi
       
       // Force Cavite if coordinates suggest it and geocoding missed it
       if (isCaviteArea && (!province || !province.toLowerCase().includes('cavite'))) {
-        console.log('🎯 GPS coordinates suggest Cavite - overriding province');
         province = 'Cavite';
       }
       
@@ -459,11 +402,8 @@ export const reverseGeocode = async (latitude: number, longitude: number): Promi
       parts.push('Philippines');
       
       const formattedAddress = parts.join(', ');
-      console.log('✅ Final formatted address:', formattedAddress);
-      
       // Additional validation logging for Cavite areas
       if (isCaviteArea) {
-        console.log(`🎯 Cavite-specific validation applied for ${isDasmarinasArea ? 'Dasmariñas area' : 'Cavite province'}`);
       }
       
       return formattedAddress;
@@ -471,19 +411,16 @@ export const reverseGeocode = async (latitude: number, longitude: number): Promi
     
     // Enhanced fallback with coordinate-based city detection
     if (isDasmarinasArea) {
-      console.log('🎯 Using Dasmariñas coordinate-based fallback');
       return `Dasmariñas, Cavite, Philippines (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`;
     } else if (isCaviteArea) {
       const detectedCity = formatCaviteCityName('', latitude, longitude);
       if (detectedCity !== '') {
-        console.log(`🎯 Using ${detectedCity} coordinate-based fallback`);
         return `${detectedCity}, Cavite, Philippines (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`;
       }
     }
     
     // Final coordinate fallback
     const fallback = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-    console.log('⚠️ Using coordinate fallback:', fallback);
     return fallback;
   } catch (error) {
     console.error('❌ Reverse geocoding error:', error);
@@ -503,12 +440,8 @@ export const reverseGeocode = async (latitude: number, longitude: number): Promi
  */
 export const getCurrentLocationWithAddress = async (): Promise<GeolocationResult> => {
   try {
-    console.log('Getting current location...');
     const position = await getCurrentPosition();
     const { latitude, longitude, accuracy } = position.coords;
-    
-    console.log(`Position obtained: ${latitude}, ${longitude} (accuracy: ${accuracy}m)`);
-    
     if (!isWithinPhilippines(latitude, longitude)) {
       throw new Error('Your current location appears to be outside the Philippines. Please select a location within the Philippines manually.');
     }

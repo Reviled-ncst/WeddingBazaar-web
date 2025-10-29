@@ -702,7 +702,6 @@ export class BookingApiService {
   // DEPRECATED: Use getCoupleBookings, getVendorBookings, or getAdminBookings instead
   // This method uses mock data and should not be used in production
   async getUserBookings(userId: string, filters?: BookingFilters): Promise<BookingRequest[]> {
-    console.warn('⚠️ DEPRECATED: getUserBookings uses mock data. Use getCoupleBookings() instead for real data.');
     await this.delay();
     
     let bookings = MOCK_BOOKINGS.filter(booking => booking.userId === userId);
@@ -856,16 +855,11 @@ export class BookingApiService {
 
   // Create booking request (alias for createBooking to match modal expectations)
   async createBookingRequest(bookingData: any, userId?: string): Promise<BookingRequest> {
-    console.log('🎯 [BookingAPI] createBookingRequest called with:', { bookingData, userId });
-    
     try {
       // Make real backend API call to create booking using enhanced endpoint
       // Convert string service ID to integer for backend compatibility
       const mappedServiceId = getIntegerServiceId(bookingData.service_id);
       const integerVendorId = getIntegerVendorId(bookingData.vendor_id);
-      console.log('🔧 [BookingAPI] Service ID conversion:', bookingData.service_id, '→', mappedServiceId);
-      console.log('🔧 [BookingAPI] Vendor ID conversion:', bookingData.vendor_id, '→', integerVendorId);
-      
       const backendPayload = {
         // Required camelCase fields for backend validation
         userId: userId || bookingData.user_id || '1-2025-001',
@@ -890,14 +884,6 @@ export class BookingApiService {
       // Use production backend API - now fully functional with comprehensive backend v2.0
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://weddingbazaar-web.onrender.com';
       const createBookingUrl = `${apiBaseUrl}/api/bookings`;
-      
-      console.log('🔧 [BookingAPI] Using production backend API URL:', apiBaseUrl);
-      console.log('🎯 [BookingAPI] Production backend v2.0 with all endpoints functional');
-      console.log('✅ [BookingAPI] Using PRODUCTION backend for booking requests');
-      
-      console.log('🌐 [BookingAPI] Making backend API call to:', createBookingUrl);
-      console.log('🌐 [BookingAPI] Payload:', backendPayload);
-      
       // Add timeout to prevent hanging
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
@@ -918,8 +904,6 @@ export class BookingApiService {
       }
 
       const createdBooking = await response.json();
-      console.log('✅ [BookingAPI] Booking created in backend:', createdBooking);
-
       // Convert backend response to BookingRequest format for consistency
       const result: BookingRequest = {
         id: createdBooking.id || `booking-${Date.now()}`,
@@ -988,18 +972,13 @@ export class BookingApiService {
         };
         
         this.cacheFrontendBooking(effectiveUserId, frontendBooking);
-        console.log('✅ [BookingAPI] Booking cached for frontend display');
       }
-      
-      console.log('✅ [BookingAPI] Booking created successfully and saved to backend:', result);
       return result;
 
     } catch (error) {
       console.error('❌ [BookingAPI] Failed to create booking in backend:', error);
       
       // Create fallback booking with proper vendor/service information
-      console.log('🔄 [BookingAPI] Creating fallback booking with proper data mapping');
-      
       const fallbackBooking: BookingRequest = {
         id: `fallback-${Date.now()}`,
         userId: userId || bookingData.user_id || '1-2025-001',
@@ -1065,18 +1044,13 @@ export class BookingApiService {
       };
       
       this.cacheFrontendBooking(effectiveUserId, fallbackFrontendBooking);
-      console.log('✅ [BookingAPI] Fallback booking cached with proper vendor information');
-      
       // Return fallback booking instead of throwing error
-      console.log('📝 [BookingAPI] Returning fallback booking:', fallbackBooking);
       return fallbackBooking;
     }
   }
 
   // Update booking status
   async updateBookingStatus(bookingId: string, status: BookingRequest['status'], responseMessage?: string): Promise<BookingRequest | null> {
-    console.log('🔄 [BookingAPI] Updating booking status via real API:', { bookingId, status, responseMessage });
-    
     try {
       // Make real API call to backend
       const updateData = {
@@ -1100,15 +1074,11 @@ export class BookingApiService {
       }
 
       const result = await response.json();
-      console.log('✅ [BookingAPI] Booking status updated successfully via API:', result);
-      
       return result.booking || result;
     } catch (error) {
       console.error('💥 [BookingAPI] Error updating booking status:', error);
       
       // Fallback to mock data for backwards compatibility
-      console.log('🔄 [BookingAPI] Falling back to mock data update...');
-      
       const bookingIndex = MOCK_BOOKINGS.findIndex(booking => booking.id === bookingId);
       if (bookingIndex === -1) {
         console.error('❌ [BookingAPI] Booking not found in mock data:', bookingId);
@@ -1120,7 +1090,6 @@ export class BookingApiService {
       // Store response message in vendor notes if provided
       if (responseMessage) {
         MOCK_BOOKINGS[bookingIndex].vendorNotes = responseMessage;
-        console.log('📝 [BookingAPI] Added response message to booking vendor notes');
       }
       
       // Update timeline based on status
@@ -1134,11 +1103,8 @@ export class BookingApiService {
           break;
         case 'quote_sent':
           MOCK_BOOKINGS[bookingIndex].timeline.quoteSentDate = now;
-          console.log('📅 [BookingAPI] Updated quote sent date');
           break;
       }
-      
-      console.log('✅ [BookingAPI] Booking status updated in mock data:', MOCK_BOOKINGS[bookingIndex]);
       return MOCK_BOOKINGS[bookingIndex];
     }
   }
@@ -1245,7 +1211,6 @@ export class BookingApiService {
 
   // Get booking statistics
 
-
   // CENTRALIZED BOOKING API METHODS FOR ALL USER TYPES
   // ===================================================
   
@@ -1262,12 +1227,8 @@ export class BookingApiService {
     dateRange?: { start: string; end: string };
   } = {}) {
     try {
-      console.log('🔍 [CentralizedAPI] Fetching bookings for:', { userId, userType, options });
-      
       // Production API strategy: Use production backend v2.0 for all endpoints
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://weddingbazaar-web.onrender.com';
-      console.log('🔧 [CentralizedAPI] Using production booking API URL:', apiBaseUrl);
-      
       // Build query parameters
       const queryParams = new URLSearchParams();
       if (options.page) queryParams.append('page', options.page.toString());
@@ -1281,12 +1242,8 @@ export class BookingApiService {
       // COMPREHENSIVE BOOKING FETCH STRATEGY
       // Handle backend inconsistency between mock data and real data
       if (userType === 'couple') {
-        console.log('🔄 [CentralizedAPI] Using comprehensive couple booking strategy');
-        
         // Strategy 1: Try couple-specific endpoint (may have mock data)
         const coupleUrl = `${apiBaseUrl}/api/bookings/couple/${userId}?${queryParams}`;
-        console.log('📡 [CentralizedAPI] Trying couple endpoint:', coupleUrl);
-        
         const coupleResponse = await fetch(coupleUrl, {
           headers: {
             'Content-Type': 'application/json',
@@ -1296,19 +1253,12 @@ export class BookingApiService {
         
         if (coupleResponse.ok) {
           const coupleData = await coupleResponse.json();
-          console.log('✅ [CentralizedAPI] Couple endpoint response:', {
-            success: coupleData.success,
-            bookingsCount: coupleData.bookings?.length || 0,
-            sampleId: coupleData.bookings?.[0]?.id
-          });
-          
           // Check if this looks like real data (recent booking IDs) or mock data (old IDs like 1)
           const hasRecentBookings = coupleData.bookings?.some((b: any) => b.id >= 50);
           const bookingCount = coupleData.bookings?.length || 0;
           
           if (hasRecentBookings && bookingCount > 1) {
             // This looks like real data
-            console.log('✅ [CentralizedAPI] Couple endpoint has real data, using it');
             return {
               bookings: coupleData.bookings || [],
               total: coupleData.total || coupleData.bookings?.length || 0,
@@ -1318,12 +1268,8 @@ export class BookingApiService {
             };
           } else {
             // This looks like mock data, try alternative approach
-            console.log('⚠️ [CentralizedAPI] Couple endpoint has mock data, trying enhanced endpoint');
-            
             // Strategy 2: Try enhanced endpoint which may have real data but needs filtering
             const enhancedUrl = `${apiBaseUrl}/api/bookings/enhanced?coupleId=${userId}&${queryParams}`;
-            console.log('📡 [CentralizedAPI] Trying enhanced endpoint:', enhancedUrl);
-            
             try {
               const enhancedResponse = await fetch(enhancedUrl, {
                 headers: {
@@ -1334,19 +1280,11 @@ export class BookingApiService {
               
               if (enhancedResponse.ok) {
                 const enhancedData = await enhancedResponse.json();
-                console.log('✅ [CentralizedAPI] Enhanced endpoint response:', {
-                  success: enhancedData.success,
-                  bookingsCount: enhancedData.bookings?.length || 0
-                });
-                
                 if (enhancedData.bookings && enhancedData.bookings.length > 0) {
                   // Filter bookings by coupleId on frontend since backend might not filter properly
                   const filteredBookings = enhancedData.bookings.filter((booking: any) => 
                     booking.coupleId === userId || booking.couple_id === userId
                   );
-                  
-                  console.log(`🔍 [CentralizedAPI] Filtered ${filteredBookings.length} bookings for user ${userId}`);
-                  
                   if (filteredBookings.length > 0) {
                     return {
                       bookings: filteredBookings,
@@ -1359,12 +1297,9 @@ export class BookingApiService {
                 }
               }
             } catch (enhancedError) {
-              console.log('⚠️ [CentralizedAPI] Enhanced endpoint failed, falling back to couple data');
             }
             
             // Strategy 3: Frontend cache enhancement
-            console.log('🔄 [CentralizedAPI] Enhancing couple data with frontend cache');
-            
             // Get locally stored bookings that were created but not yet showing in backend
             const frontendBookings = this.getFrontendCachedBookings(userId);
             const backendBookings = coupleData.bookings || [];
@@ -1374,16 +1309,12 @@ export class BookingApiService {
             frontendBookings.forEach((frontendBooking: any) => {
               const existsInBackend = backendBookings.some((b: any) => b.id === frontendBooking.id);
               if (!existsInBackend) {
-                console.log('🔄 [CentralizedAPI] Adding frontend cached booking:', frontendBooking.id);
                 combinedBookings.push(frontendBooking);
               }
             });
             
             // Sort by creation date (newest first)
             combinedBookings.sort((a, b) => new Date(b.createdAt || b.created_at || 0).getTime() - new Date(a.createdAt || a.created_at || 0).getTime());
-            
-            console.log('✅ [CentralizedAPI] Combined bookings count:', combinedBookings.length);
-            
             return {
               bookings: combinedBookings,
               total: combinedBookings.length,
@@ -1413,8 +1344,6 @@ export class BookingApiService {
       }
       
       const url = `${apiBaseUrl}${endpoint}?${queryParams}`;
-      console.log('📡 [CentralizedAPI] Making request to:', url);
-      
       const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
@@ -1428,12 +1357,6 @@ export class BookingApiService {
       }
 
       const data = await response.json();
-      console.log('✅ [CentralizedAPI] Data received:', {
-        success: data.success,
-        bookingsCount: data.bookings?.length || 0,
-        total: data.total
-      });
-      
       return {
         bookings: data.bookings || [],
         total: data.total || data.bookings?.length || 0,
@@ -1447,7 +1370,6 @@ export class BookingApiService {
       
       // For development, provide fallback data
       if (import.meta.env.MODE === 'development') {
-        console.log('🔄 [CentralizedAPI] Using fallback data for development');
         let fallbackBookings = [];
         
         if (userType === 'couple') {
@@ -1472,8 +1394,6 @@ export class BookingApiService {
     }
   }
 
-
-
   /**
    * Enhanced getVendorBookings using centralized method
    */
@@ -1484,7 +1404,6 @@ export class BookingApiService {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
   } = {}) {
-    console.log('🔍 [BookingAPI] getVendorBookings called for vendor:', vendorId);
     return this.getBookingsForUser(vendorId, 'vendor', options);
   }
 
@@ -1499,7 +1418,6 @@ export class BookingApiService {
     sortOrder?: 'asc' | 'desc';
     dateRange?: { start: string; end: string };
   } = {}) {
-    console.log('🔍 [BookingAPI] getAdminBookings called for admin:', adminId);
     return this.getBookingsForUser(adminId, 'admin', options);
   }
   
@@ -1508,8 +1426,6 @@ export class BookingApiService {
    */
   async getCentralizedBookingStats(userId?: string, vendorId?: string, adminView: boolean = false) {
     try {
-      console.log('📊 [CentralizedAPI] Fetching booking stats:', { userId, vendorId, adminView });
-      
       const apiBaseUrl = 'https://weddingbazaar-web.onrender.com'; // Force production URL
       
       let endpoint = '/api/bookings/stats';
@@ -1522,8 +1438,6 @@ export class BookingApiService {
       }
       
       const url = `${apiBaseUrl}${endpoint}?${queryParams}`;
-      console.log('📡 [CentralizedAPI] Stats request:', url);
-      
       const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
@@ -1536,8 +1450,6 @@ export class BookingApiService {
       }
 
       const data = await response.json();
-      console.log('✅ [CentralizedAPI] Stats received:', data);
-      
       return data;
 
     } catch (error) {
@@ -1586,9 +1498,6 @@ export class BookingApiService {
     sortOrder?: string;
     status?: string[];
   } = {}) {
-    console.log('🔍 [BookingAPI] getCoupleBookings called for user:', userId);
-    console.log('🔍 [BookingAPI] Options:', options);
-    
     return this.getBookingsForUser(userId, 'couple', {
       ...options,
       sortOrder: options.sortOrder as 'asc' | 'desc' || 'desc'
@@ -1604,7 +1513,6 @@ export class BookingApiService {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         const bookings = JSON.parse(cached);
-        console.log(`🔍 [CacheAPI] Found ${bookings.length} cached bookings for user ${userId}`);
         return bookings;
       }
     } catch (error) {
@@ -1623,7 +1531,6 @@ export class BookingApiService {
       if (!exists) {
         existingBookings.push(booking);
         localStorage.setItem(cacheKey, JSON.stringify(existingBookings));
-        console.log(`✅ [CacheAPI] Cached booking ${booking.id} for user ${userId}`);
       }
     } catch (error) {
       console.error('❌ [CacheAPI] Error caching booking:', error);
@@ -1634,7 +1541,6 @@ export class BookingApiService {
     try {
       const cacheKey = `booking_cache_${userId}`;
       localStorage.removeItem(cacheKey);
-      console.log(`🧹 [CacheAPI] Cleared booking cache for user ${userId}`);
     } catch (error) {
       console.error('❌ [CacheAPI] Error clearing booking cache:', error);
     }

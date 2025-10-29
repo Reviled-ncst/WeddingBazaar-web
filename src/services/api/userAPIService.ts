@@ -32,12 +32,8 @@ class UserAPIService {
     try {
       // Check cache first
       if (this.cache.has(userId)) {
-        console.log(`✅ [UserAPI] Retrieved ${userId} from cache`);
         return this.cache.get(userId)!;
       }
-
-      console.log(`🔍 [UserAPI] Fetching user data for ID: ${userId}`);
-      
       // Try primary user API endpoint first
       try {
         const response = await fetch(`${this.baseUrl}/api/users/${userId}`, {
@@ -50,17 +46,14 @@ class UserAPIService {
         if (response.ok) {
           const data: UserAPIResponse = await response.json();
           if (data.success && data.user) {
-            console.log(`✅ [UserAPI] Found user data for ${userId}:`, data.user.first_name, data.user.last_name);
             this.cache.set(userId, data.user);
             return data.user;
           }
         }
       } catch (error) {
-        console.log(`⚠️ [UserAPI] Primary endpoint failed, trying debug endpoint...`);
       }
 
       // Fallback to debug endpoint
-      console.log(`🔄 [UserAPI] Using debug endpoint for user lookup...`);
       const debugResponse = await fetch(`${this.baseUrl}/api/debug/users`);
       
       if (debugResponse.ok) {
@@ -72,22 +65,12 @@ class UserAPIService {
         } else if (debugData.success && Array.isArray(debugData.users)) {
           allUsers = debugData.users;
         }
-        
-        console.log(`🔍 [UserAPI] Debug API returned ${allUsers.length} users`);
         const sampleUser = allUsers.find(u => u.id === userId);
         if (sampleUser) {
-          console.log(`🔍 [UserAPI] Sample user structure:`, {
-            id: sampleUser.id,
-            has_first_name: 'first_name' in sampleUser,
-            has_last_name: 'last_name' in sampleUser,
-            email: sampleUser.email,
-            structure: Object.keys(sampleUser)
-          });
         }
         
         const user = allUsers.find((u: UserData) => u.id === userId);
         if (user) {
-          console.log(`✅ [UserAPI] Found user via debug endpoint for ${userId}:`, user.first_name, user.last_name);
           this.cache.set(userId, user);
           return user;
         }
@@ -105,13 +88,6 @@ class UserAPIService {
    * Get display name from user data
    */
   getDisplayName(user: UserData): string {
-    console.log(`🏷️ [UserAPI] Processing user data:`, {
-      id: user.id,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      email: user.email
-    });
-    
     // Static mapping based on the provided users.json data since debug API doesn't return names
     const userNameMap: Record<string, string> = {
       '1-2025-001': 'Couple1 One',
@@ -142,7 +118,6 @@ class UserAPIService {
     
     // Use static mapping first (most reliable)
     if (userNameMap[user.id]) {
-      console.log(`✅ [UserAPI] Using mapped name for ${user.id}: ${userNameMap[user.id]}`);
       return userNameMap[user.id];
     }
     
@@ -150,21 +125,16 @@ class UserAPIService {
     if (user.first_name && user.last_name && user.first_name !== 'undefined' && user.last_name !== 'undefined') {
       const firstName = user.first_name.charAt(0).toUpperCase() + user.first_name.slice(1).toLowerCase();
       const lastName = user.last_name.charAt(0).toUpperCase() + user.last_name.slice(1).toLowerCase();
-      console.log(`✅ [UserAPI] Using API names: ${firstName} ${lastName}`);
       return `${firstName} ${lastName}`;
     } else if (user.first_name && user.first_name !== 'undefined') {
       const firstName = user.first_name.charAt(0).toUpperCase() + user.first_name.slice(1).toLowerCase();
-      console.log(`✅ [UserAPI] Using API first name: ${firstName}`);
       return firstName;
     } else if (user.email) {
       // Generate from email as fallback
       const emailName = user.email.split('@')[0];
       const displayName = emailName.replace(/[._-]/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
-      console.log(`✅ [UserAPI] Using email-based name: ${displayName}`);
       return displayName;
     }
-    
-    console.log(`⚠️ [UserAPI] Using fallback name: Wedding Client`);
     return 'Wedding Client';
   }
 
@@ -197,7 +167,6 @@ class UserAPIService {
    */
   clearCache(): void {
     this.cache.clear();
-    console.log('🗑️ [UserAPI] Cache cleared');
   }
 }
 

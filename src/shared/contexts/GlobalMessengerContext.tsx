@@ -224,7 +224,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
       const shouldLoadDev = import.meta.env.DEV && !shouldLoad;
       
       if (!shouldLoad && !shouldLoadDev) {
-        console.log('🔍 [GlobalMessenger] Skipping conversation load - no auth and not dev mode');
         return;
       }
       
@@ -235,18 +234,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
       
       const currentUserId = user?.id || (isVendorPage ? 'dev-user-vendor' : 'dev-user-couple');
       const currentUserRole = user?.role || (isVendorPage ? 'vendor' : 'couple');
-      
-      console.log('🔄 [GlobalMessenger] Loading conversations:', {
-        isAuthenticated,
-        hasUser: !!user,
-        userId: currentUserId,
-        userRole: currentUserRole,
-        currentPath,
-        isVendorPage,
-        isIndividualPage,
-        isDev: import.meta.env.DEV
-      });
-      
       try {
         let conversationsData: any[] = [];
         
@@ -256,8 +243,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
           conversationsData = await MessagingApiService.getConversations(currentUserId);
           
           if (conversationsData && conversationsData.length > 0) {
-            console.log('✅ [GlobalMessenger] Found vendor conversations:', conversationsData.length);
-            
             // Convert API conversations to GlobalMessenger format (vendor perspective)
             const safeUser = user || { id: currentUserId, firstName: 'Test', lastName: 'Vendor', email: 'test@example.com' };
             const globalConversations: Conversation[] = conversationsData.map(conv => ({
@@ -293,13 +278,10 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
             const coupleConversationsData = await MessagingApiService.getConversations(currentUserId);
             conversationsData = coupleConversationsData || [];
           } catch (error) {
-            console.log('⚠️ [GlobalMessenger] No couple conversations found, this is normal for new users');
             conversationsData = [];
           }
           
           if (conversationsData && conversationsData.length > 0) {
-            console.log('✅ [GlobalMessenger] Found couple conversations:', conversationsData.length);
-            
             // Convert API conversations to GlobalMessenger format (couple perspective)
             const safeUser = user || { id: currentUserId, firstName: 'Test', lastName: 'User', email: 'test@example.com' };
             const globalConversations: Conversation[] = conversationsData.map(conv => ({
@@ -321,8 +303,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
                 timestamp: new Date(conv.lastMessage.timestamp)
               }] : []
             }));
-            
-            console.log('✅ [GlobalMessenger] Transformed conversations for couples:', globalConversations.length);
             setConversations(globalConversations);
             
             // If no active conversation but conversations exist, set the first one as active
@@ -341,18 +321,8 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
           error.message.includes('endpoint not found') ||
           error.message.includes('Messaging API endpoint not available')
         );
-        
-        console.log('🔍 [GlobalMessenger] Error analysis:', {
-          is404Error,
-          isDev: import.meta.env.DEV,
-          errorMessage: error instanceof Error ? error.message : 'Unknown error',
-          willShowFallback: is404Error && import.meta.env.DEV
-        });
-        
         // Provide fallback conversations for development/testing when backend endpoints don't exist
         if (is404Error && import.meta.env.DEV) {
-          console.log('🔧 [GlobalMessenger] Backend messaging endpoints not available, providing development conversations for', currentUserRole);
-          
           // Create development conversations with safe user handling - different perspectives for different roles
           const safeUser = user || { 
             id: currentUserId, 
@@ -525,13 +495,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
   React.useEffect(() => {
     // Only log in development mode
     if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_MESSENGER) {
-      console.log('GlobalMessenger State:', {
-        showFloatingChat,
-        conversationsCount: conversations.length,
-        activeConversationId,
-        isMinimized,
-        totalUnreadCount
-      });
     }
   }, [showFloatingChat, conversations.length, activeConversationId, isMinimized, totalUnreadCount]);
 
@@ -561,14 +524,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
     const currentPath = window.location.pathname;
     const isVendorPage = currentPath.includes('/vendor');
     const currentUserRole = user?.role || (isVendorPage ? 'vendor' : 'couple');
-    
-    console.log('🔄 [GlobalMessenger] Opening chat:', {
-      vendor: vendor.name,
-      service: vendor.service,
-      currentUserRole,
-      currentPath
-    });
-    
     // Check if conversation already exists for this vendor and service combination
     const existingConversation = conversations.find(
       conv => conv.vendor.vendorId === vendor.vendorId && conv.vendor.service === vendor.service
@@ -576,7 +531,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
 
     if (existingConversation) {
       // Switch to existing conversation
-      console.log('✅ [GlobalMessenger] Switching to existing conversation:', existingConversation.id);
       setActiveConversationId(existingConversation.id);
       setShowFloatingChat(true);
       setIsMinimized(false);
@@ -604,7 +558,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
 
       setConversations(prev => {
         const updated = [...prev, newConversation];
-        console.log('✅ [GlobalMessenger] Added new conversation:', conversationId, updated.length);
         return updated;
       });
       setActiveConversationId(conversationId);
@@ -623,7 +576,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
             userName: `${user.firstName} ${user.lastName}`.trim() || user.email || 'User',
             userType: 'couple'
           });
-          console.log('✅ [GlobalMessenger] Conversation created in database successfully');
         } catch (error) {
           console.error('❌ [GlobalMessenger] Failed to create conversation in database:', error);
           // Continue with local conversation even if database creation fails
@@ -666,7 +618,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
 
       setConversations(prev => {
         const updated = [...prev, newConversation];
-        console.log('✅ [GlobalMessenger] Vendor initiated new conversation:', conversationId, updated.length);
         return updated;
       });
       setActiveConversationId(conversationId);
@@ -685,7 +636,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
             userName: clientInfo.name,
             userType: 'vendor' // Conversation initiated by vendor
           });
-          console.log('✅ [GlobalMessenger] Vendor-initiated conversation created in database successfully');
         } catch (error) {
           console.error('❌ [GlobalMessenger] Failed to create vendor conversation in database:', error);
           // Continue with local conversation even if database creation fails
@@ -693,7 +643,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
       }
     } else {
       // Fallback for other user types
-      console.log('⚠️ [GlobalMessenger] User role not supported for conversation initiation:', currentUserRole);
       alert('Unable to start conversation. Please ensure you are logged in with the correct user type.');
     }
   };
@@ -783,7 +732,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
             });
           } catch (createError) {
             // Conversation might already exist, which is fine
-            console.log('Conversation creation skipped (may already exist):', createError);
           }
         }
 
@@ -803,7 +751,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
             senderName,
             senderType
           );
-          console.log(`✅ ${message.sender} message sent to database successfully`);
         } catch (sendError) {
           console.error(`❌ Failed to send ${message.sender} message to database:`, sendError);
           
@@ -855,8 +802,6 @@ export const GlobalMessengerProvider: React.FC<GlobalMessengerProviderProps> = (
     localStorage.removeItem('wedding-bazaar-active-conversation');
     localStorage.removeItem('wedding-bazaar-chat-visible');
     localStorage.removeItem('wedding-bazaar-chat-minimized');
-    
-    console.log('GlobalMessengerContext: Conversations cleared on logout');
   };
 
   const value: GlobalMessengerContextType = {

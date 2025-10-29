@@ -33,8 +33,6 @@ export interface ReviewResponse {
  */
 export const hasBookingBeenReviewed = async (bookingId: string): Promise<boolean> => {
   try {
-    console.log('🔍 [ReviewService] Checking if booking has been reviewed:', bookingId);
-
     const token = localStorage.getItem('auth_token') || 
                   localStorage.getItem('jwt_token') ||
                   localStorage.getItem('weddingBazaar_token') || 
@@ -55,7 +53,6 @@ export const hasBookingBeenReviewed = async (bookingId: string): Promise<boolean
     if (!response.ok) {
       // If 404, booking hasn't been reviewed yet
       if (response.status === 404) {
-        console.log('✅ [ReviewService] Booking has not been reviewed yet');
         return false;
       }
       throw new Error('Failed to check review status');
@@ -63,8 +60,6 @@ export const hasBookingBeenReviewed = async (bookingId: string): Promise<boolean
 
     const data = await response.json();
     const hasReview = data.success && data.review;
-    
-    console.log('✅ [ReviewService] Booking review status:', hasReview ? 'Already reviewed' : 'Not reviewed');
     return hasReview;
 
   } catch (error: any) {
@@ -78,14 +73,6 @@ export const hasBookingBeenReviewed = async (bookingId: string): Promise<boolean
  */
 export const submitReview = async (reviewData: ReviewData): Promise<ReviewResponse> => {
   try {
-    console.log('📝 [ReviewService] Submitting review:', {
-      bookingId: reviewData.bookingId,
-      vendorId: reviewData.vendorId,
-      rating: reviewData.rating,
-      commentLength: reviewData.comment.length,
-      imageCount: reviewData.images?.length || 0
-    });
-
     // Check multiple possible token storage keys
     const token = localStorage.getItem('auth_token') || 
                   localStorage.getItem('jwt_token') ||
@@ -98,9 +85,6 @@ export const submitReview = async (reviewData: ReviewData): Promise<ReviewRespon
       console.error('Available localStorage keys:', Object.keys(localStorage));
       throw new Error('Authentication required');
     }
-    
-    console.log('🔑 [ReviewService] Using authentication token (length:', token.length, ')');
-
     const response = await fetch(`${API_URL}/api/reviews`, {
       method: 'POST',
       headers: {
@@ -109,12 +93,7 @@ export const submitReview = async (reviewData: ReviewData): Promise<ReviewRespon
       },
       body: JSON.stringify(reviewData)
     });
-
-    console.log('📡 [ReviewService] Response status:', response.status, response.statusText);
-
     const data = await response.json();
-    console.log('📦 [ReviewService] Response data:', data);
-
     if (!response.ok) {
       console.error('❌ [ReviewService] Backend error:', {
         status: response.status,
@@ -124,8 +103,6 @@ export const submitReview = async (reviewData: ReviewData): Promise<ReviewRespon
       });
       throw new Error(data.error || data.message || 'Failed to submit review');
     }
-
-    console.log('✅ [ReviewService] Review submitted successfully:', data.review?.id);
     return data;
 
   } catch (error: any) {
@@ -142,16 +119,12 @@ export const submitReview = async (reviewData: ReviewData): Promise<ReviewRespon
  */
 export const getVendorReviews = async (vendorId: string): Promise<ReviewResponse[]> => {
   try {
-    console.log('📖 [ReviewService] Fetching reviews for vendor:', vendorId);
-
     const response = await fetch(`${API_URL}/api/reviews/vendor/${vendorId}`);
     const data = await response.json();
 
     if (!response.ok) {
       throw new Error(data.error || 'Failed to fetch reviews');
     }
-
-    console.log('✅ [ReviewService] Fetched reviews:', data.reviews?.length);
     return data.reviews || [];
 
   } catch (error: any) {
@@ -165,8 +138,6 @@ export const getVendorReviews = async (vendorId: string): Promise<ReviewResponse
  */
 export const getBookingReview = async (bookingId: string): Promise<ReviewResponse | null> => {
   try {
-    console.log('📖 [ReviewService] Fetching review for booking:', bookingId);
-
     const token = localStorage.getItem('weddingBazaar_token') || 
                   localStorage.getItem('token') ||
                   localStorage.getItem('authToken');
@@ -189,8 +160,6 @@ export const getBookingReview = async (bookingId: string): Promise<ReviewRespons
       }
       throw new Error(data.error || 'Failed to fetch review');
     }
-
-    console.log('✅ [ReviewService] Review found:', data.review?.id);
     return data.review;
 
   } catch (error: any) {
@@ -207,8 +176,6 @@ export const updateReview = async (
   updates: Partial<ReviewData>
 ): Promise<ReviewResponse> => {
   try {
-    console.log('✏️ [ReviewService] Updating review:', reviewId);
-
     const token = localStorage.getItem('weddingBazaar_token') || 
                   localStorage.getItem('token') ||
                   localStorage.getItem('authToken');
@@ -231,8 +198,6 @@ export const updateReview = async (
     if (!response.ok) {
       throw new Error(data.error || 'Failed to update review');
     }
-
-    console.log('✅ [ReviewService] Review updated successfully');
     return data;
 
   } catch (error: any) {
@@ -249,8 +214,6 @@ export const updateReview = async (
  */
 export const deleteReview = async (reviewId: string): Promise<boolean> => {
   try {
-    console.log('🗑️ [ReviewService] Deleting review:', reviewId);
-
     const token = localStorage.getItem('weddingBazaar_token') || 
                   localStorage.getItem('token') ||
                   localStorage.getItem('authToken');
@@ -270,8 +233,6 @@ export const deleteReview = async (reviewId: string): Promise<boolean> => {
       const data = await response.json();
       throw new Error(data.error || 'Failed to delete review');
     }
-
-    console.log('✅ [ReviewService] Review deleted successfully');
     return true;
 
   } catch (error: any) {
@@ -285,8 +246,6 @@ export const deleteReview = async (reviewId: string): Promise<boolean> => {
  */
 export const uploadReviewImages = async (images: File[]): Promise<string[]> => {
   try {
-    console.log('📤 [ReviewService] Uploading review images:', images.length);
-
     const uploadedUrls: string[] = [];
 
     for (const image of images) {
@@ -309,8 +268,6 @@ export const uploadReviewImages = async (images: File[]): Promise<string[]> => {
       const data = await response.json();
       uploadedUrls.push(data.secure_url);
     }
-
-    console.log('✅ [ReviewService] Images uploaded:', uploadedUrls.length);
     return uploadedUrls;
 
   } catch (error: any) {

@@ -109,9 +109,6 @@ export const VendorBookings: React.FC = () => {
   
   // Notification system
   const { showSuccess, showError, showInfo } = useNotifications();
-  
-  console.log('🔧 [VendorBookings] NotificationProvider context is working!');
-  
   const [bookings, setBookings] = useState<UIBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<UIBookingStats | null>(null);
@@ -157,14 +154,11 @@ export const VendorBookings: React.FC = () => {
   useEffect(() => {
     const resolveWorkingVendorId = async () => {
       if (baseVendorId) {
-        console.log('🔍 [VendorBookings] Resolving working vendor ID for:', baseVendorId);
-        
         // Get authentication token for testing
         const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
         
         const resolvedId = await getWorkingVendorId(baseVendorId, token || undefined);
         setWorkingVendorId(resolvedId);
-        console.log('✅ [VendorBookings] Working vendor ID resolved:', resolvedId);
       }
     };
     
@@ -175,56 +169,21 @@ export const VendorBookings: React.FC = () => {
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
   
   // Debug logging for vendor identification
-  console.log('🔍 [VendorBookings] USER OBJECT COMPLETE DEBUG:', {
-    'Complete user object': user,
-    'user?.id': user?.id,
-    'user?.role': user?.role,
-    'user?.vendorId': user?.vendorId, 
-    'user?.businessName': user?.businessName,
-    'user?.email': user?.email,
-    'typeof user?.id': typeof user?.id,
-    'user?.id length': user?.id?.length,
-    'base vendorId': baseVendorId,
-    'working vendorId': workingVendorId,
-    'API will call': `${apiUrl}/api/bookings/vendor/${workingVendorId}`,
-    'logic': 'Dynamic pattern-based extraction with smart backend compatibility'
-  });
-
   // Debug effect to monitor bookings state changes
   useEffect(() => {
-    console.log('📊 [VendorBookings] Bookings state changed - length:', bookings.length, 'loading:', loading);
     if (bookings.length > 0) {
-      console.log('✅ [VendorBookings] Bookings in state:', bookings.map(b => ({ id: b.id, coupleName: b.coupleName, serviceType: b.serviceType })));
     }
   }, [bookings, loading]);
 
   // NEW: Comprehensive debug logging for troubleshooting
   useEffect(() => {
-    console.log('🔍 [VendorBookings] COMPREHENSIVE DEBUG STATE:', {
-      'Loading': loading,
-      'Bookings Count': bookings.length,
-      'Working Vendor ID': workingVendorId,
-      'Base Vendor ID': baseVendorId,
-      'User Object': user,
-      'User ID': user?.id,
-      'User Role': user?.role,
-      'Filter Status': filterStatus,
-      'Search Query': searchQuery,
-      'Has Auth Token': !!(localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token')),
-      'API URL': apiUrl,
-      'Full Endpoint': `${apiUrl}/api/bookings/vendor/${workingVendorId}`
-    });
-    
     // Log all bookings if they exist
     if (bookings.length > 0) {
-      console.log('📋 [VendorBookings] BOOKINGS DETAILS:', bookings);
     } else {
-      console.log('❌ [VendorBookings] NO BOOKINGS IN STATE');
     }
   }, [loading, bookings, workingVendorId, baseVendorId, user, filterStatus, searchQuery]);
 
   useEffect(() => {
-    console.log('🔄 [VendorBookings] Effect triggered with:', { workingVendorId, filterStatus, currentPage });
     // Only load data once we have a working vendor ID
     if (workingVendorId) {
       loadBookings();
@@ -249,7 +208,6 @@ export const VendorBookings: React.FC = () => {
     // Poll for new data every 30 seconds
     const pollInterval = setInterval(() => {
       if (!loading && workingVendorId) {
-        console.log('🔄 [VendorBookings] Auto-refreshing data...');
         loadBookings(true); // Silent refresh
         loadStats();
         setLastUpdate(new Date());
@@ -260,8 +218,6 @@ export const VendorBookings: React.FC = () => {
       clearInterval(pollInterval);
     };
   }, [loading, workingVendorId]);
-
-
 
   // Enhanced couple name lookup with API integration
   const getCoupleDisplayName = async (booking: any): Promise<string> => {
@@ -276,7 +232,6 @@ export const VendorBookings: React.FC = () => {
         const userData = await userAPIService.getUserById(booking.couple_id);
         if (userData) {
           const displayName = userAPIService.getDisplayName(userData);
-          console.log(`✅ [VendorBookings] Fetched real name for ${booking.couple_id}: ${displayName}`);
           return displayName;
         }
       } catch (error) {
@@ -298,13 +253,10 @@ export const VendorBookings: React.FC = () => {
   const loadBookings = async (silent = false) => {
     try {
       if (!workingVendorId) {
-        console.log('⏳ [VendorBookings] Waiting for vendor ID...');
         return;
       }
       
       if (!silent) setLoading(true);
-      console.log('🎯 [VendorBookings] SIMPLE APPROACH - Loading bookings for vendor:', workingVendorId);
-      
       // Get authentication token
       const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
       
@@ -322,7 +274,6 @@ export const VendorBookings: React.FC = () => {
       let finalVendorId = workingVendorId;
       
       // First attempt: Use original complex vendor ID
-      console.log(`🎯 [VendorBookings] First attempt with original ID: ${workingVendorId}`);
       response = await fetch(`${apiUrl}/api/bookings/vendor/${workingVendorId}`, {
         method: 'GET',
         headers: {
@@ -335,16 +286,12 @@ export const VendorBookings: React.FC = () => {
       if (response.status === 403) {
         const errorData = await response.json();
         if (errorData.code === 'MALFORMED_VENDOR_ID') {
-          console.log('🔄 [VendorBookings] Complex ID rejected, trying fallback mapping...');
-          
           // DYNAMIC FALLBACK: Extract numeric part from complex vendor ID
           // Pattern: 2-2025-003 → extract the last number (003 → 3)
           const vendorIdMatch = workingVendorId.match(/^(\d+)-\d{4}-(\d+)$/);
           if (vendorIdMatch) {
             const extractedId = parseInt(vendorIdMatch[2], 10).toString();
             finalVendorId = extractedId;
-            console.log(`🎯 [VendorBookings] Dynamic fallback: ${workingVendorId} → ${finalVendorId}`);
-            
             response = await fetch(`${apiUrl}/api/bookings/vendor/${finalVendorId}`, {
               method: 'GET',
               headers: {
@@ -353,37 +300,15 @@ export const VendorBookings: React.FC = () => {
               }
             });
           } else {
-            console.log(`⚠️ [VendorBookings] Could not extract simple ID from: ${workingVendorId}`);
           }
         }
       }
       const data = await response.json();
-      
-      console.log('📊 [VendorBookings] API Response:', {
-        status: response.status,
-        success: data.success,
-        bookingCount: data.bookings?.length || 0,
-        fullResponse: data
-      });
-      
       // 🔍 DETAILED STATUS DEBUG: Log raw booking data from API
       if (data.bookings && data.bookings.length > 0) {
-        console.log('🔍 [VendorBookings] RAW BOOKING DATA FROM API:', data.bookings.map((b: any) => ({
-          id: b.id,
-          status: b.status,
-          statusType: typeof b.status,
-          statusLength: b.status?.length,
-          statusTrimmed: b.status?.trim(),
-          payment_status: b.payment_status,
-          total_amount: b.total_amount,
-          total_paid: b.total_paid,
-          couple_name: b.couple_name
-        })));
       }
       
       if (response.status === 200 && data.success && data.bookings) {
-        console.log(`✅ [VendorBookings] SUCCESS: Found ${data.bookings.length} bookings!`);
-        
         // Simple conversion to UI format
         const uiBookings = data.bookings.map((booking: any) => {
           const totalAmount = parseFloat(booking.total_amount || '0');
@@ -422,18 +347,7 @@ export const VendorBookings: React.FC = () => {
             }
           };
         });
-        
-        console.log('📋 [VendorBookings] Setting bookings in state:', uiBookings);
-        
         // 🔍 DEBUG: Log transformed booking statuses
-        console.log('🎯 [VendorBookings] TRANSFORMED BOOKING STATUSES:', uiBookings.map(b => ({
-          id: b.id,
-          originalStatus: data.bookings.find((rb: any) => rb.id === b.id)?.status,
-          transformedStatus: b.status,
-          statusMatch: data.bookings.find((rb: any) => rb.id === b.id)?.status === b.status,
-          coupleName: b.coupleName
-        })));
-        
         setBookings(uiBookings);
         
         if (!silent) {
@@ -444,8 +358,6 @@ export const VendorBookings: React.FC = () => {
         
       } else if (response.status === 403) {
         const errorData = await response.json();
-        console.log('🚨 [VendorBookings] 403 Error:', errorData);
-        
         if (errorData.code === 'MALFORMED_VENDOR_ID') {
           if (!silent) {
             showError('Backend Compatibility Issue', 
@@ -462,7 +374,6 @@ export const VendorBookings: React.FC = () => {
         return;
         
       } else if (response.status === 404) {
-        console.log('❌ [VendorBookings] Endpoint not found');
         if (!silent) {
           showError('API Error', 'Booking endpoint not available. Please contact support.');
         }
@@ -470,7 +381,6 @@ export const VendorBookings: React.FC = () => {
         return;
         
       } else {
-        console.log('❌ [VendorBookings] API returned no bookings or error');
         const errorData = await response.json().catch(() => null);
         if (!silent) {
           if (errorData?.message) {
@@ -483,8 +393,6 @@ export const VendorBookings: React.FC = () => {
         return;
       }
 
-
-      
     } catch (error) {
       console.error('💥 [VendorBookings] Error in direct API approach:', error);
       if (!silent) {
@@ -492,7 +400,6 @@ export const VendorBookings: React.FC = () => {
       }
       
       // SECURITY: Never show mock/fake data to vendors - always show empty state on API failure
-      console.log('🔒 [VendorBookings] SECURITY: API failed, showing empty state (no mock data)');
       setBookings([]);
       setPagination({
         current_page: 1,
@@ -510,7 +417,6 @@ export const VendorBookings: React.FC = () => {
   const loadStats = async () => {
     try {
       if (!workingVendorId) {
-        console.log('⏳ [VendorBookings] Waiting for vendor ID resolution before loading stats...');
         return;
       }
       
@@ -533,26 +439,19 @@ export const VendorBookings: React.FC = () => {
         setStats(realStats);
         return;
       }
-      
-      console.log('📊 [VendorBookings] Loading stats with authentication for vendor:', workingVendorId);
-      
       // Try to use comprehensive API if available, otherwise calculate from current data
       try {
         const statsResponse = await bookingApiService.getBookingStats(undefined, workingVendorId);
-        console.log('✅ [VendorBookings] Comprehensive stats loaded:', statsResponse);
-        
         // Map API stats to UI format
         const uiStats = mapToUIBookingStats(statsResponse);
         setStats(uiStats);
       } catch (apiError) {
-        console.warn('⚠️ [VendorBookings] Comprehensive API unavailable, using current bookings data');
         throw apiError; // Re-throw to trigger fallback calculation
       }
     } catch (error) {
       console.error('💥 [VendorBookings] Error loading stats:', error);
       
       // SECURITY: Calculate real stats from current bookings data (no mock data)
-      console.log('� [VendorBookings] SECURITY: Using real bookings data for stats calculation');
       const realStats: UIBookingStats = {
         totalBookings: bookings.length,
         inquiries: bookings.filter(b => b.status === 'pending' || b.status === 'quote_requested').length,
@@ -571,9 +470,6 @@ export const VendorBookings: React.FC = () => {
     // Get current booking to record old status
     const currentBooking = bookings.find(b => b.id === bookingId);
     const oldStatus = currentBooking?.status || 'pending';
-    
-    console.log('🔄 [VendorBookings] Updating booking status:', { bookingId, oldStatus, newStatus, responseMessage });
-    
     try {
       // Use appropriate API method based on status
       switch (newStatus) {
@@ -595,17 +491,12 @@ export const VendorBookings: React.FC = () => {
         case 'draft':
         case 'quote_requested':
           // Use the new updateBookingStatus method for all other status changes
-          console.log('💡 [VendorBookings] Using updateBookingStatus API for:', newStatus);
           await bookingApiService.updateBookingStatus(bookingId, newStatus, responseMessage);
           break;
         default:
-          console.warn('⚠️ [VendorBookings] Status update not implemented for:', newStatus);
           // Use generic status update as fallback
           await bookingApiService.updateBookingStatus(bookingId, newStatus, responseMessage);
       }
-      
-      console.log('✅ [VendorBookings] Backend status update successful');
-      
       // Record successful backend update
       bookingStatusManager.recordStatusUpdate(bookingId, oldStatus, newStatus, responseMessage, 'backend');
       
@@ -623,8 +514,6 @@ export const VendorBookings: React.FC = () => {
       console.error('💥 [VendorBookings] Backend status update failed:', error);
       
       // CRITICAL: Implement frontend fallback to ensure user experience
-      console.log('🔄 [VendorBookings] Implementing frontend fallback for status update');
-      
       try {
         // 1. Record frontend fallback status update
         bookingStatusManager.recordStatusUpdate(bookingId, oldStatus, newStatus, responseMessage, 'frontend_fallback');
@@ -655,8 +544,6 @@ export const VendorBookings: React.FC = () => {
         setShowDetails(false);
         
         // 5. Log the fallback for debugging
-        console.log('✅ [VendorBookings] Frontend fallback status update applied successfully');
-        
         // 6. Show info about the sync status (optional - for transparency)
         setTimeout(() => {
           showInfo(
@@ -675,11 +562,7 @@ export const VendorBookings: React.FC = () => {
     }
   };
 
-
-
   // SECURITY: Mock activities function removed to prevent fake data display
-
-
 
   // Handle booking completion (vendor side)
   const handleMarkComplete = async (booking: UIBooking) => {
@@ -789,8 +672,6 @@ export const VendorBookings: React.FC = () => {
   // Fetch service data for quote prefilling
   const fetchServiceDataForQuote = async (booking: UIBooking) => {
     try {
-      console.log('🔍 [VendorBookings] Fetching service data for booking:', booking.id, 'serviceType:', booking.serviceType);
-      
       // Try to fetch vendor's service that matches the booking's service type
       const response = await fetch(`${apiUrl}/api/services/vendor/${workingVendorId}`);
       
@@ -805,7 +686,6 @@ export const VendorBookings: React.FC = () => {
           );
           
           if (matchingService) {
-            console.log('✅ [VendorBookings] Found matching service for prefill:', matchingService.name);
             return {
               id: matchingService.id,
               name: matchingService.name,
@@ -817,7 +697,6 @@ export const VendorBookings: React.FC = () => {
           } else {
             // Use the first available service as fallback
             const firstService = result.services[0];
-            console.log('🔄 [VendorBookings] No exact match, using first service:', firstService.name);
             return {
               id: firstService.id,
               name: firstService.name,
@@ -829,8 +708,6 @@ export const VendorBookings: React.FC = () => {
           }
         }
       }
-      
-      console.log('⚠️ [VendorBookings] No service data available for prefill');
       return null;
     } catch (error) {
       console.error('❌ [VendorBookings] Error fetching service data:', error);
@@ -897,8 +774,6 @@ export const VendorBookings: React.FC = () => {
               </div>
             </div>
           </motion.div>
-
-
 
           {/* Live Activity Feed */}
           {liveActivities.length > 0 && (
@@ -1245,13 +1120,6 @@ export const VendorBookings: React.FC = () => {
                 <>
                   <div className="divide-y divide-rose-200/30">
                     {(() => {
-                      console.log('🎯 [VendorBookings] RENDER - About to filter bookings:', {
-                        totalBookings: bookings?.length || 0,
-                        filterStatus,
-                        searchQuery,
-                        dateRange,
-                        bookings: bookings?.map(b => ({ id: b.id, status: b.status, couple: b.coupleName }))
-                      });
                       return bookings;
                     })()
                       .filter(booking => {
@@ -1325,16 +1193,6 @@ export const VendorBookings: React.FC = () => {
                       })
                       .map((booking, index) => {
                       // 🔍 DEBUG: Log booking status before rendering
-                      console.log(`🎯 [VendorBookings] RENDERING BOOKING #${index}:`, {
-                        id: booking.id,
-                        status: booking.status,
-                        statusType: typeof booking.status,
-                        coupleName: booking.coupleName,
-                        willShowAs: booking.status === 'fully_paid' ? 'Fully Paid (Blue)' : 
-                                   booking.status === 'cancelled' ? 'Cancelled (Red)' : 
-                                   `${booking.status} (checking...)`
-                      });
-                      
                       return (
                         <motion.div
                           key={booking.id}
@@ -1617,7 +1475,6 @@ export const VendorBookings: React.FC = () => {
         onClose={() => setShowDetails(false)}
         onUpdateStatus={async (bookingId: string, newStatus: string, message?: string) => {
           try {
-            console.log(' [VendorBookings] Updating booking status:', { bookingId, newStatus, message });
             await bookingApiService.updateBookingStatus(bookingId, newStatus as BookingStatus, message);
             await loadBookings(true);
             await loadStats();

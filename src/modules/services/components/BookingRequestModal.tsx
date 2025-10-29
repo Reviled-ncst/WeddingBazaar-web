@@ -337,9 +337,7 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
 }) => {
   // 🚀 PERFORMANCE: Reduce console logging in production
   if (process.env.NODE_ENV === 'development') {
-    console.log('🎭 [BookingModal] Component render with comprehensive API - isOpen:', isOpen);
     if (isOpen) {
-      console.log('🎭 [BookingModal] Modal is open with service:', service);
     }
   }
   
@@ -401,24 +399,15 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
   // Check for existing booking when modal opens
   useEffect(() => {
     if (isOpen && service?.vendorId) {
-      console.log('🎭 [BookingModal] Modal opened, checking for existing booking');
       const effectiveUserId = user?.id || '1-2025-001';
-      console.log('Modal state:', { isOpen, userId: effectiveUserId, vendorId: service?.vendorId, serviceId: service?.id });
       checkExistingBooking();
     } else if (isOpen) {
-      console.log('⚠️ [BookingModal] Modal opened but missing required data for booking check');
-      console.log('Missing data:', { 
-        isOpen, 
-        hasVendorId: !!service?.vendorId, 
-        hasServiceId: !!service?.id 
-      });
     }
   }, [isOpen, service?.vendorId, service?.id]);
 
   // Prefill user data when modal opens
   useEffect(() => {
     if (isOpen && user) {
-      console.log('📝 [BookingModal] Prefilling user data from database');
       const fullName = user.firstName && user.lastName 
         ? `${user.firstName} ${user.lastName}`.trim() 
         : user.firstName || user.lastName || '';
@@ -442,18 +431,11 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
     
     if (!effectiveUserId || !service?.vendorId || !service?.id) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('⏭️ [BookingModal] Skipping existing booking check - missing required IDs');
       }
       return;
     }
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 [BookingModal] Checking for existing booking...');
-      console.log('Parameters:', { 
-        userId: effectiveUserId, 
-        vendorId: service.vendorId, 
-        serviceId: service.id 
-      });
     }
     
     setCheckingExisting(true);
@@ -473,15 +455,12 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
         const data = await response.json();
         if (data.bookings && data.bookings.length > 0) {
           if (process.env.NODE_ENV === 'development') {
-            console.log('⚠️ [BookingModal] Found existing booking:', data.bookings[0]);
           }
           // Map API booking to UI booking - for now just use it directly since it's comprehensive format
           setExistingBooking(data.bookings[0]);
         } else if (process.env.NODE_ENV === 'development') {
-          console.log('✅ [BookingModal] No existing booking found - user can proceed');
         }
       } else if (process.env.NODE_ENV === 'development') {
-        console.log('⚠️ [BookingModal] No existing booking found or API error');
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
@@ -490,7 +469,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
     } finally {
       setCheckingExisting(false);
       if (process.env.NODE_ENV === 'development') {
-        console.log('🏁 [BookingModal] Existing booking check completed');
       }
     }
   }, [user?.id, service?.vendorId, service?.id]);
@@ -498,7 +476,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
   // 🚀 PERFORMANCE: Memoized input change handlers
   const handleInputChange = useCallback((field: string, value: string) => {
     if (process.env.NODE_ENV === 'development') {
-      console.log(`📝 [BookingModal] Form field changed: ${field} = "${value}"`);
     }
     setFormData(prev => {
       const newData = {
@@ -506,7 +483,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
         [field]: value
       };
       if (process.env.NODE_ENV === 'development') {
-        console.log('📋 [BookingModal] Updated form data:', newData);
       }
       return newData;
     });
@@ -514,46 +490,37 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
 
   // 🚀 PERFORMANCE: Memoized form validation function
   const validateForm = useCallback((): boolean => {
-    console.log('🔍 [BookingModal] Running validation...');
     const errors: {[key: string]: string} = {};
     
     // Required field validation
     if (!formData.eventDate || formData.eventDate.trim() === '') {
-      console.log('   ❌ Event date missing');
       errors.eventDate = 'Event date is required';
     }
     
     if (!formData.eventLocation || formData.eventLocation.trim() === '') {
-      console.log('   ❌ Event location missing');
       errors.eventLocation = 'Event location is required to process your booking';
     }
     
     if (!formData.contactPhone || formData.contactPhone.trim() === '') {
-      console.log('   ❌ Phone number missing');
       errors.contactPhone = 'Phone number is required';
     } else if (formData.contactPhone.trim().length < 10) {
-      console.log('   ❌ Phone number too short:', formData.contactPhone.trim().length);
       errors.contactPhone = 'Phone number must be at least 10 characters';
     }
     
     if (formData.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactEmail)) {
-      console.log('   ❌ Invalid email format');
       errors.contactEmail = 'Please enter a valid email address';
     }
     
     if (!formData.guestCount || formData.guestCount.trim() === '') {
-      console.log('   ❌ Guest count missing');
       errors.guestCount = 'Number of guests is required';
     } else {
       const guestCountNum = parseInt(formData.guestCount);
       if (isNaN(guestCountNum) || guestCountNum < 1 || guestCountNum > 10000) {
-        console.log('   ❌ Guest count out of range:', guestCountNum);
         errors.guestCount = 'Guest count must be between 1 and 10,000';
       }
     }
     
     if (!formData.budgetRange || formData.budgetRange.trim() === '') {
-      console.log('   ❌ Budget range missing');
       errors.budgetRange = 'Budget range is required';
     }
     
@@ -564,7 +531,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
       today.setHours(0, 0, 0, 0);
       
       if (eventDate < today) {
-        console.log('   ❌ Event date in the past');
         errors.eventDate = 'Event date must be in the future';
       }
     }
@@ -573,10 +539,7 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
     const isValid = Object.keys(errors).length === 0;
     
     if (isValid) {
-      console.log('   ✅ Validation passed - all required fields present');
     } else {
-      console.log('   ❌ Validation failed - errors:', Object.keys(errors));
-      console.log('      Error details:', errors);
     }
     
     return isValid;
@@ -601,13 +564,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    console.log('📝 [BookingModal] Form submitted - validating fields...');
-    console.log('   Guest Count:', formData.guestCount);
-    console.log('   Budget Range:', formData.budgetRange);
-    console.log('   Event Date:', formData.eventDate);
-    console.log('   Contact Phone:', formData.contactPhone);
-    
     // Enhanced validation before showing confirmation
     if (!validateForm()) {
       console.error('❌ [BookingModal] Form validation failed - showing errors');
@@ -627,9 +583,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
       
       return;
     }
-    
-    console.log('✅ [BookingModal] Validation passed - showing confirmation modal');
-    
     // Show custom confirmation modal instead of window.confirm
     setPendingFormData(formData);
     setShowConfirmModal(true);
@@ -639,7 +592,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
   const handleCancelConfirmation = () => {
     setShowConfirmModal(false);
     setPendingFormData(null);
-    console.log('🚫 [BookingModal] User cancelled booking submission via custom modal');
   };
 
   // Handle confirmation modal confirm action
@@ -653,13 +605,10 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
   // 🚀 PERFORMANCE OPTIMIZED: Memoized availability check using cached range data
   const checkAvailabilityBeforeBooking = useCallback(async (date: string, vendorId: string): Promise<boolean> => {
     try {
-      console.log('� [BookingModal] OPTIMIZED availability check using cached data for:', { date, vendorId });
-      
       // ⚡ COMPATIBILITY FIX: Use working availability service instead of broken database service
       const availabilityCheck = await availabilityService.checkAvailability(vendorId, date);
       
       if (!availabilityCheck.isAvailable) {
-        console.log('❌ [BookingModal] Date unavailable per database:', availabilityCheck);
         const formattedDate = new Date(date).toLocaleDateString();
         const reason = availabilityCheck.reason || 'Please select a different date.';
         const bookingInfo = availabilityCheck.currentBookings && availabilityCheck.currentBookings > 0 
@@ -669,8 +618,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
         setSubmitStatus('error');
         return false;
       }
-
-      console.log('✅ [BookingModal] Date available per database query - instant response');
       return true;
     } catch (error) {
       console.error('❌ [BookingModal] Database availability check failed:', error);
@@ -680,19 +627,15 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
       // Only allow graceful degradation for network/server errors, not booking conflicts
       
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.log('🔍 [CheckAvailability] Analyzing error for graceful degradation:', errorMessage);
-      
       // If this is a network/fetch error, we can allow the booking to proceed
       // But if this is a booking conflict detected by the API, we should block
       if (errorMessage.includes('Failed to fetch') || 
           errorMessage.includes('Network') || 
           errorMessage.includes('timeout') ||
           errorMessage.includes('CORS')) {
-        console.log('⚠️ [CheckAvailability] Network error detected, allowing booking with warning');
         setErrorMessage('⚠️ Unable to verify date availability due to network issues. Booking will proceed, but please confirm date with vendor.');
         return true; // Allow booking for network issues
       } else {
-        console.log('🚫 [CheckAvailability] Non-network error detected, blocking booking');
         setErrorMessage('Unable to verify date availability. Please try again or contact support.');
         setSubmitStatus('error');
         return false; // Block booking for other errors
@@ -702,11 +645,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
 
   // Extracted booking submission logic
   const processBookingSubmission = async (submissionData: any) => {
-    console.log('🚀 [BookingModal] Starting booking submission process');
-    console.log('📋 [BookingModal] Form data:', submissionData);
-    console.log('👤 [BookingModal] User:', user);
-    console.log('🏪 [BookingModal] Service:', service);
-    
     // Enhanced validation before submission
     if (!validateForm()) {
       console.error('❌ [BookingModal] Form validation failed');
@@ -717,28 +655,13 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
 
     // ✅ AVAILABILITY CHECK: Now using real database backend
     if (submissionData.eventDate && service?.vendorId) {
-      console.log('🔍 [BookingModal] RUNNING availability check with database backend');
-      console.log('📅 [BookingModal] Checking availability for date:', submissionData.eventDate, 'vendor:', service.vendorId);
-      console.log('🌐 [BookingModal] Service details:', { 
-        id: service.id, 
-        vendorId: service.vendorId, 
-        name: service.name,
-        vendorName: service.vendorName 
-      });
-      
       try {
         const isAvailable = await checkAvailabilityBeforeBooking(submissionData.eventDate, service.vendorId);
-        console.log('📊 [BookingModal] Availability check result:', isAvailable);
-        
         if (!isAvailable) {
-          console.log('❌ [BookingModal] Booking blocked due to unavailability');
           return; // Stop booking process
         }
-        
-        console.log('✅ [BookingModal] Date is available, proceeding with booking');
       } catch (availabilityError) {
         console.error('❌ [BookingModal] Availability check failed:', availabilityError);
-        console.log('⚠️ [BookingModal] Proceeding with booking despite availability check failure');
       }
     }
     
@@ -746,33 +669,16 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
     let effectiveUserId = user?.id;
     if (!effectiveUserId) {
       effectiveUserId = '1-2025-001'; // Same fallback as IndividualBookings
-      console.log('⚠️ [BookingModal] Using fallback user ID for testing:', effectiveUserId);
     }
 
     if (!effectiveUserId || !service?.vendorId) {
       console.error('❌ [BookingModal] Missing user or vendor ID');
-      console.log('Effective User ID:', effectiveUserId);
-      console.log('Vendor ID:', service?.vendorId);
       setErrorMessage('Unable to process booking request. Please try again.');
       setSubmitStatus('error');
       return;
     }
-
-    console.log('✅ [BookingModal] Validation passed, proceeding with submission');
-    console.log('📍 [BookingModal] Event location value:', submissionData.eventLocation);
-    console.log('📋 [BookingModal] All form values:', {
-      eventDate: submissionData.eventDate,
-      eventTime: submissionData.eventTime,
-      eventLocation: submissionData.eventLocation,
-      guestCount: submissionData.guestCount,
-      budgetRange: submissionData.budgetRange,
-      specialRequests: submissionData.specialRequests,
-      contactPhone: submissionData.contactPhone,
-      preferredContactMethod: submissionData.preferredContactMethod
-    });
     // Prevent double submission
     if (isSubmitting) {
-      console.log('⚠️ [BookingModal] Already submitting, ignoring duplicate submission');
       return;
     }
 
@@ -784,12 +690,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
       // Create comprehensive booking request
       // Use service ID directly - the mapping will happen in the API service
       const serviceIdForBooking = service.id || service.vendorId;
-      console.log('🔧 [BookingModal] Service ID for booking:', {
-        originalServiceId: service.id,
-        vendorId: service.vendorId,
-        serviceIdForBooking: serviceIdForBooking
-      });
-
       const comprehensiveBookingRequest: BookingRequest = {
         vendor_id: service.vendorId || '',
         service_id: serviceIdForBooking || service.id || service.vendorId || '', // Ensure service_id is never undefined
@@ -817,22 +717,9 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
           serviceIdForBooking: serviceIdForBooking
         }
       };
-
-      console.log('📤 [BookingModal] Prepared comprehensive booking request:', comprehensiveBookingRequest);
-      console.log('🔍 [BookingModal] CRITICAL CHECK - Service ID in request:', comprehensiveBookingRequest.service_id);
-      console.log('🔍 [BookingModal] Expected: SRV-0013, Actual:', comprehensiveBookingRequest.service_id);
-      console.log('🌐 [BookingModal] Sending comprehensive API request');
-      
       try {
-        console.log('🌐 [BookingModal] Starting API call to bookingApiService...');
-        console.log('🕐 [BookingModal] Current timestamp:', new Date().toISOString());
-        
         try {
-          console.log('📡 [BookingModal] Making simplified direct API call...');
-          
-          console.log('🚀 [BookingModal] Creating API promise...');
           // Simplified backend check to prevent hanging
-          console.log('🔍 [BookingModal] Checking backend booking API availability...');
           let backendAvailable = false;
           
           try {
@@ -842,24 +729,17 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
             });
             if (healthResponse.ok) {
               const healthData = await healthResponse.json();
-              console.log('✅ [BookingModal] Backend is healthy:', healthData);
-              
               // If health check passes, assume booking API is available
               backendAvailable = true;
-              console.log('✅ [BookingModal] Booking API assumed available based on health check');
             }
           } catch (error) {
-            console.log('⚠️ [BookingModal] Backend availability check failed:', error);
             backendAvailable = false;
           }
 
           let createdBooking;
           
           if (backendAvailable) {
-            console.log('🌐 [BookingModal] Using real backend API...');
             // Use direct API call to booking creation endpoint with comprehensive request object
-            console.log('📡 [BookingModal] Making booking API request...');
-            
             const bookingPayload = {
               // Use camelCase format that /api/bookings/request endpoint expects
               coupleId: effectiveUserId,
@@ -883,9 +763,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
               vendorName: service.vendorName,
               coupleName: user?.displayName || user?.email || undefined
             };
-            
-            console.log('📤 [BookingModal] Booking payload:', bookingPayload);
-            
             const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com'}/api/bookings/request`, {
               method: 'POST',
               headers: {
@@ -894,10 +771,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
               },
               body: JSON.stringify(bookingPayload)
             });
-            
-            console.log('📡 [BookingModal] Response status:', response.status);
-            console.log('📡 [BookingModal] Response ok:', response.ok);
-            
             if (!response.ok) {
               const errorText = await response.text();
               console.error('❌ [BookingModal] API Error Response:', errorText);
@@ -905,19 +778,10 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
             }
             
             createdBooking = await response.json();
-            console.log('✅ [BookingModal] Real API response:', createdBooking);
-            
             // 🎉 ENHANCED SUCCESS CONFIRMATION
-            console.log('🎉 [BookingModal] REAL BOOKING CREATED SUCCESSFULLY!');
-            console.log('📊 [BookingModal] Booking details:', createdBooking);
-            
           } else {
-            console.log('⚠️ [BookingModal] Backend appears unavailable, trying anyway...');
-            
             // Try the real API anyway - it might work despite health check failure
             try {
-              console.log('🌐 [BookingModal] Attempting direct API call despite health check failure...');
-              
               const fallbackPayload = {
                 // Use camelCase format that /api/bookings/request endpoint expects
                 coupleId: effectiveUserId,
@@ -957,43 +821,23 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
               }
               
               createdBooking = await directResponse.json();
-              console.log('✅ [BookingModal] DIRECT API BOOKING CREATED SUCCESSFULLY!');
-              console.log('📊 [BookingModal] Direct booking details:', createdBooking);
-              
             } catch (directApiError) {
-              console.log('❌ [BookingModal] Direct API failed, using fallback simulation:', directApiError);
-              
               // Use the optimized booking API service as final fallback
               const apiPromise = optimizedBookingApiService.createBookingRequest(comprehensiveBookingRequest as any, effectiveUserId);
               createdBooking = await apiPromise;
-              
-              console.log('🎉 [BookingModal] FALLBACK BOOKING CREATED SUCCESSFULLY!');
-              console.log('📊 [BookingModal] Fallback booking details:', createdBooking);
             }
           }
-          
-          console.log('🏁 [BookingModal] Direct API call completed successfully');
-          console.log('📥 [BookingModal] Comprehensive API response received:', createdBooking);
-          
           // Always dispatch event and reload bookings if we get any response from backend
-          console.log('✅ [BookingModal] Got response from booking API:', createdBooking);
-          
           // Dispatch custom event to notify IndividualBookings to refresh regardless of ID
           const bookingCreatedEvent = new CustomEvent('bookingCreated', {
             detail: createdBooking || { refreshNeeded: true }
           });
           window.dispatchEvent(bookingCreatedEvent);
-          console.log('📢 [BookingModal] Dispatched bookingCreated event (always)');
-          
           if (createdBooking && (createdBooking.booking?.id || createdBooking.id || createdBooking.success)) {
-            console.log('✅ [BookingModal] Booking request successful with comprehensive schema!');
-            console.log('🎉 [BookingModal] Created booking:', createdBooking);
-            
             // Extract booking data from response
             const bookingData = createdBooking.booking || createdBooking;
             
             // 🔄 CRITICAL FIX: Clear availability cache so the date shows as booked
-            console.log('🧹 [BookingModal] Clearing availability cache for updated calendar display');
             availabilityService.onBookingChanged(service.vendorId, formData.eventDate);
             
             // 🎉 ENHANCED SUCCESS CONFIRMATION WITH PROPER FEEDBACK
@@ -1040,12 +884,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
             setSuccessBookingData(successData);
             setSubmitStatus('success');
             setShowSuccessModal(true);
-            
-            console.log('🎉 [BookingModal] SUCCESS MODAL STATE UPDATED:');
-            console.log('   showSuccessModal:', true);
-            console.log('   successBookingData:', successData);
-            console.log('   submitStatus:', 'success');
-            
             // Don't close immediately - let BookingSuccessModal handle the lifecycle
             onBookingCreated?.(bookingData);
             
@@ -1096,7 +934,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
           console.error('💥 [BookingModal] API call error message:', apiCallError instanceof Error ? apiCallError.message : 'Unknown error');
           
           // Still dispatch event even on error for UI consistency
-          console.log('📢 [BookingModal] Dispatching bookingCreated event despite API error for UI consistency');
           const bookingCreatedEvent = new CustomEvent('bookingCreated', {
             detail: { error: true, attempted: true, service: service.name }
           });
@@ -1111,8 +948,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
                                errorMessage.includes('timeout');
           
           if (isNotFoundError) {
-            console.log('🔧 [BookingModal] API endpoint not found - booking system not fully implemented yet');
-            
             // Create a mock booking for better UX
             const mockBookingData = {
               id: `MOCK-${Date.now()}`,
@@ -1126,7 +961,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
             };
             
             // 🔄 Clear availability cache for mock bookings too
-            console.log('🧹 [BookingModal] Clearing availability cache for mock booking');
             availabilityService.onBookingChanged(service.vendorId, formData.eventDate);
             
             setSuccessBookingData(mockBookingData);
@@ -1141,8 +975,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
             setSubmitStatus('error');
             
           } else if (isNetworkError) {
-            console.log('🌐 [BookingModal] Network error detected - booking might have been created');
-            
             const fallbackSuccessData = {
               id: `PENDING-${Date.now()}`,
               serviceName: service.name,
@@ -1155,7 +987,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
             };
             
             // 🔄 Clear availability cache for network error fallback too
-            console.log('🧹 [BookingModal] Clearing availability cache for network error fallback');
             availabilityService.onBookingChanged(service.vendorId, formData.eventDate);
             
             setSuccessBookingData(fallbackSuccessData);
@@ -1186,7 +1017,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
       console.error('Full error object:', error);
       
       // Dispatch event even on error for UI consistency
-      console.log('📢 [BookingModal] Dispatching bookingCreated event despite exception for UI consistency');
       const bookingCreatedEvent = new CustomEvent('bookingCreated', {
         detail: { error: true, attempted: true, service: service?.name || 'Unknown' }
       });
@@ -1195,7 +1025,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
       setErrorMessage('An error occurred while submitting your request. Please try again.');
       setSubmitStatus('error');
     } finally {
-      console.log('🏁 [BookingModal] Booking submission process completed');
       setIsSubmitting(false);
     }
   };
@@ -1246,15 +1075,10 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
 
   // Render success modal instead if booking was successful
   if (showSuccessModal && successBookingData) {
-    console.log('🚀 [BookingModal] RENDERING SUCCESS MODAL');
-    console.log('   showSuccessModal:', showSuccessModal);
-    console.log('   successBookingData:', successBookingData);
-    
     return (
       <BookingSuccessModal
         isOpen={showSuccessModal}
         onClose={() => {
-          console.log('🚪 [BookingModal] Success modal closed');
           setShowSuccessModal(false);
           setSuccessBookingData(null);
           resetForm();
@@ -1262,7 +1086,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
         }}
         bookingData={successBookingData}
         onViewBookings={() => {
-          console.log('📋 [BookingModal] Navigating to bookings from success modal');
           setShowSuccessModal(false);
           setSuccessBookingData(null);
           resetForm();
@@ -1386,15 +1209,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
       </div>
     );
   }
-
-  console.log('🎭 [BookingModal] MAIN MODAL RENDER - State check:');
-  console.log('   isOpen:', isOpen);
-  console.log('   showSuccessModal:', showSuccessModal);
-  console.log('   successBookingData:', !!successBookingData);
-  console.log('   submitStatus:', submitStatus);
-  console.log('   checkingExisting:', checkingExisting);
-  console.log('   existingBooking:', !!existingBooking);
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-[90] animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl max-w-7xl w-full max-h-[95vh] overflow-y-auto shadow-2xl border border-gray-100 animate-in slide-in-from-bottom-4 duration-300 mx-4">
@@ -1761,7 +1575,6 @@ const BookingRequestModalComponent: React.FC<BookingRequestModalProps> = ({
                 <LocationPicker
                   value={formData.eventLocation}
                   onChange={(location, locationData) => {
-                    console.log('📍 [BookingModal] Location selected:', location, locationData);
                     handleInputChangeWithValidation('eventLocation', location);
                   }}
                   placeholder="Search for venue or enter address (required)"
@@ -2148,9 +1961,7 @@ Example details that help vendors:
                 >
                   Cancel
                 </button>
-                
 
-                
                 <button
                   type="submit"
                   disabled={isSubmitting || submitStatus === 'success'}

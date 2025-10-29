@@ -332,8 +332,6 @@ export const IndividualBookings: React.FC = () => {
 
   // Check which bookings have been reviewed
   const checkReviewedBookings = useCallback(async (bookingIds: string[]) => {
-    console.log('🔍 [CheckReviews] Checking review status for', bookingIds.length, 'bookings');
-    
     const reviewed = new Set<string>();
     
     // Check each completed booking to see if it has been reviewed
@@ -347,8 +345,6 @@ export const IndividualBookings: React.FC = () => {
         console.error('❌ [CheckReviews] Error checking review for booking:', bookingId, error);
       }
     }
-    
-    console.log('✅ [CheckReviews] Found', reviewed.size, 'reviewed bookings');
     setReviewedBookings(reviewed);
   }, []);
 
@@ -360,9 +356,6 @@ export const IndividualBookings: React.FC = () => {
     if (!effectiveUserId) {
       effectiveUserId = '1-2025-001'; // User with 2 bookings for testing
     }
-    
-    console.log('👤 [IndividualBookings] Loading bookings for user:', effectiveUserId);
-    
     try {
       setLoading(true);
       setError(null);
@@ -374,29 +367,13 @@ export const IndividualBookings: React.FC = () => {
         sortBy,
         sortOrder
       });
-
-      console.log('🔥 [CRITICAL DEBUG] Raw API response:', response);
-      console.log('📊 [IndividualBookings] API response:', 'Count:', response.bookings?.length, 'Total:', response.total);
-
       if (response.bookings && response.bookings.length > 0) {
-        console.log('🔍 [IndividualBookings] Sample raw booking:', {
-          id: (response.bookings[0] as any).id,
-          vendor_name: (response.bookings[0] as any).vendor_name,
-          couple_name: (response.bookings[0] as any).couple_name,
-          status: (response.bookings[0] as any).status,
-          quoted_price: (response.bookings[0] as any).quoted_price,
-          final_price: (response.bookings[0] as any).final_price
-        });
-        
         // Map backend response to enhanced bookings using unified mapping utility
         const enhancedBookings: EnhancedBooking[] = response.bookings.map((booking: any) => 
           mapToEnhancedBooking(booking)
         );
 
         setBookings(enhancedBookings);
-        console.log('✅ [IndividualBookings] Bookings loaded successfully:', enhancedBookings);
-        console.log('🔍 [IndividualBookings] Updated bookings state with', enhancedBookings.length, 'bookings');
-        
         // Check which completed bookings have been reviewed
         const completedBookingIds = enhancedBookings
           .filter(b => b.status === 'completed')
@@ -406,17 +383,13 @@ export const IndividualBookings: React.FC = () => {
           checkReviewedBookings(completedBookingIds);
         }
       } else {
-        console.log('⚠️ [IndividualBookings] No bookings found');
         setBookings([]);
-        console.log('🔍 [IndividualBookings] Updated bookings state to empty array');
       }
     } catch (error) {
       setError('Failed to load bookings. Please try again.');
       setBookings([]);
-      console.log('🔍 [IndividualBookings] Updated bookings state to empty array due to error');
     } finally {
       setLoading(false);
-      console.log('🏁 [IndividualBookings] loadBookings completed');
     }
   }, [user?.id, sortBy, sortOrder]);
 
@@ -428,35 +401,21 @@ export const IndividualBookings: React.FC = () => {
   // Listen for booking creation events from BookingRequestModal
   useEffect(() => {
     const handleBookingCreated = (event: CustomEvent) => {
-      console.log('📢 [IndividualBookings] Received bookingCreated event:', event.detail);
-      
       // Add a small delay to ensure backend has processed the booking
       setTimeout(() => {
-        console.log('⏳ [IndividualBookings] Calling loadBookings after delay...');
         loadBookings();
       }, 500);
     };
-
-    console.log('👂 [IndividualBookings] Setting up bookingCreated event listener');
-    
     // Add event listener
     window.addEventListener('bookingCreated', handleBookingCreated as EventListener);
 
     // Cleanup
     return () => {
-      console.log('🧹 [IndividualBookings] Cleaning up bookingCreated event listener');
       window.removeEventListener('bookingCreated', handleBookingCreated as EventListener);
     };
   }, [loadBookings]);
 
   const handlePayment = (booking: Booking | EnhancedBooking, paymentType: PaymentType) => {
-    console.log('💳 [PAYMENT TRIGGER] Opening payment modal for:', {
-      bookingId: booking.id,
-      paymentType,
-      bookingStatus: booking.status,
-      totalAmount: booking.totalAmount
-    });
-
     // For deposit/downpayment, show custom deposit modal first
     if (paymentType === 'downpayment') {
       setCustomDepositModal({
@@ -473,14 +432,10 @@ export const IndividualBookings: React.FC = () => {
         loading: false
       });
     }
-
-    console.log('💳 [PAYMENT MODAL] Payment modal state updated');
   };
 
   // Handle custom deposit confirmation
   const handleCustomDepositConfirm = (depositAmount: number, percentage: number) => {
-    console.log('💰 [CUSTOM DEPOSIT] Confirmed:', { depositAmount, percentage });
-    
     const booking = customDepositModal.booking;
     if (!booking) return;
 
@@ -499,13 +454,10 @@ export const IndividualBookings: React.FC = () => {
       paymentType: 'downpayment',
       loading: false
     });
-
-    console.log('💳 [PAYMENT MODAL] Opened with custom deposit amount:', depositAmount);
   };
 
   // Handle viewing receipts
   const handleViewReceipt = async (booking: EnhancedBooking) => {
-    console.log('📄 [ViewReceipt] Opening receipt modal for booking:', booking.id);
     setReceiptBooking(booking);
     setShowReceiptModal(true);
   };
@@ -581,12 +533,6 @@ export const IndividualBookings: React.FC = () => {
 
   // Handle opening rating modal for completed bookings
   const handleRateBooking = (booking: EnhancedBooking) => {
-    console.log('📝 [RateBooking] Opening rating modal for booking:', {
-      id: booking.id,
-      status: booking.status,
-      vendorName: booking.vendorName
-    });
-    
     setRatingBooking(booking);
     setShowRatingModal(true);
   };
@@ -601,8 +547,6 @@ export const IndividualBookings: React.FC = () => {
     if (!ratingBooking) return;
 
     try {
-      console.log('🌟 [SubmitReview] Submitting review for booking:', reviewData.bookingId);
-      
       // Note: Images are already Cloudinary URLs from RatingModal
       const reviewPayload = {
         bookingId: reviewData.bookingId,
@@ -634,12 +578,6 @@ export const IndividualBookings: React.FC = () => {
 
   // Handle booking completion (couple side)
   const handleMarkComplete = async (booking: EnhancedBooking) => {
-    console.log('🔍 [handleMarkComplete] Starting completion check for booking:', {
-      id: booking.id,
-      status: booking.status,
-      vendorName: booking.vendorName
-    });
-
     if (!user?.id) {
       setConfirmationModal({
         isOpen: true,
@@ -654,14 +592,9 @@ export const IndividualBookings: React.FC = () => {
     }
 
     // Get current completion status
-    console.log('📋 [handleMarkComplete] Fetching completion status...');
     const completionStatus = await getCompletionStatus(booking.id);
-    console.log('📋 [handleMarkComplete] Completion status result:', completionStatus);
-
     // CRITICAL: Check if booking is already fully completed
     if (completionStatus?.fullyCompleted || completionStatus?.currentStatus === 'completed') {
-      console.log('✅ [handleMarkComplete] Booking already fully completed! Refreshing list...');
-      
       // Show success message - booking is already done!
       setSuccessMessage(
         'This booking is already marked as complete by both you and the vendor. ' +
@@ -675,10 +608,7 @@ export const IndividualBookings: React.FC = () => {
     }
 
     // Check if can mark complete
-    console.log('🔍 [handleMarkComplete] Checking canMarkComplete...');
     const canComplete = canMarkComplete(booking, 'couple', completionStatus || undefined);
-    console.log('🔍 [handleMarkComplete] canMarkComplete result:', canComplete);
-
     if (!canComplete) {
       console.error('❌ [handleMarkComplete] Cannot mark complete. Booking status:', booking.status, 'Completion status:', completionStatus);
       
@@ -740,18 +670,7 @@ export const IndividualBookings: React.FC = () => {
 
   // Enhanced PayMongo payment success handler with proper status updates and comprehensive debugging
   const handlePayMongoPaymentSuccess = useCallback(async (paymentData: any) => {
-    console.log('🎉 [PAYMENT SUCCESS TRIGGERED] Handler called with data:', paymentData);
-
     // Enhanced debugging of payment modal state
-    console.log('🔍 [PAYMENT DEBUG] Full payment modal state:', {
-      isOpen: paymentModal.isOpen,
-      hasBooking: !!paymentModal.booking,
-      bookingId: paymentModal.booking?.id,
-      paymentType: paymentModal.paymentType,
-      loading: paymentModal.loading,
-      bookingStatus: paymentModal.booking?.status
-    });
-
     // Store references locally to prevent race conditions
     const booking = paymentModal.booking;
     const paymentType = paymentModal.paymentType;
@@ -767,36 +686,11 @@ export const IndividualBookings: React.FC = () => {
                    paymentData.payment?.amount ||
                    paymentData.formattedAmount ||
                    0;
-    
-    console.log('🔒 [SECURE REFERENCES] Stored local references:', {
-      bookingId: booking.id,
-      paymentType: paymentType,
-      amount: amount,
-      paymentDataKeys: Object.keys(paymentData)
-    });
-
     try {
-      console.log('💰 [PAYMENT DETAILS]', {
-        bookingId: booking.id,
-        paymentType,
-        amount,
-        currentStatus: booking.status,
-        paymentMethod: paymentData.method || 'unknown',
-        transactionId: paymentData.transactionId || 'unknown'
-      });
-
       // Get current booking data from state
       const currentBooking = bookings.find(b => b.id === booking.id);
       const currentTotalPaid = (currentBooking as any)?.totalPaid || 0;
       const totalAmount = currentBooking?.totalAmount || booking.totalAmount || 0;
-
-      console.log('📊 [BOOKING STATE] Current booking data:', {
-        found: !!currentBooking,
-        currentTotalPaid,
-        totalAmount,
-        existingStatus: currentBooking?.status
-      });
-
       // Determine new booking status based on payment type
       let newStatus: BookingStatus;
       let paymentProgressPercentage: number;
@@ -809,7 +703,6 @@ export const IndividualBookings: React.FC = () => {
           paymentProgressPercentage = 30;
           totalPaid = currentTotalPaid + amount;
           remainingBalance = totalAmount - totalPaid;
-          console.log('💳 [DOWNPAYMENT] Status will be updated to downpayment_paid');
           break;
 
         case 'full_payment':
@@ -817,7 +710,6 @@ export const IndividualBookings: React.FC = () => {
           paymentProgressPercentage = 100;
           totalPaid = totalAmount;
           remainingBalance = 0;
-          console.log('💰 [FULL PAYMENT] Status will be updated to paid_in_full');
           break;
 
         case 'remaining_balance':
@@ -825,11 +717,9 @@ export const IndividualBookings: React.FC = () => {
           paymentProgressPercentage = 100;
           totalPaid = totalAmount;
           remainingBalance = 0;
-          console.log('💰 [BALANCE PAYMENT] Status will be updated to paid_in_full');
           break;
 
         default:
-          console.warn('⚠️ [PAYMENT WARNING] Unknown payment type:', paymentType);
           newStatus = 'downpayment_paid';
           paymentProgressPercentage = 30;
           totalPaid = currentTotalPaid + amount;
@@ -837,9 +727,6 @@ export const IndividualBookings: React.FC = () => {
       }
 
       // Update booking status optimistically in the UI
-      console.log('📋 [BEFORE UPDATE] Current bookings count:', bookings.length);
-      console.log('📋 [BEFORE UPDATE] Booking to update found:', !!bookings.find(b => b.id === booking.id));
-
       const updatedBooking = {
         status: newStatus,
         paymentProgressPercentage,
@@ -850,33 +737,19 @@ export const IndividualBookings: React.FC = () => {
         transactionId: paymentData.transactionId,
         paymentStatus: 'completed'
       };
-
-      console.log('🔄 [STATUS UPDATE] Will apply these changes:', updatedBooking);
-
       // Update local React state optimistically (backend update happens later)
       setBookings(prev => {
-        console.log('🔍 [BEFORE STATE UPDATE] Previous bookings:', prev.length);
         const bookingToUpdate = prev.find(b => b.id === booking.id);
-        console.log('🔍 [BOOKING TO UPDATE] Found booking:', !!bookingToUpdate, bookingToUpdate?.status);
-
         const updated = prev.map(currentBooking => {
           if (currentBooking.id === booking.id) {
             const result = {
               ...currentBooking,
               ...updatedBooking
             };
-            console.log('✅ [BOOKING UPDATED] New booking state:', {
-              id: result.id,
-              status: result.status,
-              totalPaid: (result as any).totalPaid,
-              remainingBalance: (result as any).remainingBalance
-            });
             return result;
           }
           return currentBooking;
         });
-        
-        console.log('✅ [STATE UPDATE COMPLETE] Updated bookings count:', updated.length);
         return updated;
       });
 
@@ -888,8 +761,6 @@ export const IndividualBookings: React.FC = () => {
       };
 
       const successMessage = successMessages[paymentType] || 'Payment completed successfully!';
-      console.log('✅ [PAYMENT SUCCESS]', successMessage);
-
       // Show enhanced payment success notification with detailed information
       const notification = document.createElement('div');
       notification.className = 'fixed top-24 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-lg z-[9999] transform transition-all duration-300 max-w-md';
@@ -939,7 +810,6 @@ export const IndividualBookings: React.FC = () => {
       }, 6000);
 
       // Update booking status in backend database
-      console.log('📡 [BACKEND UPDATE] Updating booking status in database...');
       try {
         const backendUrl = 'https://weddingbazaar-web.onrender.com/api/bookings';
         const updateStatusUrl = `${backendUrl}/${booking.id}/status`;
@@ -971,12 +841,6 @@ export const IndividualBookings: React.FC = () => {
           transaction_id: paymentData.transactionId,
           payment_type: paymentType // Include payment type for backend logging
         };
-        
-        console.log('📡 [BACKEND UPDATE] Sending complete payment update:', {
-          url: updateStatusUrl,
-          payload: updatePayload
-        });
-        
         const updateResponse = await fetch(updateStatusUrl, {
           method: 'PATCH',
           headers: {
@@ -987,16 +851,12 @@ export const IndividualBookings: React.FC = () => {
         
         if (updateResponse.ok) {
           const updateData = await updateResponse.json();
-          console.log('✅ [BACKEND UPDATE] Booking status updated in database:', updateData);
-          
           // Reload bookings from backend to get fresh data
-          console.log('🔄 [RELOAD BOOKINGS] Fetching latest booking data...');
           setTimeout(() => {
             loadBookings();
           }, 500); // Small delay to ensure backend has committed the changes
         } else {
           const errorData = await updateResponse.json();
-          console.warn('⚠️ [BACKEND UPDATE] Failed to update booking status:', errorData);
           // Don't throw - UI update already succeeded
         }
       } catch (backendError) {
@@ -1006,13 +866,11 @@ export const IndividualBookings: React.FC = () => {
 
       // For test bookings, we might want to persist this to localStorage or backend
       if (booking.id.startsWith('test-')) {
-        console.log('🧪 [TEST BOOKING] Payment recorded for test booking');
         // Could add localStorage persistence here if needed
       }
 
       // Close modal with a small delay to ensure state update completes
       setTimeout(() => {
-        console.log('🚪 [MODAL CLOSE] Closing payment modal...');
         setPaymentModal({ 
           isOpen: false, 
           booking: null, 
@@ -1020,9 +878,6 @@ export const IndividualBookings: React.FC = () => {
           loading: false 
         });
       }, 1000); // Increased delay to ensure user sees the success state
-
-      console.log('🎉 [PAYMENT COMPLETE] All payment processing completed successfully');
-
     } catch (error) {
       console.error('❌ [PAYMENT ERROR] Error updating booking status:', error);
       console.error('❌ [PAYMENT ERROR] Stack trace:', error);
@@ -1058,15 +913,6 @@ export const IndividualBookings: React.FC = () => {
 
   // Handle viewing quote details
   const handleViewQuoteDetails = (booking: EnhancedBooking) => {
-    console.log('🔍 [ViewQuote] Button clicked - Original booking:', booking);
-    console.log('🔍 [ViewQuote] Booking ID:', booking.id);
-    console.log('🔍 [ViewQuote] Booking status:', booking.status);
-    console.log('🔍 [ViewQuote] Has quote_itemization (snake_case):', !!(booking as any)?.quote_itemization);
-    console.log('🔍 [ViewQuote] Has quoteItemization (camelCase):', !!(booking as any)?.quoteItemization);
-    console.log('🔍 [ViewQuote] Has vendor_notes (snake_case):', !!(booking as any)?.vendor_notes);
-    console.log('🔍 [ViewQuote] Has vendorNotes (camelCase):', !!(booking as any)?.vendorNotes);
-    console.log('🔍 [ViewQuote] All booking keys:', Object.keys(booking));
-    
     setSelectedBooking(booking);
     setShowQuoteDetails(true);
   };

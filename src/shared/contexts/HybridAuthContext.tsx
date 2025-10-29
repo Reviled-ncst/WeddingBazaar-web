@@ -93,8 +93,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Sync user data with Neon database
   const syncWithBackend = async (fbUser: FirebaseAuthUser) => {
     try {
-      console.log('🔄 Syncing user with Neon database...');
-      
       // Try to get user from Neon database using email parameter
       const response = await fetch(`${API_BASE_URL}/api/auth/profile?email=${encodeURIComponent(fbUser.email || '')}`, {
         headers: {
@@ -105,20 +103,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (response.ok) {
         const backendUser = await response.json();
-        console.log('✅ User found in Neon database:', backendUser);
-        
         // 🔐 CRITICAL FIX: Store JWT token from profile sync
         if (backendUser.token) {
           localStorage.setItem('auth_token', backendUser.token);
           localStorage.setItem('jwt_token', backendUser.token); // Backward compatibility
-          console.log('✅ JWT token stored for vendor/couple:', backendUser.user.email);
         }
         
         // DEBUG: Log the exact backend user data structure
-        console.log('🔧 Backend user structure:', JSON.stringify(backendUser, null, 2));
-        console.log('🔧 Backend user.user:', backendUser.user);
-        console.log('🔧 Backend user.user.role:', backendUser.user?.role);
-        
         // Merge Firebase and backend data
         // Use backend emailVerified status if available (backend now returns this field)
         const backendEmailVerified = backendUser.user?.emailVerified;
@@ -130,7 +121,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const hasCompleteVendorProfile = backendUser.user.businessName && backendUser.user.vendorId;
           if (hasCompleteVendorProfile) {
             finalEmailVerified = true;
-            console.log('✅ Vendor with complete profile - treating as email verified');
           }
         }
         
@@ -139,28 +129,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           emailVerified: finalEmailVerified,
           firebaseUid: fbUser.uid
         };
-        
-        console.log('🔧 Final merged user:', JSON.stringify(mergedUser, null, 2));
-        console.log('🔧 Final merged user.role:', mergedUser.role);
-        
         // Store in BOTH localStorage keys for compatibility
         localStorage.setItem('backend_user', JSON.stringify(mergedUser));
         localStorage.setItem('weddingbazaar_user_profile', JSON.stringify(mergedUser));
-        console.log('💾 Stored backend user in localStorage (both keys)');
-        
         setUser(mergedUser);
         return;
       }
 
       // If user not found in backend, check for pending user data (from registration)
-      console.log('📝 User not found in Neon, checking for pending registration data...');
       const pendingProfile = localStorage.getItem('pending_user_profile');
       
       if (pendingProfile && fbUser.emailVerified) {
         try {
           const profileData = JSON.parse(pendingProfile);
-          console.log('� Found pending user profile, creating backend profile:', profileData);
-          
           // User has verified email, now create the backend profile
           const backendResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
             method: 'POST',
@@ -176,8 +157,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           if (backendResponse.ok) {
             const backendResult = await backendResponse.json();
-            console.log('✅ Backend profile created after email verification:', backendResult);
-            
             // Remove pending data
             localStorage.removeItem('pending_user_profile');
             
@@ -195,11 +174,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             };
 
             setUser(newUser);
-            console.log('✅ Complete user profile created and set');
             return;
           }
         } catch (e) {
-          console.warn('⚠️ Failed to create backend profile from pending data:', e);
         }
       }
 
@@ -208,8 +185,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (storedProfile) {
         try {
           const profileData = JSON.parse(storedProfile);
-          console.log('💾 Found stored user profile:', profileData);
-          
           const storedUser: User = {
             id: profileData.firebaseUid || fbUser.uid,
             email: profileData.email || fbUser.email || '',
@@ -222,10 +197,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           };
           
           setUser(storedUser);
-          console.log('✅ User data loaded from localStorage with role:', storedUser.role);
           return;
         } catch (e) {
-          console.warn('⚠️ Failed to parse stored profile, using Firebase data');
         }
       }
       
@@ -244,17 +217,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Firebase auth state listener
   useEffect(() => {
     const unsubscribe = firebaseAuthService.onAuthStateChanged(async (fbUser) => {
-      console.log('🔧 Firebase auth state changed:', fbUser ? 'User logged in' : 'User logged out');
-      
       // 🔒 CRITICAL: Skip auth state changes during active login attempts
       if (isLoginInProgress) {
-        console.log('⏸️ BLOCKING auth state change - login in progress');
         return;
       }
       
       // Skip auth state processing during registration to prevent login flash
       if (isRegistering) {
-        console.log('⏸️ Skipping auth state change during registration process');
         return;
       }
       
@@ -268,13 +237,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const hasBackendUser = localStorage.getItem('backend_user');
         
         if (hasJWT && hasBackendUser && user?.role === 'admin') {
-          console.log('✅ Admin user logged in via backend - ignoring Firebase logged out state');
           setIsLoading(false);
           return;
         }
         
         // Both null (logged out) - no change, don't update isLoading
-        console.log('✅ Auth state unchanged (both logged out) - skipping update');
         return;
       }
       
@@ -284,10 +251,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Always sync with backend, regardless of email verification status
         // This allows users to see their profile/dashboard even if email not verified
         await syncWithBackend(fbUser);
-        console.log('✅ User logged in - email verification status:', fbUser.emailVerified);
-        
         if (!fbUser.emailVerified) {
-          console.log('📧 User email not verified - limited access until verification');
         }
       } else {
         // 🔐 ADMIN FIX: Don't clear admin user if they're logged in via backend JWT
@@ -295,7 +259,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const hasBackendUser = localStorage.getItem('backend_user');
         
         if (hasJWT && hasBackendUser && user?.role === 'admin') {
-          console.log('✅ Preserving admin user - backend JWT session active');
           setIsLoading(false);
           return;
         }
@@ -314,8 +277,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // This handles BOTH admin (JWT) and regular Firebase users
   useEffect(() => {
     const initializeSession = () => {
-      console.log('🔄 Initializing session from localStorage...');
-      
       const storedToken = localStorage.getItem('jwt_token');
       const storedUser = localStorage.getItem('backend_user');
       
@@ -323,8 +284,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (storedToken && storedUser) {
         try {
           const backendUser = JSON.parse(storedUser);
-          console.log('🔍 Found stored admin session:', backendUser);
-          
           // Verify the token is still valid by checking with backend
           fetch(`${API_BASE_URL}/api/auth/verify`, {
             method: 'POST',
@@ -337,11 +296,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           .then(response => response.json())
           .then(data => {
             if (data.success && data.authenticated) {
-              console.log('✅ Stored admin session is valid');
               setUser(backendUser);
               setIsLoading(false);
             } else {
-              console.log('❌ Stored admin session expired, clearing...');
               localStorage.removeItem('jwt_token');
               localStorage.removeItem('backend_user');
               localStorage.removeItem('weddingbazaar_user_profile');
@@ -349,14 +306,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
           })
           .catch(error => {
-            console.log('❌ Error verifying stored session:', error);
             localStorage.removeItem('jwt_token');
             localStorage.removeItem('backend_user');
             localStorage.removeItem('weddingbazaar_user_profile');
             setIsLoading(false);
           });
         } catch (error) {
-          console.log('❌ Error parsing stored user data:', error);
           localStorage.removeItem('jwt_token');
           localStorage.removeItem('backend_user');
           localStorage.removeItem('weddingbazaar_user_profile');
@@ -367,16 +322,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       else if (storedUser) {
         try {
           const backendUser = JSON.parse(storedUser);
-          console.log('🔍 Found stored Firebase user session:', backendUser.email, backendUser.role);
-          
           // Restore user data immediately - Firebase auth state listener will verify/update later
           setUser(backendUser);
-          console.log('✅ User session restored from localStorage:', backendUser.role);
-          
           // Let Firebase auth state listener handle validation
           // isLoading will be set to false by the auth state listener
         } catch (error) {
-          console.log('❌ Error parsing stored user data:', error);
           localStorage.removeItem('backend_user');
           localStorage.removeItem('weddingbazaar_user_profile');
           setIsLoading(false);
@@ -384,7 +334,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       // Case 3: No stored session - let Firebase auth state listener handle it
       else {
-        console.log('📭 No stored session found - waiting for Firebase auth state');
         // Don't set isLoading to false yet - let Firebase auth state listener handle it
       }
     };
@@ -400,22 +349,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       // DON'T set loading yet - validate credentials first!
       setIsLoginInProgress(true); // 🔒 BLOCK auth state changes
-      console.log('🔧 Starting hybrid login - credentials will be validated BEFORE proceeding...');
-      
       try {
         // Try Firebase login first - THIS VALIDATES CREDENTIALS
         // If credentials are wrong, this will throw an error immediately
-        console.log('🔐 Firebase sign in attempt (validating credentials)...');
         const userCredential = await firebaseAuthService.signIn(email, password);
-        console.log('✅ Firebase credentials validated successfully - user authenticated');
-        
         // ✅ NOW set loading - credentials are valid, we're fetching data
         setIsLoading(true);
         
         // At this point, credentials are CONFIRMED VALID by Firebase
         // Now we can safely proceed with backend sync
-        console.log('🔄 Fetching complete user profile from backend...');
-        
         // Create a promise that will resolve when we have the full user data
         let syncedUser: User | null = null;
         
@@ -430,21 +372,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               if (storedUser) {
                 try {
                   const parsedUser = JSON.parse(storedUser);
-                  console.log('✅ User data retrieved from localStorage:', parsedUser.role);
                   resolve(parsedUser);
                   return;
                 } catch (e) {
-                  console.warn('⚠️ Failed to parse stored user');
                 }
               }
               
               // Fallback: use Firebase data
               const firebaseUser = convertFirebaseUser(userCredential.user);
-              console.log('⚠️ Using Firebase-only user data (backend sync incomplete)');
               resolve(firebaseUser);
             }, 200);
           }).catch((syncError) => {
-            console.warn('⚠️ Backend sync failed, using Firebase data:', syncError);
             const firebaseUser = convertFirebaseUser(userCredential.user);
             resolve(firebaseUser);
           });
@@ -455,20 +393,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         setIsLoading(false);
         setIsLoginInProgress(false); // 🔓 UNBLOCK auth state changes
-        console.log('✅ Login complete! User:', syncedUser.email, 'Role:', syncedUser.role);
         return syncedUser;
         
       } catch (firebaseError: any) {
-        console.log('⚠️ Firebase login failed - credentials may be invalid');
-        console.log('🔧 Firebase error:', firebaseError.message);
-        
         // Try backend-only login for admin users
         try {
-          console.log('🔧 Attempting backend-only login for admin...');
           // ✅ Set loading NOW - attempting backend login
           setIsLoading(true);
           const adminUser = await loginBackendOnly(email, password);
-          console.log('✅ Backend-only login successful for admin');
           setIsLoading(false);
           setIsLoginInProgress(false); // 🔓 UNBLOCK auth state changes
           return adminUser;
@@ -524,7 +456,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       // ALWAYS unblock, even if error was thrown
       setIsLoginInProgress(false);
-      console.log('🔓 Login process complete - auth state changes unblocked');
     }
   };
 
@@ -541,7 +472,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       setUser(null);
       setFirebaseUser(null);
-      console.log('✅ Logout successful');
     } catch (error) {
       console.error('❌ Logout error:', error);
     }
@@ -557,7 +487,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (!result.success) {
         throw new Error(result.message);
       }
-      console.log('✅ Email verification sent');
     } catch (error) {
       console.error('❌ Error sending email verification:', error);
       throw error;
@@ -572,8 +501,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         // Sync email verification status with backend if it changed
         if (updatedFirebaseUser.emailVerified && user && !user.emailVerified) {
-          console.log('✅ Email verified in Firebase - syncing with backend...');
-          
           try {
             const response = await fetch(`${API_BASE_URL}/api/auth/sync-firebase-verification`, {
               method: 'POST',
@@ -588,8 +515,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             
             if (response.ok) {
               const data = await response.json();
-              console.log('✅ Backend email verification synced:', data.user);
-              
               // Update local user state
               setUser(prev => prev ? { ...prev, emailVerified: true } : null);
               
@@ -602,7 +527,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 sessionStorage.setItem('cached_user_data', JSON.stringify(userData));
               }
             } else {
-              console.warn('⚠️ Failed to sync email verification with backend');
             }
           } catch (syncError) {
             console.error('❌ Error syncing email verification:', syncError);
@@ -618,12 +542,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loginWithGoogle = async (): Promise<User> => {
     try {
       setIsLoading(true);
-      console.log('🔧 Starting Google login...');
-      
       // Sign in with Firebase using Google
       const userCredential = await firebaseAuthService.signInWithGoogle();
-      console.log('✅ Google login successful');
-      
       // Sync with backend will happen automatically via auth state listener
       // Return a user object (will be updated by the listener)
       const tempUser = convertFirebaseUser({
@@ -646,12 +566,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const registerWithGoogle = async (userType?: 'couple' | 'vendor'): Promise<User> => {
     try {
       setIsLoading(true);
-      console.log('🔧 Starting Google registration...');
-      
       // Sign up with Firebase using Google (this handles profile storage)
       const userCredential = await firebaseAuthService.registerWithGoogle(userType);
-      console.log('✅ Google registration successful');
-
       // The Firebase service already stored the pending profile
       // Backend creation will happen automatically via syncWithBackend when auth state changes
 
@@ -678,8 +594,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       setIsRegistering(true);
-      console.log('🔧 Starting Firebase + Neon hybrid registration - user will be logged in after success');
-      
       // Step 1: Create Firebase user and send email verification (handles email delivery)
       const registrationData: any = {
         email: userData.email,
@@ -694,21 +608,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           location: userData.location
         })
       };
-
-      console.log('🔥 Creating Firebase user with email verification...');
       const result = await firebaseAuthService.registerWithEmailVerification(registrationData);
       
       if (!result.success) {
         throw new Error(result.message);
       }
-
-      console.log('✅ Firebase user created, email verification sent automatically');
-      
       // Step 2: Create backend user in Neon database (linked to Firebase UID)
-      console.log('🏗️ Creating user in Neon database with Firebase UID...');
-      console.log('📡 API_BASE_URL:', API_BASE_URL);
-      console.log('🔍 Firebase UID:', result.firebaseUid);
-      
       const backendData = {
         email: userData.email,
         password: userData.password,
@@ -724,9 +629,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           location: userData.location
         })
       };
-
-      console.log('📡 Making backend registration request with data:', JSON.stringify(backendData, null, 2));
-      
       const backendResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -734,24 +636,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
         body: JSON.stringify(backendData)
       });
-      
-      console.log('📨 Backend response received:', {
-        status: backendResponse.status,
-        statusText: backendResponse.statusText
-      });
-
       if (backendResponse.ok) {
         const backendResult = await backendResponse.json();
-        console.log('✅ User created in Neon database:', {
-          userId: backendResult.user?.id,
-          userType: backendResult.user?.user_type,
-          profileId: backendResult.profile?.id,
-          firebaseUid: result.firebaseUid
-        });
-        
-        console.log('📧 Firebase email verification sent to:', userData.email);
-        console.log('📧 User must verify email with Firebase before they can login');
-        
         // Show persistent notification about email verification
         const toast = document.createElement('div');
         toast.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300';
@@ -804,13 +690,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setIsLoading(false);
       // Clear registration flag to allow normal auth flow and manually process current auth state
-      console.log('✅ Registration completed successfully - processing current auth state');
       setIsRegistering(false);
       
       // Manually process current Firebase auth state after registration
       const currentUser = firebaseAuthService.getCurrentUser();
       if (currentUser) {
-        console.log('🔄 Processing current user after registration completion');
         setFirebaseUser(currentUser);
         await syncWithBackend(currentUser);
       }
@@ -821,15 +705,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // const register = registerBackendOnly;
 
   const clearRegistrationState = () => {
-    console.log('🧹 Manually clearing registration state');
     setIsRegistering(false);
   };
 
   const loginBackendOnly = async (email: string, password: string): Promise<User> => {
     try {
       // Loading is already set by the caller
-      console.log('🔧 Starting backend-only login for admin...');
-      
       // Call backend login API directly
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
@@ -844,9 +725,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (!response.ok || !data.success) {
         throw new Error(data.message || data.error || 'Login failed');
       }
-      
-      console.log('✅ Backend login successful:', data.user);
-      
         // Map backend user data to our User interface
         // Handle both 'role' and 'userType' field names from different backend endpoints
         const getUserRole = (user: any): 'couple' | 'vendor' | 'admin' => {
@@ -874,13 +752,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('jwt_token', data.token);
         localStorage.setItem('backend_user', JSON.stringify(backendUser));
         localStorage.setItem('weddingbazaar_user_profile', JSON.stringify(backendUser));
-        console.log('💾 JWT token and user data stored (both keys)');
       }
       
       setUser(backendUser);
       // Loading will be turned off by the caller
-      
-      console.log('👑 Admin user logged in successfully:', backendUser);
       return backendUser;
       
     } catch (error: any) {

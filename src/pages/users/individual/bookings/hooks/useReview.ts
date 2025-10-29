@@ -27,7 +27,6 @@ export const useReview = () => {
       // Upload images first if any
       let imageUrls: string[] = [];
       if (images.length > 0) {
-        console.log('📤 [useReview] Uploading images...');
         imageUrls = await reviewService.uploadReviewImages(images);
       }
 
@@ -45,8 +44,6 @@ export const useReview = () => {
       if (!result.success) {
         throw new Error(result.error || 'Failed to submit review');
       }
-
-      console.log('✅ [useReview] Review submitted successfully');
       return result;
 
     } catch (error: any) {

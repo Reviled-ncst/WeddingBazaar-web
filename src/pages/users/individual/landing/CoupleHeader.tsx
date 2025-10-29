@@ -44,14 +44,11 @@ export const CoupleHeader: React.FC = () => {
   useEffect(() => {
     const fetchNotificationCount = async () => {
       if (!user?.id) {
-        console.log('⚠️ [CoupleHeader] No authenticated user, notification count = 0');
         setNotificationCount(0);
         return;
       }
 
       try {
-        console.log('🔔 [CoupleHeader] Fetching notification count for user:', user.id);
-        
         // Fetch all bookings to count pending actions
         const response = await bookingApiService.getCoupleBookings(user.id, {
           page: 1,
@@ -69,15 +66,8 @@ export const CoupleHeader: React.FC = () => {
             booking.status === 'downpayment_requested' ||
             booking.status === 'final_payment_due'
           ).length;
-
-          console.log('✅ [CoupleHeader] Notification count calculated:', {
-            total: response.bookings.length,
-            pending: pendingCount
-          });
-
           setNotificationCount(pendingCount);
         } else {
-          console.log('📭 [CoupleHeader] No bookings found');
           setNotificationCount(0);
         }
       } catch (error) {

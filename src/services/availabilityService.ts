@@ -76,12 +76,10 @@ class AvailabilityService {
     const cached = this.cache.get(cacheKey);
     
     if (cached && this.isCacheValid(cached.timestamp)) {
-      console.log('💾 [AvailabilityService] Using cached data for:', cacheKey);
       return new Map(cached.data); // Return a copy
     }
     
     if (cached) {
-      console.log('🗑️ [AvailabilityService] Cache expired for:', cacheKey);
       this.cache.delete(cacheKey);
     }
     
@@ -97,14 +95,10 @@ class AvailabilityService {
       data: new Map(data), // Store a copy
       timestamp: Date.now()
     });
-    
-    console.log('💾 [AvailabilityService] Cached data for:', cacheKey, '(', data.size, 'dates)');
-    
     // Clean up old cache entries to prevent memory leaks
     if (this.cache.size > 50) {
       const oldestKey = Array.from(this.cache.keys())[0];
       this.cache.delete(oldestKey);
-      console.log('🧹 [AvailabilityService] Cleaned up old cache entry:', oldestKey);
     }
   }
 
@@ -113,11 +107,9 @@ class AvailabilityService {
    */
   async checkAvailability(vendorId: string, date: string): Promise<AvailabilityCheck> {
     try {
-      console.log('🔍 [AvailabilityService] Starting availability check:', { vendorId, date });
       silent.info('📅 [AvailabilityService] Checking availability:', { vendorId, date });
       
       // Simple network test first
-      console.log('🌐 [AvailabilityService] Testing network connectivity...');
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -129,7 +121,6 @@ class AvailabilityService {
         });
         
         clearTimeout(timeoutId);
-        console.log('✅ [AvailabilityService] Network test successful:', testResponse.status);
       } catch (networkError) {
         console.error('❌ [AvailabilityService] Network test failed:', networkError);
         const errorMessage = networkError instanceof Error ? networkError.message : String(networkError);
@@ -171,26 +162,12 @@ class AvailabilityService {
   private async checkAvailabilityUsingBookings(vendorId: string, date: string): Promise<AvailabilityCheck> {
     try {
       silent.info(`🔍 [AvailabilityService] Checking bookings for vendor ${vendorId} on ${date}`);
-      console.log(`🔍 [AvailabilityService] Checking bookings for vendor ${vendorId} on ${date}`);
-      
       // Map vendor ID to the format used in booking data
       const bookingVendorId = this.mapVendorIdForBookings(vendorId);
-      console.log(`🔧 [AvailabilityService] Mapped vendor ID: ${vendorId} -> ${bookingVendorId}`);
-      
       const apiUrl = `${this.apiUrl}/api/bookings/vendor/${bookingVendorId}`;
-      console.log(`🌐 [AvailabilityService] Making request to: ${apiUrl}`);
-      console.log(`🔧 [AvailabilityService] API URL from env: ${this.apiUrl}`);
-      console.log(`🔧 [AvailabilityService] Full request details:`, {
-        method: 'GET',
-        url: apiUrl,
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
       // Get real bookings for this vendor with timeout
-      console.log(`⏳ [AvailabilityService] Starting fetch request...`);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.log('⏰ [AvailabilityService] Request timeout, aborting...');
         controller.abort();
       }, 10000); // 10 second timeout
       
@@ -203,10 +180,6 @@ class AvailabilityService {
       });
       
       clearTimeout(timeoutId);
-      console.log(`✅ [AvailabilityService] Fetch completed successfully`);
-
-      console.log(`📡 [AvailabilityService] Response status: ${response.status} ${response.statusText}`);
-
       if (!response.ok) {
         console.warn(`⚠️ [AvailabilityService] Could not fetch vendor bookings: ${response.status}`);
         silent.warn(`⚠️ [AvailabilityService] Could not fetch vendor bookings: ${response.status}`);
@@ -319,7 +292,6 @@ class AvailabilityService {
           errorMessage.includes('Network connectivity failed') || 
           errorMessage.includes('timeout') ||
           errorMessage.includes('CORS')) {
-        console.log('⚠️ [AvailabilityService] Network error, defaulting to available with warning');
         return {
           date,
           vendorId,
@@ -330,7 +302,6 @@ class AvailabilityService {
           maxBookingsPerDay: 1
         };
       } else {
-        console.log('🚫 [AvailabilityService] Service error, defaulting to unavailable for safety');
         return {
           date,
           vendorId,
@@ -350,18 +321,14 @@ class AvailabilityService {
    */
   async checkAvailabilityRange(vendorId: string, startDate: string, endDate: string, serviceId?: string): Promise<Map<string, AvailabilityCheck>> {
     const cacheKey = this.getCacheKey(vendorId, startDate, endDate, serviceId);
-    console.log('🚀 [AvailabilityService] Availability check request:', { vendorId, serviceId, startDate, endDate, cacheKey });
-
     // Check cache first
     const cached = this.getCachedData(vendorId, startDate, endDate, serviceId);
     if (cached) {
-      console.log('⚡ [AvailabilityService] Returning cached results for', cached.size, 'dates');
       return cached;
     }
 
     // Check if there's already an ongoing request for the same data
     if (this.ongoingRequests.has(cacheKey)) {
-      console.log('🔄 [AvailabilityService] Joining ongoing request for:', cacheKey);
       return await this.ongoingRequests.get(cacheKey)!;
     }
 
@@ -407,9 +374,6 @@ class AvailabilityService {
           });
         }
       }
-
-      console.log('✅ [AvailabilityService] Bulk check completed:', availabilityMap.size, 'dates processed');
-      
       // Cache the results
       this.setCachedData(vendorId, startDate, endDate, availabilityMap, serviceId);
       
@@ -429,21 +393,10 @@ class AvailabilityService {
   private async checkAvailabilityBulk(vendorId: string, startDate: string, endDate: string, serviceId?: string): Promise<Map<string, AvailabilityCheck>> {
     const availabilityMap = new Map<string, AvailabilityCheck>();
     const bookingVendorId = this.mapVendorIdForBookings(vendorId);
-
-    console.log('📊 [AvailabilityService] Making bulk API calls...');
-    console.log('🔧 [AvailabilityService] Original vendor ID:', vendorId);
-    console.log('🔧 [AvailabilityService] Mapped vendor ID:', bookingVendorId);
-    console.log('🔧 [AvailabilityService] Service ID (filter):', serviceId || 'ALL SERVICES');
-    console.log('🔧 [AvailabilityService] API URL:', `${this.apiUrl}/api/bookings/vendor/${bookingVendorId}`);
-
     try {
       // CRITICAL: Log the EXACT fetch URL being called
       const bookingsUrl = `${this.apiUrl}/api/bookings/vendor/${bookingVendorId}?startDate=${startDate}&endDate=${endDate}`;
       const offDaysUrl = `${this.apiUrl}/api/vendors/${vendorId}/off-days`;
-      
-      console.log('🌐 [AvailabilityService] 🚨 FETCHING BOOKINGS FROM:', bookingsUrl);
-      console.log('🌐 [AvailabilityService] 🚨 FETCHING OFF-DAYS FROM:', offDaysUrl);
-      
       // Parallel API calls for efficiency
       const [bookingsResponse, offDaysResponse] = await Promise.all([
         // Get all bookings for vendor in date range
@@ -451,7 +404,6 @@ class AvailabilityService {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         }).then(response => {
-          console.log('📡 [AvailabilityService] 🚨 BOOKINGS FETCH COMPLETED:', response.status, response.statusText);
           return response;
         }).catch(error => {
           console.error('❌ [AvailabilityService] 🚨 BOOKINGS FETCH FAILED:', error);
@@ -462,7 +414,6 @@ class AvailabilityService {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         }).then(response => {
-          console.log('📡 [AvailabilityService] 🚨 OFF-DAYS FETCH COMPLETED:', response.status, response.statusText);
           return response;
         }).catch(error => {
           console.error('❌ [AvailabilityService] 🚨 OFF-DAYS FETCH FAILED:', error);
@@ -476,25 +427,18 @@ class AvailabilityService {
       // Process bookings response
       if (bookingsResponse.ok) {
         const bookingsData = await bookingsResponse.json();
-        console.log('📡 [AvailabilityService] Raw bookings API response:', bookingsData);
         bookings = bookingsData.bookings || bookingsData || [];
-        console.log('📅 [AvailabilityService] Retrieved', bookings.length, 'bookings for date range');
         if (bookings.length > 0) {
-          console.log('📋 [AvailabilityService] Sample booking:', bookings[0]);
         }
       } else {
-        console.warn('⚠️ [AvailabilityService] Bookings API failed:', bookingsResponse.status);
         const errorText = await bookingsResponse.text();
-        console.warn('⚠️ [AvailabilityService] Error response:', errorText);
       }
 
       // Process off days response
       if (offDaysResponse.ok) {
         const offDaysData = await offDaysResponse.json();
         offDays = offDaysData.offDays || offDaysData || [];
-        console.log('🚫 [AvailabilityService] Retrieved', offDays.length, 'off days');
       } else {
-        console.warn('⚠️ [AvailabilityService] Off days API failed:', offDaysResponse.status);
       }
 
       // Build availability map efficiently
@@ -505,7 +449,6 @@ class AvailabilityService {
       bookings.forEach((booking: any) => {
         // SERVICE-SPECIFIC FILTERING: Only include bookings for this specific service
         if (serviceId && booking.service_id !== serviceId) {
-          console.log('🔍 [AvailabilityService] Skipping booking for different service:', booking.service_id, '!==', serviceId);
           return; // Skip bookings for other services
         }
         
@@ -516,13 +459,8 @@ class AvailabilityService {
             bookingsByDate.set(dateKey, []);
           }
           bookingsByDate.get(dateKey)!.push(booking);
-          console.log('📅 [AvailabilityService] Added booking for date:', dateKey, 'service:', booking.service_id);
         }
       });
-      
-      console.log('🎯 [AvailabilityService] Service filter:', serviceId ? `ONLY service ${serviceId}` : 'ALL SERVICES');
-      console.log('📊 [AvailabilityService] Bookings by date after filter:', bookingsByDate.size, 'dates with bookings');
-
       // Create off days set
       const offDayDates = new Set<string>();
       offDays.forEach((offDay: any) => {
@@ -594,8 +532,6 @@ class AvailabilityService {
           }
         });
       }
-
-      console.log('✅ [AvailabilityService] Bulk processing complete:', availabilityMap.size, 'dates processed');
       return availabilityMap;
 
     } catch (error) {
@@ -609,14 +545,9 @@ class AvailabilityService {
    */
   private async checkAvailabilityRangeFallback(vendorId: string, dates: string[], serviceId?: string): Promise<Map<string, AvailabilityCheck>> {
     const availabilityMap = new Map<string, AvailabilityCheck>();
-    
-    console.log('⚠️ [AvailabilityService] Using fallback individual checks for', dates.length, 'dates');
-    console.log('🎯 [AvailabilityService] Service filter:', serviceId ? `service ${serviceId}` : 'ALL SERVICES');
-
     // Limit to prevent API overload
     const limitedDates = dates.slice(0, 10);
     if (dates.length > 10) {
-      console.warn('⚠️ [AvailabilityService] Limiting fallback to first 10 dates to prevent API overload');
     }
 
     for (const date of limitedDates) {
@@ -985,7 +916,6 @@ class AvailabilityService {
     keysToDelete.forEach(key => this.cache.delete(key));
     
     if (keysToDelete.length > 0) {
-      console.log('🧹 [AvailabilityService] Cleared', keysToDelete.length, 'cache entries for vendor:', vendorId);
     }
   }
 
@@ -995,14 +925,12 @@ class AvailabilityService {
   clearAllCache(): void {
     const cacheSize = this.cache.size;
     this.cache.clear();
-    console.log('🧹 [AvailabilityService] Cleared all cache entries:', cacheSize);
   }
 
   /**
    * Notify service that a booking has changed - now invalidates cache
    */
   onBookingChanged(vendorId: string, date: string): void {
-    console.log(`📢 [AvailabilityService] Booking changed notification for vendor ${vendorId} on ${date}`);
     silent.info(`📢 [AvailabilityService] Booking changed notification for vendor ${vendorId} on ${date}`);
     
     // Invalidate cache for this vendor

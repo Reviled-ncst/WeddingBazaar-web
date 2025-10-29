@@ -116,22 +116,16 @@ export function geocodeLocation(location: string): Coordinates {
   }
 
   const cleanLocation = location.trim().toLowerCase();
-  
-  console.log('🗺️ [Geocoding] Analyzing location:', location);
-  console.log('🗺️ [Geocoding] Cleaned:', cleanLocation);
-
   // PRIORITY 1: Heritage Spring Homes specific matching (most specific first)
   if (cleanLocation.includes('heritage spring homes') || 
       (cleanLocation.includes('heritage') && cleanLocation.includes('spring')) ||
       (cleanLocation.includes('heritage') && cleanLocation.includes('homes'))) {
-    console.log('✅ [Geocoding] Heritage Spring Homes detected');
     return { lat: 14.2306, lng: 120.9856 };
   }
 
   // PRIORITY 2: ZIP code matching
   for (const [zip, coords] of Object.entries(ZIP_CODE_MAPPING)) {
     if (cleanLocation.includes(zip)) {
-      console.log('✅ [Geocoding] ZIP code match:', zip);
       return coords;
     }
   }
@@ -139,7 +133,6 @@ export function geocodeLocation(location: string): Coordinates {
   // PRIORITY 3: Cavite cities/municipalities matching
   for (const city of CAVITE_CITIES) {
     if (city.keywords.some(keyword => cleanLocation.includes(keyword))) {
-      console.log('✅ [Geocoding] Cavite city match:', city.keywords[0]);
       return city.coords;
     }
   }
@@ -147,7 +140,6 @@ export function geocodeLocation(location: string): Coordinates {
   // PRIORITY 4: Metro Manila venue/location matching
   for (const [venue, coords] of Object.entries(METRO_MANILA_LOCATIONS)) {
     if (cleanLocation.includes(venue)) {
-      console.log('✅ [Geocoding] Metro Manila venue match:', venue);
       return coords;
     }
   }
@@ -155,7 +147,6 @@ export function geocodeLocation(location: string): Coordinates {
   // PRIORITY 5: CALABARZON region with specific indicators
   if (cleanLocation.includes('calabarzon') && 
       (cleanLocation.includes('cavite') || cleanLocation.includes('silang'))) {
-    console.log('✅ [Geocoding] CALABARZON + Cavite indicators');
     return { lat: 14.2306, lng: 120.9856 };
   }
 
@@ -164,10 +155,8 @@ export function geocodeLocation(location: string): Coordinates {
     if (cleanLocation.includes(province)) {
       // Special handling for Cavite to avoid Manila conflicts
       if (province === 'cavite' && !cleanLocation.includes('manila')) {
-        console.log('✅ [Geocoding] Cavite province match');
         return coords;
       } else if (province !== 'cavite') {
-        console.log('✅ [Geocoding] Province match:', province);
         return coords;
       }
     }
@@ -180,7 +169,6 @@ export function geocodeLocation(location: string): Coordinates {
       // Check Cavite cities first
       for (const city of CAVITE_CITIES) {
         if (city.keywords.some(keyword => part.includes(keyword))) {
-          console.log('✅ [Geocoding] Address part Cavite match:', part);
           return city.coords;
         }
       }
@@ -188,7 +176,6 @@ export function geocodeLocation(location: string): Coordinates {
       // Check Metro Manila locations
       for (const [venue, coords] of Object.entries(METRO_MANILA_LOCATIONS)) {
         if (part.includes(venue)) {
-          console.log('✅ [Geocoding] Address part Metro Manila match:', part);
           return coords;
         }
       }
@@ -196,9 +183,6 @@ export function geocodeLocation(location: string): Coordinates {
   }
 
   // PRIORITY 8: Log unmatched locations for future enhancement
-  console.log('⚠️ [Geocoding] No specific match found - using default Manila');
-  console.log('🔧 [Geocoding] Consider adding pattern:', location);
-  
   return PROVINCE_DEFAULTS.manila;
 }
 
@@ -222,8 +206,6 @@ export function validateCoordinates(coords: Coordinates): Coordinates {
       lng >= PHILIPPINES_BOUNDS.west && lng <= PHILIPPINES_BOUNDS.east) {
     return coords;
   }
-
-  console.log('⚠️ [Geocoding] Coordinates out of bounds, using Manila default');
   return PROVINCE_DEFAULTS.manila;
 }
 

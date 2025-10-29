@@ -54,8 +54,6 @@ export class ServicesApiService {
       });
 
       const url = `${this.baseUrl}/api/services?${searchParams.toString()}`;
-      console.log('ServicesApiService: Fetching services from:', url);
-
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -63,10 +61,6 @@ export class ServicesApiService {
         },
         credentials: 'include'
       });
-
-      console.log('ServicesApiService: Response status:', response.status);
-      console.log('ServicesApiService: Response ok:', response.ok);
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('ServicesApiService: Error response:', errorText);
@@ -74,9 +68,6 @@ export class ServicesApiService {
       }
 
       const data = await response.json();
-      console.log('ServicesApiService: Response data:', data);
-      console.log('ServicesApiService: Number of services:', data.services?.length || 0);
-
       return data;
     } catch (error) {
       console.error('ServicesApiService.getServices error:', error);
@@ -120,7 +111,6 @@ export class ServicesApiService {
 
   static async getServicesByVendor(vendorId: string): Promise<ApiService[]> {
     try {
-      console.log('📡 [ServicesApiService] Fetching services for vendor:', vendorId);
       const response = await fetch(`${this.baseUrl}/api/services/vendor/${vendorId}`, {
         method: 'GET',
         headers: {
@@ -128,9 +118,6 @@ export class ServicesApiService {
         },
         credentials: 'include'
       });
-
-      console.log('📡 [ServicesApiService] Response status:', response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('📡 [ServicesApiService] Error response:', errorText);
@@ -138,8 +125,6 @@ export class ServicesApiService {
       }
 
       const data = await response.json();
-      console.log('📡 [ServicesApiService] Response data:', data);
-      
       // The backend returns services directly, not wrapped in a services property
       return Array.isArray(data) ? data : (data.services || []);
     } catch (error) {

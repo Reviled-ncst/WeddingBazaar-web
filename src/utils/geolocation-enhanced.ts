@@ -60,7 +60,6 @@ export const getCurrentPosition = (): Promise<GeolocationPosition> => {
     // First attempt with high accuracy
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        console.log('📍 Location accuracy:', position.coords.accuracy, 'meters');
         resolve(position);
       },
       (_error) => {
@@ -75,7 +74,6 @@ export const getCurrentPosition = (): Promise<GeolocationPosition> => {
         
         navigator.geolocation.getCurrentPosition(
           (position) => {
-            console.log('📍 Fallback location accuracy:', position.coords.accuracy, 'meters');
             resolve(position);
           },
           (fallbackError) => {
@@ -108,8 +106,6 @@ export const getCurrentPosition = (): Promise<GeolocationPosition> => {
  * Enhanced reverse geocoding with multiple providers for maximum accuracy in Philippines
  */
 export const reverseGeocode = async (latitude: number, longitude: number): Promise<string> => {
-  console.log(`🗺️ Reverse geocoding: ${latitude}, ${longitude}`);
-  
   try {
     // Primary: Enhanced Nominatim with maximum detail for Philippines
     const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&countrycodes=ph&accept-language=en&addressdetails=1&zoom=18&namedetails=1&extratags=1`;
@@ -121,11 +117,8 @@ export const reverseGeocode = async (latitude: number, longitude: number): Promi
     }
     
     const data = await response.json();
-    console.log('🏢 Geocoding response:', data);
-    
     if (data && data.address) {
       const formattedAddress = formatEnhancedPhilippineAddress(data.address, data.display_name, latitude, longitude);
-      console.log('✅ Formatted address:', formattedAddress);
       return formattedAddress;
     }
     

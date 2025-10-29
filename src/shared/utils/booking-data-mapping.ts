@@ -240,14 +240,6 @@ export function mapApiBookingToUI(apiBooking: ApiBooking, additionalData?: Parti
  * NOW WITH FULL FIELD SUPPORT AND QUOTE PARSING
  */
 export function mapDatabaseBookingToUI(dbBooking: DatabaseBooking): UIBooking {
-  console.log('🔄 [BookingMapping] Mapping database booking:', {
-    id: dbBooking.id,
-    status: dbBooking.status,
-    total_amount: dbBooking.total_amount,
-    has_notes: !!dbBooking.notes,
-    notes_preview: dbBooking.notes?.substring(0, 50)
-  });
-
   // Parse quote from notes if exists - MUST BE BEFORE totalAmount calculation
   let quoteData = null;
   let hasQuote = false;
@@ -269,10 +261,6 @@ export function mapDatabaseBookingToUI(dbBooking: DatabaseBooking): UIBooking {
       if (jsonStart !== -1 && jsonEnd > jsonStart) {
         const quoteJson = dbBooking.notes.substring(jsonStart, jsonEnd);
         quoteData = JSON.parse(quoteJson);
-        console.log('✅ [BookingMapping] Quote JSON parsed successfully:', {
-          quoteNumber: quoteData.quoteNumber,
-          total: quoteData.pricing?.total
-        });
         // Extract pricing from JSON if available
         if (quoteData.pricing?.total) {
           quotedTotal = quoteData.pricing.total;
@@ -282,7 +270,6 @@ export function mapDatabaseBookingToUI(dbBooking: DatabaseBooking): UIBooking {
         }
       }
     } catch (error) {
-      console.warn('⚠️ [BookingMapping] Could not parse quote as JSON, trying string extraction:', error);
     }
     
     // Also try to extract pricing from string format (new format)
@@ -293,7 +280,6 @@ export function mapDatabaseBookingToUI(dbBooking: DatabaseBooking): UIBooking {
         const extracted = parseInt(totalMatch[1].replace(/,/g, ''));
         if (!quotedTotal || extracted > 0) {
           quotedTotal = extracted;
-          console.log('💰 [BookingMapping] Extracted quote total from string:', quotedTotal);
         }
       }
       
@@ -303,15 +289,11 @@ export function mapDatabaseBookingToUI(dbBooking: DatabaseBooking): UIBooking {
         const extracted = parseInt(downpaymentMatch[1].replace(/,/g, ''));
         if (!quotedDeposit || extracted > 0) {
           quotedDeposit = extracted;
-          console.log('💳 [BookingMapping] Extracted deposit from string:', quotedDeposit);
         }
       } else if (quotedTotal && !quotedDeposit) {
         // Calculate 30% downpayment if not specified
         quotedDeposit = Math.round(quotedTotal * 0.3);
-        console.log('💳 [BookingMapping] Calculated 30% deposit:', quotedDeposit);
       }
-      
-      console.log('✅ [BookingMapping] Quote pricing extracted:', { quotedTotal, quotedDeposit });
     } catch (error) {
       console.error('❌ [BookingMapping] Failed to extract quote pricing from string:', error);
     }
@@ -326,21 +308,6 @@ export function mapDatabaseBookingToUI(dbBooking: DatabaseBooking): UIBooking {
   const totalPaid = parseFloat(dbBooking.total_paid || '0');
   const remainingBalance = parseFloat(dbBooking.remaining_balance || (totalAmount - totalPaid).toString());
   const paymentProgressPercentage = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
-
-  console.log('💰 [BookingMapping] Payment calculations:', {
-    totalAmount,
-    depositAmount,
-    totalPaid,
-    remainingBalance,
-    paymentProgressPercentage,
-    source: {
-      amount: dbBooking.amount,
-      total_paid: dbBooking.total_paid,
-      remaining_balance: dbBooking.remaining_balance,
-      downpayment_amount: dbBooking.downpayment_amount
-    }
-  });
-
   // Format event date and time
   const formattedEventDate = new Date(dbBooking.event_date).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -405,7 +372,6 @@ export function mapDatabaseBookingToUI(dbBooking: DatabaseBooking): UIBooking {
       if (quoteItemization) {
         try {
           const parsed = typeof quoteItemization === 'string' ? JSON.parse(quoteItemization) : quoteItemization;
-          console.log('✅ [Mapping] Successfully parsed quote_itemization:', parsed);
           if (parsed.serviceItems && Array.isArray(parsed.serviceItems)) {
             return parsed.serviceItems.map((item: any) => ({
               id: item.id,
@@ -514,7 +480,6 @@ export function getIntegerServiceId(stringServiceId: string): string {
   };
   
   const mappedServiceId = serviceMapping[stringServiceId] || 'SRV-1758769064490'; // Default to Beltran Sound Systems
-  console.log(`🔧 [ServiceIDMapping] Converting ${stringServiceId} -> ${mappedServiceId}`);
   return mappedServiceId;
 }
 
@@ -530,37 +495,17 @@ export function getValidServiceId(vendorId: string): string {
  * Used by IndividualBookings component
  */
 export function mapComprehensiveBookingToUI(booking: any): UIBooking {
-  console.log('🔄 [mapComprehensiveBookingToUI] Processing booking:', booking.id, {
-    serviceType: booking.serviceType || booking.service_type,
-    serviceName: booking.service_name,
-    vendorName: booking.vendorName || booking.vendor_name,
-    amount: booking.amount,
-    quoted_price: booking.quoted_price,
-    status: booking.status,
-    responseMessage: booking.response_message?.substring(0, 100) + '...'
-  });
-  
   // PRIORITY ORDER for amount extraction:
   // 1. quoted_price (when vendor sends a quote)
   // 2. final_price (after quote is accepted)
   // 3. amount (generic amount field)
   // 4. total_amount (fallback)
   let totalAmount = Number(booking.quoted_price) || Number(booking.final_price) || Number(booking.amount) || Number(booking.total_amount) || 0;
-  
-  console.log('💰 [AMOUNT PRIORITY] Checking fields:', {
-    quoted_price: booking.quoted_price,
-    final_price: booking.final_price,
-    amount: booking.amount,
-    total_amount: booking.total_amount,
-    selected: totalAmount
-  });
-  
   // Extract amount from response_message if available (for quotes)
   if (totalAmount === 0 && booking.response_message) {
     const totalMatch = booking.response_message.match(/TOTAL:\s*₱([0-9,]+\.?\d*)/);
     if (totalMatch) {
       totalAmount = parseFloat(totalMatch[1].replace(/,/g, ''));
-      console.log('💰 [AMOUNT EXTRACTION] Found total amount in response_message:', totalAmount);
     }
   }
   
@@ -568,9 +513,6 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
   if (totalAmount === 0) {
     const serviceType = booking.service_type || booking.serviceType || '';
     const guestCount = booking.guest_count || booking.guestCount || 100;
-    
-    console.log('🔥 [FALLBACK PRICING] Applying fallback for service:', serviceType);
-    
     // Generate realistic Philippine wedding pricing
     switch (serviceType) {
       case 'Catering':
@@ -602,18 +544,10 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
       default:
         totalAmount = 45000;
     }
-    
-    console.log(`💰 [FALLBACK PRICING] Generated ₱${totalAmount.toLocaleString()} for ${serviceType}`);
   }
   
   const totalPaid = booking.total_paid ?? 0;
   const paymentProgressPercentage = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
-
-  console.log('💰 [mapComprehensiveBookingToUI] Amount calc for booking', booking.id, {
-    totalAmount,
-    source: booking.amount ? 'amount' : booking.final_price ? 'final_price' : totalAmount > 0 ? 'fallback' : 'other'
-  });
-
   // Enhanced service name and type mapping with 'other' handling
   const serviceName = booking.service_name || booking.serviceName || 'Wedding Service';
   const responseMessage = booking.response_message || '';
@@ -698,7 +632,6 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
       for (const [keyword, serviceType] of Object.entries(keywordMap)) {
         if (vendorName.toLowerCase().includes(keyword.toLowerCase())) {
           finalServiceType = serviceType;
-          console.log(`🔧 [SERVICE INFERENCE] Vendor "${vendorName}" contains "${keyword}" → "${serviceType}"`);
           break;
         }
       }
@@ -709,7 +642,6 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
       finalServiceType = 'Event Services';
       console.warn(`⚠️ [SERVICE INFERENCE] Could not determine service for vendor "${vendorName}", using "Event Services"`);
     } else {
-      console.log(`✅ [SERVICE INFERENCE] Mapped vendor "${vendorName}" to service "${finalServiceType}"`);
     }
   }
 
@@ -729,14 +661,6 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
       processedStatus = 'fully_paid';
     }
   }
-  
-  console.log('🔍 [STATUS PROCESSING] Booking', booking.id, {
-    originalStatus: booking.status,
-    processedStatus,
-    hasNotes: !!booking.notes,
-    notesPrefix: booking.notes?.substring(0, 20) + '...'
-  });
-
   // 🔥 CRITICAL: Parse serviceItems from quote_itemization or vendor_notes for itemized quote display
   let serviceItems = undefined;
   let quoteItemization = booking.quote_itemization || booking.quoteItemization;
@@ -744,19 +668,8 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
   
   // PRIORITY 1: Try quote_itemization field first (NEW backend field)
   if (quoteItemization) {
-    console.log('📋 [mapComprehensiveBookingToUI] Found quote_itemization for booking', booking.id, {
-      type: typeof quoteItemization,
-      preview: typeof quoteItemization === 'string' ? quoteItemization.substring(0, 100) : JSON.stringify(quoteItemization).substring(0, 100)
-    });
-    
     try {
       const parsed = typeof quoteItemization === 'string' ? JSON.parse(quoteItemization) : quoteItemization;
-      console.log('✅ [mapComprehensiveBookingToUI] Parsed quote_itemization:', {
-        hasServiceItems: !!parsed.serviceItems,
-        itemCount: parsed.serviceItems?.length,
-        keys: Object.keys(parsed)
-      });
-      
       if (parsed.serviceItems && Array.isArray(parsed.serviceItems)) {
         serviceItems = parsed.serviceItems.map((item: any) => ({
           id: item.id,
@@ -767,7 +680,6 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
           unitPrice: item.unitPrice || item.unit_price || 0,
           total: item.total || ((item.unitPrice || item.unit_price || 0) * (item.quantity || 1))
         }));
-        console.log('✅ [mapComprehensiveBookingToUI] Mapped', serviceItems.length, 'service items from quote_itemization');
       }
     } catch (error) {
       console.error('❌ [mapComprehensiveBookingToUI] Failed to parse quote_itemization:', error);
@@ -776,18 +688,8 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
   
   // PRIORITY 2: Fallback to vendor_notes if quote_itemization didn't work
   if (!serviceItems && vendorNotes) {
-    console.log('📋 [mapComprehensiveBookingToUI] Falling back to vendor_notes for booking', booking.id, {
-      length: vendorNotes.length,
-      preview: vendorNotes.substring(0, 100)
-    });
-    
     try {
       const parsed = typeof vendorNotes === 'string' ? JSON.parse(vendorNotes) : vendorNotes;
-      console.log('✅ [mapComprehensiveBookingToUI] Parsed vendor_notes:', {
-        hasServiceItems: !!parsed.serviceItems,
-        itemCount: parsed.serviceItems?.length
-      });
-      
       if (parsed.serviceItems && Array.isArray(parsed.serviceItems)) {
         serviceItems = parsed.serviceItems.map((item: any) => ({
           id: item.id,
@@ -798,7 +700,6 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
           unitPrice: item.unitPrice || item.unit_price || 0,
           total: item.total || ((item.unitPrice || item.unit_price || 0) * (item.quantity || 1))
         }));
-        console.log('✅ [mapComprehensiveBookingToUI] Mapped', serviceItems.length, 'service items from vendor_notes');
       }
     } catch (error) {
       console.error('❌ [mapComprehensiveBookingToUI] Failed to parse vendor_notes:', error);
@@ -806,7 +707,6 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
   }
   
   if (!serviceItems) {
-    console.warn('⚠️ [mapComprehensiveBookingToUI] No serviceItems found for booking', booking.id);
   }
 
   const mapped = {
@@ -862,14 +762,6 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
     cancelledReason: booking.cancelled_reason || booking.cancelledReason,
     eventAddress: undefined
   };
-  
-  console.log('✨ [mapComprehensiveBookingToUI] Mapped result for', booking.id, {
-    vendorName: mapped.vendorName,
-    totalAmount: mapped.totalAmount,
-    downpaymentAmount: mapped.downpaymentAmount,
-    status: mapped.status
-  });
-  
   return mapped;
 }
 
@@ -1045,7 +937,6 @@ export function getIntegerVendorId(stringVendorId: string): number {
   if (match) {
     // For "2-2025-003" format, use the last number
     const vendorNumber = parseInt(match[3]);
-    console.log(`🔧 [VendorIDMapping] Converting ${stringVendorId} -> ${vendorNumber}`);
     return vendorNumber;
   }
   
@@ -1053,11 +944,8 @@ export function getIntegerVendorId(stringVendorId: string): number {
   const numbers = stringVendorId.replace(/\D/g, '');
   if (numbers) {
     const numericId = parseInt(numbers.slice(-1)) || 1; // Last digit, default to 1
-    console.log(`🔧 [VendorIDMapping] Fallback conversion ${stringVendorId} -> ${numericId}`);
     return numericId;
   }
-  
-  console.warn('⚠️ Could not convert vendor ID:', stringVendorId, 'using default 1');
   return 1;
 }
 

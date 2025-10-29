@@ -33,7 +33,6 @@ class VendorNotificationService {
 
   constructor() {
     this.apiUrl = API_BASE_URL;
-    console.log('🔔 [NotificationService] Initialized with API URL:', this.apiUrl);
   }
 
   /**
@@ -52,22 +51,15 @@ class VendorNotificationService {
    */
   async getVendorNotifications(vendorId: string): Promise<NotificationResponse> {
     try {
-      console.log('📡 [NotificationService] Fetching notifications for vendor:', vendorId);
-      
       const response = await fetch(`${this.apiUrl}/api/notifications/vendor/${vendorId}`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
-
-      console.log('📡 [NotificationService] Response status:', response.status);
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('✅ [NotificationService] Notifications loaded:', data);
-
       return {
         success: data.success || true,
         notifications: data.notifications || [],
@@ -88,8 +80,6 @@ class VendorNotificationService {
    */
   async markAsRead(notificationId: string): Promise<boolean> {
     try {
-      console.log('📤 [NotificationService] Marking notification as read:', notificationId);
-      
       const response = await fetch(`${this.apiUrl}/api/notifications/${notificationId}/read`, {
         method: 'PATCH',
         headers: this.getAuthHeaders(),
@@ -100,7 +90,6 @@ class VendorNotificationService {
       }
 
       const data = await response.json();
-      console.log('✅ [NotificationService] Notification marked as read:', data);
       return data.success || true;
     } catch (error) {
       console.error('💥 [NotificationService] Error marking notification as read:', error);
@@ -113,8 +102,6 @@ class VendorNotificationService {
    */
   async markAllAsRead(vendorId: string): Promise<boolean> {
     try {
-      console.log('📤 [NotificationService] Marking all notifications as read for vendor:', vendorId);
-      
       const response = await fetch(`${this.apiUrl}/api/notifications/vendor/${vendorId}/read-all`, {
         method: 'PATCH',
         headers: this.getAuthHeaders(),
@@ -125,7 +112,6 @@ class VendorNotificationService {
       }
 
       const data = await response.json();
-      console.log('✅ [NotificationService] All notifications marked as read:', data);
       return data.success || true;
     } catch (error) {
       console.error('💥 [NotificationService] Error marking all notifications as read:', error);
@@ -145,8 +131,6 @@ class VendorNotificationService {
     message?: string;
   }): Promise<boolean> {
     try {
-      console.log('📤 [NotificationService] Generating booking notification:', bookingData);
-      
       const response = await fetch(`${this.apiUrl}/api/notifications/generate`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -158,7 +142,6 @@ class VendorNotificationService {
       }
 
       const data = await response.json();
-      console.log('✅ [NotificationService] Notification generated:', data);
       return data.success || true;
     } catch (error) {
       console.error('💥 [NotificationService] Error generating notification:', error);
@@ -170,8 +153,6 @@ class VendorNotificationService {
    * Get mock notifications as fallback when API is unavailable
    */
   private getMockNotifications(vendorId: string): NotificationResponse {
-    console.log('🔄 [NotificationService] Using mock notifications for vendor:', vendorId);
-    
     const now = new Date();
     const mockNotifications: VendorNotification[] = [
       {
@@ -252,8 +233,6 @@ class VendorNotificationService {
    * Subscribe to real-time notification updates (WebSocket)
    */
   subscribeToNotifications(vendorId: string, callback: (notification: VendorNotification) => void): () => void {
-    console.log('🔄 [NotificationService] Setting up real-time notifications for vendor:', vendorId);
-    
     // In a real implementation, this would set up WebSocket connection
     // For now, simulate with periodic polling
     const pollInterval = setInterval(async () => {
@@ -277,7 +256,6 @@ class VendorNotificationService {
     // Return cleanup function
     return () => {
       clearInterval(pollInterval);
-      console.log('🔄 [NotificationService] Unsubscribed from real-time notifications');
     };
   }
 }

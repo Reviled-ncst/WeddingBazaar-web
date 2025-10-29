@@ -108,19 +108,12 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
     loadingStateSetter?: (loading: boolean) => void,
     fallbackData?: any
   ): Promise<any> => {
-    console.log('🔄 [UnifiedMessaging] =================== API CALL START ===================');
     try {
       if (loadingStateSetter) {
-        console.log('⏳ [UnifiedMessaging] Setting loading state to true');
         loadingStateSetter(true);
       }
       setError(null);
-      console.log('🔍 [UnifiedMessaging] Clearing previous errors');
-      
-      console.log('📡 [UnifiedMessaging] Executing API call...');
       const result = await apiCall();
-      console.log('✅ [UnifiedMessaging] API call successful:', result);
-      console.log('🎉 [UnifiedMessaging] =================== API CALL SUCCESS ===================');
       return result;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
@@ -135,28 +128,16 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
                            errorMessage.includes('timeout') || 
                            errorMessage.includes('network') ||
                            errorMessage.includes('connect');
-      
-      console.log('🔍 [UnifiedMessaging] Error classification:', {
-        isServerError,
-        hasFallbackData: fallbackData !== undefined,
-        errorMessage
-      });
-      
       if (isServerError && fallbackData !== undefined) {
-        console.log('🔄 [UnifiedMessaging] Using fallback data for offline mode');
         setError('Backend temporarily unavailable - using offline mode');
         return fallbackData;
       }
-      
-      console.log('📝 [UnifiedMessaging] Setting error state:', errorMessage);
       setError(errorMessage);
       return null;
     } finally {
       if (loadingStateSetter) {
-        console.log('⏳ [UnifiedMessaging] Setting loading state to false');
         loadingStateSetter(false);
       }
-      console.log('🏁 [UnifiedMessaging] =================== API CALL END ===================');
     }
   };
 
@@ -191,15 +172,6 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
                       apiConversation.business_name ||
                       'Vendor';
     const conversationTitle = `${serviceName} - ${vendorName}`;
-    
-    console.log('🔄 [UnifiedMessaging] Transformed conversation participants:', {
-      id: apiConversation.id,
-      participants,
-      participantNames,
-      participantTypes,
-      conversationTitle
-    });
-    
     return {
       // Core unified fields
       id: apiConversation.id,
@@ -222,8 +194,6 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
   };
 
   const transformToUnifiedMessage = (apiMessage: any): UnifiedMessage => {
-    console.log('🔄 [UnifiedMessaging] Transforming API message:', apiMessage);
-    
     // Transform attachments from string array to proper objects
     let attachments: MessageAttachment[] | undefined;
     if (apiMessage.attachments && Array.isArray(apiMessage.attachments)) {
@@ -260,34 +230,20 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
       messageType: apiMessage.messageType || apiMessage.message_type || 'text',
       attachments
     };
-    console.log('✅ [UnifiedMessaging] Transformed to unified message:', transformed);
     return transformed;
   };
 
   // CORE ACTIONS - Single source of truth using MessagingApiService
   const loadConversations = useCallback(async (): Promise<void> => {
     if (!user?.id) {
-      console.warn('⚠️ [UnifiedMessaging] No user ID available for loading conversations');
       return;
     }
-
-    console.log('📥 [UnifiedMessaging] Loading conversations for user:', user.id, 'Role:', user.role);
-    
     // VENDOR FIX: Use vendor-specific conversation loading for vendors
     // Robust vendor detection: check role, business properties, and ID pattern
     const isVendor = user.role === 'vendor' || 
                     user.businessName || 
                     user.vendorId || 
                     user.id.startsWith('2-2025-');
-    
-    console.log('🔍 [UnifiedMessaging] Vendor detection:', {
-      role: user.role,
-      hasBusinessName: !!user.businessName,
-      hasVendorId: !!user.vendorId,
-      idPattern: user.id.startsWith('2-2025-'),
-      finalIsVendor: isVendor
-    });
-    
     const apiConversations = await handleApiCall(
       () => isVendor 
         ? MessagingApiService.getVendorConversations(user.id)
@@ -298,9 +254,6 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
 
     if (apiConversations !== null) {
       const unifiedConversations = (apiConversations || []).map(transformToUnifiedConversation);
-      
-      console.log('� [UnifiedMessaging] Using ONLY API conversations:', unifiedConversations.length, '(Mock data disabled)');
-      
       // Sort conversations by updatedAt (most recent first)
       const sortedConversations = unifiedConversations.sort((a: UnifiedConversation, b: UnifiedConversation) => 
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
@@ -311,14 +264,10 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
       // Calculate total unread count
       const totalUnread = sortedConversations.reduce((sum: number, conv: UnifiedConversation) => sum + conv.unreadCount, 0);
       setUnreadCount(totalUnread);
-      
-      console.log('✅ [UnifiedMessaging] Loaded conversations:', sortedConversations.length, 'Total unread:', totalUnread, `(${isVendor ? 'VENDOR' : 'COUPLE'} mode)`);
     }
   }, [user?.id, user?.role]);
 
   const loadMessages = useCallback(async (conversationId: string): Promise<void> => {
-    console.log('📥 [UnifiedMessaging] Loading messages for conversation:', conversationId);
-    
     const apiMessages = await handleApiCall(
       () => MessagingApiService.getMessages(conversationId),
       setLoading
@@ -326,16 +275,12 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
 
     if (apiMessages) {
       const unifiedMessages = apiMessages.map(transformToUnifiedMessage);
-      
-      console.log('📂 [UnifiedMessaging] Using ONLY API messages:', unifiedMessages.length, '(Mock data disabled)');
-      
       // Sort messages by timestamp (oldest first for chat display)
       const sortedMessages = unifiedMessages.sort((a: UnifiedMessage, b: UnifiedMessage) => 
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
       );
       
       setMessages(sortedMessages);
-      console.log('✅ [UnifiedMessaging] Loaded messages:', sortedMessages.length);
     }
   }, []);
 
@@ -345,10 +290,6 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
     messageType: 'text' | 'image' | 'file' = 'text',
     attachments?: Array<{url: string, fileName: string, fileType: string, fileSize: number}>
   ): Promise<void> => {
-    console.log('💬 [UnifiedMessaging] =================== SEND MESSAGE START ===================');
-    console.log('🎯 [UnifiedMessaging] sendMessage called with:', { conversationId, content: content.substring(0, 50) + '...', messageType });
-    console.log('🔍 [UnifiedMessaging] User context:', { userId: user?.id, userEmail: user?.email, userRole: user?.role });
-    
     if (!user?.id || (!content.trim() && (!attachments || attachments.length === 0))) {
       console.error('❌ [UnifiedMessaging] FATAL: Cannot send message');
       console.error('   User ID:', user?.id);
@@ -357,20 +298,6 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
       console.error('   Attachments:', attachments?.length || 0);
       return;
     }
-
-    console.log('✅ [UnifiedMessaging] Validation passed, proceeding with message send');
-    console.log('📤 [UnifiedMessaging] Message details:', { 
-      conversationId, 
-      contentPreview: content.substring(0, 50) + '...',
-      fullContentLength: content.length,
-      messageType,
-      senderInfo: {
-        id: user.id,
-        name: user.businessName || user.email || 'Unknown User',
-        type: (user.role === 'vendor' || user.businessName || user.vendorId || user.id.startsWith('2-2025-') ? 'vendor' : user.role === 'admin' ? 'admin' : 'couple')
-      }
-    });
-    
     // Try to send via API first
     const newMessage = await handleApiCall(
       () => MessagingApiService.sendMessage(
@@ -385,15 +312,10 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
       setSending,
       null // No fallback data, we'll handle it below
     );
-
-    console.log('📨 [UnifiedMessaging] Send message API response:', newMessage);
-
     // If API call failed, create a local message for immediate UI feedback
     let messageToAdd = newMessage;
     
     if (!newMessage) {
-      console.log('🔄 [UnifiedMessaging] API message send failed, creating local message for UI');
-      
       // Create a local message object
       const messageId = `msg_local_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
       messageToAdd = {
@@ -411,13 +333,9 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
     }
 
     if (messageToAdd) {
-      console.log('✅ [UnifiedMessaging] Message created, transforming and adding to UI');
       const unifiedMessage = transformToUnifiedMessage(messageToAdd);
-      console.log('🔄 [UnifiedMessaging] Transformed message:', unifiedMessage);
-      
       setMessages(prev => {
         const updated = [...prev, unifiedMessage];
-        console.log('📝 [UnifiedMessaging] Updated messages array length:', updated.length);
         return updated;
       });
       
@@ -434,10 +352,7 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
       });
-      
-      console.log('✅ [UnifiedMessaging] Message added successfully and conversations reordered', newMessage ? '(API)' : '(LOCAL)');
     } else {
-      console.warn('⚠️ [UnifiedMessaging] Failed to send or create message');
     }
   }, [user?.id]);
 
@@ -447,62 +362,28 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
     targetUserName?: string,
     serviceName?: string
   ): Promise<string | null> => {
-    console.log('🚀 [UnifiedMessaging] =================== CREATE CONVERSATION START ===================');
-    console.log('🔍 [UnifiedMessaging] Input parameters:', {
-      targetUserId,
-      targetUserType,
-      targetUserName,
-      currentUserId: user?.id,
-      currentUserEmail: user?.email,
-      currentUserRole: user?.role,
-      currentUserBusinessName: user?.businessName
-    });
-
     if (!user?.id) {
       console.error('❌ [UnifiedMessaging] FATAL: Cannot create conversation - no user ID');
-      console.log('🔍 [UnifiedMessaging] User object:', user);
       return null;
     }
-
-    console.log('✅ [UnifiedMessaging] User validation passed, proceeding with conversation creation');
-    
     // First, check if a conversation already exists with this service-vendor-user combination
-    console.log('🔍 [UnifiedMessaging] Checking for existing service-based conversation...');
     const normalizedServiceName = serviceName || 'General Inquiry';
-    console.log('🎯 [UnifiedMessaging] Looking for service:', normalizedServiceName);
-    
     const existingConversation = conversations.find(conv => {
       const participants = conv.participants || [];
       const participantsMatch = participants.includes(user.id) && participants.includes(targetUserId);
       const convServiceName = conv.serviceName || conv.service_name || 'General Inquiry';
       const serviceMatch = convServiceName === normalizedServiceName;
-      
-      console.log(`   Checking conversation ${conv.id}:`);
-      console.log(`     participants=[${participants.join(', ')}], participantsMatch=${participantsMatch}`);
-      console.log(`     service='${convServiceName}' vs '${normalizedServiceName}', serviceMatch=${serviceMatch}`);
-      console.log(`     overall match=${participantsMatch && serviceMatch}`);
-      
       return participantsMatch && serviceMatch;
     });
     
     if (existingConversation) {
-      console.log('✅ [UnifiedMessaging] Found existing conversation:', existingConversation.id);
-      console.log('🔄 [UnifiedMessaging] Loading messages for existing conversation...');
-      
       // Set this as the active conversation and load its messages
       setActiveConversationState(existingConversation);
       loadMessages(existingConversation.id);
-      
-      console.log('🎉 [UnifiedMessaging] =================== USING EXISTING CONVERSATION ===================');
       return existingConversation.id;
     }
-    
-    console.log('🆕 [UnifiedMessaging] No existing conversation found, creating new one...');
-    
     // Generate a unique conversation ID
     const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log('🎯 [UnifiedMessaging] Generated conversation ID:', conversationId);
-    
     // Prepare API call data
     const apiCallData = {
       conversationId,
@@ -513,29 +394,18 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
       userName: targetUserType === 'vendor' ? (user.businessName || user.email || 'Unknown') : (targetUserName || 'Client Name'),
       userType: (user.role === 'vendor' || user.businessName || user.vendorId || user.id.startsWith('2-2025-') ? 'vendor' : user.role === 'admin' ? 'admin' : 'couple') as 'couple' | 'vendor' | 'admin'
     };
-    
-    console.log('📤 [UnifiedMessaging] Prepared API call data:', apiCallData);
-    console.log('🔄 [UnifiedMessaging] Attempting API conversation creation...');
-    
     // Try to create conversation via API, fall back to local creation
     const newConversation = await handleApiCall(
       () => {
-        console.log('📡 [UnifiedMessaging] Calling MessagingApiService.createConversation...');
         return MessagingApiService.createConversation(apiCallData);
       },
       undefined, // No loading state for conversation creation
       null // No fallback data, we'll handle it below
     );
-
-    console.log('📨 [UnifiedMessaging] API conversation creation result:', newConversation);
-
     // If API call failed, create a local conversation for immediate UI functionality
     let conversationToAdd = newConversation;
     
     if (!newConversation) {
-      console.log('⚠️ [UnifiedMessaging] API conversation creation failed, creating local conversation for UI');
-      console.log('🔧 [UnifiedMessaging] Building local conversation object...');
-      
       // Create a local conversation object that matches the expected format
       conversationToAdd = {
         id: conversationId,
@@ -569,55 +439,33 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
         conversation_title: `${normalizedServiceName} - ${targetUserType === 'vendor' ? (targetUserName || 'Vendor Name') : (user.businessName || user.email || 'Unknown')}`,
         is_local: true // Mark as local conversation
       };
-      
-      console.log('✅ [UnifiedMessaging] Local conversation object created:', conversationToAdd);
     } else {
-      console.log('✅ [UnifiedMessaging] API conversation creation successful, using API response');
     }
 
     if (conversationToAdd) {
-      console.log('🔄 [UnifiedMessaging] Transforming conversation to unified format...');
       const unifiedConversation = transformToUnifiedConversation(conversationToAdd);
-      console.log('✅ [UnifiedMessaging] Unified conversation created:', unifiedConversation);
-      
-      console.log('📋 [UnifiedMessaging] Current conversations before adding:', conversations.length);
-      
       setConversations(prev => {
-        console.log('🔍 [UnifiedMessaging] Checking for existing conversation with ID:', conversationId);
-        
         // Check if conversation already exists to avoid duplicates
         const existingIndex = prev.findIndex(conv => conv.id === conversationId);
-        console.log('🔍 [UnifiedMessaging] Existing conversation index:', existingIndex);
-        
         let updatedConversations;
         if (existingIndex >= 0) {
-          console.log('♻️ [UnifiedMessaging] Updating existing conversation at index:', existingIndex);
           // Update existing conversation
           updatedConversations = prev.map((conv, index) => 
             index === existingIndex ? unifiedConversation : conv
           );
         } else {
-          console.log('➕ [UnifiedMessaging] Adding new conversation to top of list');
           // Add new conversation at the top
           updatedConversations = [unifiedConversation, ...prev];
         }
-        
-        console.log('📋 [UnifiedMessaging] Updated conversations count:', updatedConversations.length);
-        
         // Sort conversations by updatedAt (most recent first)
         const sortedConversations = updatedConversations.sort((a: UnifiedConversation, b: UnifiedConversation) => 
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
-        
-        console.log('📋 [UnifiedMessaging] Final sorted conversations count:', sortedConversations.length);
         return sortedConversations;
       });
       
       // Return the conversation ID for immediate use
       const actualConversationId = conversationToAdd.id || conversationId;
-      console.log('🎉 [UnifiedMessaging] =================== CREATE CONVERSATION SUCCESS ===================');
-      console.log('✅ [UnifiedMessaging] Conversation created/added to UI:', actualConversationId, newConversation ? '(API)' : '(LOCAL)');
-      console.log('🎯 [UnifiedMessaging] Returning conversation ID for use:', actualConversationId);
       return actualConversationId;
     }
 
@@ -632,45 +480,23 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
     serviceType?: string,
     vendorName?: string
   ): Promise<string | null> => {
-    console.log('🏢 [UnifiedMessaging] =================== CREATE BUSINESS CONVERSATION START ===================');
-    console.log('🔍 [UnifiedMessaging] Business conversation parameters:', {
-      vendorId,
-      bookingId,
-      serviceType,
-      vendorName,
-      currentUserId: user?.id,
-      currentUserRole: user?.role
-    });
-    
-    console.log('🔄 [UnifiedMessaging] Calling createConversation with vendor details...');
     const conversationId = await createConversation(vendorId, 'vendor', vendorName, serviceType);
-    console.log('📨 [UnifiedMessaging] createConversation result:', conversationId);
-    
     if (conversationId && (bookingId || serviceType)) {
-      console.log('🏷️ [UnifiedMessaging] Adding business context to conversation:', { bookingId, serviceType, vendorName });
-      
       // Update conversation with business context
       setConversations(prev =>
         prev.map(conv => {
           if (conv.id === conversationId) {
-            console.log('✅ [UnifiedMessaging] Updated conversation with business context:', conv.id);
             return { ...conv, businessContext: { bookingId, serviceType, vendorBusinessName: vendorName || conv.participantNames[vendorId] } };
           }
           return conv;
         })
       );
     } else if (conversationId) {
-      console.log('ℹ️ [UnifiedMessaging] Business conversation created without additional context');
     }
-    
-    console.log('🎉 [UnifiedMessaging] =================== CREATE BUSINESS CONVERSATION END ===================');
-    console.log('📋 [UnifiedMessaging] Final business conversation ID:', conversationId);
     return conversationId;
   }, [createConversation]);
 
   const setActiveConversation = useCallback((conversationId: string | null) => {
-    console.log('🎯 [UnifiedMessaging] setActiveConversation called with:', conversationId);
-    
     if (!conversationId) {
       setActiveConversationState(null);
       return;
@@ -678,16 +504,12 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
 
     // Use functional state update to avoid dependency on conversations array
     setConversations(currentConversations => {
-      console.log('🔍 [UnifiedMessaging] Available conversations:', currentConversations.map(c => c.id));
-      
       const conversation = currentConversations.find(c => c.id === conversationId);
       
       if (conversation) {
-        console.log('✅ [UnifiedMessaging] Found conversation, setting as active:', conversation.id);
         setActiveConversationState(conversation);
         loadMessages(conversation.id);
       } else {
-        console.warn('⚠️ [UnifiedMessaging] Conversation not found in array, creating minimal conversation object');
         // Create a minimal conversation object for immediate use
         const minimalConversation: UnifiedConversation = {
           id: conversationId,
@@ -713,9 +535,6 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
 
   const markAsRead = useCallback(async (conversationId: string): Promise<void> => {
     if (!user?.id) return;
-
-    console.log('👁️ [UnifiedMessaging] Marking conversation as read:', conversationId);
-    
     await handleApiCall(() =>
       MessagingApiService.markAsRead(conversationId, user.id)
     );
@@ -740,7 +559,6 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
   // Auto-load conversations when user changes
   useEffect(() => {
     if (user?.id) {
-      console.log('🔄 [UnifiedMessaging] User changed, loading conversations for:', user.id);
       loadConversations();
     } else {
       // Clear data when user logs out
@@ -756,7 +574,6 @@ export const UnifiedMessagingProvider: React.FC<UnifiedMessagingProviderProps> =
     if (!user?.id) return;
 
     const interval = setInterval(() => {
-      console.log('🔄 [UnifiedMessaging] Auto-refreshing conversations...');
       loadConversations();
     }, 30000);
 

@@ -95,7 +95,6 @@ const mapToUIBookingStats = (data: any): UIBookingStats => ({
 });
 
 const downloadCSV = (data: any[], filename: string) => {
-  console.log('CSV download requested:', filename, data.length, 'items');
   alert('CSV download feature will be implemented in a future update.');
 };
 
@@ -113,7 +112,6 @@ const downloadJSON = (data: any[], filename: string) => {
 };
 
 const handleContactClient = (booking: UIBooking) => {
-  console.log('Contact client:', booking.coupleName);
   if (booking.contactEmail) {
     window.open(`mailto:${booking.contactEmail}?subject=Regarding your booking for ${booking.serviceType}`);
   } else {
@@ -126,8 +124,6 @@ const handleContactClient = (booking: UIBooking) => {
  * Two-sided completion: Both vendor and couple must confirm
  */
 const handleMarkComplete = async (booking: UIBooking) => {
-  console.log('🎉 [VendorBookingsSecure] Mark Complete clicked for booking:', booking.id);
-
   // Check if booking is fully paid
   const isFullyPaid = (booking.status as string) === 'fully_paid' || 
                      (booking.status as string) === 'paid_in_full' || 
@@ -166,9 +162,6 @@ const handleMarkComplete = async (booking: UIBooking) => {
     if (!response.ok) {
       throw new Error(data.error || data.message || 'Failed to mark booking as completed');
     }
-
-    console.log('✅ [VendorBookingsSecure] Booking completion updated:', data);
-
     // Show success message
     const successMsg = data.waiting_for === null
       ? '🎉 Booking Fully Completed!\n\nBoth you and the couple have confirmed. The booking is now marked as completed.'
@@ -279,14 +272,6 @@ export const VendorBookingsSecure: React.FC = () => {
   const vendorId = user?.id || user?.vendorId;
   
   const apiUrl = process.env.REACT_APP_API_URL || 'https://weddingbazaar-web.onrender.com';
-  
-  console.log('🔍 [VendorBookingsSecure] Vendor ID resolution:', {
-    userId: user?.id,
-    vendorIdUUID: user?.vendorId,
-    selectedVendorId: vendorId,
-    willQueryWith: vendorId
-  });
-
   /**
    * SECURITY-ENHANCED: Load bookings with proper access control
    */
@@ -298,9 +283,6 @@ export const VendorBookingsSecure: React.FC = () => {
       if (!vendorId) {
         throw new Error('Vendor ID not available');
       }
-
-      console.log(`🔐 Loading bookings for vendor: ${vendorId}`);
-
       const response = await fetch(`${apiUrl}/api/bookings/vendor/${vendorId}`, {
         headers: {
           'Content-Type': 'application/json',
@@ -338,17 +320,6 @@ export const VendorBookingsSecure: React.FC = () => {
 
       // 🔍 DETAILED STATUS DEBUG: Log raw booking data from API
       if (data.bookings && data.bookings.length > 0) {
-        console.log('🔍 [VendorBookingsSecure] RAW BOOKING DATA FROM API:', data.bookings.map((b: any) => ({
-          id: b.id,
-          status: b.status,
-          statusType: typeof b.status,
-          statusLength: b.status?.length,
-          statusTrimmed: b.status?.trim(),
-          payment_status: b.payment_status,
-          total_amount: b.total_amount,
-          total_paid: b.total_paid,
-          couple_name: b.couple_name
-        })));
       }
 
       // SECURITY VALIDATION: Verify response integrity
@@ -374,17 +345,7 @@ export const VendorBookingsSecure: React.FC = () => {
       }).filter(Boolean);
 
       // 🔍 DEBUG: Log transformed booking statuses
-      console.log('🎯 [VendorBookingsSecure] TRANSFORMED BOOKING STATUSES:', mappedBookings.map((b: any) => ({
-        id: b.id,
-        originalStatus: data.bookings.find((rb: any) => rb.id === b.id)?.status,
-        transformedStatus: b.status,
-        statusMatch: data.bookings.find((rb: any) => rb.id === b.id)?.status === b.status,
-        coupleName: b.coupleName
-      })));
-
       setBookings(mappedBookings);
-      console.log(`✅ Loaded ${mappedBookings.length} secure bookings`);
-
     } catch (error) {
       console.error('❌ Failed to load bookings:', error);
       setError('Failed to load bookings. Please try again.');
@@ -730,19 +691,6 @@ export const VendorBookingsSecure: React.FC = () => {
               <AnimatePresence>
                 {filteredBookings.map((booking, index) => {
                   // 🔍 DEBUG: Log booking status before rendering
-                  console.log(`🎯 [VendorBookingsSecure] RENDERING BOOKING #${index}:`, {
-                    id: booking.id,
-                    status: booking.status,
-                    statusType: typeof booking.status,
-                    coupleName: booking.coupleName,
-                    willShowAs: booking.status === 'fully_paid' ? 'Fully Paid (should be blue)' : 
-                               booking.status === 'cancelled' ? 'Cancelled (red)' :
-                               booking.status === 'request' ? 'New Request (blue)' :
-                               booking.status === 'pending_review' ? 'Pending Review (yellow)' :
-                               booking.status === 'completed' ? 'Completed (gray)' :
-                               `${booking.status} (check mapping...)`
-                  });
-                  
                   return (
                   <motion.div
                     key={booking.id}
@@ -1021,7 +969,6 @@ export const VendorBookingsSecure: React.FC = () => {
                       <div className="flex items-center justify-end gap-2 pt-4 border-t border-gray-200">
                         <button
                           onClick={() => {
-                            console.log('🔍 [VendorBookingsSecure] View Details clicked for booking:', booking.id);
                             setSelectedBooking(booking);
                             setShowDetailsModal(true);
                           }}
@@ -1044,7 +991,6 @@ export const VendorBookingsSecure: React.FC = () => {
                         {(booking.status === 'request' || booking.status === 'pending_review') && (
                           <button
                             onClick={() => {
-                              console.log('Send quote clicked for booking:', booking.id);
                               setSelectedBooking(booking);
                               setShowQuoteModal(true);
                             }}
@@ -1099,7 +1045,6 @@ export const VendorBookingsSecure: React.FC = () => {
             setSelectedBooking(null);
           }}
           onUpdateStatus={async (bookingId: string, newStatus: string, message?: string) => {
-            console.log('Status update:', bookingId, newStatus, message);
             await handleSecureRefresh();
           }}
           onSendQuote={(booking) => {
@@ -1108,7 +1053,6 @@ export const VendorBookingsSecure: React.FC = () => {
             setShowQuoteModal(true);
           }}
           onContactClient={(booking) => {
-            console.log('Contact client:', booking.coupleName);
             window.location.href = `mailto:${booking.contactEmail}`;
           }}
         />
@@ -1137,7 +1081,6 @@ export const VendorBookingsSecure: React.FC = () => {
             setSelectedBooking(null);
           }}
           onSendQuote={async (quoteData) => {
-            console.log('Quote sent:', quoteData);
             // Refresh bookings after quote is sent
             await handleSecureRefresh();
             setShowQuoteModal(false);

@@ -42,7 +42,7 @@ async function testEnhancedGeolocation() {
   try {
     const { getCurrentLocationWithAddress } = await import('./geolocation-enhanced');
     const result = await getCurrentLocationWithAddress();
-    console.log('✅ Current location result:', result);
+    // console.log('✅ Current location result:', result);
   } catch (error) {
     console.log('ℹ️ Current location test (requires user permission):', error instanceof Error ? error.message : 'Unknown error');
   }

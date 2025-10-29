@@ -72,7 +72,6 @@ class OptimizedFetcher {
     if (cacheKey && this.cache.has(cacheKey)) {
       const cached = this.cache.get(cacheKey)!;
       if (Date.now() - cached.timestamp < cached.ttl) {
-        console.log(`⚡ [OptimizedFetcher] Cache hit for ${cacheKey}`);
         return cached.data;
       }
       this.cache.delete(cacheKey);
@@ -80,13 +79,10 @@ class OptimizedFetcher {
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.log(`⏰ [OptimizedFetcher] Timeout after ${timeout}ms for ${url}`);
       controller.abort();
     }, timeout);
 
     try {
-      console.log(`🚀 [OptimizedFetcher] Fast fetch to ${url} (timeout: ${timeout}ms)`);
-      
       const response = await fetch(`${this.baseUrl}${url}`, {
         ...options,
         signal: controller.signal,
@@ -111,7 +107,6 @@ class OptimizedFetcher {
           timestamp: Date.now(),
           ttl: cacheTtl
         });
-        console.log(`💾 [OptimizedFetcher] Cached response for ${cacheKey}`);
       }
 
       return data;
@@ -138,9 +133,6 @@ class OptimizedFetcher {
       cacheKey?: string;
     }>
   ): Promise<Array<{ success: boolean; data?: T; error?: string }>> {
-    
-    console.log(`🔄 [OptimizedFetcher] Parallel fetch of ${requests.length} requests`);
-    
     const promises = requests.map(async (req) => {
       try {
         const data = await this.fetch<T>(
@@ -200,7 +192,6 @@ export class OptimizedBookingApiService {
       await this.fetcher.fetch('/api/health', {}, FETCH_TIMEOUTS.HEALTH_CHECK, 'health', 10000);
       return true;
     } catch (error) {
-      console.log('⚠️ [OptimizedBooking] Health check failed:', error);
       return false;
     }
   }
@@ -213,7 +204,6 @@ export class OptimizedBookingApiService {
     
     // Prevent duplicate requests
     if (this.requestQueue.has(requestId)) {
-      console.log('🔄 [OptimizedBooking] Preventing duplicate booking request');
       return this.requestQueue.get(requestId);
     }
 
@@ -231,8 +221,6 @@ export class OptimizedBookingApiService {
   }
 
   private async _createBookingRequestInternal(bookingData: any, userId?: string): Promise<any> {
-    console.log('🚀 [OptimizedBooking] Creating booking request with fast API');
-
     // Parallel health check and booking creation preparation
     const [healthOk] = await Promise.allSettled([
       this.healthCheck()
@@ -241,16 +229,12 @@ export class OptimizedBookingApiService {
     const isHealthy = healthOk.status === 'fulfilled' && healthOk.value;
 
     if (!isHealthy) {
-      console.log('⚠️ [OptimizedBooking] Backend unhealthy, using fallback');
       return this.createFallbackBooking(bookingData, userId);
     }
 
     try {
       // Optimized payload preparation
       const optimizedPayload = this.prepareBookingPayload(bookingData, userId);
-      
-      console.log('📤 [OptimizedBooking] Sending optimized booking request');
-      
       const response = await this.fetcher.fetch<ApiResponse<BookingRequest>>(
         '/api/bookings/request',
         {
@@ -264,8 +248,6 @@ export class OptimizedBookingApiService {
       );
 
       if (response.success && response.data) {
-        console.log('✅ [OptimizedBooking] Booking created successfully');
-        
         // Clear relevant caches
         this.fetcher.clearCache('bookings');
         
@@ -279,7 +261,6 @@ export class OptimizedBookingApiService {
       
       // Smart fallback based on error type
       if (error instanceof Error && error.message.includes('timeout')) {
-        console.log('⏰ [OptimizedBooking] Timeout detected, using fallback');
       }
       
       return this.createFallbackBooking(bookingData, userId);
@@ -300,9 +281,6 @@ export class OptimizedBookingApiService {
       serviceType?: string[];
     } = {}
   ): Promise<BookingListResponse> {
-    
-    console.log('�️ [OptimizedBooking] Database-optimized booking fetch');
-
     const queryParams = new URLSearchParams({
       page: (options.page || 1).toString(),
       limit: (options.limit || 50).toString(),
@@ -331,7 +309,6 @@ export class OptimizedBookingApiService {
       );
 
       if (response.success || (response as any).bookings) {
-        console.log('✅ [OptimizedBooking] Database query successful');
         return this.formatBookingListResponse(response);
       }
 
@@ -364,12 +341,8 @@ export class OptimizedBookingApiService {
     startDate: string, 
     endDate: string
   ): Promise<Map<string, { isAvailable: boolean; bookings: any[] }>> {
-    
-    console.log('🗄️ [OptimizedBooking] Database availability check:', { vendorId, startDate, endDate });
-    
     try {
       // 🔄 COMPATIBILITY FIX: Use fallback method since /availability endpoint doesn't exist
-      console.log('🔄 [OptimizedBooking] Using fallback availability calculation');
       return await this.calculateAvailabilityFromBookings(vendorId, startDate, endDate);
 
     } catch (error) {
@@ -423,8 +396,6 @@ export class OptimizedBookingApiService {
           bookings: existingBookings
         });
       }
-
-      console.log(`✅ [OptimizedBooking] Calculated availability for ${dates.length} dates from ${response.bookings?.length || 0} bookings`);
       return availabilityMap;
 
     } catch (error) {
@@ -604,9 +575,6 @@ export class OptimizedBookingApiService {
    */
   private createFallbackBooking(bookingData: any, userId?: string): any {
     const fallbackId = `fallback-${Date.now()}`;
-    
-    console.log('🔄 [OptimizedBooking] Creating optimized fallback booking');
-    
     return {
       id: fallbackId,
       userId: userId || bookingData.user_id || '1-2025-001',
@@ -694,8 +662,6 @@ export class OptimizedBookingApiService {
    */
   async updateBookingStatus(bookingId: string, status: string, message?: string): Promise<any> {
     try {
-      console.log('🔄 [OptimizedBooking] Updating booking status:', { bookingId, status, message });
-      
       const response = await this.fetcher.fetch<ApiResponse<any>>(
         `/api/bookings/${bookingId}/status`,
         {
@@ -708,7 +674,6 @@ export class OptimizedBookingApiService {
       if (response.success) {
         // Clear cache to force refresh
         this.fetcher.clearCache('bookings');
-        console.log('✅ [OptimizedBooking] Booking status updated successfully');
         return response.data;
       }
 

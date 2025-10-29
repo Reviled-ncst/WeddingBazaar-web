@@ -175,17 +175,8 @@ export const VendorServices: React.FC = () => {
 
   // Handle upgrade modal opening - FIXED to use centralized UpgradePrompt
   const handleOpenUpgradeModal = () => {
-    console.log('🚀 [VendorServices] Opening centralized upgrade modal (with payment)');
-    
     const currentTier = subscription?.plan?.tier || 'basic';
     const maxServices = subscription?.plan?.limits?.max_services || 5;
-    
-    console.log('📊 Current subscription:', {
-      tier: currentTier,
-      maxServices: maxServices === -1 ? 'Unlimited' : maxServices,
-      currentCount: services.length
-    });
-    
     // Use the centralized showUpgradePrompt from SubscriptionContext
     // This will show the REAL payment modal for paid plans
     showUpgradePrompt(
@@ -230,7 +221,6 @@ export const VendorServices: React.FC = () => {
     
     // Check email verification first
     if (!verification.emailVerified) {
-      console.log('🔒 Service creation blocked: Email not verified');
       return false;
     }
     
@@ -241,19 +231,6 @@ export const VendorServices: React.FC = () => {
     // Handle unlimited services (-1) or check if below limit
     const canAdd = maxServices === -1 || currentServicesCount < maxServices;
     
-    console.log('🔒 Service creation permission check:', {
-      emailVerified: verification.emailVerified,
-      emailSource: 'Firebase (real-time)',
-      documentsVerified: verification.documentsVerified,
-      businessVerified: verification.businessVerified,
-      overallStatus: verification.overallStatus,
-      currentServices: currentServicesCount,
-      maxServices: maxServices === -1 ? 'Unlimited' : maxServices,
-      subscriptionTier: subscription?.plan?.tier || 'free',
-      canAddServices: canAdd,
-      note: 'Email verification now reads from Firebase directly (matches VendorProfile)'
-    });
-    
     return canAdd;
   };
   
@@ -262,7 +239,6 @@ export const VendorServices: React.FC = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const highlightId = urlParams.get('highlight');
     if (highlightId) {
-      console.log('🎯 Highlighting service:', highlightId);
       setHighlightedServiceId(highlightId);
       
       // Scroll to highlighted service after a short delay
@@ -270,33 +246,17 @@ export const VendorServices: React.FC = () => {
         const element = document.querySelector(`[data-service-id="${highlightId}"]`);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          console.log('📜 Scrolled to highlighted service:', highlightId);
         }
       }, 1000);
       
       // Remove highlight after 10 seconds (extended for better visibility)
       setTimeout(() => {
-        console.log('⏰ Removing highlight from service:', highlightId);
         setHighlightedServiceId(null);
       }, 10000);
     }
   }, []);
   
   // Debug logging
-  console.log('🔍 VendorServices Debug Info:', {
-    user: user,
-    vendorId: vendorId,
-    userRole: user?.role,
-    isAuthenticated: !!user,
-    highlightedServiceId: highlightedServiceId,
-    userVendorId: user?.vendorId,
-    userId: user?.id,
-    verificationStatus: getVerificationStatus(),
-    canAddServices: canAddServices(),
-    profile: profile ? 'loaded' : 'not loaded',
-    documentsCount: profile?.documents?.length || 0
-  });
-
   // Service statistics with proper field mapping - dynamic calculations
   const serviceStats = {
     total: services.length,
@@ -338,9 +298,6 @@ export const VendorServices: React.FC = () => {
         setServices([]);
         return;
       }
-
-      console.log(`🔄 Loading services for vendor ${vendorId}...`);
-      
       const response = await fetch(`${apiUrl}/api/services/vendor/${vendorId}`, {
         method: 'GET',
         headers: {
@@ -350,15 +307,12 @@ export const VendorServices: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Services loaded successfully:', result);
-        
         if (result.success && Array.isArray(result.services)) {
           setServices(result.services);
         } else {
           setServices([]);
         }
       } else {
-        console.warn('⚠️ API response not OK, trying fallback...');
         setServices([]);
       }
       
@@ -383,34 +337,24 @@ export const VendorServices: React.FC = () => {
   const ensureVendorProfile = async (): Promise<boolean> => {
     try {
       const targetVendorId = user?.vendorId || user?.id || vendorId;
-      console.log('🔍 Checking if vendor profile exists for:', targetVendorId);
-      console.log('🔍 User object:', { id: user?.id, vendorId: user?.vendorId, role: user?.role });
-      
       // Check if vendor profile exists using the correct API
       // Try vendor profile API first (new system)
       const checkResponse = await fetch(`${apiUrl}/api/vendor-profile/${targetVendorId}`);
       
       if (checkResponse.ok) {
-        console.log('✅ Vendor profile exists in vendor_profiles table');
         return true;
       }
       
       if (checkResponse.status === 404) {
-        console.log('❌ Vendor profile not found');
-        console.log('🔍 Attempted URL:', `${apiUrl}/api/vendor-profile/${targetVendorId}`);
-        
         // Try looking up by user ID as fallback
         const userIdCheck = await fetch(`${apiUrl}/api/vendor-profile/user/${user?.id}`);
         if (userIdCheck.ok) {
-          console.log('✅ Vendor profile found by user ID');
           return true;
         }
         
         setError('Vendor profile required. Please complete your business profile first.');
         return false;
       }
-      
-      console.log('⚠️ Error checking vendor profile:', checkResponse.status);
       return false;
       
     } catch (error) {
@@ -423,8 +367,6 @@ export const VendorServices: React.FC = () => {
   // Handle form submission with enhanced debugging
   const handleSubmit = async (serviceData: any) => {
     try {
-      console.log('💾 Saving service:', serviceData);
-      
       // First ensure vendor profile exists
       const hasVendorProfile = await ensureVendorProfile();
       if (!hasVendorProfile) {
@@ -439,13 +381,6 @@ export const VendorServices: React.FC = () => {
         if (currentServicesCount >= maxServices) {
           const planName = subscription?.plan?.name || 'Basic';
           const nextPlan = subscription?.plan?.tier === 'basic' ? 'premium' : 'pro';
-          
-          console.log('🚫 [VendorServices] Service limit reached:', {
-            current: currentServicesCount,
-            limit: maxServices,
-            plan: planName
-          });
-          
           // Show centralized upgrade modal (with payment integration)
           showUpgradePrompt(
             `You've reached the maximum of ${maxServices} services for your ${planName} plan. Upgrade to unlock more!`,
@@ -477,27 +412,11 @@ export const VendorServices: React.FC = () => {
         ...serviceData,
         vendor_id: correctVendorId, // Use user ID format that matches vendors.id
       };
-      
-      console.log('🔍 [VendorServices] Making API request:', {
-        url,
-        method,
-        vendorId_used: correctVendorId,
-        vendorId_type: typeof correctVendorId,
-        user_id: user?.id,
-        user_vendorId_uuid: user?.vendorId,
-        vendorId_state: vendorId,
-        note: 'Using user.id format (2-2025-003) - matches vendors.id',
-        payload: JSON.stringify(payload, null, 2)
-      });
-      
       // Debug each field length to identify the problematic one
-      console.log('🔍 [VendorServices] Field length analysis:');
       Object.keys(payload).forEach(key => {
         const value = payload[key];
         if (typeof value === 'string') {
-          console.log(`  ${key}: "${value}" (${value.length} chars) ${value.length > 20 ? '❌ TOO LONG!' : '✅'}`);
         } else {
-          console.log(`  ${key}: ${typeof value} (${JSON.stringify(value).length} chars as JSON)`);
         }
       });
       
@@ -508,17 +427,7 @@ export const VendorServices: React.FC = () => {
         },
         body: JSON.stringify(payload),
       });
-
-      console.log('📥 [VendorServices] API Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        url: response.url
-      });
-
       const responseText = await response.text();
-      console.log('📄 [VendorServices] Raw response:', responseText);
-
       let result;
       try {
         result = JSON.parse(responseText);
@@ -529,8 +438,6 @@ export const VendorServices: React.FC = () => {
 
       // ✅ BACKEND CHECK: Handle 403 subscription limit errors
       if (response.status === 403 && result.error?.includes('limit')) {
-        console.log('🚫 [VendorServices] Backend subscription limit reached:', result);
-        
         const planName = subscription?.plan?.name || 'Basic';
         const nextPlan = subscription?.plan?.tier === 'basic' ? 'premium' : 'pro';
         const maxServices = subscription?.plan?.limits?.max_services || 5;
@@ -550,9 +457,6 @@ export const VendorServices: React.FC = () => {
         console.error('❌ [VendorServices] API Error Response:', result);
         throw new Error(result.error || result.message || `Failed to ${editingService ? 'update' : 'create'} service`);
       }
-
-      console.log('✅ [VendorServices] Service saved successfully:', result);
-
       setIsCreating(false);
       setEditingService(null);
       await fetchServices();
@@ -587,8 +491,6 @@ export const VendorServices: React.FC = () => {
     }
 
     try {
-      console.log(`🗑️ Deleting service ${serviceId}...`);
-      
       const response = await fetch(`${apiUrl}/api/services/${serviceId}`, {
         method: 'DELETE',
         headers: {
@@ -602,8 +504,6 @@ export const VendorServices: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('✅ Service deleted successfully:', result);
-
       if (result.softDelete) {
         alert('✅ Service deleted successfully!\n\nNote: The service was preserved in our records due to existing bookings, but it\'s no longer visible to customers.');
       } else {
@@ -624,9 +524,6 @@ export const VendorServices: React.FC = () => {
     try {
       const currentStatus = service.is_active;
       const newStatus = !currentStatus;
-      
-      console.log(`🔄 Toggling service ${service.id} availability: ${currentStatus} → ${newStatus}`);
-      
       const response = await fetch(`${apiUrl}/api/services/${service.id}`, {
         method: 'PUT',
         headers: {
@@ -718,8 +615,6 @@ export const VendorServices: React.FC = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-
-      console.log('✅ Service data exported successfully');
     } catch (error) {
       console.error('❌ Error exporting service data:', error);
       setError('Failed to export service data');
@@ -1621,14 +1516,8 @@ export const VendorServices: React.FC = () => {
                               text: `Check out this amazing wedding service!\n\n${serviceName}\n${service.description || ''}`,
                               url: serviceUrl
                             };
-                            
-                            console.log('📤 [Vendor] Sharing service:', serviceName);
-                            console.log('🔗 [Vendor] SECURE Share URL (slug-based, no IDs):', serviceUrl);
-                            
                             // Show custom share modal with the link - ALWAYS ACCESSIBLE
                             const showShareModal = (linkCopied = false) => {
-                              console.log('📱 [Vendor] Opening share modal...');
-                              
                               // Remove any existing share modals first
                               const existingModals = document.querySelectorAll('.share-modal-overlay');
                               existingModals.forEach(m => m.remove());
@@ -1731,14 +1620,12 @@ export const VendorServices: React.FC = () => {
                               // Add click outside to close
                               modal.addEventListener('click', (e) => {
                                 if (e.target === modal) {
-                                  console.log('📱 [Vendor] Closing modal (clicked outside)');
                                   modal.remove();
                                 }
                               });
                               
                               // Auto-remove after 5 minutes
                               const autoCloseTimeout = setTimeout(() => {
-                                console.log('📱 [Vendor] Auto-closing modal after 5 minutes');
                                 if (modal.parentElement) {
                                   modal.remove();
                                 }
@@ -1756,11 +1643,9 @@ export const VendorServices: React.FC = () => {
                             // Try to copy to clipboard first (optional), then always show modal
                             navigator.clipboard.writeText(serviceUrl)
                               .then(() => {
-                                console.log('✅ [Vendor] Link copied to clipboard');
                                 showShareModal(true);
                               })
                               .catch((err) => {
-                                console.warn('⚠️ [Vendor] Could not copy to clipboard (this is OK):', err);
                                 showShareModal(false);
                               });
                           }}

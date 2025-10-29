@@ -38,9 +38,6 @@ class CentralizedBookingAPI {
   constructor() {
     // Use production backend URL - check both possible env var names
     this.baseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://weddingbazaar-web.onrender.com';
-    console.log('🚀 [CentralizedBookingAPI] Initialized with base URL:', this.baseUrl);
-    console.log('🔧 [CentralizedBookingAPI] ENV VITE_API_URL:', import.meta.env.VITE_API_URL);
-    console.log('🔧 [CentralizedBookingAPI] ENV VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
   }
 
   // ================== AUTHENTICATION ==================
@@ -65,8 +62,6 @@ class CentralizedBookingAPI {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    console.log(`📡 [API] ${options.method || 'GET'} ${url}`);
-
     const config: RequestInit = {
       ...options,
       headers: {
@@ -82,8 +77,6 @@ class CentralizedBookingAPI {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const timeoutMs = timeouts[attempt];
-        console.log(`🔄 [API] Attempt ${attempt + 1}/${maxRetries} (${timeoutMs/1000}s timeout)`);
-
         // Create timeout promise
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs);
@@ -100,7 +93,6 @@ class CentralizedBookingAPI {
         }
 
         const data = await response.json();
-        console.log(`✅ [API] Response:`, { status: response.status, hasData: !!data, attempt: attempt + 1 });
         return data;
 
       } catch (error: any) {
@@ -122,7 +114,6 @@ class CentralizedBookingAPI {
         
         // If timeout or network error, wait a bit before retry
         if (error.message.includes('timeout') || error.message.includes('fetch')) {
-          console.log(`⏳ [API] Backend may be sleeping, waiting before retry...`);
           await new Promise(resolve => setTimeout(resolve, 2000)); // 2s wait between retries
         }
       }
@@ -156,8 +147,6 @@ class CentralizedBookingAPI {
     budget_range?: string;
     metadata?: Record<string, any>;
   }, userId: string): Promise<Booking> {
-    console.log('🔥 [API] Creating booking:', { bookingData, userId });
-
     return this.request<Booking>('/api/bookings', {
       method: 'POST',
       body: JSON.stringify({
@@ -210,8 +199,6 @@ class CentralizedBookingAPI {
       status?: BookingStatus[];
     } = {}
   ): Promise<BookingsListResponse> {
-    console.log('👥 [API] Fetching couple bookings:', { userId, options });
-
     const params = new URLSearchParams();
     if (options.page) params.append('page', options.page.toString());
     if (options.limit) params.append('limit', options.limit.toString());
@@ -224,17 +211,14 @@ class CentralizedBookingAPI {
     // Try multiple endpoints for compatibility
     try {
       // Primary endpoint: Enhanced bookings API
-      console.log('🎯 [API] Trying enhanced endpoint first...');
       return await this.request<BookingsListResponse>(
         `/api/bookings/enhanced?coupleId=${userId}&${params.toString()}`
       );
     } catch (primaryError) {
-      console.warn('⚠️ [API] Enhanced endpoint failed, trying couple endpoint');
       console.warn('🔍 [API] Primary error:', primaryError.message);
       
       try {
         // Fallback: Couple-specific endpoint
-        console.log('🎯 [API] Trying couple endpoint as fallback...');
         return await this.request<BookingsListResponse>(
           `/api/bookings/couple/${userId}?${params.toString()}`
         );
@@ -243,7 +227,6 @@ class CentralizedBookingAPI {
         console.error('🔍 [API] Fallback error:', fallbackError.message);
         
         // Final fallback: Return simulated bookings to ensure UI works
-        console.log('🔄 [API] Providing simulated bookings for user experience');
         return this.getSimulatedBookings(userId);
       }
     }
@@ -262,8 +245,6 @@ class CentralizedBookingAPI {
       status?: BookingStatus[];
     } = {}
   ): Promise<BookingsListResponse> {
-    console.log('🏪 [API] Fetching vendor bookings:', { vendorId, options });
-
     const params = new URLSearchParams();
     if (options.page) params.append('page', options.page.toString());
     if (options.limit) params.append('limit', options.limit.toString());
@@ -292,8 +273,6 @@ class CentralizedBookingAPI {
       dateTo?: string;
     } = {}
   ): Promise<BookingsListResponse> {
-    console.log('👑 [API] Fetching admin bookings:', options);
-
     const params = new URLSearchParams();
     if (options.page) params.append('page', options.page.toString());
     if (options.limit) params.append('limit', options.limit.toString());
@@ -314,7 +293,6 @@ class CentralizedBookingAPI {
    * Get a single booking by ID
    */
   async getBookingById(bookingId: string): Promise<Booking> {
-    console.log('🔍 [API] Fetching booking:', bookingId);
     return this.request<Booking>(`/api/bookings/${bookingId}`);
   }
 
@@ -328,16 +306,11 @@ class CentralizedBookingAPI {
     status: BookingStatus, 
     message?: string
   ): Promise<Booking> {
-    console.log('🔄 [API] Updating booking status:', { bookingId, status, message });
-
     try {
       const result = await this.request<Booking>(`/api/bookings/${bookingId}/update-status`, {
         method: 'PUT',
         body: JSON.stringify({ status, vendorNotes: message }),
       });
-      console.log('✅ [API] Status update successful:', result);
-      console.log('🔍 [API] Backend returned booking with status:', result?.status || 'UNDEFINED');
-      console.log('🔍 [API] Full backend response structure:', Object.keys(result || {}));
       return result;
     } catch (error) {
       console.error('💥 [API] Status update failed:', error);
@@ -355,8 +328,6 @@ class CentralizedBookingAPI {
         error.message.includes('Not Found') ||
         error.message.includes('Cannot PUT')
       )) {
-        console.warn('⚠️ [API] Status update endpoint not available - using mock response');
-        
         // Return a mock successful response to prevent frontend errors
         return {
           id: bookingId,
@@ -375,8 +346,6 @@ class CentralizedBookingAPI {
    * Confirm a booking (vendor action)
    */
   async confirmBooking(bookingId: string, message?: string): Promise<Booking> {
-    console.log('✅ [API] Confirming booking:', bookingId);
-
     return this.request<Booking>(`/api/bookings/${bookingId}/confirm`, {
       method: 'POST',
       body: JSON.stringify({ message }),
@@ -387,8 +356,6 @@ class CentralizedBookingAPI {
    * Cancel a booking
    */
   async cancelBooking(bookingId: string, reason?: string): Promise<Booking> {
-    console.log('❌ [API] Cancelling booking:', bookingId);
-
     return this.request<Booking>(`/api/bookings/${bookingId}/cancel`, {
       method: 'POST',
       body: JSON.stringify({ reason }),
@@ -399,8 +366,6 @@ class CentralizedBookingAPI {
    * Mark booking as completed
    */
   async completeBooking(bookingId: string, message?: string): Promise<Booking> {
-    console.log('🎉 [API] Completing booking:', bookingId);
-
     return this.request<Booking>(`/api/bookings/${bookingId}/complete`, {
       method: 'POST',
       body: JSON.stringify({ message }),
@@ -411,8 +376,6 @@ class CentralizedBookingAPI {
    * Mark booking as delivered (vendor action)
    */
   async markDelivered(bookingId: string, message?: string): Promise<Booking> {
-    console.log('📦 [API] Marking booking as delivered:', bookingId);
-
     return this.request<Booking>(`/api/bookings/${bookingId}/deliver`, {
       method: 'POST',
       body: JSON.stringify({ message }),
@@ -435,8 +398,6 @@ class CentralizedBookingAPI {
       message?: string;
     }
   ): Promise<Booking> {
-    console.log('💰 [API] Sending quote:', { bookingId, quoteData });
-
     return this.request<Booking>(`/api/bookings/${bookingId}/quote`, {
       method: 'POST',
       body: JSON.stringify(quoteData),
@@ -455,8 +416,6 @@ class CentralizedBookingAPI {
     message?: string;
     error?: string;
   }> {
-    console.log('✅ [CentralizedBookingAPI] Accepting quote for booking:', bookingId);
-    
     try {
       const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/accept-quote`, {
         method: 'PUT',
@@ -475,8 +434,6 @@ class CentralizedBookingAPI {
           error: data.error || `HTTP ${response.status}: ${response.statusText}`
         };
       }
-
-      console.log('✅ [CentralizedBookingAPI] Quote accepted successfully:', data);
       return {
         success: true,
         booking: data.booking,
@@ -508,8 +465,6 @@ class CentralizedBookingAPI {
     message?: string;
     error?: string;
   }> {
-    console.log('💳 [CentralizedBookingAPI] Processing payment for booking:', bookingId, paymentData);
-    
     try {
       const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/process-payment`, {
         method: 'PUT',
@@ -526,8 +481,6 @@ class CentralizedBookingAPI {
           error: data.error || `HTTP ${response.status}: ${response.statusText}`
         };
       }
-
-      console.log('💳 [CentralizedBookingAPI] Payment processed successfully:', data);
       return {
         success: true,
         booking: data.booking,
@@ -556,8 +509,6 @@ class CentralizedBookingAPI {
     remaining_balance?: number;
     error?: string;
   }> {
-    console.log('💰 [CentralizedBookingAPI] Getting payment status for booking:', bookingId);
-    
     try {
       const response = await fetch(`${this.baseUrl}/api/bookings/${bookingId}/payment-status`, {
         method: 'GET',
@@ -573,8 +524,6 @@ class CentralizedBookingAPI {
           error: data.error || `HTTP ${response.status}: ${response.statusText}`
         };
       }
-
-      console.log('💰 [CentralizedBookingAPI] Payment status retrieved:', data);
       return {
         success: true,
         ...data
@@ -603,8 +552,6 @@ class CentralizedBookingAPI {
       groupBy?: 'day' | 'week' | 'month';
     } = {}
   ): Promise<BookingStats> {
-    console.log('📊 [API] Fetching booking stats:', { userId, vendorId, options });
-
     const params = new URLSearchParams();
     if (userId) params.append('userId', userId);
     if (vendorId) params.append('vendorId', vendorId);
@@ -628,8 +575,6 @@ class CentralizedBookingAPI {
       attachments?: string[];
     }
   ): Promise<{ success: boolean; messageId: string }> {
-    console.log('💬 [API] Sending booking message:', { bookingId, message });
-
     return this.request<{ success: boolean; messageId: string }>(
       `/api/bookings/${bookingId}/messages`,
       {
@@ -651,8 +596,6 @@ class CentralizedBookingAPI {
     timestamp: string;
     attachments?: string[];
   }>> {
-    console.log('💬 [API] Fetching booking messages:', bookingId);
-
     return this.request<Array<any>>(`/api/bookings/${bookingId}/messages`);
   }
 
@@ -676,7 +619,6 @@ class CentralizedBookingAPI {
         localStorage.removeItem(key);
       }
     });
-    console.log('🧹 [API] Cache cleared');
   }
 
   // ================== FALLBACK SIMULATION ==================
@@ -686,8 +628,6 @@ class CentralizedBookingAPI {
    * This ensures users always see functional data
    */
   private getSimulatedBookings(userId: string): BookingsListResponse {
-    console.log('🎭 [SIMULATION] Generating simulated bookings for user:', userId);
-    
     const simulatedBookings: Booking[] = [
       {
         id: 'sim-001',
