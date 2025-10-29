@@ -237,15 +237,9 @@ router.get('/:vendorId/transactions', authenticateToken, async (req, res) => {
         currency,
         status,
         booking_id,
-        payment_reference,
-        service_name,
         service_category,
-        customer_name,
-        customer_email,
-        event_date,
         payment_method,
         description,
-        metadata,
         created_at,
         updated_at
       FROM wallet_transactions
