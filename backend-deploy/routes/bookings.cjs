@@ -1,6 +1,7 @@
 const express = require('express');
 const { sql } = require('../config/database.cjs');
 const { createDepositReceipt, createBalanceReceipt, createFullPaymentReceipt } = require('../helpers/receiptGenerator.cjs');
+const emailService = require('../utils/emailService.cjs');
 
 const router = express.Router();
 
@@ -887,6 +888,51 @@ router.post('/request', async (req, res) => {
     
     console.log(`✅ Booking request created: ${bookingId}`);
     console.log('📊 Created booking data:', booking[0]);
+    
+    // 📧 Send email notification to vendor (async, don't wait)
+    try {
+      // Fetch vendor email from database
+      const vendorData = await sql`
+        SELECT 
+          vp.business_name,
+          u.email,
+          u.first_name
+        FROM vendor_profiles vp
+        LEFT JOIN users u ON vp.user_id::text = u.id::text
+        WHERE vp.id::text = ${vendorId}::text
+        LIMIT 1
+      `;
+      
+      if (vendorData && vendorData.length > 0 && vendorData[0].email) {
+        console.log('📧 Sending new booking notification to vendor:', vendorData[0].email);
+        
+        // Send email notification (don't await - fire and forget)
+        emailService.sendNewBookingNotification({
+          email: vendorData[0].email,
+          businessName: vendorData[0].business_name,
+          firstName: vendorData[0].first_name
+        }, {
+          id: bookingId,
+          coupleName: coupleName || 'A couple',
+          coupleEmail: contactEmail || 'Not provided',
+          serviceType: serviceType || 'Wedding Service',
+          eventDate: eventDate,
+          eventLocation: location,
+          guestCount: guestCount,
+          budgetRange: budgetRange,
+          specialRequests: specialRequests,
+          createdAt: new Date().toISOString()
+        }).catch(err => {
+          // Log email error but don't fail booking creation
+          console.error('❌ Failed to send vendor notification email:', err.message);
+        });
+      } else {
+        console.log('⚠️ Vendor email not found, skipping notification');
+      }
+    } catch (emailError) {
+      // Log email error but don't fail booking creation
+      console.error('❌ Error preparing vendor notification:', emailError.message);
+    }
     
     res.json({
       success: true,
