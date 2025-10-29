@@ -260,7 +260,7 @@ router.get('/:vendorId/transactions', authenticateToken, async (req, res) => {
         booking_reference: t.booking_id || 'N/A',
         transaction_type: t.transaction_type,
         transaction_date: t.created_at,
-        amount: parseFloat(t.amount) * 100, // Convert to centavos
+        amount: parseInt(t.amount), // Amount already in centavos
         currency: t.currency || 'PHP',
         payment_method: t.payment_method || 'card',
         payment_type: 'full_payment',
