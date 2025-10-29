@@ -64,23 +64,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
     onClose();
   };
 
-  // Debug: Monitor payment modal state changes
-  useEffect(() => {
-    console.log('🔄 [UpgradePrompt] Payment Modal State Changed:', {
-      paymentModalOpen,
-      hasSelectedPlan: !!selectedPlan,
-      selectedPlanName: selectedPlan?.name,
-      selectedPlanPrice: selectedPlan?.price
-    });
-  }, [paymentModalOpen, selectedPlan]);
-
-  // Debug: Monitor isOpen prop changes
-  useEffect(() => {
-    console.log('🔄 [UpgradePrompt] isOpen prop changed:', {
-      isOpen,
-      timestamp: new Date().toISOString()
-    });
-  }, [isOpen]);
+  // Removed repetitive render logs - keeping only user action logs
 
   // Currency detection and conversion
   useEffect(() => {
@@ -267,97 +251,25 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
 
   // Payment handlers
   const handleUpgradeClick = (plan: any) => {
-    console.log('');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🎯 [UpgradePrompt] UPGRADE BUTTON CLICKED');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📋 Plan Details:', {
-      planId: plan.id,
-      planName: plan.name, 
-      planPrice: plan.price,
-      planDisplayPrice: plan.displayPrice,
-      planFeatures: plan.features?.length || 0,
-      isHighlighted: plan.highlight,
-      isCurrent: plan.current,
-      isPopular: plan.popular
-    });
-    console.log('🔒 State Before Processing:', {
-      isProcessing,
-      paymentModalOpen,
-      hasSelectedPlan: !!selectedPlan,
-      selectedPlanName: selectedPlan?.name || 'none',
-      currency: currency.code,
-      currencyRate: currency.rate
-    });
+    console.log('🎯 [Subscription] Upgrade clicked:', plan.name, `(${currency.symbol}${plan.price})`);
 
     if (isProcessing) {
-      console.warn('⚠️ [UpgradePrompt] Already processing, ignoring click');
-      console.warn('⏳ This prevents double-clicks while processing previous request');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('');
+      console.warn('⚠️ [Subscription] Already processing, ignoring duplicate click');
       return;
     }
 
-    console.log('✅ Proceeding with upgrade process...');
     setIsProcessing(true);
-    console.log('🔐 isProcessing set to TRUE to prevent double-clicks');
     
     if (plan.price === 0) {
-      console.log('');
-      console.log('💰 FREE PLAN DETECTED');
-      console.log('📞 Calling handleFreeUpgrade()...');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('');
-      // Handle free plan upgrade directly
+      console.log('💰 [Subscription] Free plan - processing directly');
       handleFreeUpgrade(plan);
     } else {
-      console.log('');
-      console.log('💳 PAID PLAN DETECTED - OPENING PAYMENT MODAL');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
-      // Open PayMongo payment modal for paid plans
-      const convertedAmount = plan.price * currency.rate;
-      console.log('� Price Conversion:', {
-        originalPricePHP: plan.price,
-        targetCurrency: currency.code,
-        exchangeRate: currency.rate,
-        convertedAmount: convertedAmount.toFixed(2),
-        displayPrice: `${currency.symbol}${convertedAmount.toFixed(2)}`
-      });
-
-      // CRITICAL FIX: Set state synchronously first
-      console.log('');
-      console.log('📝 SETTING MODAL STATE (CRITICAL STEP)');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📝 Selected Plan Object to be stored:', {
-        id: plan.id,
-        name: plan.name,
-        price: plan.price,
-        displayPrice: plan.displayPrice,
-        fullPlanObject: plan
-      });
-      
-      console.log('🔧 Calling setSelectedPlan()...');
+      console.log('💳 [Subscription] Paid plan - opening payment modal');
       setSelectedPlan(plan);
-      console.log('✅ setSelectedPlan() called - plan will be available on next render');
-      
-      console.log('🔧 Calling setPaymentModalOpen(true)...');
       setPaymentModalOpen(true);
-      console.log('✅ setPaymentModalOpen(true) called - modal will open on next render');
-      
-      console.log('');
-      console.log('⏳ STATE UPDATE QUEUED (React will re-render component):');
-      console.log('   • selectedPlan: will be', plan.name);
-      console.log('   • paymentModalOpen: will be TRUE');
-      console.log('   • PayMongoPaymentModal: will render via createPortal');
-      console.log('');
-      console.log('🎬 NEXT: Component will re-render and show payment modal');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('');
       
       // Reset processing state after a delay
       setTimeout(() => {
-        console.log('🔓 [UpgradePrompt] Resetting isProcessing to FALSE (1 second delay)');
         setIsProcessing(false);
       }, 1000);
     }
@@ -820,60 +732,16 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
         const hasSelectedPlan = !!selectedPlan;
         const willRender = hasSelectedPlan && paymentModalOpen;
         
-        console.log('');
-        console.log('🎭 ═══════════════════════════════════════════════════════');
-        console.log('🔍 [UpgradePrompt] PAYMENT MODAL RENDER EVALUATION');
-        console.log('🎭 ═══════════════════════════════════════════════════════');
-        console.log('📊 State Check:', { 
-          hasSelectedPlan, 
-          selectedPlanName: selectedPlan?.name || 'NONE',
-          selectedPlanId: selectedPlan?.id || 'NONE',
-          selectedPlanPrice: selectedPlan?.price || 'NONE',
-          paymentModalOpen,
-          willRender,
-          timestamp: new Date().toISOString()
-        });
-        
-        if (willRender) {
-          console.log('');
-          console.log('✅ ✅ ✅ WILL RENDER PayMongoPaymentModal ✅ ✅ ✅');
-          console.log('🚀 Creating portal to document.body with PayMongoPaymentModal');
-          console.log('💳 Modal Props:');
-          console.log('   • isOpen:', paymentModalOpen);
-          console.log('   • booking.serviceType:', `${selectedPlan.name} Subscription`);
-          console.log('   • amount:', selectedPlan.price * currency.rate);
-          console.log('   • currency:', currency.code);
-          console.log('   • currencySymbol:', currency.symbol);
-          console.log('🎭 ═══════════════════════════════════════════════════════');
-          console.log('');
-        } else {
-          console.log('');
-          console.log('❌ ❌ ❌ WILL NOT RENDER PayMongoPaymentModal ❌ ❌ ❌');
-          console.log('🚫 Reason:', {
-            hasSelectedPlan: hasSelectedPlan ? '✅ YES' : '❌ NO (this is the problem!)',
-            paymentModalOpen: paymentModalOpen ? '✅ YES' : '❌ NO (this is the problem!)',
-            bothRequired: 'Both must be TRUE to render'
-          });
-          console.log('🔍 Debug Info:', {
-            selectedPlanObject: selectedPlan || 'NULL/UNDEFINED',
-            paymentModalOpenValue: paymentModalOpen,
-            typeOfSelectedPlan: typeof selectedPlan,
-            booleanCheckSelectedPlan: !!selectedPlan
-          });
-          console.log('🎭 ═══════════════════════════════════════════════════════');
-          console.log('');
-        }
-        
+        // Removed repetitive render evaluation logs
         return null;
       })()}
       {selectedPlan && paymentModalOpen && createPortal(
         <PayMongoPaymentModal
           isOpen={paymentModalOpen}
           onClose={() => {
-            console.log('🚪 [PayMongoPaymentModal] onClose called');
             setPaymentModalOpen(false);
-            setSelectedPlan(null); // Clear selected plan
-            setIsProcessing(false); // Reset processing state
+            setSelectedPlan(null);
+            setIsProcessing(false);
           }}
           booking={{
             id: `subscription-${Date.now()}`,
