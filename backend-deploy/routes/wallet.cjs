@@ -115,9 +115,29 @@ router.get('/:vendorId', authenticateToken, async (req, res) => {
     // Top category
     const topCategory = breakdown[0] || { category: 'N/A', earnings: 0 };
 
+    // Get total transaction count
+    const transactionCountQuery = await sql`
+      SELECT COUNT(*) as count
+      FROM wallet_transactions
+      WHERE vendor_id = ${vendorId}
+        AND transaction_type = 'earning'
+        AND status = 'completed'
+    `;
+    const totalTransactionCount = parseInt(transactionCountQuery[0]?.count || 0);
+
+    // Get last transaction date
+    const lastTransactionQuery = await sql`
+      SELECT created_at
+      FROM wallet_transactions
+      WHERE vendor_id = ${vendorId}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    const lastTransactionDate = lastTransactionQuery[0]?.created_at || null;
+
     // Average transaction
-    const averageTransaction = walletData.total_deposits > 0
-      ? totalEarnings / walletData.total_deposits
+    const averageTransaction = totalTransactionCount > 0
+      ? totalEarnings / totalTransactionCount
       : 0;
 
     // Build response
@@ -125,16 +145,16 @@ router.get('/:vendorId', authenticateToken, async (req, res) => {
       vendor_id: vendorId,
       vendor_name: vendor?.name || 'Unknown',
       business_name: vendor?.business_name || 'Unknown Business',
-      total_earnings: parseInt(walletData.total_earnings),
-      available_balance: parseInt(walletData.available_balance),
-      pending_balance: parseInt(walletData.pending_balance),
-      withdrawn_amount: parseInt(walletData.withdrawn_amount),
-      currency: walletData.currency,
-      currency_symbol: walletData.currency_symbol,
-      total_transactions: walletData.total_transactions,
-      completed_bookings: walletData.total_deposits,
-      pending_bookings: 0, // Can add pending logic later
-      last_transaction_date: walletData.last_transaction_date,
+      total_earnings: parseInt(walletData.total_earnings || 0),
+      available_balance: parseInt(walletData.available_balance || 0),
+      pending_balance: parseInt(walletData.pending_balance || 0),
+      withdrawn_amount: parseInt(walletData.withdrawn_amount || 0),
+      currency: walletData.currency || 'PHP',
+      currency_symbol: '₱',
+      total_transactions: totalTransactionCount,
+      completed_bookings: totalTransactionCount,
+      pending_bookings: 0,
+      last_transaction_date: lastTransactionDate,
       created_at: walletData.created_at,
       updated_at: walletData.updated_at
     };
@@ -153,9 +173,9 @@ router.get('/:vendorId', authenticateToken, async (req, res) => {
 
     console.log('💰 Wallet Summary:', {
       totalEarnings: totalEarnings / 100,
-      availableBalance: parseInt(walletData.available_balance) / 100,
-      pendingBalance: parseInt(walletData.pending_balance) / 100,
-      totalTransactions: walletData.total_transactions
+      availableBalance: parseInt(walletData.available_balance || 0) / 100,
+      pendingBalance: parseInt(walletData.pending_balance || 0) / 100,
+      totalTransactions: totalTransactionCount
     });
 
     res.json({
