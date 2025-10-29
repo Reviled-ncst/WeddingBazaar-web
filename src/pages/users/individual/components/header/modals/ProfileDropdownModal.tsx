@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { 
   User, 
   Crown, 
@@ -213,9 +214,12 @@ export const ProfileDropdownModal: React.FC<ProfileDropdownModalProps> = ({
       </div>
 
       {/* Logout Confirmation Modal */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+      {showLogoutConfirm && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="p-3 bg-red-100 rounded-full">
                 <LogOut className="w-6 h-6 text-red-600" />
@@ -242,7 +246,8 @@ export const ProfileDropdownModal: React.FC<ProfileDropdownModalProps> = ({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

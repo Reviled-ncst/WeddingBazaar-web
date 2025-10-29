@@ -1053,10 +1053,10 @@ Best regards`;
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 auto-rows-fr">
               {[...Array(6)].map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div key={index} className="animate-pulse h-full">
+                  <div className="bg-white rounded-2xl shadow-lg overflow-hidden h-full flex flex-col">
                     <div className="h-64 bg-pink-200"></div>
                     <div className="p-6">
                       <div className="h-6 bg-pink-200 rounded mb-3 w-3/4"></div>
@@ -1460,10 +1460,11 @@ Best regards`;
               className={cn(
                 'grid gap-8',
                 viewMode === 'grid' 
-                  ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
+                  ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 auto-rows-fr' 
                   : 'grid-cols-1'
               )}
-            >              {filteredServices.map((service, index) => (
+            >
+              {filteredServices.map((service, index) => (
                 <ServiceCard
                   key={service.id}
                   service={service}
@@ -1851,16 +1852,16 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="group cursor-pointer"
+      className="group cursor-pointer h-full"
       onClick={() => onSelect(service)}
     >
-      <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-pink-100 group-hover:scale-105">
-        <div className="relative">
+      <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-pink-100 group-hover:scale-105 h-full flex flex-col">
+        <div className="relative flex-shrink-0 h-64">
           {/* Main Image */}
           <img
             src={service.image}
             alt={service.name}
-            className="w-full h-64 object-cover"
+            className="w-full h-full object-cover"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600';
@@ -1921,8 +1922,8 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
             )}
           </div>
         </div>
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-2">
+        <div className="p-6 flex flex-col flex-grow">
+          <div className="flex items-center justify-between mb-2 flex-shrink-0">
             <span className="text-sm font-medium text-pink-600 bg-pink-50 px-3 py-1 rounded-full">
               {service.category}
             </span>
@@ -1932,98 +1933,102 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
               <span className="text-sm text-gray-500">({service.reviewCount})</span>
             </div>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-pink-600 transition-colors">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-pink-600 transition-colors line-clamp-1 flex-shrink-0">
             {service.name}
           </h3>
-          <p className="text-gray-600 mb-3 line-clamp-2">{service.description}</p>
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-            <MapPin className="h-4 w-4" />
-            <span>{service.location}</span>
+          <p className="text-gray-600 mb-3 line-clamp-2 text-sm flex-shrink-0 h-10">{service.description}</p>
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-3 flex-shrink-0">
+            <MapPin className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">{service.location}</span>
           </div>
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-3 flex-shrink-0 h-8">
             {service.features.slice(0, 2).map((feature, idx) => (
               <span key={idx} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
                 {feature}
               </span>
             ))}
           </div>
-          {/* DSS Fields Display - Grid View - ENHANCED DESIGN */}
-          {(service.years_in_business || service.service_tier || service.availability || (service.wedding_styles && service.wedding_styles.length > 0)) && (
-            <div className="space-y-2.5 mb-4 pb-4 border-t border-gray-100 pt-3">
-              {service.years_in_business && (
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-sm">
-                    <svg className="h-3.5 w-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+          {/* DSS Fields Display - Grid View - FIXED HEIGHT */}
+          <div className="mb-4 pb-3 border-t border-gray-100 pt-3 flex-shrink-0 min-h-[100px]">
+            {(service.years_in_business || service.service_tier || service.availability || (service.wedding_styles && service.wedding_styles.length > 0)) ? (
+              <div className="space-y-2">
+                {service.years_in_business && (
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-sm">
+                      <svg className="h-3.5 w-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <span className="text-xs font-medium text-gray-700">{service.years_in_business} years experience</span>
                   </div>
-                  <span className="text-xs font-medium text-gray-700">{service.years_in_business} years experience</span>
-                </div>
-              )}
-              {service.service_tier && (
-                <div className="inline-flex items-center gap-1.5">
-                  <div className={`px-2.5 py-1 rounded-full font-semibold text-xs shadow-sm ${
-                    service.service_tier === 'premium' 
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' 
-                      : service.service_tier === 'standard' 
-                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                      : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white'
-                  }`}>
-                    ✨ {service.service_tier.charAt(0).toUpperCase() + service.service_tier.slice(1)}
+                )}
+                {service.service_tier && (
+                  <div className="inline-flex items-center gap-1.5">
+                    <div className={`px-2.5 py-1 rounded-full font-semibold text-xs shadow-sm ${
+                      service.service_tier === 'premium' 
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' 
+                        : service.service_tier === 'standard' 
+                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                        : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white'
+                    }`}>
+                      ✨ {service.service_tier.charAt(0).toUpperCase() + service.service_tier.slice(1)}
+                    </div>
                   </div>
-                </div>
-              )}
-              {service.availability && (
-                <div className="flex items-center gap-2">
-                  <div className={`p-1.5 rounded-lg shadow-sm ${
-                    typeof service.availability === 'string' && service.availability.toLowerCase() === 'available' 
-                      ? 'bg-gradient-to-br from-green-50 to-green-100'
-                      : typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited'
-                      ? 'bg-gradient-to-br from-yellow-50 to-yellow-100'
-                      : 'bg-gradient-to-br from-red-50 to-red-100'
-                  }`}>
-                    <svg className={`h-3.5 w-3.5 ${
-                      typeof service.availability === 'string' && service.availability.toLowerCase() === 'available' 
-                        ? 'text-green-600'
-                        : typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited'
-                        ? 'text-yellow-600'
-                        : 'text-red-600'
-                    }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <span className={`text-xs font-medium ${
-                    typeof service.availability === 'string' && service.availability.toLowerCase() === 'available' 
-                      ? 'text-green-700'
-                      : typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited'
-                      ? 'text-yellow-700'
-                      : 'text-red-700'
-                  }`}>
-                    {typeof service.availability === 'string' 
-                      ? service.availability 
-                      : typeof service.availability === 'object' && service.availability !== null
+                )}
+                {service.availability && (
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded-lg shadow-sm ${
+                      (typeof service.availability === 'string' && service.availability.toLowerCase() === 'available') || service.availability === true
+                        ? 'bg-gradient-to-br from-green-50 to-green-100'
+                        : (typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited')
+                        ? 'bg-gradient-to-br from-yellow-50 to-yellow-100'
+                        : 'bg-gradient-to-br from-gray-50 to-gray-100'
+                    }`}>
+                      <svg className={`h-3.5 w-3.5 ${
+                        (typeof service.availability === 'string' && service.availability.toLowerCase() === 'available') || service.availability === true
+                          ? 'text-green-600'
+                          : (typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited')
+                          ? 'text-yellow-600'
+                          : 'text-gray-600'
+                      }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <span className={`text-xs font-medium ${
+                      (typeof service.availability === 'string' && service.availability.toLowerCase() === 'available') || service.availability === true
+                        ? 'text-green-700'
+                        : (typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited')
+                        ? 'text-yellow-700'
+                        : 'text-gray-700'
+                    }`}>
+                      {typeof service.availability === 'string' 
+                        ? service.availability.charAt(0).toUpperCase() + service.availability.slice(1)
+                        : service.availability === true
                         ? 'Available'
                         : 'Contact for availability'}
-                  </span>
-                </div>
-              )}
-              {service.wedding_styles && service.wedding_styles.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {service.wedding_styles.slice(0, 2).map((style, idx) => (
-                    <span key={idx} className="text-xs bg-gradient-to-r from-pink-50 to-rose-50 text-pink-700 font-medium px-2 py-1 rounded-full border border-pink-100">
-                      {style}
                     </span>
-                  ))}
-                  {service.wedding_styles.length > 2 && (
-                    <span className="text-xs bg-gray-100 text-gray-600 font-medium px-2 py-1 rounded-full">
-                      +{service.wedding_styles.length - 2}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-          <div className="flex items-center justify-between">
+                  </div>
+                )}
+                {service.wedding_styles && service.wedding_styles.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {service.wedding_styles.slice(0, 2).map((style, idx) => (
+                      <span key={idx} className="text-xs bg-gradient-to-r from-pink-50 to-rose-50 text-pink-700 font-medium px-2 py-1 rounded-full border border-pink-100">
+                        {style}
+                      </span>
+                    ))}
+                    {service.wedding_styles.length > 2 && (
+                      <span className="text-xs bg-gray-100 text-gray-600 font-medium px-2 py-1 rounded-full">
+                        +{service.wedding_styles.length - 2}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-400 italic">Standard service package</div>
+            )}
+          </div>
+          <div className="flex items-center justify-between mt-auto flex-shrink-0">
             <div className="flex flex-col">
               <span className="text-xs text-gray-500 mb-0.5">Starting from</span>
               <span className="font-bold text-pink-600 text-base">{service.priceRange}</span>
@@ -2087,10 +2092,10 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+          className="bg-white rounded-3xl max-w-4xl w-full h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <img
               src={service.image}
               alt={service.name}
@@ -2113,7 +2118,7 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
               </div>
             )}
           </div>
-          <div className="p-8">
+          <div className="p-8 overflow-y-auto flex-grow">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-1">{service.name}</h2>
@@ -2255,19 +2260,37 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
                 {service.availability && (
                   <div className="bg-white rounded-xl p-4 shadow-sm">
                     <div className="flex items-start gap-3">
-                      <div className="p-2 bg-green-100 rounded-lg">
-                        <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <div className={`p-2 rounded-lg ${
+                        (typeof service.availability === 'string' && service.availability.toLowerCase() === 'available') || service.availability === true
+                          ? 'bg-green-100'
+                          : (typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited')
+                          ? 'bg-yellow-100'
+                          : 'bg-gray-100'
+                      }`}>
+                        <svg className={`h-5 w-5 ${
+                          (typeof service.availability === 'string' && service.availability.toLowerCase() === 'available') || service.availability === true
+                            ? 'text-green-600'
+                            : (typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited')
+                            ? 'text-yellow-600'
+                            : 'text-gray-600'
+                        }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900 mb-1">Availability</div>
-                        <div className="text-lg font-semibold text-green-600">
+                        <div className={`text-lg font-semibold ${
+                          (typeof service.availability === 'string' && service.availability.toLowerCase() === 'available') || service.availability === true
+                            ? 'text-green-600'
+                            : (typeof service.availability === 'string' && service.availability.toLowerCase() === 'limited')
+                            ? 'text-yellow-600'
+                            : 'text-gray-600'
+                        }`}>
                           {typeof service.availability === 'string' 
-                            ? service.availability 
-                            : typeof service.availability === 'object' && service.availability !== null
-                              ? 'Available'
-                              : 'Contact for availability'}
+                            ? service.availability.charAt(0).toUpperCase() + service.availability.slice(1)
+                            : service.availability === true
+                            ? 'Available'
+                            : 'Contact for availability'}
                         </div>
                         <div className="text-xs text-gray-500">Current status</div>
                       </div>
