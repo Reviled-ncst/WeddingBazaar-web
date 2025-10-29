@@ -253,10 +253,27 @@ router.get('/:vendorId/transactions', authenticateToken, async (req, res) => {
     res.json({
       success: true,
       transactions: transactions.map(t => ({
-        ...t,
-        amount: parseFloat(t.amount),
+        id: t.id,
+        receipt_id: t.transaction_id,
+        receipt_number: t.transaction_id,
+        booking_id: t.booking_id || '',
+        booking_reference: t.booking_id || 'N/A',
+        transaction_type: t.transaction_type,
         transaction_date: t.created_at,
-        receipt_id: t.transaction_id
+        amount: parseFloat(t.amount) * 100, // Convert to centavos
+        currency: t.currency || 'PHP',
+        payment_method: t.payment_method || 'card',
+        payment_type: 'full_payment',
+        service_name: t.service_category || 'Service',
+        service_category: t.service_category || 'Other',
+        event_date: t.created_at,
+        couple_id: '',
+        couple_name: 'Customer',
+        couple_email: '',
+        status: t.status || 'completed',
+        notes: t.description || '',
+        created_at: t.created_at,
+        updated_at: t.updated_at
       }))
     });
 
