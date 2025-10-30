@@ -125,45 +125,108 @@ router.post('/:bookingId/mark-completed', async (req, res) => {
       console.log(`✅ Booking ${bookingId} is now COMPLETED. Status: ${updated.status}`);
 
       // 💰 CREATE WALLET TRANSACTION FOR VENDOR EARNINGS
+      // ⭐ ENHANCED: Pull ACTUAL payment data from receipts table
       try {
         console.log(`💰 Creating wallet transaction for vendor: ${updated.vendor_id}`);
         
-        // Generate transaction ID
-        const transactionId = `TXN-${bookingId}-${Date.now()}`;
-        
-        // Get vendor and customer details for the transaction
-        const bookingAmount = parseFloat(updated.amount || updated.total_amount || 0);
-        const paymentMethod = updated.payment_method || 'card';
+        // ⭐ STEP 1: Fetch ALL receipts for this booking from receipts table
+        const receipts = await sql`
+          SELECT * FROM receipts 
+          WHERE booking_id = ${bookingId}
+          ORDER BY created_at ASC
+        `;
+
+        console.log(`📄 Found ${receipts.length} receipt(s) for booking ${bookingId}`);
+
+        // ⭐ STEP 2: Calculate ACTUAL total paid from receipts
+        let totalPaidCentavos = 0;
+        let paymentMethods = [];
+        let receiptNumbers = [];
+        let paymentIntentIds = [];
+
+        receipts.forEach(receipt => {
+          totalPaidCentavos += receipt.amount || 0;
+          if (receipt.payment_method && !paymentMethods.includes(receipt.payment_method)) {
+            paymentMethods.push(receipt.payment_method);
+          }
+          if (receipt.receipt_number) {
+            receiptNumbers.push(receipt.receipt_number);
+          }
+          if (receipt.payment_intent_id) {
+            paymentIntentIds.push(receipt.payment_intent_id);
+          }
+        });
+
+        // Convert from centavos to PHP (divide by 100)
+        const totalPaidAmount = totalPaidCentavos / 100;
+
+        console.log(`💵 Total paid from receipts: ₱${totalPaidAmount.toFixed(2)} (${totalPaidCentavos} centavos)`);
+        console.log(`💳 Payment methods used: ${paymentMethods.join(', ')}`);
+        console.log(`📝 Receipt numbers: ${receiptNumbers.join(', ')}`);
+
+        // ⭐ STEP 3: If no receipts found, fallback to booking amount
+        let amountToTransfer = totalPaidAmount;
+        let transferNote = '';
+
+        if (receipts.length === 0) {
+          console.log(`⚠️ No receipts found, using booking amount as fallback`);
+          amountToTransfer = parseFloat(updated.amount || updated.total_amount || 0);
+          transferNote = ' (No receipts found - using booking amount)';
+        } else {
+          transferNote = ` (${receipts.length} payment${receipts.length > 1 ? 's' : ''} received)`;
+        }
+
+        // ⭐ STEP 4: Get vendor and customer details
         const serviceType = updated.service_type || 'Wedding Service';
-        
-        // Get couple name (try different field variations)
         let coupleName = updated.couple_name || updated.client_name || updated.user_name || 'Customer';
-        
-        // If we have user_id, try to fetch the actual name
+        let coupleEmail = updated.contact_email || '';
+
+        // Fetch user details if available
         if (updated.user_id) {
           try {
             const userResult = await sql`
-              SELECT full_name, name FROM users WHERE id = ${updated.user_id} LIMIT 1
+              SELECT full_name, name, email FROM users WHERE id = ${updated.user_id} LIMIT 1
             `;
             if (userResult.length > 0) {
               coupleName = userResult[0].full_name || userResult[0].name || coupleName;
+              coupleEmail = userResult[0].email || coupleEmail;
             }
           } catch (err) {
             console.log('⚠️ Could not fetch user name, using default');
           }
         }
 
+        // ⭐ STEP 5: Generate transaction ID
+        const transactionId = `TXN-${bookingId}-${Date.now()}`;
+
+        // ⭐ STEP 6: Prepare metadata with receipt details
+        const transactionMetadata = {
+          receipts: receipts.map(r => ({
+            receipt_number: r.receipt_number,
+            amount: r.amount / 100, // Convert to PHP
+            payment_type: r.payment_type,
+            payment_method: r.payment_method,
+            payment_intent_id: r.payment_intent_id,
+            created_at: r.created_at
+          })),
+          total_payments: receipts.length,
+          booking_reference: updated.booking_reference,
+          event_date: updated.event_date,
+          event_location: updated.event_location
+        };
+
         console.log(`💰 Transaction details:`, {
           transactionId,
           vendorId: updated.vendor_id,
           bookingId: updated.id,
-          amount: bookingAmount,
+          amount: amountToTransfer,
           serviceType,
           coupleName,
-          paymentMethod
+          paymentMethods: paymentMethods.join(', ') || 'card',
+          receiptCount: receipts.length
         });
 
-        // Create wallet transaction
+        // ⭐ STEP 7: Create wallet transaction with ACTUAL payment data
         await sql`
           INSERT INTO wallet_transactions (
             transaction_id,
@@ -175,10 +238,13 @@ router.post('/:bookingId/mark-completed', async (req, res) => {
             status,
             description,
             payment_method,
+            payment_reference,
             service_name,
             service_category,
             customer_name,
+            customer_email,
             event_date,
+            metadata,
             created_at,
             updated_at
           ) VALUES (
@@ -186,15 +252,18 @@ router.post('/:bookingId/mark-completed', async (req, res) => {
             ${updated.vendor_id},
             ${updated.id},
             'earning',
-            ${bookingAmount},
+            ${amountToTransfer},
             'PHP',
             'completed',
-            ${'Booking payment for ' + serviceType},
-            ${paymentMethod},
+            ${'Payment received for ' + serviceType + transferNote},
+            ${paymentMethods.length > 0 ? paymentMethods.join(', ') : 'card'},
+            ${receiptNumbers.join(', ')},
             ${serviceType},
             ${serviceType},
             ${coupleName},
+            ${coupleEmail},
             ${updated.event_date || null},
+            ${JSON.stringify(transactionMetadata)},
             NOW(),
             NOW()
           )
@@ -203,8 +272,7 @@ router.post('/:bookingId/mark-completed', async (req, res) => {
 
         console.log(`✅ Wallet transaction created: ${transactionId}`);
 
-        // Update or create vendor wallet
-        // First, check if wallet exists
+        // ⭐ STEP 8: Update or create vendor wallet
         const existingWallet = await sql`
           SELECT * FROM vendor_wallets WHERE vendor_id = ${updated.vendor_id} LIMIT 1
         `;
@@ -224,8 +292,8 @@ router.post('/:bookingId/mark-completed', async (req, res) => {
               updated_at
             ) VALUES (
               ${updated.vendor_id},
-              ${bookingAmount},
-              ${bookingAmount},
+              ${amountToTransfer},
+              ${amountToTransfer},
               0.00,
               0.00,
               'PHP',
@@ -233,22 +301,24 @@ router.post('/:bookingId/mark-completed', async (req, res) => {
               NOW()
             )
           `;
-          console.log(`✅ New wallet created with balance: ₱${bookingAmount}`);
+          console.log(`✅ New wallet created with balance: ₱${amountToTransfer.toFixed(2)}`);
         } else {
           // Update existing wallet
           console.log(`💰 Updating existing wallet for vendor: ${updated.vendor_id}`);
+          const previousBalance = parseFloat(existingWallet[0].available_balance || 0);
           await sql`
             UPDATE vendor_wallets
             SET 
-              total_earnings = total_earnings + ${bookingAmount},
-              available_balance = available_balance + ${bookingAmount},
+              total_earnings = total_earnings + ${amountToTransfer},
+              available_balance = available_balance + ${amountToTransfer},
               updated_at = NOW()
             WHERE vendor_id = ${updated.vendor_id}
           `;
-          console.log(`✅ Wallet updated. Added: ₱${bookingAmount}`);
+          console.log(`✅ Wallet updated. Previous: ₱${previousBalance.toFixed(2)}, Added: ₱${amountToTransfer.toFixed(2)}, New: ₱${(previousBalance + amountToTransfer).toFixed(2)}`);
         }
 
         console.log(`🎉 Wallet integration complete for booking ${bookingId}`);
+        console.log(`📊 Summary: ${receipts.length} payment(s) totaling ₱${amountToTransfer.toFixed(2)} transferred to vendor wallet`);
 
       } catch (walletError) {
         // Log error but don't fail the completion
