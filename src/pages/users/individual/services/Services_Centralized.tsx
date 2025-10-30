@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Search, 
   MapPin, 
@@ -141,10 +141,9 @@ interface Service {
 // ServiceFilters interface removed - not currently used
 
 export function Services() {
-  console.log('🎯 [Services] *** SERVICES COMPONENT RENDERED ***');
+  // Infinite render loop fixed: useEffect → useMemo for filtering (Oct 29, 2025)
   
   const [services, setServices] = useState<Service[]>([]);
-  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -606,8 +605,8 @@ export function Services() {
     loadEnhancedServices();
   }, [selectedCategory, featuredOnly, ratingFilter]);
 
-  // Filter and search services
-  useEffect(() => {
+  // Filter and search services with useMemo (prevents infinite re-renders)
+  const filteredServices = useMemo(() => {
     let filtered = [...services];
 
     // Search filter
@@ -712,7 +711,7 @@ export function Services() {
       }
     });
 
-    setFilteredServices(filtered);
+    return filtered;
   }, [services, searchTerm, locationFilter, priceRange, sortBy]);
 
   const handleServiceSelect = (service: Service) => {

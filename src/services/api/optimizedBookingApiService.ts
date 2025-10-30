@@ -421,26 +421,44 @@ export class OptimizedBookingApiService {
    */
   private prepareBookingPayload(bookingData: any, userId?: string) {
     return {
+      // ✅ FIX: Add coupleId field required by backend
+      coupleId: userId || bookingData.user_id || bookingData.couple_id || '1-2025-001',
+      
       // Core booking fields with optimized structure
       vendor_id: parseInt(bookingData.vendor_id) || 1,
+      vendorId: parseInt(bookingData.vendor_id) || 1, // Backend expects vendorId
       service_id: this.mapServiceId(bookingData.service_id),
+      serviceId: this.mapServiceId(bookingData.service_id), // Backend expects serviceId
       service_type: bookingData.service_type,
+      serviceType: bookingData.service_type, // Backend expects serviceType
       service_name: bookingData.service_name,
+      serviceName: bookingData.service_name, // Backend expects serviceName
       
       // Event details (optimized)
       event_date: bookingData.event_date,
+      eventDate: bookingData.event_date, // Backend expects eventDate
       event_time: bookingData.event_time,
+      eventTime: bookingData.event_time, // Backend expects eventTime
       event_location: bookingData.event_location,
+      eventLocation: bookingData.event_location, // Backend expects eventLocation
       guest_count: parseInt(bookingData.guest_count) || 0,
+      guestCount: parseInt(bookingData.guest_count) || 0, // Backend expects guestCount
       
       // Contact info (essential only)
       contact_person: bookingData.contact_person,
+      contactPerson: bookingData.contact_person, // Backend expects contactPerson
       contact_phone: bookingData.contact_phone,
+      contactPhone: bookingData.contact_phone, // Backend expects contactPhone
       contact_email: bookingData.contact_email,
+      contactEmail: bookingData.contact_email, // Backend expects contactEmail
+      preferred_contact_method: bookingData.preferred_contact_method,
+      preferredContactMethod: bookingData.preferred_contact_method, // Backend expects preferredContactMethod
       
       // Additional fields
       budget_range: bookingData.budget_range,
+      budgetRange: bookingData.budget_range, // Backend expects budgetRange
       special_requests: bookingData.special_requests,
+      specialRequests: bookingData.special_requests, // Backend expects specialRequests
       
       // Optimized metadata
       metadata: {

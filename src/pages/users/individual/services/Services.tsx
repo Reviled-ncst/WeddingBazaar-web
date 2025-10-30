@@ -164,7 +164,6 @@ const SafeImage: React.FC<SafeImageProps> = ({
 
 export const Services: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
-  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -283,8 +282,6 @@ export const Services: React.FC = () => {
           console.log('🎯 [IndividualServices] Checking business names:', mappedServices.map((s: any) => ({ id: s.id, name: s.name, vendorName: s.vendorName })));
           
           setServices(mappedServices);
-          // setOriginalServices(mappedServices); // Remove this line as setOriginalServices doesn't exist
-          setFilteredServices(mappedServices);
           setLoading(false);
           return;
         }
@@ -537,7 +534,6 @@ export const Services: React.FC = () => {
           ];
           
           setServices(enhancedMockServices);
-          setFilteredServices(enhancedMockServices);
 
         } else {
 
@@ -545,7 +541,6 @@ export const Services: React.FC = () => {
 
           
           setServices(servicesWithVendors);
-          setFilteredServices(servicesWithVendors);
           
           // Verification with detailed logging
           setTimeout(() => {
@@ -556,10 +551,9 @@ export const Services: React.FC = () => {
           }, 100);
         }
         
-      } catch (error) {
+      } catch {
         // Use mock data as final fallback
         setServices(mockServicesData);
-        setFilteredServices(mockServicesData);
       } finally {
         setLoading(false);
       }
@@ -568,74 +562,66 @@ export const Services: React.FC = () => {
     loadServices();
   }, []);
 
-  // Filter and search logic
-  useEffect(() => {
+  // 🚀 OPTIMIZED: Use useMemo instead of useEffect to prevent infinite render loops
+  const filteredServices = useMemo(() => {
+    let filtered = services;
+    
+    // Text search
+    if (searchQuery && searchQuery.trim().length > 0) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = services.filter(service =>
+        service.name.toLowerCase().includes(query) ||
+        service.category.toLowerCase().includes(query) ||
+        service.vendorName.toLowerCase().includes(query) ||
+        service.description.toLowerCase().includes(query) ||
+        service.location.toLowerCase().includes(query)
+      );
+    }
 
+    // Category filter
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(service => 
+        service.category.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
 
+    // Location filter
+    if (selectedLocation !== 'all') {
+      filtered = filtered.filter(service => 
+        service.location.toLowerCase().includes(selectedLocation.toLowerCase())
+      );
+    }
 
-    const performFiltering = () => {
-      let filtered = services;      // Text search
-      if (searchQuery && searchQuery.trim().length > 0) {
-        const query = searchQuery.toLowerCase().trim();
-        filtered = services.filter(service =>
-          service.name.toLowerCase().includes(query) ||
-          service.category.toLowerCase().includes(query) ||
-          service.vendorName.toLowerCase().includes(query) ||
-          service.description.toLowerCase().includes(query) ||
-          service.location.toLowerCase().includes(query)
-        );
-      }
+    // Price range filter
+    if (selectedPriceRange !== 'all') {
+      filtered = filtered.filter(service => service.priceRange === selectedPriceRange);
+    }
 
-      // Category filter
-      if (selectedCategory !== 'all') {
-        filtered = filtered.filter(service => 
-          service.category.toLowerCase() === selectedCategory.toLowerCase()
-        );
-      }
+    // Rating filter
+    if (selectedRating > 0) {
+      filtered = filtered.filter(service => service.rating >= selectedRating);
+    }
 
-      // Location filter
-      if (selectedLocation !== 'all') {
-        filtered = filtered.filter(service => 
-          service.location.toLowerCase().includes(selectedLocation.toLowerCase())
-        );
-      }
+    // Sort logic - create a copy before sorting to avoid mutating the original array
+    const sortedFiltered = [...filtered];
+    switch (sortBy) {
+      case 'rating':
+        sortedFiltered.sort((a, b) => b.rating - a.rating);
+        break;
+      case 'price-low':
+        sortedFiltered.sort((a, b) => (a.priceRange?.length || 0) - (b.priceRange?.length || 0));
+        break;
+      case 'price-high':
+        sortedFiltered.sort((a, b) => (b.priceRange?.length || 0) - (a.priceRange?.length || 0));
+        break;
+      case 'reviews':
+        sortedFiltered.sort((a, b) => b.reviewCount - a.reviewCount);
+        break;
+      default:
+        break;
+    }
 
-      // Price range filter
-      if (selectedPriceRange !== 'all') {
-        filtered = filtered.filter(service => service.priceRange === selectedPriceRange);
-      }
-
-      // Rating filter
-      if (selectedRating > 0) {
-        filtered = filtered.filter(service => service.rating >= selectedRating);
-      }
-
-      // Sort logic
-      switch (sortBy) {
-        case 'rating':
-          filtered.sort((a, b) => b.rating - a.rating);
-          break;
-        case 'price-low':
-          filtered.sort((a, b) => (a.priceRange?.length || 0) - (b.priceRange?.length || 0));
-          break;
-        case 'price-high':
-          filtered.sort((a, b) => (b.priceRange?.length || 0) - (a.priceRange?.length || 0));
-          break;
-        case 'reviews':
-          filtered.sort((a, b) => b.reviewCount - a.reviewCount);
-          break;
-        default:
-          break;
-      }
-
-
-
-      setFilteredServices(filtered);
-    };
-
-    // Debounce the filtering for search queries
-    const timeoutId = setTimeout(performFiltering, searchQuery ? 300 : 0);
-    return () => clearTimeout(timeoutId);
+    return sortedFiltered;
   }, [services, searchQuery, selectedCategory, selectedLocation, selectedPriceRange, selectedRating, sortBy]);
 
   const toggleLike = (serviceId: string) => {
@@ -700,14 +686,14 @@ export const Services: React.FC = () => {
       // This helps both parties understand what service is being discussed
       // The message will be sent automatically by the messaging system
       
-    } catch (error) {
+    } catch {
       // Fallback to basic conversation
       const vendorId = service.vendorId || `vendor-${Date.now()}`;
       
       try {
         await createBusinessConversation(vendorId, undefined, undefined, service.vendorName);
         setModalOpen(true);
-      } catch (fallbackError) {
+      } catch {
         // Silent fallback - messaging system will handle errors
       }
     }
