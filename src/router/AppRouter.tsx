@@ -71,6 +71,9 @@ import { VendorPromotions } from '../pages/users/vendor/promotions';
 import { VendorSubscriptionPage } from '../pages/users/vendor/subscription';
 import { VendorFinances } from '../pages/users/vendor/finances/VendorFinances';
 
+// Coordinator Pages
+import { CoordinatorDashboard } from '../pages/users/coordinator/dashboard';
+
 // Auth Context
 import { AuthProvider } from '../shared/contexts/HybridAuthContext';
 import { SubscriptionProvider } from '../shared/contexts/SubscriptionContext';
@@ -325,6 +328,18 @@ export const AppRouter: React.FC = () => {
             <Route path="/vendor/subscription" element={
               <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
                 <VendorSubscriptionPage />
+              </RoleProtectedRoute>
+            } />
+            
+            {/* Coordinator specific pages */}
+            <Route path="/coordinator" element={
+              <RoleProtectedRoute allowedRoles={['coordinator']} requireAuth={true}>
+                <CoordinatorDashboard />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/coordinator/dashboard" element={
+              <RoleProtectedRoute allowedRoles={['coordinator']} requireAuth={true}>
+                <CoordinatorDashboard />
               </RoleProtectedRoute>
             } />
             

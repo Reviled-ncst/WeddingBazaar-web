@@ -432,11 +432,25 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       <Modal isOpen={isOpen} onClose={debugModalClose} maxWidth="xl" preventBackdropClose={!!error || Object.keys(validationErrors).length > 0 || showEmailVerification}>
         <div className={cn("relative overflow-hidden px-6 py-6", fadeIn && "animate-in fade-in duration-500")}>
           
-          {/* Enhanced Background decoration */}
-          <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden">
-            <div className="absolute -top-4 -right-4 w-32 h-32 bg-gradient-to-br from-rose-400 via-pink-400 to-purple-500 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-tr from-indigo-400 via-purple-400 to-pink-400 rounded-full blur-2xl animate-pulse delay-1000"></div>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-br from-rose-300 to-pink-300 rounded-full blur-xl opacity-50"></div>
+          {/* Ultra-Enhanced Multi-Layer Background */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {/* Primary gradient orbs */}
+            <div className="absolute -top-12 -right-12 w-72 h-72 bg-gradient-to-br from-rose-400/40 via-pink-500/30 to-purple-600/40 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute -bottom-16 -left-16 w-64 h-64 bg-gradient-to-tr from-indigo-400/35 via-purple-500/30 to-pink-500/35 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+            
+            {/* Secondary accent orbs */}
+            <div className="absolute top-1/3 right-1/4 w-48 h-48 bg-gradient-to-br from-amber-400/20 via-yellow-400/15 to-orange-500/20 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+            <div className="absolute bottom-1/3 left-1/4 w-40 h-40 bg-gradient-to-br from-cyan-400/20 via-blue-400/15 to-indigo-500/20 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+            
+            {/* Floating particles */}
+            <div className="absolute top-1/4 left-1/3 w-2 h-2 bg-rose-400/60 rounded-full animate-ping" style={{ animationDelay: '0.5s' }}></div>
+            <div className="absolute top-2/3 right-1/3 w-2 h-2 bg-purple-400/60 rounded-full animate-ping" style={{ animationDelay: '1.2s' }}></div>
+            <div className="absolute bottom-1/4 left-2/3 w-2 h-2 bg-pink-400/60 rounded-full animate-ping" style={{ animationDelay: '0.8s' }}></div>
+            
+            {/* Radial gradient overlay for depth */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),rgba(255,182,193,0.3)_40%,transparent_70%)]"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(216,180,254,0.3),transparent_50%)]"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(255,192,203,0.3),transparent_50%)]"></div>
           </div>
 
           {/* Success Overlay with enhanced animations */}
