@@ -37,6 +37,7 @@ import { IndividualDashboard } from '../pages/users/individual/dashboard';
 import { BudgetManagement } from '../pages/users/individual/budget';
 import { GuestManagement } from '../pages/users/individual/guests';
 import { IndividualBookings } from '../pages/users/individual/bookings';
+import { TransactionHistory } from '../pages/users/individual/transaction-history';
 import { ProfileSettings } from '../pages/users/individual/profile';
 import { PremiumFeatures } from '../pages/users/individual/premium';
 import { AccountSettings } from '../pages/users/individual/settings';
@@ -177,6 +178,11 @@ export const AppRouter: React.FC = () => {
             <Route path="/individual/bookings" element={
               <ProtectedRoute requireAuth={true}>
                 <IndividualBookings />
+              </ProtectedRoute>
+            } />
+            <Route path="/individual/transactions" element={
+              <ProtectedRoute requireAuth={true}>
+                <TransactionHistory />
               </ProtectedRoute>
             } />
             <Route path="/individual/profile" element={

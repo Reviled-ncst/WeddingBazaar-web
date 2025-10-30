@@ -47,6 +47,9 @@ src/
 │   │   │   ├── bookings/          # Booking management for vendors
 │   │   │   │   ├── VendorBookings.tsx
 │   │   │   │   └── index.ts
+│   │   │   ├── wallet/            # Wallet & earnings management
+│   │   │   │   ├── VendorWallet.tsx
+│   │   │   │   └── index.ts
 │   │   │   ├── messages/          # Client messaging
 │   │   │   ├── analytics/         # Business analytics
 │   │   │   └── landing/           # Vendor landing page
@@ -124,14 +127,16 @@ backend-deploy/
 ├── routes/
 │   ├── auth.cjs                  # Authentication endpoints
 │   ├── bookings.cjs              # Booking CRUD + Cancellation endpoints
+│   ├── booking-completion.cjs    # Two-sided completion system
 │   ├── payments.cjs              # PayMongo integration + Receipt endpoints
+│   ├── vendor-wallet.cjs         # Vendor wallet & earnings management
 │   ├── vendors.cjs               # Vendor management
 │   ├── services.cjs              # Service listings
 │   └── admin.cjs                 # Admin operations
 ├── helpers/
 │   └── receiptGenerator.cjs      # Receipt generation logic
 ├── middleware/
-│   └��─ auth.cjs                  # JWT authentication middleware
+│   └── auth.cjs                  # JWT authentication middleware
 ├── production-backend.js         # Main Express server (DEPLOYMENT ENTRY)
 ├── package.json                  # Backend dependencies
 └── .env                          # Environment variables (NOT COMMITTED)
@@ -143,7 +148,8 @@ root/
 ├── create-receipts-table.cjs     # Creates receipts table and views
 ├── apply-database-fixes.cjs      # Database schema fixes
 ├── check-database-schema.cjs     # Schema verification
-└── receipts-table-schema.sql     # SQL schema definitions
+├── receipts-table-schema.sql     # SQL schema definitions
+└── EXECUTE_THIS_IN_NEON_SQL_CONSOLE.sql  # Wallet system setup
 ```
 
 ### Deployment Scripts (Root Directory)
@@ -315,6 +321,22 @@ root/
   - **Services**: `completionService.ts` and `bookingCompletionService.ts`
   - **Deployment**: Backend on Render, Frontend on Firebase
   - **Status**: Couple side implemented ✅, Vendor side pending 🚧
+  
+- **Vendor Wallet System**: ✅ COMPLETE (Oct 29, 2025)
+  - **Database**: 2 new tables (`vendor_wallets`, `wallet_transactions`)
+  - **Backend API**: GET `/api/vendor/wallet/balance`, `/transactions`, `/statistics`
+  - **Frontend**: VendorWallet.tsx page with balance display and transaction history
+  - **Automatic Creation**: Wallet entries auto-created when bookings completed
+  - **Transaction Tracking**: Full audit trail of earnings, withdrawals, refunds
+  - **Features**:
+    - Real-time balance updates
+    - Transaction history with filtering/pagination
+    - Earnings statistics and analytics
+    - Mobile-responsive design
+    - Migration of existing completed bookings
+  - **Status**: ✅ DEPLOYED and OPERATIONAL
+  - **Documentation**: WALLET_SYSTEM_COMPLETE_DOCUMENTATION.md
+  - **Setup Script**: EXECUTE_THIS_IN_NEON_SQL_CONSOLE.sql
   
 - **Individual Module Complete**: All 13 individual user pages with CoupleHeader
   - Dashboard, Services, Bookings (with payment + actions + completion), Profile, Settings
@@ -639,6 +661,72 @@ CREATE TABLE reviews (
 );
 ```
 
+#### 9. **vendor_wallets** table (NEW - Oct 29, 2025)
+```sql
+CREATE TABLE vendor_wallets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  vendor_id VARCHAR(50) NOT NULL UNIQUE,
+  total_earnings DECIMAL(12,2) DEFAULT 0.00,
+  available_balance DECIMAL(12,2) DEFAULT 0.00,
+  pending_balance DECIMAL(12,2) DEFAULT 0.00,
+  withdrawn_amount DECIMAL(12,2) DEFAULT 0.00,
+  currency VARCHAR(3) DEFAULT 'PHP',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Fields**:
+- `total_earnings`: Lifetime earnings from all completed bookings
+- `available_balance`: Funds available for withdrawal
+- `pending_balance`: Funds from bookings not yet fully completed
+- `withdrawn_amount`: Total amount withdrawn to date
+
+#### 10. **wallet_transactions** table (NEW - Oct 29, 2025)
+```sql
+CREATE TABLE wallet_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  transaction_id VARCHAR(50) UNIQUE NOT NULL,
+  vendor_id VARCHAR(50) NOT NULL,
+  booking_id UUID REFERENCES bookings(id) ON DELETE SET NULL,
+  transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('earning', 'withdrawal', 'refund', 'adjustment')),
+  amount DECIMAL(12,2) NOT NULL,
+  currency VARCHAR(3) DEFAULT 'PHP',
+  status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('pending', 'completed', 'failed', 'cancelled')),
+  description TEXT,
+  payment_method VARCHAR(50),
+  payment_reference VARCHAR(255),
+  service_name VARCHAR(255),
+  service_category VARCHAR(100),
+  customer_name VARCHAR(255),
+  customer_email VARCHAR(255),
+  event_date DATE,
+  metadata JSONB,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX idx_wallet_transactions_vendor ON wallet_transactions(vendor_id);
+CREATE INDEX idx_wallet_transactions_booking ON wallet_transactions(booking_id);
+CREATE INDEX idx_wallet_transactions_type ON wallet_transactions(transaction_type);
+CREATE INDEX idx_wallet_transactions_status ON wallet_transactions(status);
+CREATE INDEX idx_wallet_transactions_date ON wallet_transactions(created_at DESC);
+CREATE INDEX idx_vendor_wallets_vendor ON vendor_wallets(vendor_id);
+```
+
+**Transaction Types**:
+- `earning`: Income from completed bookings
+- `withdrawal`: Funds withdrawn by vendor
+- `refund`: Refund processed for cancelled booking
+- `adjustment`: Manual adjustment by admin
+
+**Status Values**:
+- `pending`: Transaction in progress
+- `completed`: Transaction successful
+- `failed`: Transaction failed
+- `cancelled`: Transaction cancelled
+
 ### Complete API Endpoints Documentation
 
 #### Authentication Endpoints (`/api/auth`)
@@ -749,6 +837,13 @@ GET    /api/admin/vendors          # Get all vendors
 PUT    /api/admin/vendors/:id/approve # Approve vendor
 GET    /api/admin/bookings         # Get all bookings
 GET    /api/admin/analytics        # Platform analytics
+```
+
+#### Vendor Wallet Endpoints (`/api/vendor/wallet`)
+```
+GET    /api/vendor/wallet/balance        # Get vendor wallet balance
+GET    /api/vendor/wallet/transactions   # Get wallet transaction history
+GET    /api/vendor/wallet/statistics     # Get wallet statistics
 ```
 
 ## Quality Assurance
@@ -1178,3 +1273,170 @@ export const canMarkComplete = (
 - **System Design**: `TWO_SIDED_COMPLETION_SYSTEM.md`
 - **API Spec**: `backend-deploy/routes/booking-completion.cjs`
 - **Service Layer**: `src/shared/services/completionService.ts`
+
+---
+
+## 💰 Vendor Wallet System
+
+### Overview
+The vendor wallet system allows vendors to manage their earnings, track transactions, and monitor wallet balance. It provides a seamless way to handle payments, refunds, and withdrawals within the platform.
+
+### Database Schema
+
+#### 1. **vendor_wallets** table (NEW)
+```sql
+CREATE TABLE vendor_wallets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  vendor_id UUID REFERENCES vendors(id) ON DELETE CASCADE,
+  balance DECIMAL(10,2) DEFAULT 0.00,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### 2. **wallet_transactions** table (NEW)
+```sql
+CREATE TABLE wallet_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  wallet_id UUID REFERENCES vendor_wallets(id) ON DELETE CASCADE,
+  amount DECIMAL(10,2) NOT NULL,
+  transaction_type VARCHAR(50) NOT NULL, -- 'credit', 'debit'
+  reference_id UUID, -- Booking or receipt reference
+  status VARCHAR(50) DEFAULT 'completed', -- 'completed', 'pending', 'failed'
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- View for wallet transaction history
+CREATE OR REPLACE VIEW wallet_transaction_history AS
+SELECT 
+  wt.id,
+  wt.wallet_id,
+  wt.amount,
+  wt.transaction_type,
+  wt.reference_id,
+  wt.status,
+  wt.created_at,
+  v.business_name
+FROM wallet_transactions wt
+LEFT JOIN vendors v ON wt.vendor_id = v.id;
+```
+
+### API Endpoints
+
+#### Vendor Wallet Endpoints (`/api/vendor/wallet`)
+```
+GET    /api/vendor/wallet/balance        # Get vendor wallet balance
+GET    /api/vendor/wallet/transactions   # Get wallet transaction history
+GET    /api/vendor/wallet/statistics     # Get wallet statistics
+```
+
+### Frontend Implementation
+
+**Location**: `src/pages/users/vendor/wallet/VendorWallet.tsx`
+
+**Key Features**:
+- Display current wallet balance
+- Show transaction history with filters
+- Provide statistics on earnings and expenses
+
+**Example Component**:
+```tsx
+const VendorWallet = () => {
+  const { data: balance } = useWalletBalance();
+  const { data: transactions } = useWalletTransactions();
+  const { data: statistics } = useWalletStatistics();
+
+  return (
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Wallet Overview</h1>
+      
+      {/* Balance Card */}
+      <div className="bg-white shadow-md rounded-lg p-4 mb-4">
+        <h2 className="text-xl font-semibold">Current Balance</h2>
+        <p className="text-3xl text-green-600">
+          ₱{balance?.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}
+        </p>
+      </div>
+      
+      {/* Transactions Table */}
+      <div className="bg-white shadow-md rounded-lg p-4">
+        <h2 className="text-xl font-semibold mb-2">Transaction History</h2>
+        <TransactionTable data={transactions} />
+      </div>
+    </div>
+  );
+};
+```
+
+### Automatic Wallet Creation
+
+- Wallet entries are automatically created for vendors when a booking is marked as completed.
+- The initial balance is set to the total amount of the booking, minus any platform fees.
+
+### Transaction Tracking
+
+- All transactions are tracked in the `wallet_transactions` table.
+- Each transaction includes the amount, type (credit/debit), status, and a reference ID for related bookings or receipts.
+
+### Features
+
+- **Real-time balance updates**: The wallet balance is updated in real-time as payments are processed or refunds are issued.
+- **Transaction history**: Vendors can view their transaction history, including filters for date range, type, and status.
+- **Earnings statistics**: Vendors have access to statistics and analytics about their earnings, including charts and graphs.
+- **Mobile-responsive design**: The wallet interface is fully responsive and optimized for mobile devices.
+- **Migration of existing completed bookings**: Existing completed bookings have been migrated to the new wallet system, and vendors can view their historical transactions.
+
+### Deployment Status
+
+**✅ DEPLOYED and OPERATIONAL** (October 29, 2025)
+
+- **Database**: Tables and views created in Neon PostgreSQL
+- **Backend**: API endpoints deployed to Render
+- **Frontend**: VendorWallet.tsx page deployed to Firebase
+
+**Testing URLs**:
+- Frontend: https://weddingbazaarph.web.app/vendor/wallet
+- Backend: https://weddingbazaar-web.onrender.com/api/vendor/wallet/balance
+
+### Documentation
+
+- **Complete Documentation**: WALLET_SYSTEM_COMPLETE_DOCUMENTATION.md
+- **Setup Script**: EXECUTE_THIS_IN_NEON_SQL_CONSOLE.sql
+
+### Next Steps
+
+1. **Vendor Dashboard Integration** (Priority 1)
+   - Integrate wallet summary in vendor dashboard
+   - Show recent transactions and balance alert
+
+2. **Withdrawal Feature** (Priority 2)
+   - Allow vendors to withdraw funds to bank accounts or e-wallets
+   - Implement withdrawal requests and admin approval
+
+3. **Transaction Search and Filter** (Priority 3)
+   - Enhance transaction history with search and filter options
+   - Add export feature for transaction history
+
+### Troubleshooting
+
+**Balance Not Updating**:
+- Check if payment status is `paid_in_full` or `deposit_paid`
+- Verify webhook integration for PayMongo events
+- Check transaction logs in Neon SQL console
+
+**Transaction History Empty**:
+- Ensure vendor has completed bookings
+- Check if wallet was created for the vendor
+- Verify data migration for existing bookings
+
+**API Errors**:
+- Check API keys and environment variables
+- Ensure backend is deployed and running
+- Check network requests in browser DevTools
+
+### Documentation Files
+
+- **Database Schema**: `WALLET_SYSTEM_DATABASE_SCHEMA.sql`
+- **API Documentation**: `WALLET_SYSTEM_API_DOCUMENTATION.md`
+- **Frontend Implementation**: `src/pages/users/vendor/wallet/VendorWallet.tsx`

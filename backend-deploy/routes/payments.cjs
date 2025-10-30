@@ -964,4 +964,116 @@ router.get('/receipts/:bookingId', async (req, res) => {
   }
 });
 
+// Get all receipts for a specific user/couple across all their bookings
+router.get('/receipts/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  
+  console.log(`📜 [GET-USER-RECEIPTS] Fetching all receipts for user ${userId}...`);
+  
+  try {
+    // Get all receipts for bookings where this user is the couple
+    const receipts = await sql`
+      SELECT 
+        r.id,
+        r.booking_id,
+        r.receipt_number,
+        r.payment_type,
+        r.amount,
+        r.currency,
+        r.payment_method,
+        r.payment_intent_id,
+        r.paid_by,
+        r.paid_by_name,
+        r.paid_by_email,
+        r.total_paid,
+        r.remaining_balance,
+        r.notes,
+        r.metadata,
+        r.created_at,
+        b.amount as booking_total,
+        b.service_type,
+        b.event_date,
+        b.event_location,
+        b.status as booking_status,
+        b.vendor_id,
+        b.couple_id,
+        v.business_name as vendor_business_name,
+        v.business_type as vendor_category,
+        v.rating as vendor_rating
+      FROM receipts r
+      LEFT JOIN bookings b ON r.booking_id = CAST(b.id AS TEXT)
+      LEFT JOIN vendors v ON b.vendor_id = v.id
+      WHERE b.couple_id = ${userId}
+      ORDER BY r.created_at DESC
+    `;
+    
+    console.log(`📜 [GET-USER-RECEIPTS] Found ${receipts.length} receipt(s) for user ${userId}`);
+    
+    if (receipts.length === 0) {
+      console.log(`📜 [GET-USER-RECEIPTS] No receipts found for user ${userId}`);
+      return res.json({
+        success: true,
+        receipts: [],
+        message: 'No payment history found'
+      });
+    }
+    
+    // Calculate total statistics
+    const totalSpent = receipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+    const uniqueBookings = [...new Set(receipts.map(r => r.booking_id))].length;
+    const uniqueVendors = [...new Set(receipts.map(r => r.vendor_id))].length;
+    
+    console.log(`📜 [GET-USER-RECEIPTS] Stats - Total: ₱${totalSpent / 100}, Bookings: ${uniqueBookings}, Vendors: ${uniqueVendors}`);
+    
+    res.json({
+      success: true,
+      receipts: receipts.map(r => ({
+        id: r.id,
+        bookingId: r.booking_id,
+        receiptNumber: r.receipt_number,
+        paymentType: r.payment_type || 'payment',
+        amount: Number(r.amount) || 0, // Amount in centavos
+        currency: r.currency || 'PHP',
+        paymentMethod: r.payment_method || 'card',
+        paymentIntentId: r.payment_intent_id || '',
+        paidBy: r.paid_by || r.couple_id,
+        paidByName: r.paid_by_name || 'Customer',
+        paidByEmail: r.paid_by_email || '',
+        vendorId: r.vendor_id,
+        vendorName: r.vendor_business_name || 'Wedding Vendor',
+        vendorCategory: r.vendor_category || 'Wedding Service',
+        vendorRating: r.vendor_rating || 0,
+        serviceType: r.service_type || 'Wedding Service',
+        eventDate: r.event_date || new Date().toISOString(),
+        eventLocation: r.event_location || '',
+        bookingStatus: r.booking_status || 'pending',
+        totalPaid: Number(r.total_paid) || 0,
+        remainingBalance: Number(r.remaining_balance) || 0,
+        notes: r.notes || '',
+        metadata: r.metadata || {},
+        createdAt: r.created_at
+      })),
+      statistics: {
+        totalSpent: totalSpent,
+        totalSpentFormatted: `₱${(totalSpent / 100).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`,
+        totalPayments: receipts.length,
+        uniqueBookings: uniqueBookings,
+        uniqueVendors: uniqueVendors,
+        averagePayment: receipts.length > 0 ? Math.round(totalSpent / receipts.length) : 0,
+        latestPayment: receipts[0].created_at,
+        oldestPayment: receipts[receipts.length - 1].created_at
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ [GET-USER-RECEIPTS] Error:', error);
+    console.error('❌ [GET-USER-RECEIPTS] Error stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user receipts',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;

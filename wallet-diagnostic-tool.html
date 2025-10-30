@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Transaction Diagnostic Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .step {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            font-weight: bold;
+            margin-right: 15px;
+            font-size: 1.2em;
+        }
+        
+        .step-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .step-description {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .query-box {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        .query-box pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .copy-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .copy-btn.copied {
+            background: #10b981;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-missing {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .status-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .alert-warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            color: #92400e;
+        }
+        
+        .alert-info {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            color: #1e40af;
+        }
+        
+        .neon-link {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin: 10px 0;
+        }
+        
+        .neon-link:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        
+        .result-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .result-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .result-table tr:hover {
+            background: #f9fafb;
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            transition: border-color 0.3s;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .replace-note {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Wallet Transaction Diagnostic Tool</h1>
+        <p class="subtitle">Step-by-step guide to check if wallet transactions are being created for completed bookings</p>
+        
+        <div class="alert alert-info">
+            <strong>📌 Before You Start:</strong><br>
+            1. Open Neon SQL Console in another tab: <a href="https://console.neon.tech" target="_blank" rel="noopener noreferrer" class="neon-link">Open Neon Console</a><br>
+            2. Select your Wedding Bazaar database<br>
+            3. Copy and paste each query below into the SQL Editor<br>
+            4. Run each query and check the results
+        </div>
+        
+        <!-- STEP 1 -->
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">1</span>
+                <span>Find Your Completed Bookings</span>
+            </div>
+            <div class="step-description">
+                This query shows all recently completed bookings. Find your booking and copy its ID.
+            </div>
+            <div class="query-box">
+                <button class="copy-btn" onclick="copyQuery('query1')">📋 Copy</button>
+                <pre id="query1">SELECT 
+  id,
+  vendor_id,
+  couple_name,
+  service_type,
+  status,
+  amount,
+  fully_completed_at
+FROM bookings
+WHERE status = 'completed'
+ORDER BY fully_completed_at DESC
+LIMIT 5;</pre>
+            </div>
+            <div class="step-description">
+                <strong>Expected Result:</strong> You should see your recently completed booking(s).<br>
+                <strong>Action:</strong> Copy the <code>id</code> value (UUID format) for the next steps.
+            </div>
+        </div>
+        
+        <!-- STEP 2 -->
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">2</span>
+                <span>Enter Your Booking ID</span>
+            </div>
+            <div class="step-description">
+                Paste the booking ID from Step 1 here. This will be used in the following queries.
+            </div>
+            <input type="text" 
+                   class="input-field" 
+                   id="bookingIdInput" 
+                   placeholder="Paste booking ID here (e.g., 123e4567-e89b-12d3-a456-426614174000)"
+                   oninput="updateQueries()">
+            <div class="replace-note">
+                💡 The queries below will automatically update when you paste your booking ID
+            </div>
+        </div>
+        
+        <!-- STEP 3 -->
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">3</span>
+                <span>Check Wallet Transaction Status</span>
+                <span class="status-indicator status-info">CRITICAL CHECK</span>
+            </div>
+            <div class="step-description">
+                This query checks if a wallet transaction was created for your booking.
+            </div>
+            <div class="query-box">
+                <button class="copy-btn" onclick="copyQuery('query3')">📋 Copy</button>
+                <pre id="query3">SELECT 
+  b.id as booking_id,
+  b.couple_name,
+  b.amount as booking_amount,
+  b.fully_completed_at,
+  wt.transaction_id,
+  wt.amount as wallet_amount,
+  wt.created_at as transaction_created_at,
+  CASE 
+    WHEN wt.id IS NULL THEN '❌ MISSING'
+    ELSE '✅ EXISTS'
+  END as wallet_status
+FROM bookings b
+LEFT JOIN wallet_transactions wt ON wt.booking_id = b.id
+WHERE b.id = '<span class="booking-id-placeholder">YOUR_BOOKING_ID</span>';</pre>
+            </div>
+            <div class="step-description">
+                <strong>Expected Results:</strong><br>
+                <span class="status-indicator status-success">✅ EXISTS</span> Transaction was created successfully!<br>
+                <span class="status-indicator status-missing">❌ MISSING</span> Transaction is missing! Continue to Step 4.
+            </div>
+        </div>
+        
+        <!-- STEP 4 -->
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">4</span>
+                <span>Check Payment Receipts</span>
+            </div>
+            <div class="step-description">
+                If transaction is missing, check if payment receipts exist.
+            </div>
+            <div class="query-box">
+                <button class="copy-btn" onclick="copyQuery('query4')">📋 Copy</button>
+                <pre id="query4">SELECT 
+  id,
+  receipt_number,
+  payment_type,
+  amount,
+  payment_method,
+  payment_intent_id,
+  created_at
+FROM receipts
+WHERE booking_id = '<span class="booking-id-placeholder">YOUR_BOOKING_ID</span>'
+ORDER BY created_at;</pre>
+            </div>
+            <div class="step-description">
+                <strong>Expected Result:</strong> You should see at least one receipt record.<br>
+                <strong>If Empty:</strong> The booking was completed without payment records! This is why the transaction wasn't created.
+            </div>
+        </div>
+        
+        <!-- STEP 5 -->
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">5</span>
+                <span>Full Diagnostic Report</span>
+            </div>
+            <div class="step-description">
+                This query shows the complete picture: booking, receipts, and wallet transaction status.
+            </div>
+            <div class="query-box">
+                <button class="copy-btn" onclick="copyQuery('query5')">📋 Copy</button>
+                <pre id="query5">SELECT 
+  b.id as booking_id,
+  b.vendor_id,
+  b.couple_name,
+  b.service_type,
+  b.status,
+  b.amount as booking_amount,
+  b.fully_completed_at,
+  (SELECT COUNT(*) FROM receipts WHERE booking_id = b.id) as receipts_count,
+  (SELECT SUM(amount) FROM receipts WHERE booking_id = b.id) as total_paid_centavos,
+  wt.transaction_id,
+  wt.amount as wallet_amount,
+  wt.created_at as transaction_created_at,
+  CASE 
+    WHEN wt.id IS NULL THEN '❌ MISSING'
+    ELSE '✅ EXISTS'
+  END as wallet_status
+FROM bookings b
+LEFT JOIN wallet_transactions wt ON wt.booking_id = b.id
+WHERE b.id = '<span class="booking-id-placeholder">YOUR_BOOKING_ID</span>';</pre>
+            </div>
+            <div class="step-description">
+                <strong>Interpretation:</strong><br>
+                • <code>receipts_count</code>: Number of payment receipts (should be > 0)<br>
+                • <code>total_paid_centavos</code>: Total paid amount in centavos (divide by 100 for PHP)<br>
+                • <code>wallet_status</code>: Whether transaction exists<br>
+                • <code>wallet_amount</code>: Amount transferred to wallet (should match total paid)
+            </div>
+        </div>
+        
+        <!-- STEP 6 -->
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">6</span>
+                <span>All Completed Bookings Overview</span>
+            </div>
+            <div class="step-description">
+                Quick overview of all completed bookings and their wallet transaction status.
+            </div>
+            <div class="query-box">
+                <button class="copy-btn" onclick="copyQuery('query6')">📋 Copy</button>
+                <pre id="query6">SELECT 
+  b.couple_name,
+  b.service_type,
+  b.fully_completed_at,
+  CASE WHEN wt.id IS NULL THEN '❌ MISSING' ELSE '✅ EXISTS' END as wallet_status,
+  wt.amount as wallet_amount
+FROM bookings b
+LEFT JOIN wallet_transactions wt ON wt.booking_id = b.id
+WHERE b.status = 'completed'
+ORDER BY b.fully_completed_at DESC;</pre>
+            </div>
+            <div class="step-description">
+                This shows which bookings have wallet transactions and which don't.
+            </div>
+        </div>
+        
+        <!-- TROUBLESHOOTING -->
+        <div class="alert alert-warning">
+            <strong>⚠️ If Transaction is Missing:</strong><br>
+            <br>
+            <strong>Possible Causes:</strong><br>
+            1. <strong>No Payment Records:</strong> Booking was marked complete without processing payment<br>
+            2. <strong>Backend Error:</strong> Check Render logs for errors during completion<br>
+            3. <strong>Manual Completion:</strong> Booking was completed via SQL instead of API<br>
+            <br>
+            <strong>Solutions:</strong><br>
+            • Process payment properly if customer hasn't paid<br>
+            • Check backend logs in Render dashboard<br>
+            • Manually create transaction (see full SQL file: <code>CHECK_WALLET_TRANSACTION.sql</code>)<br>
+            <br>
+            <strong>Need Help?</strong><br>
+            1. Share the results from Step 5 (Full Diagnostic Report)<br>
+            2. Check backend logs in Render dashboard<br>
+            3. Open <code>WALLET_CHECK_QUICK_GUIDE.md</code> for detailed troubleshooting
+        </div>
+        
+        <div class="alert alert-info">
+            <strong>✅ Success Indicators:</strong><br>
+            • Step 3 shows <span class="status-indicator status-success">✅ EXISTS</span><br>
+            • <code>wallet_amount</code> matches the payment amount<br>
+            • Vendor can see transaction at <a href="https://weddingbazaarph.web.app/vendor/wallet" target="_blank" rel="noopener noreferrer">https://weddingbazaarph.web.app/vendor/wallet</a><br>
+            • Vendor's balance increased correctly
+        </div>
+    </div>
+    
+    <script>
+        function copyQuery(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = element.parentElement.querySelector('.copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                btn.classList.add('copied');
+                
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                alert('Failed to copy. Please select and copy manually.');
+            });
+        }
+        
+        function updateQueries() {
+            const bookingId = document.getElementById('bookingIdInput').value.trim();
+            const placeholders = document.querySelectorAll('.booking-id-placeholder');
+            
+            placeholders.forEach(placeholder => {
+                if (bookingId) {
+                    placeholder.textContent = bookingId;
+                    placeholder.style.color = '#10b981';
+                    placeholder.style.fontWeight = 'bold';
+                } else {
+                    placeholder.textContent = 'YOUR_BOOKING_ID';
+                    placeholder.style.color = '#ef4444';
+                    placeholder.style.fontWeight = 'normal';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
