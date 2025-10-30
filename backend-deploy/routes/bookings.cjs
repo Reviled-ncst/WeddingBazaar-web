@@ -828,11 +828,10 @@ router.post('/request', async (req, res) => {
     // Use eventLocation if provided, otherwise fall back to venue or 'TBD'
     const location = eventLocation || venue || 'TBD';
     
-    // Generate unique booking ID (use smaller integer)
-    const bookingId = Math.floor(Date.now() / 1000); // Use seconds instead of milliseconds
+    // FIX: Don't manually generate ID, let database auto-generate UUID
+    // The database schema uses UUID PRIMARY KEY with auto-generation
     
     console.log('💾 Inserting booking with data:', {
-      bookingId,
       coupleId,
       vendorId,
       serviceId,
@@ -853,13 +852,12 @@ router.post('/request', async (req, res) => {
     
     const booking = await sql`
       INSERT INTO bookings (
-        id, couple_id, vendor_id, service_id, event_date, event_time, event_end_time,
+        couple_id, vendor_id, service_id, event_date, event_time, event_end_time,
         event_location, venue_details, guest_count, budget_range, total_amount, 
         special_requests, contact_person, contact_phone, contact_email, preferred_contact_method,
         status, service_name, service_type, vendor_name, couple_name,
         created_at, updated_at
-      ) VALUES (
-        ${bookingId}, 
+      ) VALUES ( 
         ${coupleId}, 
         ${vendorId}, 
         ${serviceId || null}, 
@@ -886,7 +884,8 @@ router.post('/request', async (req, res) => {
       ) RETURNING *
     `;
     
-    console.log(`✅ Booking request created: ${bookingId}`);
+    const bookingId = booking[0].id; // Get the auto-generated UUID
+    console.log(`✅ Booking request created with ID: ${bookingId}`);
     console.log('📊 Created booking data:', booking[0]);
     
     // 📧 Send email notification to vendor (async, don't wait)
