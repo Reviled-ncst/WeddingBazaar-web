@@ -1,0 +1,1 @@
+export { CoordinatorVendors } from './CoordinatorVendors';

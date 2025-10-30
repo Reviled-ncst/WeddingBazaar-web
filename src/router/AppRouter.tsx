@@ -73,6 +73,9 @@ import { VendorFinances } from '../pages/users/vendor/finances/VendorFinances';
 
 // Coordinator Pages
 import { CoordinatorDashboard } from '../pages/users/coordinator/dashboard';
+import { CoordinatorWeddings } from '../pages/users/coordinator/weddings';
+import { CoordinatorVendors } from '../pages/users/coordinator/vendors';
+import { CoordinatorClients } from '../pages/users/coordinator/clients';
 
 // Auth Context
 import { AuthProvider } from '../shared/contexts/HybridAuthContext';
@@ -340,6 +343,21 @@ export const AppRouter: React.FC = () => {
             <Route path="/coordinator/dashboard" element={
               <RoleProtectedRoute allowedRoles={['coordinator']} requireAuth={true}>
                 <CoordinatorDashboard />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/coordinator/weddings" element={
+              <RoleProtectedRoute allowedRoles={['coordinator']} requireAuth={true}>
+                <CoordinatorWeddings />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/coordinator/vendors" element={
+              <RoleProtectedRoute allowedRoles={['coordinator']} requireAuth={true}>
+                <CoordinatorVendors />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/coordinator/clients" element={
+              <RoleProtectedRoute allowedRoles={['coordinator']} requireAuth={true}>
+                <CoordinatorClients />
               </RoleProtectedRoute>
             } />
             
