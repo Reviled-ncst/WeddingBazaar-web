@@ -50,13 +50,17 @@ const TransactionHistory: React.FC = () => {
   
   // Expanded receipt state
   const [expandedReceipts, setExpandedReceipts] = useState<Set<string>>(new Set());
+  
+  // Determine if user is vendor or couple
+  const isVendor = user?.role === 'vendor';
+  const userType = isVendor ? 'vendor' : 'couple';
 
   useEffect(() => {
     if (user?.id) {
       loadTransactionHistory();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, user?.role]);
 
   useEffect(() => {
     applyFilters();
@@ -74,19 +78,38 @@ const TransactionHistory: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      console.log('📊 [TRANSACTION HISTORY] Loading payment receipts for user:', user.id);
+      console.log(`📊 [TRANSACTION HISTORY] Loading ${userType} transactions for user:`, user.id);
+      console.log('📊 [TRANSACTION HISTORY] User role:', user.role);
       console.log('📊 [TRANSACTION HISTORY] API URL:', import.meta.env.VITE_API_URL);
       
-      // Use dedicated user receipts endpoint
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/payment/receipts/user/${user.id}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+      let endpoint = '';
+      
+      if (isVendor) {
+        // For vendors: Get wallet transactions (earnings)
+        // Vendors need to use their vendorId from the vendors table, not their user ID
+        const vendorId = user.vendorId || user.id;
+        
+        if (!vendorId) {
+          throw new Error('Vendor ID not found. Please ensure you have a vendor profile set up.');
         }
-      );
+        
+        endpoint = `${import.meta.env.VITE_API_URL}/api/wallet/${vendorId}/transactions`;
+        console.log('📊 [TRANSACTION HISTORY] Fetching VENDOR wallet transactions');
+        console.log('📊 [TRANSACTION HISTORY] Vendor ID:', vendorId);
+        console.log('📊 [TRANSACTION HISTORY] Full endpoint:', endpoint);
+        console.log('📊 [TRANSACTION HISTORY] User object keys:', Object.keys(user));
+      } else {
+        // For couples: Get payment receipts (expenses)
+        endpoint = `${import.meta.env.VITE_API_URL}/api/payment/receipts/user/${user.id}`;
+        console.log('📊 [TRANSACTION HISTORY] Fetching COUPLE payment receipts');
+      }
+      
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       
       console.log('📊 [TRANSACTION HISTORY] Response status:', response.status);
       
@@ -97,25 +120,76 @@ const TransactionHistory: React.FC = () => {
       const data = await response.json();
       console.log('📊 [TRANSACTION HISTORY] Response data:', data);
       
-      if (!data.success) {
+      if (!data.success && !data.transactions) {
         throw new Error(data.message || 'Failed to load transaction history');
       }
       
-      const allReceipts = data.receipts || [];
-      const stats = data.statistics || {
-        totalSpent: 0,
-        totalSpentFormatted: '₱0.00',
-        totalPayments: 0,
-        uniqueBookings: 0,
-        uniqueVendors: 0,
-        averagePayment: 0,
-        latestPayment: new Date().toISOString(),
-        oldestPayment: new Date().toISOString(),
-      };
+      // Handle vendor wallet transactions vs couple receipts
+      let allReceipts: TransactionReceipt[] = [];
+      let stats: TransactionStatistics;
       
-      console.log('✅ [TRANSACTION HISTORY] Loaded:', {
+      if (isVendor) {
+        // Transform vendor wallet transactions to receipt format
+        const walletTransactions = data.transactions || [];
+        allReceipts = walletTransactions.map((t: any) => ({
+          id: t.id,
+          bookingId: t.booking_id,
+          receiptNumber: t.transaction_id,
+          paymentType: t.transaction_type,
+          amount: Math.abs(t.amount * 100), // Convert to centavos
+          currency: t.currency || 'PHP',
+          paymentMethod: t.payment_method || 'transfer',
+          paymentIntentId: t.payment_reference || '',
+          paidBy: t.customer_name || '',
+          paidByName: t.customer_name || 'Customer',
+          paidByEmail: t.customer_email || '',
+          vendorId: user.vendorId || user.id,
+          vendorName: user.businessName || 'Your Business',
+          vendorCategory: t.service_category || 'Wedding Service',
+          vendorRating: 0,
+          serviceType: t.service_name || t.service_category || 'Wedding Service',
+          eventDate: t.event_date || new Date().toISOString(),
+          eventLocation: '',
+          bookingStatus: t.status || 'completed',
+          totalPaid: Math.abs(t.amount * 100),
+          remainingBalance: 0,
+          notes: t.description || '',
+          createdAt: t.created_at,
+        }));
+        
+        // Calculate vendor stats
+        const totalEarned = walletTransactions
+          .filter((t: any) => t.transaction_type === 'earning')
+          .reduce((sum: number, t: any) => sum + Math.abs(t.amount * 100), 0);
+        
+        stats = {
+          totalSpent: totalEarned,
+          totalSpentFormatted: `₱${(totalEarned / 100).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`,
+          totalPayments: allReceipts.length,
+          uniqueBookings: new Set(allReceipts.map(r => r.bookingId)).size,
+          uniqueVendors: 1, // For vendor, it's always 1 (themselves)
+          averagePayment: allReceipts.length > 0 ? Math.round(totalEarned / allReceipts.length) : 0,
+          latestPayment: allReceipts[0]?.createdAt || new Date().toISOString(),
+          oldestPayment: allReceipts[allReceipts.length - 1]?.createdAt || new Date().toISOString(),
+        };
+      } else {
+        // Couple receipts (existing logic)
+        allReceipts = data.receipts || [];
+        stats = data.statistics || {
+          totalSpent: 0,
+          totalSpentFormatted: '₱0.00',
+          totalPayments: 0,
+          uniqueBookings: 0,
+          uniqueVendors: 0,
+          averagePayment: 0,
+          latestPayment: new Date().toISOString(),
+          oldestPayment: new Date().toISOString(),
+        };
+      }
+      
+      console.log(`✅ [TRANSACTION HISTORY] Loaded ${userType} data:`, {
         receipts: allReceipts.length,
-        totalSpent: stats.totalSpentFormatted,
+        total: stats.totalSpentFormatted,
         bookings: stats.uniqueBookings,
         vendors: stats.uniqueVendors,
       });
@@ -203,13 +277,17 @@ const TransactionHistory: React.FC = () => {
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="p-3 bg-gradient-to-br from-pink-500 to-purple-500 rounded-xl shadow-lg">
-              <Receipt className="w-6 h-6 text-white" />
+              {isVendor ? <Wallet className="w-6 h-6 text-white" /> : <Receipt className="w-6 h-6 text-white" />}
             </div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-              Transaction History
+              {isVendor ? 'Earnings History' : 'Transaction History'}
             </h1>
           </div>
-          <p className="text-gray-600 ml-16">View all your payment receipts and transaction details</p>
+          <p className="text-gray-600 ml-16">
+            {isVendor 
+              ? 'View all your earnings and wallet transactions' 
+              : 'View all your payment receipts and transaction details'}
+          </p>
         </motion.div>
 
         {error && (
@@ -238,14 +316,14 @@ const TransactionHistory: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatCard
               icon={<Wallet className="w-6 h-6" />}
-              title="Total Spent"
+              title={isVendor ? "Total Earned" : "Total Spent"}
               value={statistics.totalSpentFormatted}
               gradient="from-green-500 to-emerald-500"
               delay={0.1}
             />
             <StatCard
               icon={<Receipt className="w-6 h-6" />}
-              title="Total Payments"
+              title={isVendor ? "Total Transactions" : "Total Payments"}
               value={statistics.totalPayments.toString()}
               gradient="from-blue-500 to-cyan-500"
               delay={0.2}
@@ -259,7 +337,7 @@ const TransactionHistory: React.FC = () => {
             />
             <StatCard
               icon={<Building2 className="w-6 h-6" />}
-              title="Vendors"
+              title={isVendor ? "Customers" : "Vendors"}
               value={statistics.uniqueVendors.toString()}
               gradient="from-orange-500 to-red-500"
               delay={0.4}
@@ -387,7 +465,9 @@ const TransactionHistory: React.FC = () => {
             <p className="text-gray-500">
               {searchTerm || filterPaymentMethod !== 'all' || filterPaymentType !== 'all'
                 ? 'Try adjusting your filters'
-                : 'You haven\'t made any payments yet'}
+                : isVendor
+                  ? 'You haven\'t received any payments yet'
+                  : 'You haven\'t made any payments yet'}
             </p>
           </motion.div>
         ) : (
