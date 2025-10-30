@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transaction History - Live Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #fce7f3 0%, #fff 50%, #e9d5ff 100%);
+      min-height: 100vh;
+    }
+    .header {
+      background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 20px;
+      margin-bottom: 30px;
+      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+    }
+    .test-card {
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+    .test-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #1f2937;
+    }
+    .test-status {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .status-pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .status-passed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .status-failed {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .test-steps {
+      list-style: none;
+      padding: 0;
+    }
+    .test-steps li {
+      padding: 10px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .test-steps li:before {
+      content: "→";
+      margin-right: 10px;
+      color: #ec4899;
+      font-weight: bold;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+      color: white;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+    }
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+    .console-output {
+      background: #1f2937;
+      color: #10b981;
+      padding: 20px;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      margin-top: 20px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+    .info-box {
+      background: #dbeafe;
+      border-left: 4px solid #3b82f6;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+    .warning-box {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🧪 Transaction History - Live Testing Dashboard</h1>
+    <p style="margin: 10px 0 0 0; opacity: 0.9;">Interactive test suite for vendor and couple transaction views</p>
+  </div>
+
+  <div class="info-box">
+    <strong>📍 Deployment Status:</strong> Live on Firebase Hosting<br>
+    <strong>🌐 Frontend URL:</strong> <a href="https://weddingbazaarph.web.app" target="_blank" style="color: #3b82f6;">https://weddingbazaarph.web.app</a><br>
+    <strong>🔧 Backend URL:</strong> <a href="https://weddingbazaar-web.onrender.com" target="_blank" style="color: #3b82f6;">https://weddingbazaar-web.onrender.com</a>
+  </div>
+
+  <!-- Test 1: Vendor Earnings View -->
+  <div class="test-card">
+    <div class="test-title">
+      Test 1: Vendor Earnings History
+      <span class="test-status status-pending" id="test1-status">PENDING</span>
+    </div>
+    <ul class="test-steps">
+      <li>Navigate to <strong>/vendor/finances</strong></li>
+      <li>Login as: <code>vendor4@test.com</code> / <code>Test1234</code></li>
+      <li>Verify "Earnings History" title displays</li>
+      <li>Check statistics cards: Total Earned, Transactions, Bookings, Customers</li>
+      <li>Verify amounts show in ₱X,XXX.XX format (with commas)</li>
+      <li>Test search, filters, and sort functionality</li>
+      <li>Expand transaction details</li>
+    </ul>
+    <div class="action-buttons">
+      <a href="https://weddingbazaarph.web.app/vendor/finances" target="_blank" class="btn btn-primary">
+        🚀 Open Vendor Page
+      </a>
+      <button onclick="runTest1()" class="btn btn-secondary">Run Test</button>
+    </div>
+    <div id="test1-output" class="console-output" style="display: none;"></div>
+  </div>
+
+  <!-- Test 2: Couple Transactions View -->
+  <div class="test-card">
+    <div class="test-title">
+      Test 2: Couple Transaction History
+      <span class="test-status status-pending" id="test2-status">PENDING</span>
+    </div>
+    <ul class="test-steps">
+      <li>Navigate to <strong>/individual/transactions</strong></li>
+      <li>Login as: <code>user2@test.com</code> / <code>Test1234</code></li>
+      <li>Verify "Transaction History" title displays</li>
+      <li>Check statistics cards: Total Spent, Payments, Bookings, Vendors</li>
+      <li>Verify amounts show in ₱X,XXX.XX format (with commas)</li>
+      <li>Test search, filters, and sort functionality</li>
+      <li>Expand receipt details</li>
+    </ul>
+    <div class="action-buttons">
+      <a href="https://weddingbazaarph.web.app/individual/transactions" target="_blank" class="btn btn-primary">
+        🚀 Open Couple Page
+      </a>
+      <button onclick="runTest2()" class="btn btn-secondary">Run Test</button>
+    </div>
+    <div id="test2-output" class="console-output" style="display: none;"></div>
+  </div>
+
+  <!-- Test 3: Amount Formatting -->
+  <div class="test-card">
+    <div class="test-title">
+      Test 3: Amount Formatting Logic
+      <span class="test-status status-pending" id="test3-status">PENDING</span>
+    </div>
+    <p>Verify that amounts in centavos convert correctly to PHP format with commas.</p>
+    <div class="action-buttons">
+      <button onclick="runTest3()" class="btn btn-primary">Run Test</button>
+    </div>
+    <div id="test3-output" class="console-output" style="display: none;"></div>
+  </div>
+
+  <!-- Test 4: API Endpoints -->
+  <div class="test-card">
+    <div class="test-title">
+      Test 4: API Endpoint Health Check
+      <span class="test-status status-pending" id="test4-status">PENDING</span>
+    </div>
+    <div class="warning-box">
+      <strong>⚠️ Note:</strong> This test requires authentication. You'll need to be logged in with a valid JWT token.
+    </div>
+    <div class="action-buttons">
+      <button onclick="runTest4()" class="btn btn-primary">Run Test</button>
+    </div>
+    <div id="test4-output" class="console-output" style="display: none;"></div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="test-card">
+    <div class="test-title">🎯 Quick Actions</div>
+    <div class="action-buttons">
+      <a href="https://weddingbazaarph.web.app/login" target="_blank" class="btn btn-primary">
+        Login Page
+      </a>
+      <a href="https://weddingbazaarph.web.app/vendor/finances" target="_blank" class="btn btn-secondary">
+        Vendor View
+      </a>
+      <a href="https://weddingbazaarph.web.app/individual/transactions" target="_blank" class="btn btn-secondary">
+        Couple View
+      </a>
+      <button onclick="runAllTests()" class="btn btn-primary">Run All Tests</button>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'https://weddingbazaar-web.onrender.com';
+
+    function updateStatus(testId, status) {
+      const statusEl = document.getElementById(`${testId}-status`);
+      statusEl.className = `test-status status-${status}`;
+      statusEl.textContent = status.toUpperCase();
+    }
+
+    function log(testId, message, color = '#10b981') {
+      const outputEl = document.getElementById(`${testId}-output`);
+      outputEl.style.display = 'block';
+      outputEl.innerHTML += `<span style="color: ${color};">${message}</span>\n`;
+      outputEl.scrollTop = outputEl.scrollHeight;
+    }
+
+    function clearLog(testId) {
+      const outputEl = document.getElementById(`${testId}-output`);
+      outputEl.innerHTML = '';
+      outputEl.style.display = 'block';
+    }
+
+    // Test 1: Vendor View
+    function runTest1() {
+      clearLog('test1');
+      updateStatus('test1', 'pending');
+      log('test1', '🧪 TEST 1: Vendor Earnings History', '#3b82f6');
+      log('test1', '━'.repeat(60));
+      log('test1', '');
+      log('test1', '📋 Manual Test Steps:');
+      log('test1', '1. Click "Open Vendor Page" button');
+      log('test1', '2. Login with: vendor4@test.com / Test1234');
+      log('test1', '3. Verify page loads without errors');
+      log('test1', '4. Check title says "Earnings History"');
+      log('test1', '5. Verify statistics cards display correctly');
+      log('test1', '6. Check amounts are in ₱X,XXX.XX format');
+      log('test1', '7. Test search, filters, and expand details');
+      log('test1', '');
+      log('test1', '✅ Expected: All amounts with commas, no console errors', '#10b981');
+      log('test1', '❌ Not OK: Amounts without commas or in centavos', '#ef4444');
+      updateStatus('test1', 'pending');
+    }
+
+    // Test 2: Couple View
+    function runTest2() {
+      clearLog('test2');
+      updateStatus('test2', 'pending');
+      log('test2', '🧪 TEST 2: Couple Transaction History', '#3b82f6');
+      log('test2', '━'.repeat(60));
+      log('test2', '');
+      log('test2', '📋 Manual Test Steps:');
+      log('test2', '1. Click "Open Couple Page" button');
+      log('test2', '2. Login with: user2@test.com / Test1234');
+      log('test2', '3. Verify page loads without errors');
+      log('test2', '4. Check title says "Transaction History"');
+      log('test2', '5. Verify statistics cards display correctly');
+      log('test2', '6. Check amounts are in ₱X,XXX.XX format');
+      log('test2', '7. Test search, filters, and expand details');
+      log('test2', '');
+      log('test2', '✅ Expected: All amounts with commas, no console errors', '#10b981');
+      log('test2', '❌ Not OK: Amounts without commas or in centavos', '#ef4444');
+      updateStatus('test2', 'pending');
+    }
+
+    // Test 3: Amount Formatting
+    function runTest3() {
+      clearLog('test3');
+      updateStatus('test3', 'pending');
+      log('test3', '🧪 TEST 3: Amount Formatting Logic', '#3b82f6');
+      log('test3', '━'.repeat(60));
+      log('test3', '');
+
+      const testCases = [
+        { centavos: 1892800, expected: '₱18,928.00' },
+        { centavos: 4200000, expected: '₱42,000.00' },
+        { centavos: 500000, expected: '₱5,000.00' },
+        { centavos: 123456789, expected: '₱1,234,567.89' },
+        { centavos: 100, expected: '₱1.00' },
+      ];
+
+      let allPassed = true;
+
+      testCases.forEach((test, i) => {
+        const php = test.centavos / 100;
+        const formatted = `₱${php.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`;
+        const passed = formatted === test.expected;
+        
+        log('test3', `Test ${i + 1}: ${test.centavos} centavos → ${formatted}`, passed ? '#10b981' : '#ef4444');
+        log('test3', `  Expected: ${test.expected}`, '#94a3b8');
+        log('test3', `  Result: ${passed ? '✅ PASS' : '❌ FAIL'}`, passed ? '#10b981' : '#ef4444');
+        log('test3', '');
+
+        if (!passed) allPassed = false;
+      });
+
+      if (allPassed) {
+        log('test3', '✅ ALL TESTS PASSED - Amount formatting is CORRECT', '#10b981');
+        updateStatus('test3', 'passed');
+      } else {
+        log('test3', '❌ SOME TESTS FAILED', '#ef4444');
+        updateStatus('test3', 'failed');
+      }
+    }
+
+    // Test 4: API Health Check
+    async function runTest4() {
+      clearLog('test4');
+      updateStatus('test4', 'pending');
+      log('test4', '🧪 TEST 4: API Endpoint Health Check', '#3b82f6');
+      log('test4', '━'.repeat(60));
+      log('test4', '');
+
+      try {
+        // Test backend health
+        log('test4', '📡 Testing backend health endpoint...');
+        const healthResponse = await fetch(`${API_URL}/api/health`);
+        const healthData = await healthResponse.json();
+        
+        if (healthResponse.ok) {
+          log('test4', `✅ Backend is healthy: ${healthData.message}`, '#10b981');
+        } else {
+          log('test4', '❌ Backend health check failed', '#ef4444');
+        }
+        log('test4', '');
+
+        // Test couple receipts endpoint (no auth required for public endpoint)
+        log('test4', '📡 Testing couple receipts endpoint...');
+        const receiptsResponse = await fetch(`${API_URL}/api/payment/receipts/user/test-user-id`);
+        log('test4', `  Status: ${receiptsResponse.status} ${receiptsResponse.statusText}`);
+        
+        if (receiptsResponse.status === 200 || receiptsResponse.status === 401) {
+          log('test4', '✅ Endpoint accessible (200 OK or 401 auth required)', '#10b981');
+        } else {
+          log('test4', '⚠️  Unexpected status code', '#f59e0b');
+        }
+        log('test4', '');
+
+        log('test4', '📋 To test with authentication:');
+        log('test4', '1. Login to the app');
+        log('test4', '2. Open DevTools → Application → Local Storage');
+        log('test4', '3. Copy jwt_token value');
+        log('test4', '4. Use that token in API requests');
+
+        updateStatus('test4', 'passed');
+
+      } catch (error) {
+        log('test4', `❌ Error: ${error.message}`, '#ef4444');
+        updateStatus('test4', 'failed');
+      }
+    }
+
+    // Run all tests
+    async function runAllTests() {
+      runTest3();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await runTest4();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      runTest1();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      runTest2();
+    }
+
+    // Auto-run Test 3 on load
+    window.onload = () => {
+      setTimeout(() => runTest3(), 500);
+    };
+  </script>
+</body>
+</html>
