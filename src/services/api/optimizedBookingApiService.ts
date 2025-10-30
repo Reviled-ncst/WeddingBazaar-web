@@ -247,11 +247,14 @@ export class OptimizedBookingApiService {
         FETCH_TIMEOUTS.BOOKING_CREATE
       );
 
-      if (response.success && response.data) {
+      // 🔧 FIX: Backend returns 'booking' property, not 'data'
+      const bookingData_response = response.data || (response as any).booking;
+      
+      if (response.success && bookingData_response) {
         // Clear relevant caches
         this.fetcher.clearCache('bookings');
         
-        return this.formatBookingResponse(response.data, bookingData);
+        return this.formatBookingResponse(bookingData_response, bookingData);
       }
 
       throw new Error(response.message || 'Invalid response from server');
@@ -425,10 +428,11 @@ export class OptimizedBookingApiService {
       coupleId: userId || bookingData.user_id || bookingData.couple_id || '1-2025-001',
       
       // Core booking fields with optimized structure
-      vendor_id: parseInt(bookingData.vendor_id) || 1,
-      vendorId: parseInt(bookingData.vendor_id) || 1, // Backend expects vendorId
-      service_id: this.mapServiceId(bookingData.service_id),
-      serviceId: this.mapServiceId(bookingData.service_id), // Backend expects serviceId
+      // 🔧 CRITICAL FIX: Keep vendor_id as string (format: "2-2025-001", not integer)
+      vendor_id: bookingData.vendor_id || bookingData.vendorId,
+      vendorId: bookingData.vendor_id || bookingData.vendorId, // Backend expects vendorId
+      service_id: bookingData.service_id || bookingData.serviceId,
+      serviceId: bookingData.service_id || bookingData.serviceId, // Backend expects serviceId
       service_type: bookingData.service_type,
       serviceType: bookingData.service_type, // Backend expects serviceType
       service_name: bookingData.service_name,
