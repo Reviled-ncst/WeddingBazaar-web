@@ -69,6 +69,7 @@ import { VendorHelp } from '../pages/users/vendor/help';
 import { VendorBilling } from '../pages/users/vendor/billing';
 import { VendorPromotions } from '../pages/users/vendor/promotions';
 import { VendorSubscriptionPage } from '../pages/users/vendor/subscription';
+import { VendorFinances } from '../pages/users/vendor/finances/VendorFinances';
 
 // Auth Context
 import { AuthProvider } from '../shared/contexts/HybridAuthContext';
@@ -258,7 +259,7 @@ export const AppRouter: React.FC = () => {
             } />
             <Route path="/vendor/finances" element={
               <RoleProtectedRoute allowedRoles={['vendor']} requireAuth={true}>
-                <TransactionHistory />
+                <VendorFinances />
               </RoleProtectedRoute>
             } />
             <Route path="/vendor/messages" element={

@@ -230,7 +230,11 @@ export const VendorBookingsSecure: React.FC = () => {
   // Memoize vendorId to prevent re-renders
   const vendorId = useMemo(() => user?.id || user?.vendorId, [user?.id, user?.vendorId]);
   
-  const apiUrl = process.env.REACT_APP_API_URL || 'https://weddingbazaar-web.onrender.com';
+  // 🔧 FIX: Memoize apiUrl to prevent re-creation on every render
+  const apiUrl = useMemo(() => 
+    process.env.REACT_APP_API_URL || 'https://weddingbazaar-web.onrender.com',
+    []
+  );
 
   /**
    * SECURITY-ENHANCED: Load bookings with proper access control
@@ -480,17 +484,19 @@ export const VendorBookingsSecure: React.FC = () => {
     setIsRefreshing(false);
   };
 
-  // Filter bookings
-  const filteredBookings = bookings.filter(booking => {
-    const matchesSearch = 
-      booking.coupleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.serviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.eventLocation.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  // Filter bookings - MEMOIZED to prevent infinite re-renders
+  const filteredBookings = useMemo(() => {
+    return bookings.filter(booking => {
+      const matchesSearch = 
+        booking.coupleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.serviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.eventLocation.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [bookings, searchTerm, statusFilter]);
 
   // Security Alert Component
   const SecurityAlert = () => {
@@ -745,22 +751,7 @@ export const VendorBookingsSecure: React.FC = () => {
           ) : (
             <div className="space-y-4">
               <AnimatePresence>
-                {filteredBookings.map((booking, index) => {
-                  // 🔍 DEBUG: Log booking status before rendering
-                  console.log(`🎯 [VendorBookingsSecure] RENDERING BOOKING #${index}:`, {
-                    id: booking.id,
-                    status: booking.status,
-                    statusType: typeof booking.status,
-                    coupleName: booking.coupleName,
-                    willShowAs: booking.status === 'fully_paid' ? 'Fully Paid (should be blue)' : 
-                               booking.status === 'cancelled' ? 'Cancelled (red)' :
-                               booking.status === 'request' ? 'New Request (blue)' :
-                               booking.status === 'pending_review' ? 'Pending Review (yellow)' :
-                               booking.status === 'completed' ? 'Completed (gray)' :
-                               `${booking.status} (check mapping...)`
-                  });
-                  
-                  return (
+                {filteredBookings.map((booking, index) => (
                   <motion.div
                     key={booking.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -1095,8 +1086,7 @@ export const VendorBookingsSecure: React.FC = () => {
                       </div>
                     </div>
                   </motion.div>
-                );
-                })}
+                ))}
               </AnimatePresence>
             </div>
           )}

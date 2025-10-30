@@ -85,6 +85,12 @@ export const DocumentUploadComponent: React.FC<DocumentUploadComponentProps> = (
     refreshDocuments();
   }, [refreshDocuments]);
 
+  // Check if selected document type already has a pending/approved document
+  const existingDocument = documents.find(
+    doc => doc.documentType === selectedDocumentType && 
+    (doc.verificationStatus === 'pending' || doc.verificationStatus === 'approved')
+  );
+
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
@@ -172,61 +178,110 @@ export const DocumentUploadComponent: React.FC<DocumentUploadComponentProps> = (
           </select>
         </div>
 
-        {/* Drop Zone */}
-        <div
-          className={cn(
-            'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
-            dragActive
-              ? 'border-pink-500 bg-pink-50'
-              : 'border-gray-300 hover:border-pink-400 hover:bg-pink-50/50',
-            uploading && 'opacity-50 pointer-events-none'
-          )}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.webp"
-            onChange={(e) => handleFileSelect(e.target.files)}
-            disabled={uploading}
-            title="Select document file"
-            aria-label="Select document file"
-          />
-
-          {uploading ? (
+        {/* Drop Zone or Status Display */}
+        {existingDocument ? (
+          /* Show status when document already uploaded */
+          <div className={cn(
+            'border-2 rounded-lg p-8 text-center',
+            existingDocument.verificationStatus === 'approved' 
+              ? 'border-green-300 bg-green-50' 
+              : 'border-yellow-300 bg-yellow-50'
+          )}>
             <div className="space-y-4">
-              <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center mx-auto">
-                <Upload className="w-6 h-6 text-pink-600 animate-pulse" />
+              <div className={cn(
+                'w-16 h-16 rounded-full flex items-center justify-center mx-auto',
+                existingDocument.verificationStatus === 'approved' 
+                  ? 'bg-green-100' 
+                  : 'bg-yellow-100'
+              )}>
+                {existingDocument.verificationStatus === 'approved' ? (
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                ) : (
+                  <Clock className="w-8 h-8 text-yellow-600 animate-pulse" />
+                )}
               </div>
               <div>
-                <p className="text-gray-900 font-medium">Uploading document...</p>
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                  <div
-                    className={cn('bg-pink-600 h-2 rounded-full', styles.progressBar)}
-                    data-progress={uploadProgress}
-                  />
-                </div>
-                <p className="text-sm text-gray-500 mt-1">{uploadProgress}% complete</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center mx-auto">
-                <Upload className="w-6 h-6 text-pink-600" />
-              </div>
-              <div>
-                <p className="text-gray-900 font-medium">Drop files here or click to browse</p>
-                <p className="text-sm text-gray-500">
-                  Supports PDF, DOC, DOCX, TXT, and image files up to 25MB
+                <p className={cn(
+                  'text-lg font-semibold mb-2',
+                  existingDocument.verificationStatus === 'approved' 
+                    ? 'text-green-900' 
+                    : 'text-yellow-900'
+                )}>
+                  {existingDocument.verificationStatus === 'approved' 
+                    ? '✓ Document Approved' 
+                    : '⏳ Document Pending Review'}
+                </p>
+                <p className="text-sm text-gray-700 mb-1">
+                  <strong>{existingDocument.documentName}</strong>
+                </p>
+                <p className="text-xs text-gray-600">
+                  {existingDocument.verificationStatus === 'approved' 
+                    ? 'This document has been verified by our team' 
+                    : 'Your document is under review. This typically takes 24-48 hours.'}
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Select a different document type to upload more documents
                 </p>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          /* Show upload area when no document uploaded */
+          <div
+            className={cn(
+              'border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer',
+              dragActive
+                ? 'border-pink-500 bg-pink-50'
+                : 'border-gray-300 hover:border-pink-400 hover:bg-pink-50/50',
+              uploading && 'opacity-50 pointer-events-none'
+            )}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.webp"
+              onChange={(e) => handleFileSelect(e.target.files)}
+              disabled={uploading}
+              title="Select document file"
+              aria-label="Select document file"
+            />
+
+            {uploading ? (
+              <div className="space-y-4">
+                <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center mx-auto">
+                  <Upload className="w-6 h-6 text-pink-600 animate-pulse" />
+                </div>
+                <div>
+                  <p className="text-gray-900 font-medium">Uploading document...</p>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div
+                      className={cn('bg-pink-600 h-2 rounded-full', styles.progressBar)}
+                      data-progress={uploadProgress}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">{uploadProgress}% complete</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center mx-auto">
+                  <Upload className="w-6 h-6 text-pink-600" />
+                </div>
+                <div>
+                  <p className="text-gray-900 font-medium">Drop files here or click to browse</p>
+                  <p className="text-sm text-gray-500">
+                    Supports PDF, DOC, DOCX, TXT, and image files up to 25MB
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Error Display */}
         <AnimatePresence>
@@ -255,7 +310,8 @@ export const DocumentUploadComponent: React.FC<DocumentUploadComponentProps> = (
         </AnimatePresence>
       </div>
 
-      {/* Documents List */}
+      {/* Documents List - HIDDEN: Status shown in upload area instead */}
+      {false && (
       <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
         <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <FileText className="w-5 h-5 text-pink-600" />
@@ -334,6 +390,7 @@ export const DocumentUploadComponent: React.FC<DocumentUploadComponentProps> = (
           </div>
         )}
       </div>
+      )}
 
       {/* Document Verification Info */}
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">

@@ -74,9 +74,9 @@ router.post('/login', async (req, res) => {
 
     console.log('✅ Login successful for:', email);
 
-    // For vendor users, get their vendor profile ID
+    // For vendor and coordinator users, get their vendor profile ID
     let vendorProfileId = null;
-    if (user.user_type === 'vendor') {
+    if (user.user_type === 'vendor' || user.user_type === 'coordinator') {
       try {
         const vendorProfiles = await sql`
           SELECT id FROM vendor_profiles WHERE user_id = ${user.id}
@@ -151,20 +151,20 @@ router.post('/register', async (req, res) => {
     }
     
     // Validate user_type
-    const validUserTypes = ['couple', 'vendor', 'admin'];
+    const validUserTypes = ['couple', 'vendor', 'admin', 'coordinator'];
     if (!validUserTypes.includes(user_type)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid user_type. Must be one of: couple, vendor, admin',
+        error: 'Invalid user_type. Must be one of: couple, vendor, admin, coordinator',
         timestamp: new Date().toISOString()
       });
     }
     
-    // Vendor-specific validation
-    if (user_type === 'vendor' && (!business_name || !business_type)) {
+    // Vendor-specific and Coordinator-specific validation
+    if ((user_type === 'vendor' || user_type === 'coordinator') && (!business_name || !business_type)) {
       return res.status(400).json({
         success: false,
-        error: 'Vendor registration requires business_name and business_type',
+        error: `${user_type === 'vendor' ? 'Vendor' : 'Coordinator'} registration requires business_name and business_type`,
         timestamp: new Date().toISOString()
       });
     }
@@ -289,6 +289,50 @@ router.post('/register', async (req, res) => {
       `;
       
       console.log('✅ Vendor profile created:', profileResult[0]?.user_id);
+      
+    } else if (user_type === 'coordinator') {
+      console.log('🎉 Creating coordinator profile for user:', userId);
+      
+      // Create coordinator profile similar to vendor but with coordinator-specific features
+      profileResult = await sql`
+        INSERT INTO vendor_profiles (
+          user_id, business_name, business_type, business_description,
+          verification_status, verification_documents,
+          service_areas, pricing_range, business_hours,
+          average_rating, total_reviews, total_bookings,
+          response_time_hours, is_featured, is_premium,
+          created_at, updated_at
+        )
+        VALUES (
+          ${userId}, ${business_name}, ${business_type || 'Wedding Coordination'}, 'Wedding Coordinator - Manage multiple weddings and coordinate vendors',
+          'unverified',
+          ${JSON.stringify({
+            business_registration: null,
+            tax_documents: null,
+            identity_verification: null,
+            status: 'pending_submission',
+            submitted_at: null,
+            reviewed_at: null,
+            admin_notes: null
+          })},
+          ${JSON.stringify([location || 'Not specified'])},
+          ${JSON.stringify({ min: null, max: null, currency: 'PHP', type: 'per_event' })},
+          ${JSON.stringify({
+            monday: { open: '09:00', close: '17:00', closed: false },
+            tuesday: { open: '09:00', close: '17:00', closed: false },
+            wednesday: { open: '09:00', close: '17:00', closed: false },
+            thursday: { open: '09:00', close: '17:00', closed: false },
+            friday: { open: '09:00', close: '17:00', closed: false },
+            saturday: { open: '09:00', close: '17:00', closed: false },
+            sunday: { closed: true }
+          })},
+          0.00, 0, 0, 12, false, false,
+          NOW(), NOW()
+        )
+        RETURNING *
+      `;
+      
+      console.log('✅ Coordinator profile created:', profileResult[0]?.user_id);
       
     } else if (user_type === 'couple') {
       console.log('💑 Creating couple profile for user:', userId);

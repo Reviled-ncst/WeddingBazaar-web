@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 // Temporary inline currency formatter
 const formatPHP = (amount: number): string => {
@@ -1181,57 +1181,9 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
     return vendorPricing?.[serviceType]?.[itemName] ?? defaultPrice;
   };
 
-  // Reset form when modal opens
-  useEffect(() => {
-    if (isOpen && booking) {
-      // First check if this is an edit quote (booking has quote_sent status and existing quote data)
-      const isEditMode = booking.status === 'quote_sent' && booking.quoteAmount && booking.quoteAmount > 0;
-      
-      if (isEditMode) {
-        console.log('✏️ [SendQuoteModal] EDIT MODE - Loading previously sent quote data');
-        loadExistingQuoteData();
-      } else if (serviceData && serviceData.features && serviceData.features.length > 0) {
-        console.log('🎯 [SendQuoteModal] NEW QUOTE - Using service items for prefill:', serviceData);
-        
-        // Convert service items to quote items
-        const basePrice = parseFloat(serviceData.price) || 10000;
-        const pricePerItem = Math.round(basePrice / Math.max(serviceData.features.length, 1));
-        
-        const prefillItems: QuoteItem[] = serviceData.features.map((item, index) => ({
-          id: `item-${index + 1}`,
-          name: item,
-          description: `${item} - provided for ${serviceData.name} service`,
-          quantity: 1,
-          unitPrice: index === 0 ? basePrice - (pricePerItem * (serviceData.features.length - 1)) : pricePerItem,
-          total: index === 0 ? basePrice - (pricePerItem * (serviceData.features.length - 1)) : pricePerItem,
-          category: `${serviceData.category} - Equipment & Items`
-        }));
-        
-        setQuoteItems(prefillItems);
-        setQuoteMessage(`Thank you for your interest in our ${serviceData.name} service. Below is the detailed breakdown of all items and equipment included:`);
-        
-        console.log('✅ [SendQuoteModal] Prefilled with', prefillItems.length, 'items from service inventory');
-      } else {
-        // Reset to empty form - no pre-filled values
-        console.log('📝 [SendQuoteModal] No existing data, starting with empty form');
-        setQuoteItems([]);
-        setQuoteMessage('');
-      }
-      
-      if (!isEditMode) {
-        setTerms('');
-        
-        // Set default validity to 1 week from now
-        const oneWeekFromNow = new Date();
-        oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
-        const formattedDate = oneWeekFromNow.toISOString().split('T')[0]; // YYYY-MM-DD format
-        setValidUntil(formattedDate);
-      }
-    }
-  }, [isOpen, booking, serviceData]);
-
+  // 🔧 FIX: Memoize loadExistingQuoteData to prevent it from changing on every render
   // Function to load existing quote data when editing
-  const loadExistingQuoteData = async () => {
+  const loadExistingQuoteData = React.useCallback(async () => {
     try {
       console.log('🔍 [SendQuoteModal] Loading existing quote for booking:', booking.id);
       
@@ -1274,7 +1226,62 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
       setQuoteItems([]);
       setQuoteMessage('');
     }
-  };
+  }, [booking.id, booking.quoteAmount, booking.serviceType, booking.notes, booking.coupleName, booking.eventDate]);
+
+  // Reset form when modal opens
+  // 🔧 FIX: Only depend on primitive values to prevent infinite loop
+  // Objects (booking, serviceData) get recreated on every parent render
+  // ⚠️ CRITICAL: Do NOT include loadExistingQuoteData in dependencies - it causes infinite loop
+  React.useEffect(() => {
+    if (isOpen && booking) {
+      // First check if this is an edit quote (booking has quote_sent status and existing quote data)
+      const isEditMode = booking.status === 'quote_sent' && booking.quoteAmount && booking.quoteAmount > 0;
+      
+      if (isEditMode) {
+        console.log('✏️ [SendQuoteModal] EDIT MODE - Loading previously sent quote data');
+        // Call the function directly - don't depend on it in useEffect deps
+        loadExistingQuoteData();
+      } else if (serviceData && serviceData.features && serviceData.features.length > 0) {
+        console.log('🎯 [SendQuoteModal] NEW QUOTE - Using service items for prefill:', serviceData);
+        
+        // Convert service items to quote items
+        const basePrice = parseFloat(serviceData.price) || 10000;
+        const pricePerItem = Math.round(basePrice / Math.max(serviceData.features.length, 1));
+        
+        const prefillItems: QuoteItem[] = serviceData.features.map((item, index) => ({
+          id: `item-${index + 1}`,
+          name: item,
+          description: `${item} - provided for ${serviceData.name} service`,
+          quantity: 1,
+          unitPrice: index === 0 ? basePrice - (pricePerItem * (serviceData.features.length - 1)) : pricePerItem,
+          total: index === 0 ? basePrice - (pricePerItem * (serviceData.features.length - 1)) : pricePerItem,
+          category: `${serviceData.category} - Equipment & Items`
+        }));
+        
+        setQuoteItems(prefillItems);
+        setQuoteMessage(`Thank you for your interest in our ${serviceData.name} service. Below is the detailed breakdown of all items and equipment included:`);
+        
+        console.log('✅ [SendQuoteModal] Prefilled with', prefillItems.length, 'items from service inventory');
+      } else {
+        // Reset to empty form - no pre-filled values
+        console.log('📝 [SendQuoteModal] No existing data, starting with empty form');
+        setQuoteItems([]);
+        setQuoteMessage('');
+      }
+      
+      if (!isEditMode) {
+        setTerms('');
+        
+        // Set default validity to 1 week from now
+        const oneWeekFromNow = new Date();
+        oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+        const formattedDate = oneWeekFromNow.toISOString().split('T')[0]; // YYYY-MM-DD format
+        setValidUntil(formattedDate);
+      }
+    }
+    // ⚠️ REMOVED loadExistingQuoteData from dependencies to fix infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, booking?.id, booking?.status, booking?.quoteAmount, serviceData?.id]);
 
   // Function to save current prices as vendor's default
   const saveVendorPricing = () => {

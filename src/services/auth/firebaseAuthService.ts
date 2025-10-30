@@ -358,7 +358,7 @@ class FirebaseAuthService {
   /**
    * Register/Sign in with Google OAuth (handles both new and existing users)
    */
-  async registerWithGoogle(userType: 'couple' | 'vendor' = 'couple'): Promise<UserCredential> {
+  async registerWithGoogle(userType: 'couple' | 'vendor' | 'coordinator' = 'couple'): Promise<UserCredential> {
     if (!auth) {
       throw new Error('Firebase Auth is not configured');
     }

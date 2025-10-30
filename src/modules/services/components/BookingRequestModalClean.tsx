@@ -216,8 +216,9 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
         eventLocation: formData.eventLocation
       };
 
-      // Success! Show inline success message first
-      setSubmitStatus('success');
+      // Success!
+      setSuccessBookingData(successData);
+      setShowSuccessModal(true);
       
       // Dispatch event
       window.dispatchEvent(new CustomEvent('bookingCreated', {
@@ -227,12 +228,6 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
       if (onBookingCreated) {
         onBookingCreated(createdBooking);
       }
-
-      // After 2 seconds, show the full success modal
-      setTimeout(() => {
-        setSuccessBookingData(successData);
-        setShowSuccessModal(true);
-      }, 2000);
 
     } catch (error) {
       console.error('Booking submission failed:', error);
@@ -319,30 +314,9 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-280px)]">
-          {/* Success Message */}
-          {submitStatus === 'success' && (
-            <div className="mb-4 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl flex items-start gap-4 animate-in zoom-in-95 duration-300 shadow-lg">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center animate-bounce">
-                  <Sparkles className="w-6 h-6 text-white" />
-                </div>
-              </div>
-              <div className="flex-1">
-                <p className="text-lg font-bold text-green-800 mb-1">🎉 Booking Request Submitted!</p>
-                <p className="text-sm text-green-700">
-                  Your booking request has been sent successfully. The vendor will review and respond soon!
-                </p>
-                <div className="mt-3 flex items-center gap-2 text-xs text-green-600">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Redirecting to confirmation...</span>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Error Message */}
           {submitStatus === 'error' && errorMessage && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 animate-in slide-in-from-top duration-300">
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm text-red-800 font-medium">Error</p>
@@ -352,7 +326,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
           )}
 
           {/* Step 1: Event Details */}
-          {submitStatus !== 'success' && currentStep === 1 && (
+          {currentStep === 1 && (
             <div className="space-y-5 animate-in slide-in-from-right duration-300">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -409,7 +383,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
           )}
 
           {/* Step 2: Requirements */}
-          {submitStatus !== 'success' && currentStep === 2 && (
+          {currentStep === 2 && (
             <div className="space-y-5 animate-in slide-in-from-right duration-300">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -474,7 +448,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
           )}
 
           {/* Step 3: Contact Info */}
-          {submitStatus !== 'success' && currentStep === 3 && (
+          {currentStep === 3 && (
             <div className="space-y-5 animate-in slide-in-from-right duration-300">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -563,9 +537,8 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
 
         {/* Footer */}
         <div className="border-t bg-gray-50 p-6">
-          {submitStatus !== 'success' && (
-            <div className="flex items-center justify-between">
-              {currentStep > 1 ? (
+          <div className="flex items-center justify-between">
+            {currentStep > 1 ? (
               <button
                 onClick={handleBack}
                 className="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium transition-colors"
@@ -603,12 +576,10 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                 )}
               </button>
             )}
-            </div>
-          )}
+          </div>
 
           {/* Progress Indicator */}
-          {submitStatus !== 'success' && (
-            <div className="mt-4">
+          <div className="mt-4">
             <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
               <span>Progress</span>
               <span className="font-semibold">{formProgress.percentage}%</span>
@@ -619,8 +590,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                 style={{ width: `${formProgress.percentage}%` }}
               ></div>
             </div>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

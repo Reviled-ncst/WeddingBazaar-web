@@ -28,7 +28,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   // Core state
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [userType, setUserType] = useState<'couple' | 'vendor'>('couple');
+  const [userType, setUserType] = useState<'couple' | 'vendor' | 'coordinator'>('couple');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
@@ -134,6 +134,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         setIsSuccess(false);
         setUserType('couple');
         setCheckingVerification(false);
+        setFadeIn(false);
       }
     }
   }, [isOpen, showEmailVerification]);
@@ -150,7 +151,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     else if (formData.password.length < 6) errors.password = 'Password must be at least 6 characters';
     if (formData.password !== formData.confirmPassword) errors.confirmPassword = 'Passwords do not match';
     
-    if (userType === 'vendor') {
+    if (userType === 'vendor' || userType === 'coordinator') {
       if (!formData.business_name.trim()) errors.business_name = 'Business name is required';
       if (!formData.business_type) errors.business_type = 'Business category is required';
       if (!formData.location.trim()) errors.location = 'Business location is required';
@@ -216,7 +217,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         phone: formData.phone,
         password: formData.password,
         role: userType,
-        ...(userType === 'vendor' && {
+        ...((userType === 'vendor' || userType === 'coordinator') && {
           business_name: formData.business_name,
           business_type: formData.business_type,
           location: formData.location,
@@ -607,7 +608,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
               {/* Enhanced User Type Selection */}
               <div className="space-y-4">
                 <label className="block text-lg font-bold text-gray-800 text-center">I am a:</label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <button
                     type="button"
                     onClick={() => setUserType('couple')}
@@ -656,6 +657,32 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                       <div className="flex-1">
                         <div className="font-bold text-lg">Wedding Vendor</div>
                         <div className="text-sm opacity-75 mt-1">Offer your services to happy couples</div>
+                      </div>
+                    </div>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setUserType('coordinator')}
+                    className={cn(
+                      "group p-6 rounded-2xl border-3 transition-all duration-500 text-left transform hover:scale-105 hover:shadow-2xl",
+                      userType === 'coordinator'
+                        ? "border-amber-500 bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 text-amber-800 shadow-xl scale-105"
+                        : "border-gray-200 bg-gradient-to-br from-white to-gray-50 hover:border-amber-300 hover:shadow-lg"
+                    )}
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className={cn(
+                        "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:rotate-12",
+                        userType === 'coordinator' 
+                          ? "bg-gradient-to-br from-amber-500 to-yellow-600 text-white shadow-lg" 
+                          : "bg-gradient-to-br from-gray-100 to-gray-200 text-gray-500 group-hover:from-amber-100 group-hover:to-yellow-100 group-hover:text-amber-500"
+                      )}>
+                        <PartyPopper className="h-7 w-7" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-bold text-lg">Wedding Coordinator</div>
+                        <div className="text-sm opacity-75 mt-1">Coordinate multiple weddings and manage vendors</div>
                       </div>
                     </div>
                   </button>
@@ -834,11 +861,22 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
               </div>
 
               {/* Enhanced Vendor-specific fields */}
-              {userType === 'vendor' && (
-                <div className="bg-gradient-to-br from-purple-50/80 to-indigo-50/60 p-6 rounded-2xl border border-purple-200/50 shadow-lg animate-in slide-in-from-bottom duration-500">
-                  <h3 className="text-xl font-bold text-purple-800 mb-6 flex items-center">
-                    <Building className="h-6 w-6 mr-3 text-purple-500" />
-                    Business Information
+              {(userType === 'vendor' || userType === 'coordinator') && (
+                <div className={cn(
+                  "p-6 rounded-2xl border shadow-lg animate-in slide-in-from-bottom duration-500",
+                  userType === 'vendor' 
+                    ? "bg-gradient-to-br from-purple-50/80 to-indigo-50/60 border-purple-200/50"
+                    : "bg-gradient-to-br from-amber-50/80 to-yellow-50/60 border-amber-200/50"
+                )}>
+                  <h3 className={cn(
+                    "text-xl font-bold mb-6 flex items-center",
+                    userType === 'vendor' ? "text-purple-800" : "text-amber-800"
+                  )}>
+                    <Building className={cn(
+                      "h-6 w-6 mr-3",
+                      userType === 'vendor' ? "text-purple-500" : "text-amber-500"
+                    )} />
+                    {userType === 'vendor' ? 'Business Information' : 'Coordination Business Information'}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3">

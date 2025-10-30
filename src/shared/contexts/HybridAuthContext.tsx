@@ -7,7 +7,7 @@ interface User {
   email: string;
   firstName: string;
   lastName: string;
-  role: 'couple' | 'vendor' | 'admin';
+  role: 'couple' | 'vendor' | 'admin' | 'coordinator';
   profileImage?: string;
   phone?: string;
   businessName?: string;
@@ -31,7 +31,7 @@ interface AuthContextType {
   loginBackendOnly: (email: string, password: string) => Promise<User>;
   register: (userData: RegisterData) => Promise<void>;
   loginWithGoogle: () => Promise<User>;
-  registerWithGoogle: (userType?: 'couple' | 'vendor') => Promise<User>;
+  registerWithGoogle: (userType?: 'couple' | 'vendor' | 'coordinator') => Promise<User>;
   logout: () => void;
   setUser: (user: User | null) => void;
   sendEmailVerification: () => Promise<void>;
@@ -44,7 +44,7 @@ interface RegisterData {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'couple' | 'vendor';
+  role: 'couple' | 'vendor' | 'coordinator';
   phone?: string;
   // Vendor-specific fields
   business_name?: string;
@@ -563,7 +563,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const registerWithGoogle = async (userType?: 'couple' | 'vendor'): Promise<User> => {
+  const registerWithGoogle = async (userType?: 'couple' | 'vendor' | 'coordinator'): Promise<User> => {
     try {
       setIsLoading(true);
       // Sign up with Firebase using Google (this handles profile storage)
