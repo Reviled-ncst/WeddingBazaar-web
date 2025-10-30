@@ -86,8 +86,9 @@ const TransactionHistory: React.FC = () => {
       
       if (isVendor) {
         // For vendors: Get wallet transactions (earnings)
-        // Vendors need to use their vendorId from the vendors table, not their user ID
-        const vendorId = user.vendorId || user.id;
+        // IMPORTANT: wallet_transactions table uses user.id (2-2025-001), NOT user.vendorId!
+        // user.id is the vendor_id in the wallet_transactions table
+        const vendorId = user.id; // Use user.id directly
         
         if (!vendorId) {
           throw new Error('Vendor ID not found. Please ensure you have a vendor profile set up.');
@@ -95,7 +96,7 @@ const TransactionHistory: React.FC = () => {
         
         endpoint = `${import.meta.env.VITE_API_URL}/api/wallet/${vendorId}/transactions`;
         console.log('📊 [TRANSACTION HISTORY] Fetching VENDOR wallet transactions');
-        console.log('📊 [TRANSACTION HISTORY] Vendor ID:', vendorId);
+        console.log('📊 [TRANSACTION HISTORY] Vendor ID (user.id):', vendorId);
         console.log('📊 [TRANSACTION HISTORY] Full endpoint:', endpoint);
         console.log('📊 [TRANSACTION HISTORY] User object keys:', Object.keys(user));
       } else {
