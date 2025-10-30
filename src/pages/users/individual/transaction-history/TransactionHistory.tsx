@@ -21,7 +21,6 @@ import {
 
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import {
-  getUserTransactionHistory,
   formatAmount,
   formatDate,
   getPaymentMethodLabel,
@@ -75,18 +74,57 @@ const TransactionHistory: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      console.log('📊 Loading transaction history for user:', user.id);
-      const response = await getUserTransactionHistory(user.id);
+      console.log('📊 [TRANSACTION HISTORY] Loading payment receipts for user:', user.id);
+      console.log('📊 [TRANSACTION HISTORY] API URL:', import.meta.env.VITE_API_URL);
       
-      if (response.success) {
-        setReceipts(response.receipts);
-        setStatistics(response.statistics);
-        console.log('✅ Loaded', response.receipts.length, 'transactions');
-      } else {
-        setError(response.message || 'Failed to load transaction history');
+      // Use dedicated user receipts endpoint
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/payment/receipts/user/${user.id}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      console.log('📊 [TRANSACTION HISTORY] Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch transaction history: ${response.status} ${response.statusText}`);
       }
+      
+      const data = await response.json();
+      console.log('📊 [TRANSACTION HISTORY] Response data:', data);
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to load transaction history');
+      }
+      
+      const allReceipts = data.receipts || [];
+      const stats = data.statistics || {
+        totalSpent: 0,
+        totalSpentFormatted: '₱0.00',
+        totalPayments: 0,
+        uniqueBookings: 0,
+        uniqueVendors: 0,
+        averagePayment: 0,
+        latestPayment: new Date().toISOString(),
+        oldestPayment: new Date().toISOString(),
+      };
+      
+      console.log('✅ [TRANSACTION HISTORY] Loaded:', {
+        receipts: allReceipts.length,
+        totalSpent: stats.totalSpentFormatted,
+        bookings: stats.uniqueBookings,
+        vendors: stats.uniqueVendors,
+      });
+      
+      setReceipts(allReceipts);
+      setStatistics(stats);
+      
     } catch (err) {
-      console.error('❌ Error loading transaction history:', err);
+      console.error('❌ [TRANSACTION HISTORY] Error:', err);
       setError(err instanceof Error ? err.message : 'Failed to load transaction history');
     } finally {
       setLoading(false);
