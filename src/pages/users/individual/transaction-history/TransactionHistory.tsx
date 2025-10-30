@@ -140,19 +140,44 @@ const TransactionHistory: React.FC = () => {
       
       if (isVendor) {
         // Transform vendor wallet transactions to receipt format
+        // Backend response structure (from wallet.cjs line 276-302)
+        interface BackendWalletTransaction {
+          id: string;
+          receipt_id: string;
+          receipt_number: string;
+          booking_id: string;
+          booking_reference: string;
+          transaction_type: string;
+          transaction_date: string;
+          amount: number; // In centavos from backend
+          currency: string;
+          payment_method: string;
+          payment_type: string;
+          service_name: string;
+          service_category: string;
+          event_date: string;
+          couple_id: string;
+          couple_name: string;
+          couple_email: string;
+          status: string;
+          notes: string;
+          created_at: string;
+          updated_at: string;
+        }
+        
         const walletTransactions = data.transactions || [];
-        allReceipts = walletTransactions.map((t: any) => ({
+        allReceipts = walletTransactions.map((t: BackendWalletTransaction) => ({
           id: t.id,
           bookingId: t.booking_id,
-          receiptNumber: t.transaction_id,
+          receiptNumber: t.receipt_number,
           paymentType: t.transaction_type,
-          amount: Math.abs(t.amount * 100), // Convert to centavos
+          amount: Number(t.amount) || 0, // Already in centavos from backend
           currency: t.currency || 'PHP',
           paymentMethod: t.payment_method || 'transfer',
-          paymentIntentId: t.payment_reference || '',
-          paidBy: t.customer_name || '',
-          paidByName: t.customer_name || 'Customer',
-          paidByEmail: t.customer_email || '',
+          paymentIntentId: '',
+          paidBy: t.couple_name || 'Customer',
+          paidByName: t.couple_name || 'Customer',
+          paidByEmail: t.couple_email || '',
           vendorId: user.vendorId || user.id,
           vendorName: user.businessName || 'Your Business',
           vendorCategory: t.service_category || 'Wedding Service',
@@ -161,16 +186,16 @@ const TransactionHistory: React.FC = () => {
           eventDate: t.event_date || new Date().toISOString(),
           eventLocation: '',
           bookingStatus: t.status || 'completed',
-          totalPaid: Math.abs(t.amount * 100),
+          totalPaid: Number(t.amount) || 0, // Use amount as-is from backend
           remainingBalance: 0,
-          notes: t.description || '',
+          notes: t.notes || '',
           createdAt: t.created_at,
         }));
         
         // Calculate vendor stats
         const totalEarned = walletTransactions
-          .filter((t: any) => t.transaction_type === 'earning')
-          .reduce((sum: number, t: any) => sum + Math.abs(t.amount * 100), 0);
+          .filter((t: BackendWalletTransaction) => t.transaction_type === 'earning')
+          .reduce((sum: number, t: BackendWalletTransaction) => sum + (Number(t.amount) || 0), 0);
         
         stats = {
           totalSpent: totalEarned,
