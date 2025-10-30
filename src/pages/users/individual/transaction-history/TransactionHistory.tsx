@@ -104,10 +104,20 @@ const TransactionHistory: React.FC = () => {
         console.log('📊 [TRANSACTION HISTORY] Fetching COUPLE payment receipts');
       }
       
+      // Get authentication token
+      const authToken = localStorage.getItem('jwt_token') || 
+                        localStorage.getItem('auth_token') || 
+                        localStorage.getItem('authToken');
+      
+      if (!authToken) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+      
       const response = await fetch(endpoint, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
         },
       });
       
