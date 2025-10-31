@@ -324,8 +324,8 @@ router.post('/register', async (req, res) => {
           'Wedding Coordinator - Manage multiple weddings and coordinate vendors',
           ${years_experience},
           ${team_size},
-          ${JSON.stringify(specialties)},
-          ${JSON.stringify(coordinator_service_areas)},
+          ${specialties},
+          ${coordinator_service_areas},
           'unverified',
           ${JSON.stringify({
             business_registration: null,
