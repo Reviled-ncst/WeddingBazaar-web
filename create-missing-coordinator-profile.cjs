@@ -77,8 +77,8 @@ async function createMissingCoordinatorProfile() {
         'Professional wedding coordination and planning services',
         0,
         'Solo',
-        ${ ['Full Wedding Coordination', 'Day-of Coordination'] },
-        ${ ['Metro Manila', 'Nearby Provinces'] },
+        ${JSON.stringify(['Full Wedding Coordination', 'Day-of Coordination'])},
+        ${JSON.stringify(['Metro Manila', 'Nearby Provinces'])},
         'unverified',
         ${JSON.stringify({
           business_registration: null,
