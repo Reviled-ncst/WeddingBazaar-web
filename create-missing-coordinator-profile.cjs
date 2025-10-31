@@ -77,10 +77,10 @@ async function createMissingCoordinatorProfile() {
         'Professional wedding coordination and planning services',
         0,
         'Solo',
-        ${JSON.stringify(['Full Wedding Coordination', 'Day-of Coordination'])},
-        ${JSON.stringify(['Metro Manila', 'Nearby Provinces'])},
+        ${['Full Wedding Coordination', 'Day-of Coordination']},
+        ${['Metro Manila', 'Nearby Provinces']},
         'unverified',
-        ${JSON.stringify({
+        ${{
           business_registration: null,
           tax_documents: null,
           identity_verification: null,
@@ -88,9 +88,9 @@ async function createMissingCoordinatorProfile() {
           submitted_at: null,
           reviewed_at: null,
           admin_notes: 'Profile created manually due to registration issue'
-        })},
-        ${JSON.stringify({ min: null, max: null, currency: 'PHP', type: 'per_event' })},
-        ${JSON.stringify({
+        }},
+        ${{ min: null, max: null, currency: 'PHP', type: 'per_event' }},
+        ${{
           monday: { open: '09:00', close: '17:00', closed: false },
           tuesday: { open: '09:00', close: '17:00', closed: false },
           wednesday: { open: '09:00', close: '17:00', closed: false },
@@ -98,7 +98,7 @@ async function createMissingCoordinatorProfile() {
           friday: { open: '09:00', close: '17:00', closed: false },
           saturday: { open: '09:00', close: '17:00', closed: false },
           sunday: { closed: true }
-        })},
+        }},
         0.00, 
         0, 
         0, 

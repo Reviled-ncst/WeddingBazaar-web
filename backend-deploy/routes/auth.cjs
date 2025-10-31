@@ -262,7 +262,7 @@ router.post('/register', async (req, res) => {
         VALUES (
           ${userId}, ${business_name}, ${business_type}, null,
           'unverified',
-          ${JSON.stringify({
+          ${{
             business_registration: null,
             tax_documents: null,
             identity_verification: null,
@@ -270,10 +270,10 @@ router.post('/register', async (req, res) => {
             submitted_at: null,
             reviewed_at: null,
             admin_notes: null
-          })},
-          ${JSON.stringify([location || 'Not specified'])},
-          ${JSON.stringify({ min: null, max: null, currency: 'PHP', type: 'per_service' })},
-          ${JSON.stringify({
+          }},
+          ${[location || 'Not specified']},
+          ${{ min: null, max: null, currency: 'PHP', type: 'per_service' }},
+          ${{
             monday: { open: '09:00', close: '17:00', closed: false },
             tuesday: { open: '09:00', close: '17:00', closed: false },
             wednesday: { open: '09:00', close: '17:00', closed: false },
@@ -281,7 +281,7 @@ router.post('/register', async (req, res) => {
             friday: { open: '09:00', close: '17:00', closed: false },
             saturday: { open: '09:00', close: '17:00', closed: false },
             sunday: { closed: true }
-          })},
+          }},
           0.00, 0, 0, 24, false, false,
           NOW(), NOW()
         )
@@ -361,10 +361,10 @@ router.post('/register', async (req, res) => {
           'Wedding Coordinator - Manage multiple weddings and coordinate vendors',
           ${years_experience},
           ${team_size},
-          ${JSON.stringify(specialties)},
-          ${JSON.stringify(coordinator_service_areas)},
+          ${specialties},
+          ${coordinator_service_areas},
           'unverified',
-          ${JSON.stringify({
+          ${{
             business_registration: null,
             tax_documents: null,
             identity_verification: null,
@@ -372,9 +372,9 @@ router.post('/register', async (req, res) => {
             submitted_at: null,
             reviewed_at: null,
             admin_notes: null
-          })},
-          ${JSON.stringify({ min: null, max: null, currency: 'PHP', type: 'per_event' })},
-          ${JSON.stringify({
+          }},
+          ${{ min: null, max: null, currency: 'PHP', type: 'per_event' }},
+          ${{
             monday: { open: '09:00', close: '17:00', closed: false },
             tuesday: { open: '09:00', close: '17:00', closed: false },
             wednesday: { open: '09:00', close: '17:00', closed: false },
@@ -382,7 +382,7 @@ router.post('/register', async (req, res) => {
             friday: { open: '09:00', close: '17:00', closed: false },
             saturday: { open: '09:00', close: '17:00', closed: false },
             sunday: { closed: true }
-          })},
+          }},
           0.00, 0, 0, 12, false, false,
           NOW(), NOW()
         )
