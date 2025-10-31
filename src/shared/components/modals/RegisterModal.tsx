@@ -819,7 +819,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                         <Building className="h-5 w-5" />
                       </div>
                       <div className="text-center">
-                        <div className="font-medium text-sm">Vendor</div>
+                        <div className="font-medium text-sm">Service Provider</div>
                         <div className="text-xs text-gray-500 mt-0.5">Offer services</div>
                       </div>
                     </div>
