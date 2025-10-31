@@ -28,7 +28,6 @@ const categoryRoutes = require('./routes/categories.cjs'); // Dynamic categories
 const subscriptionRoutes = require('./routes/subscriptions/index.cjs'); // NEW MODULAR subscription system with PayMongo
 const reviewRoutes = require('./routes/reviews.cjs'); // Reviews and ratings system
 const walletRoutes = require('./routes/wallet.cjs'); // Vendor wallet and earnings system
-const coordinatorRoutes = require('./routes/coordinator.cjs'); // Wedding Coordinator features
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -48,11 +47,29 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Initialize database connection with error handling
-testConnection().catch(error => {
-  console.error('⚠️  Database connection failed during startup:', error.message);
-  console.log('🔄 Server will continue running but database operations may fail');
-});
+// Initialize database connection with timeout
+const initDatabase = async () => {
+  const timeout = setTimeout(() => {
+    console.warn('⚠️  Database connection taking longer than expected, continuing anyway...');
+  }, 5000); // 5 second warning
+
+  try {
+    await Promise.race([
+      testConnection(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database connection timeout')), 10000)
+      )
+    ]);
+    clearTimeout(timeout);
+  } catch (error) {
+    clearTimeout(timeout);
+    console.error('⚠️  Database connection failed during startup:', error.message);
+    console.log('🔄 Server will continue running but database operations may fail');
+  }
+};
+
+// Start database initialization (non-blocking)
+initDatabase();
 
 // Health check endpoint (updated for quote system)
 app.get('/api/health', async (req, res) => {
@@ -207,7 +224,6 @@ app.use('/api/categories', categoryRoutes); // Dynamic categories system
 app.use('/api/subscriptions', subscriptionRoutes); // Vendor subscription management
 app.use('/api/reviews', reviewRoutes); // Reviews and ratings system
 app.use('/api/wallet', walletRoutes); // Vendor wallet and earnings system
-app.use('/api/coordinator', coordinatorRoutes); // Wedding Coordinator features
 
 // Admin routes - New modular user management system
 app.use('/api/admin', adminUserRoutes); // User management, stats, etc.
