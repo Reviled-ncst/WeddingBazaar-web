@@ -932,11 +932,12 @@ router.get('/profile', async (req, res) => {
     
     const user = users[0];
     
-    // If user is a vendor, get additional vendor info
+    // If user is a vendor or coordinator, get additional profile info
     let vendorInfo = null;
-    if (user.user_type === 'vendor') {
+    if (user.user_type === 'vendor' || user.user_type === 'coordinator') {
       const vendors = await sql`
-        SELECT id, business_name, business_type 
+        SELECT id, business_name, business_type, years_experience, team_size, 
+               specialties, service_areas
         FROM vendor_profiles 
         WHERE user_id = ${user.id}
       `;
@@ -956,6 +957,11 @@ router.get('/profile', async (req, res) => {
       emailVerified: user.email_verified || false,  // Add email verification status
       businessName: vendorInfo?.business_name || '',
       vendorId: vendorInfo?.id || null,
+      // Coordinator-specific fields
+      yearsExperience: vendorInfo?.years_experience || null,
+      teamSize: vendorInfo?.team_size || null,
+      specialties: vendorInfo?.specialties || [],
+      serviceAreas: vendorInfo?.service_areas || [],
       createdAt: user.created_at,
       updatedAt: user.updated_at
     };
