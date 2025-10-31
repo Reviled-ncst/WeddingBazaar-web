@@ -293,18 +293,39 @@ router.post('/register', async (req, res) => {
     } else if (user_type === 'coordinator') {
       console.log('🎉 Creating coordinator profile for user:', userId);
       
-      // Create coordinator profile similar to vendor but with coordinator-specific features
+      // Extract coordinator-specific fields from request
+      const years_experience = req.body.years_experience || 0;
+      const team_size = req.body.team_size || 'Solo';
+      const specialties = req.body.specialties || [];
+      const coordinator_service_areas = req.body.service_areas || [location || 'Not specified'];
+      
+      console.log('📋 Coordinator details:', {
+        years_experience,
+        team_size,
+        specialties,
+        service_areas: coordinator_service_areas
+      });
+      
+      // Create coordinator profile with all coordinator-specific fields
       profileResult = await sql`
         INSERT INTO vendor_profiles (
           user_id, business_name, business_type, business_description,
+          years_experience, team_size, specialties, service_areas,
           verification_status, verification_documents,
-          service_areas, pricing_range, business_hours,
+          pricing_range, business_hours,
           average_rating, total_reviews, total_bookings,
           response_time_hours, is_featured, is_premium,
           created_at, updated_at
         )
         VALUES (
-          ${userId}, ${business_name}, ${business_type || 'Wedding Coordination'}, 'Wedding Coordinator - Manage multiple weddings and coordinate vendors',
+          ${userId}, 
+          ${business_name}, 
+          ${business_type || 'Wedding Coordination'}, 
+          'Wedding Coordinator - Manage multiple weddings and coordinate vendors',
+          ${years_experience},
+          ${team_size},
+          ${JSON.stringify(specialties)},
+          ${JSON.stringify(coordinator_service_areas)},
           'unverified',
           ${JSON.stringify({
             business_registration: null,
@@ -315,7 +336,6 @@ router.post('/register', async (req, res) => {
             reviewed_at: null,
             admin_notes: null
           })},
-          ${JSON.stringify([location || 'Not specified'])},
           ${JSON.stringify({ min: null, max: null, currency: 'PHP', type: 'per_event' })},
           ${JSON.stringify({
             monday: { open: '09:00', close: '17:00', closed: false },
@@ -332,7 +352,13 @@ router.post('/register', async (req, res) => {
         RETURNING *
       `;
       
-      console.log('✅ Coordinator profile created:', profileResult[0]?.user_id);
+      console.log('✅ Coordinator profile created:', {
+        user_id: profileResult[0]?.user_id,
+        years_experience: profileResult[0]?.years_experience,
+        team_size: profileResult[0]?.team_size,
+        specialties: profileResult[0]?.specialties,
+        service_areas: profileResult[0]?.service_areas
+      });
       
     } else if (user_type === 'couple') {
       console.log('💑 Creating couple profile for user:', userId);
