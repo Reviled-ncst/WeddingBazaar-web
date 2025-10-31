@@ -343,6 +343,7 @@ router.post('/register', async (req, res) => {
       });
       
       // Create coordinator profile with all coordinator-specific fields
+      // FIXED: Use JSON.stringify for TEXT[] columns to prevent Postgres array literal errors
       profileResult = await sql`
         INSERT INTO vendor_profiles (
           user_id, business_name, business_type, business_description,
@@ -360,8 +361,8 @@ router.post('/register', async (req, res) => {
           'Wedding Coordinator - Manage multiple weddings and coordinate vendors',
           ${years_experience},
           ${team_size},
-          ${ specialties },
-          ${ coordinator_service_areas },
+          ${JSON.stringify(specialties)},
+          ${JSON.stringify(coordinator_service_areas)},
           'unverified',
           ${JSON.stringify({
             business_registration: null,
