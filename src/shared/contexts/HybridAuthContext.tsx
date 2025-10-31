@@ -673,9 +673,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error: any) {
       console.error('❌ Firebase + Neon registration error occurred:', {
         message: error.message,
+        code: error.code,
         stack: error.stack,
         fullError: error
       });
+      
+      // Format user-friendly error messages
+      let userFriendlyMessage = error.message;
+      
+      // Check for Firebase error codes
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            userFriendlyMessage = 'This email is already registered. Please login or use a different email.';
+            break;
+          case 'auth/invalid-email':
+            userFriendlyMessage = 'Invalid email format. Please enter a valid email address.';
+            break;
+          case 'auth/weak-password':
+            userFriendlyMessage = 'Password is too weak. Please use at least 6 characters.';
+            break;
+          case 'auth/operation-not-allowed':
+            userFriendlyMessage = 'Email/password registration is currently disabled. Please contact support.';
+            break;
+          case 'auth/network-request-failed':
+            userFriendlyMessage = 'Network error. Please check your internet connection and try again.';
+            break;
+          default:
+            if (error.code.startsWith('auth/')) {
+              userFriendlyMessage = `Registration error: ${error.message}`;
+            }
+        }
+      }
       
       // Log the specific step where the error occurred
       if (error.message?.includes('Firebase')) {
@@ -686,7 +715,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('❌ Unknown error during hybrid registration process');
       }
       
-      throw error;
+      // Throw error with user-friendly message
+      const formattedError = new Error(userFriendlyMessage);
+      formattedError.name = error.name || 'RegistrationError';
+      throw formattedError;
     } finally {
       setIsLoading(false);
       // Clear registration flag to allow normal auth flow and manually process current auth state

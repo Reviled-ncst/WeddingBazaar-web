@@ -1,0 +1,1 @@
+export { CoordinatorWhiteLabel } from './CoordinatorWhiteLabel';

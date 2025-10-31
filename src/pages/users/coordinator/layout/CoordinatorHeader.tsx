@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { 
   PartyPopper, Calendar, Users, TrendingUp, Bell, 
-  Settings, LogOut, Menu, X, Heart, BarChart3, Briefcase
+  Settings, LogOut, Menu, X, Heart, BarChart3, Briefcase, UserCheck,
+  Palette, Plug
 } from 'lucide-react';
 
 export const CoordinatorHeader: React.FC = () => {
@@ -20,9 +21,12 @@ export const CoordinatorHeader: React.FC = () => {
     { path: '/coordinator', label: 'Dashboard', icon: PartyPopper },
     { path: '/coordinator/weddings', label: 'Weddings', icon: Heart },
     { path: '/coordinator/calendar', label: 'Calendar', icon: Calendar },
+    { path: '/coordinator/team', label: 'Team', icon: UserCheck },
     { path: '/coordinator/vendors', label: 'Vendors', icon: Users },
     { path: '/coordinator/clients', label: 'Clients', icon: Briefcase },
     { path: '/coordinator/analytics', label: 'Analytics', icon: BarChart3 },
+    { path: '/coordinator/whitelabel', label: 'Branding', icon: Palette },
+    { path: '/coordinator/integrations', label: 'Integrations', icon: Plug },
   ];
 
   return (

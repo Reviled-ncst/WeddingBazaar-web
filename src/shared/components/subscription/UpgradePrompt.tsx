@@ -508,32 +508,32 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={handleClose}
-              className="fixed inset-0 bg-black/70 backdrop-blur-md"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
             />
             
             {/* Success Message Overlay */}
             <AnimatePresence>
               {showSuccessMessage && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
                   className="fixed inset-0 z-[100000] flex items-center justify-center p-4"
                 >
-                  <div className="bg-white rounded-3xl shadow-2xl p-12 max-w-md text-center">
-                    <div className="mb-6 flex justify-center">
-                      <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
-                        <Check className="w-12 h-12 text-white" />
+                  <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
+                    <div className="mb-4 flex justify-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                        <Check className="w-8 h-8 text-white" />
                       </div>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-800 mb-4">
-                      🎉 Upgrade Successful!
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                      Upgrade Successful!
                     </h3>
-                    <p className="text-xl text-gray-600 mb-2">
+                    <p className="text-base text-gray-600 mb-1">
                       You are now on the <span className="font-bold text-pink-600">{successPlanName}</span> plan
                     </p>
                     <p className="text-sm text-gray-500">
-                      Your subscription has been activated. Enjoy your new features!
+                      Your subscription has been activated.
                     </p>
                   </div>
                 </motion.div>
@@ -542,72 +542,57 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
             
             {/* Modal */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.85, y: 40 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.85, y: 40 }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
               className="relative bg-white rounded-3xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-hidden z-10"
             >
-              {/* Header */}
-              <div className="bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 p-10 text-white relative overflow-hidden">
+              {/* Minimalist Header */}
+              <div className="relative p-8 border-b border-gray-100">
                 <button
                   onClick={handleClose}
-                  className="absolute top-6 right-6 p-3 hover:bg-white/20 rounded-full transition-all duration-200 z-20 backdrop-blur-sm"
+                  className="absolute top-6 right-6 p-2 hover:bg-gray-100 rounded-full transition-all duration-200 z-20 group"
+                  aria-label="Close upgrade prompt"
+                  title="Close"
                 >
-                  <X className="h-6 w-6" />
+                  <X className="h-5 w-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
                 </button>
                 
-                <div className="relative z-10 max-w-2xl">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-sm">
-                      <Crown className="h-12 w-12" />
+                <div className="max-w-2xl">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="p-3 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl shadow-sm">
+                      <Crown className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-4xl font-bold mb-2">{title}</h2>
-                      <p className="text-xl text-pink-100">{message}</p>
-                      {isLoadingCurrency && (
-                        <p className="text-sm text-pink-200 mt-2">
-                          Detecting your currency...
-                        </p>
-                      )}
+                      <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
                     </div>
                   </div>
+                  <p className="text-gray-600 text-sm ml-[60px]">{message}</p>
                   
-                  <div className="flex items-center gap-6 text-pink-100">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-5 w-5" />
-                      <span>Instant Access</span>
+                  {isLoadingCurrency && (
+                    <div className="mt-3 ml-[60px] flex items-center gap-2 text-xs text-gray-500">
+                      <div className="w-3 h-3 border-2 border-gray-300 border-t-pink-500 rounded-full animate-spin" />
+                      <span>Detecting your currency...</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Check className="h-5 w-5" />
-                      <span>Cancel Anytime</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Crown className="h-5 w-5" />
-                      <span>Premium Features</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
-                
-                {/* Animated background elements */}
-                <div className="absolute -top-20 -right-20 w-60 h-60 bg-white/10 rounded-full animate-pulse" />
-                <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-white/5 rounded-full" />
-                <div className="absolute top-1/2 right-1/4 w-32 h-32 bg-white/5 rounded-full animate-bounce" style={{ animationDuration: '3s' }} />
               </div>
 
               {/* Plans */}
               <div className="p-8 overflow-y-auto max-h-[calc(95vh-280px)]">
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold text-gray-800 mb-3">Choose Your Plan</h3>
-                  <p className="text-gray-600 max-w-2xl mx-auto mb-4">
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Choose Your Plan</h3>
+                  <p className="text-sm text-gray-600 max-w-2xl mx-auto mb-4">
                     Start with our free Basic plan or upgrade for more powerful features
                   </p>
                   
                   {/* Currency Switcher for Testing */}
                   <div className="flex items-center justify-center gap-4 mb-4">
-                    <span className="text-sm text-gray-600">Currency:</span>
+                    <label htmlFor="currency-selector" className="text-sm text-gray-600">Currency:</label>
                     <select 
+                      id="currency-selector"
                       value={currency.code}
                       onChange={(e) => {
                         const rates = {
@@ -625,6 +610,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
                         setIsLoadingCurrency(false);
                       }}
                       className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      aria-label="Select currency"
                     >
                       <option value="USD">USD ($)</option>
                       <option value="PHP">PHP (₱)</option>
@@ -638,7 +624,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-10 max-w-7xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8 max-w-7xl mx-auto">
                   {plans.map((plan, index) => {
                     const isRequired = plan.name.toLowerCase() === requiredTier.toLowerCase();
                     const isPopular = plan.popular;
@@ -647,66 +633,66 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
                     return (
                       <motion.div
                         key={`plan-${plan.id || index}-${plan.name || index}`}
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className={`relative p-6 rounded-2xl border-2 transition-all duration-300 h-full flex flex-col ${
+                        transition={{ delay: index * 0.08, duration: 0.3 }}
+                        className={`relative p-5 rounded-2xl border transition-all duration-300 h-full flex flex-col ${
                           isRequired
-                            ? 'border-pink-400 bg-gradient-to-br from-pink-50 to-purple-50 ring-2 ring-pink-200 scale-[1.02] shadow-xl'
+                            ? 'border-pink-300 bg-pink-50/30 shadow-md'
                             : isDefault
-                            ? 'border-green-300 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg'
+                            ? 'border-green-300 bg-green-50/30 shadow-sm'
                             : isPopular
-                            ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-indigo-50 shadow-lg'
-                            : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-lg'
+                            ? 'border-purple-300 bg-purple-50/30 shadow-md'
+                            : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
                         }`}
                       >
                         {isRequired && (
-                          <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
-                            <span className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-4 py-1.5 rounded-full text-xs font-bold animate-pulse shadow-lg">
-                              ✨ Required
+                          <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 z-10">
+                            <span className="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-sm">
+                              Required
                             </span>
                           </div>
                         )}
                         
                         {isDefault && !isRequired && (
-                          <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
-                            <span className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg">
-                              🆓 Default Plan
+                          <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 z-10">
+                            <span className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-sm">
+                              Current Plan
                             </span>
                           </div>
                         )}
                         
                         {isPopular && !isRequired && !isDefault && (
-                          <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
-                            <span className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg">
-                              🔥 Popular
+                          <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 z-10">
+                            <span className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-sm">
+                              Popular
                             </span>
                           </div>
                         )}
 
-                        <div className="text-center mb-6 pt-2">
-                          <h3 className="text-xl font-bold text-gray-800 mb-3">{plan.name}</h3>
-                          <div className="mb-4">
+                        <div className="text-center mb-4 pt-2">
+                          <h3 className="text-lg font-bold text-gray-900 mb-2">{plan.name}</h3>
+                          <div className="mb-3">
                             {plan.price === 0 ? (
                               <div>
-                                <span className="text-4xl font-bold text-green-600">Free</span>
-                                <p className="text-sm text-gray-500 mt-1">Forever</p>
+                                <span className="text-3xl font-bold text-gray-900">Free</span>
+                                <p className="text-xs text-gray-500 mt-1">Forever</p>
                               </div>
                             ) : (
                               <div>
-                                <span className="text-4xl font-bold text-gray-900">{plan.displayPrice}</span>
-                                <span className="text-gray-500 text-base">/month</span>
-                                <p className="text-sm text-gray-500 mt-1">Billed monthly</p>
+                                <span className="text-3xl font-bold text-gray-900">{plan.displayPrice}</span>
+                                <span className="text-gray-500 text-sm">/mo</span>
+                                <p className="text-xs text-gray-500 mt-1">Billed monthly</p>
                               </div>
                             )}
                           </div>
                         </div>
 
-                        <ul className="space-y-3 mb-6 flex-grow">
+                        <ul className="space-y-2 mb-5 flex-grow">
                           {plan.features.map((feature, featureIndex) => (
                             <li key={`${plan.id || index}-feature-${featureIndex}`} className="flex items-start">
-                              <Check className="h-4 w-4 text-green-500 mr-2 mt-1 flex-shrink-0" />
-                              <span className="text-gray-700 text-sm leading-relaxed">{feature}</span>
+                              <Check className="h-3.5 w-3.5 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                              <span className="text-gray-700 text-xs leading-relaxed">{feature}</span>
                             </li>
                           ))}
                         </ul>
@@ -714,20 +700,20 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
                         <button
                           onClick={() => handleUpgradeClick(plan)}
                           disabled={isProcessing}
-                          className={`w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center mt-auto ${
+                          className={`w-full py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center mt-auto ${
                             isProcessing
-                              ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                               : isRequired
-                              ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
+                              ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 shadow-sm hover:shadow-md'
                               : isDefault
-                              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
+                              ? 'bg-gray-100 text-gray-600 cursor-default'
                               : isPopular
-                              ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
-                              : 'bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                              ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 shadow-sm hover:shadow-md'
+                              : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                           }`}
                         >
-                          {plan.price === 0 ? 'Get Started Free' : `Upgrade to ${plan.name}`}
-                          <ArrowRight className="h-4 w-4 ml-2" />
+                          {plan.price === 0 ? 'Current Plan' : `Upgrade to ${plan.name}`}
+                          {plan.price > 0 && <ArrowRight className="h-3.5 w-3.5 ml-2" />}
                         </button>
                       </motion.div>
                     );
@@ -735,31 +721,31 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
                 </div>
 
                 {/* Benefits section */}
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-10">
-                  <h3 className="text-3xl font-bold text-gray-800 mb-8 text-center">
-                    Why Upgrade Today?
+                <div className="bg-gray-50 rounded-2xl p-8 border border-gray-200">
+                  <h3 className="text-xl font-bold text-gray-900 mb-6 text-center">
+                    Why Upgrade?
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="text-center">
-                      <div className="bg-gradient-to-br from-pink-100 to-purple-100 p-8 rounded-3xl w-24 h-24 mx-auto mb-6 flex items-center justify-center">
-                        <Crown className="h-12 w-12 text-pink-600" />
+                      <div className="bg-gradient-to-br from-pink-500 to-rose-500 p-3 rounded-xl w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                        <Crown className="h-6 w-6 text-white" />
                       </div>
-                      <h4 className="text-xl font-bold text-gray-800 mb-4">More Services</h4>
-                      <p className="text-gray-600 leading-relaxed">Create unlimited service listings to showcase your expertise and attract more clients to your wedding business.</p>
+                      <h4 className="text-base font-bold text-gray-900 mb-2">More Services</h4>
+                      <p className="text-sm text-gray-600 leading-relaxed">Create unlimited service listings to showcase your expertise.</p>
                     </div>
                     <div className="text-center">
-                      <div className="bg-gradient-to-br from-purple-100 to-indigo-100 p-8 rounded-3xl w-24 h-24 mx-auto mb-6 flex items-center justify-center">
-                        <Zap className="h-12 w-12 text-purple-600" />
+                      <div className="bg-gradient-to-br from-purple-500 to-indigo-500 p-3 rounded-xl w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                        <Zap className="h-6 w-6 text-white" />
                       </div>
-                      <h4 className="text-xl font-bold text-gray-800 mb-4">Advanced Analytics</h4>
-                      <p className="text-gray-600 leading-relaxed">Track your business performance with detailed insights, revenue analytics, and professional reporting tools.</p>
+                      <h4 className="text-base font-bold text-gray-900 mb-2">Advanced Analytics</h4>
+                      <p className="text-sm text-gray-600 leading-relaxed">Track performance with detailed insights and reporting tools.</p>
                     </div>
                     <div className="text-center">
-                      <div className="bg-gradient-to-br from-indigo-100 to-blue-100 p-8 rounded-3xl w-24 h-24 mx-auto mb-6 flex items-center justify-center">
-                        <Check className="h-12 w-12 text-indigo-600" />
+                      <div className="bg-gradient-to-br from-indigo-500 to-blue-500 p-3 rounded-xl w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                        <Check className="h-6 w-6 text-white" />
                       </div>
-                      <h4 className="text-xl font-bold text-gray-800 mb-4">Priority Support</h4>
-                      <p className="text-gray-600 leading-relaxed">Get faster responses, phone support, and dedicated assistance from our expert customer success team.</p>
+                      <h4 className="text-base font-bold text-gray-900 mb-2">Priority Support</h4>
+                      <p className="text-sm text-gray-600 leading-relaxed">Get faster responses and dedicated assistance from our team.</p>
                     </div>
                   </div>
                 </div>
@@ -832,6 +818,8 @@ export const UpgradePromptBanner: React.FC<UpgradePromptBannerProps> = ({
         <button
           onClick={onDismiss}
           className="p-1 hover:bg-white/20 rounded-md transition-colors"
+          aria-label="Dismiss upgrade prompt"
+          title="Dismiss"
         >
           <X size={16} />
         </button>

@@ -403,7 +403,7 @@ class FirebaseAuthService {
 
     switch (error.code) {
       case 'auth/email-already-in-use':
-        message = 'This email address is already registered. Please use a different email or sign in.';
+        message = 'This email address is already registered. Please try logging in instead or use a different email.';
         break;
       case 'auth/weak-password':
         message = 'Password is too weak. Please choose a stronger password with at least 6 characters.';

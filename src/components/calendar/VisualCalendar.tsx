@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { availabilityService, type AvailabilityCheck } from '../../services/availabilityService';
 import { cn } from '../../utils/cn';
 
@@ -170,11 +170,17 @@ export const VisualCalendar: React.FC<VisualCalendarProps> = ({
 
   // Date selection handler
   const handleDateClick = useCallback((day: CalendarDay) => {
-    if (day.isDisabled) return;
+    if (day.isDisabled) {
+      if (day.isPast) {
+        alert('❌ Past dates cannot be selected');
+      }
+      return;
+    }
     
     // Check if date is unavailable
     if (day.availability && !day.availability.isAvailable) {
-      console.warn('⚠️ [VisualCalendar] Date is not available:', day.date);
+      const reason = day.availability.reason || 'This date is not available';
+      alert(`❌ ${reason}\n\nPlease select a different date.`);
       return;
     }
 
@@ -184,7 +190,7 @@ export const VisualCalendar: React.FC<VisualCalendarProps> = ({
 
   // Get CSS classes for a day cell
   const getDayClasses = useCallback((day: CalendarDay): string => {
-    const baseClasses = "relative flex flex-col items-center justify-center h-16 sm:h-20 rounded-xl cursor-pointer transition-all duration-200 group";
+    const baseClasses = "relative flex flex-col items-center justify-center h-11 sm:h-12 rounded-lg cursor-pointer transition-all duration-200 group";
     
     if (day.isDisabled || (day.availability && !day.availability.isAvailable)) {
       // Disabled or unavailable
@@ -230,13 +236,46 @@ export const VisualCalendar: React.FC<VisualCalendarProps> = ({
     );
   }, []);
 
+  // Get user-friendly tooltip text
+  const getTooltipText = useCallback((day: CalendarDay): string => {
+    if (day.isPast) {
+      return 'Past date - cannot be selected';
+    }
+    
+    if (!day.isCurrentMonth) {
+      return 'Select a date from current month';
+    }
+
+    if (day.isSelected) {
+      return `Selected: ${formatDateForDisplay(day.date)}`;
+    }
+
+    if (day.isToday) {
+      return 'Today - Available for booking';
+    }
+
+    if (day.availability) {
+      if (!day.availability.isAvailable) {
+        return day.availability.reason || 'This date is not available';
+      }
+      
+      if (day.availability.bookingStatus === 'booked') {
+        return 'Available (pending booking exists)';
+      }
+      
+      return 'Available for booking - Click to select';
+    }
+
+    return 'Click to select this date';
+  }, []);
+
   // Get availability icon for a day
   const getAvailabilityIcon = useCallback((day: CalendarDay) => {
     if (!day.availability || !day.isCurrentMonth) return null;
 
     if (!day.availability.isAvailable) {
       return (
-        <div className="absolute top-1 right-1">
+        <div className="absolute top-1 right-1" title="Not available">
           <XCircle className="h-4 w-4 text-red-500" />
         </div>
       );
@@ -244,31 +283,23 @@ export const VisualCalendar: React.FC<VisualCalendarProps> = ({
 
     if (day.availability.bookingStatus === 'booked') {
       return (
-        <div className="absolute top-1 right-1">
+        <div className="absolute top-1 right-1" title="Pending booking">
           <Clock className="h-4 w-4 text-yellow-500" />
         </div>
       );
     }
 
     return (
-      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Available">
         <CheckCircle className="h-4 w-4 text-green-500" />
       </div>
     );
   }, []);
 
   return (
-    <div className={cn("bg-white rounded-2xl shadow-lg p-6 border border-gray-200", className)}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <CalendarIcon className="h-6 w-6 text-blue-500" />
-          Select Event Date
-        </h3>
-      </div>
-
+    <div className={cn("bg-white rounded-xl shadow-lg p-3 border border-gray-200", className)}>
       {/* Month Navigation */}
-      <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+      <div className="flex items-center justify-between mb-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-2.5 border border-blue-200">
         <button
           onClick={goToPreviousMonth}
           className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
@@ -277,13 +308,13 @@ export const VisualCalendar: React.FC<VisualCalendarProps> = ({
           <ChevronLeft className="h-6 w-6 text-blue-600" />
         </button>
 
-        <div className="flex items-center gap-4">
-          <span className="text-xl font-bold text-gray-800">
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold text-gray-800">
             {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
           </span>
           <button
             onClick={goToToday}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
+            className="px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-xs font-medium"
           >
             Today
           </button>
@@ -300,17 +331,20 @@ export const VisualCalendar: React.FC<VisualCalendarProps> = ({
 
       {/* Loading State */}
       {isLoading && (
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3">
-          <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
-          <span className="text-blue-700 font-medium">Loading availability...</span>
+        <div className="mb-2 p-2.5 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2 text-sm">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+          <span className="text-blue-700 font-medium">Loading...</span>
         </div>
       )}
 
       {/* Error State */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-          <span className="text-red-700">{error}</span>
+        <div className="mb-2 p-2.5 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <span className="text-red-700 font-medium">Unable to load availability</span>
+          </div>
+          <p className="text-xs text-red-600 mt-1 ml-6">All dates are shown as available. Please check with the vendor to confirm.</p>
         </div>
       )}
 
@@ -319,14 +353,14 @@ export const VisualCalendar: React.FC<VisualCalendarProps> = ({
         {DAYS_OF_WEEK.map(day => (
           <div
             key={day}
-            className="text-center text-sm font-semibold text-gray-600 py-2"
+            className="text-center text-xs font-semibold text-gray-600 py-1"
           >
             {day}
           </div>
         ))}
       </div>
 
-      {/* Calendar Grid */}
+      {/* Calendar Grid - Compact spacing */}
       <div className="grid grid-cols-7 gap-2">
         {calendarDays.map((day, index) => (
           <button
@@ -334,11 +368,11 @@ export const VisualCalendar: React.FC<VisualCalendarProps> = ({
             onClick={() => handleDateClick(day)}
             className={getDayClasses(day)}
             disabled={day.isDisabled || (day.availability && !day.availability.isAvailable)}
-            title={day.availability?.reason || day.date}
+            title={getTooltipText(day)}
           >
             {getAvailabilityIcon(day)}
             <span className={cn(
-              "text-lg font-semibold",
+              "text-sm font-semibold",
               day.isSelected && "text-white",
               !day.isSelected && day.isCurrentMonth && "text-gray-800",
               !day.isSelected && !day.isCurrentMonth && "text-gray-400"
@@ -346,40 +380,39 @@ export const VisualCalendar: React.FC<VisualCalendarProps> = ({
               {day.dayOfMonth}
             </span>
             {day.isToday && !day.isSelected && (
-              <span className="text-xs text-purple-600 font-medium mt-0.5">Today</span>
+              <span className="text-[10px] text-purple-600 font-medium">Today</span>
             )}
           </button>
         ))}
       </div>
 
-      {/* Legend */}
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">Legend:</h4>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-green-50 border-2 border-green-200 rounded-lg"></div>
-            <span className="text-sm text-gray-600">Available</span>
+      {/* Legend - Compact */}
+      <div className="mt-3 pt-3 border-t border-gray-200">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="flex items-center gap-1.5">
+            <div className="w-6 h-6 bg-white border-2 border-green-400 rounded"></div>
+            <span className="text-xs text-gray-600">Available</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-red-50 border-2 border-red-200 rounded-lg"></div>
-            <span className="text-sm text-gray-600">Booked</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-6 h-6 bg-red-50 border-2 border-red-200 rounded"></div>
+            <span className="text-xs text-gray-600">Booked</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg"></div>
-            <span className="text-sm text-gray-600">Selected</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded shadow"></div>
+            <span className="text-xs text-gray-600">Selected</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-400 rounded-lg"></div>
-            <span className="text-sm text-gray-600">Today</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-6 h-6 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-400 rounded"></div>
+            <span className="text-xs text-gray-600">Today</span>
           </div>
         </div>
       </div>
 
-      {/* Selected Date Display */}
+      {/* Selected Date Display - Compact */}
       {selectedDate && (
-        <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
-          <p className="text-sm text-gray-600 mb-1">Selected Date:</p>
-          <p className="text-lg font-bold text-blue-700">{formatDateForDisplay(selectedDate)}</p>
+        <div className="mt-3 p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+          <p className="text-xs text-gray-600">Selected:</p>
+          <p className="text-sm font-bold text-blue-700">{formatDateForDisplay(selectedDate)}</p>
         </div>
       )}
     </div>

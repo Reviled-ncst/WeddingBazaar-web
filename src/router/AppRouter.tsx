@@ -76,6 +76,12 @@ import { CoordinatorDashboard } from '../pages/users/coordinator/dashboard';
 import { CoordinatorWeddings } from '../pages/users/coordinator/weddings';
 import { CoordinatorVendors } from '../pages/users/coordinator/vendors';
 import { CoordinatorClients } from '../pages/users/coordinator/clients';
+import { CoordinatorAnalytics } from '../pages/users/coordinator/analytics';
+import CoordinatorCalendar from '../pages/users/coordinator/calendar/CoordinatorCalendar';
+import { CoordinatorTeam } from '../pages/users/coordinator/team';
+import { CoordinatorWhiteLabel } from '../pages/users/coordinator/whitelabel';
+import { CoordinatorIntegrations } from '../pages/users/coordinator/integrations';
+import { CoordinatorRegistrationForm } from '../pages/users/coordinator/registration';
 
 // Auth Context
 import { AuthProvider } from '../shared/contexts/HybridAuthContext';
@@ -131,6 +137,11 @@ export const AppRouter: React.FC = () => {
                 <ProtectedRoute requireAuth={false}>
                   <ServiceHighlightDemo />
                 </ProtectedRoute>
+              } />
+
+              {/* Coordinator Registration - Public route */}
+              <Route path="/coordinator/register" element={
+                <CoordinatorRegistrationForm />
               } />
             
             {/* User Type Landing Pages - require authentication and role-based access */}
@@ -358,6 +369,31 @@ export const AppRouter: React.FC = () => {
             <Route path="/coordinator/clients" element={
               <RoleProtectedRoute allowedRoles={['coordinator']} requireAuth={true}>
                 <CoordinatorClients />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/coordinator/analytics" element={
+              <RoleProtectedRoute allowedRoles={['coordinator']} requireAuth={true}>
+                <CoordinatorAnalytics />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/coordinator/calendar" element={
+              <RoleProtectedRoute allowedRoles={['coordinator']} requireAuth={true}>
+                <CoordinatorCalendar />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/coordinator/team" element={
+              <RoleProtectedRoute allowedRoles={['coordinator']} requireAuth={true}>
+                <CoordinatorTeam />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/coordinator/whitelabel" element={
+              <RoleProtectedRoute allowedRoles={['coordinator']} requireAuth={true}>
+                <CoordinatorWhiteLabel />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/coordinator/integrations" element={
+              <RoleProtectedRoute allowedRoles={['coordinator']} requireAuth={true}>
+                <CoordinatorIntegrations />
               </RoleProtectedRoute>
             } />
             

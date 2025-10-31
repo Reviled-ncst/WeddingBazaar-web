@@ -141,10 +141,15 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
                 flex items-center space-x-3 px-3 py-3 rounded-xl transition-all duration-200 group
                 ${isActive 
                   ? 'bg-gradient-to-r from-rose-50 to-pink-50 text-rose-700 shadow-sm' 
-                  : 'text-gray-700 hover:bg-rose-50/50 hover:text-rose-600'
+                  : 'text-gray-700 hover:bg-rose-50/50 hover:text-rose-600 active:bg-rose-100'
                 }
               `}
-              onClick={onClose}
+              onClick={() => {
+                // Ensure the link navigation happens
+                console.log('🔗 Mobile nav clicked:', item.href);
+                // Close menu after short delay to ensure navigation completes
+                setTimeout(() => onClose(), 100);
+              }}
             >
               <div className={`p-2 rounded-lg ${isActive ? 'bg-rose-100' : 'bg-gray-100 group-hover:bg-rose-100'} transition-all duration-200`}>
                 <item.icon className={`h-4 w-4 ${isActive ? 'text-rose-600' : 'text-gray-600 group-hover:text-rose-600'}`} />
@@ -163,8 +168,11 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
         {/* Messages - Navigate to Messages Page */}
         <Link
           to="/individual/messages"
-          onClick={onClose}
-          className="flex items-center space-x-3 px-3 py-3 text-gray-700 hover:bg-rose-50/50 hover:text-rose-600 rounded-xl transition-all duration-200 w-full group"
+          onClick={() => {
+            console.log('🔗 Mobile nav clicked: /individual/messages');
+            setTimeout(() => onClose(), 100);
+          }}
+          className="flex items-center space-x-3 px-3 py-3 text-gray-700 hover:bg-rose-50/50 hover:text-rose-600 rounded-xl transition-all duration-200 w-full group active:bg-rose-100"
         >
           <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-100 transition-all duration-200">
             <div className="relative">
@@ -204,8 +212,11 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
             <Link
               key={index}
               to={item.href!}
-              className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-rose-50/50 hover:text-rose-600 rounded-lg transition-all duration-200 group"
-              onClick={onClose}
+              className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-rose-50/50 hover:text-rose-600 rounded-lg transition-all duration-200 group active:bg-rose-100"
+              onClick={() => {
+                console.log('🔗 Mobile nav clicked:', item.href);
+                setTimeout(() => onClose(), 100);
+              }}
             >
               <div className={`p-1.5 rounded-lg ${item.isPremium ? 'bg-gradient-to-r from-yellow-100 to-orange-100' : 'bg-gray-100 group-hover:bg-rose-100'} transition-all duration-200`}>
                 <item.icon className={`h-3 w-3 ${item.isPremium ? 'text-yellow-600' : 'text-gray-600 group-hover:text-rose-600'}`} />

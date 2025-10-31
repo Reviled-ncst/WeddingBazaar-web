@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Eye, EyeOff, Mail, Lock, User, Heart, Phone, Building, CheckCircle, 
-  MapPin, Zap, Tag, PartyPopper, RefreshCw, AlertCircle
+  MapPin, Zap, Tag, PartyPopper, AlertCircle, Sparkles, Crown, Globe
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from './Modal';
@@ -89,6 +89,12 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     business_type: '',
     location: '',
     
+    // Coordinator-specific fields
+    years_experience: '',
+    team_size: '',
+    specialties: [] as string[],
+    service_areas: [] as string[],
+    
     // Preferences
     agreeToTerms: false,
     receiveUpdates: false,
@@ -111,6 +117,46 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     { value: 'Other', label: 'Other Services' }
   ];
 
+  // Coordinator-specific categories
+  const coordinatorCategories = [
+    { value: 'Full-Service Wedding Planner', label: 'Full-Service Wedding Planner' },
+    { value: 'Day-of Coordinator', label: 'Day-of Coordinator' },
+    { value: 'Partial Planning Coordinator', label: 'Partial Planning Coordinator' },
+    { value: 'Destination Wedding Coordinator', label: 'Destination Wedding Coordinator' },
+    { value: 'Luxury Wedding Planner', label: 'Luxury Wedding Planner' },
+    { value: 'Budget Wedding Coordinator', label: 'Budget Wedding Coordinator' },
+    { value: 'Corporate Event Coordinator', label: 'Corporate Event Coordinator' },
+    { value: 'Venue Coordinator', label: 'Venue Coordinator' },
+    { value: 'Event Design & Planning', label: 'Event Design & Planning' },
+    { value: 'Wedding Consultant', label: 'Wedding Consultant' },
+    { value: 'Multi-Cultural Wedding Specialist', label: 'Multi-Cultural Wedding Specialist' },
+    { value: 'Other', label: 'Other Coordination Services' }
+  ];
+
+  // Coordinator specialties
+  const coordinatorSpecialties = [
+    'Cultural Weddings',
+    'Destination Weddings',
+    'Garden Weddings',
+    'Beach Weddings',
+    'Church Weddings',
+    'Intimate Weddings',
+    'Grand Celebrations',
+    'Theme Weddings',
+    'Eco-Friendly Events',
+    'Luxury Events'
+  ];
+
+  // Service areas
+  const serviceAreas = [
+    'Metro Manila',
+    'Luzon',
+    'Visayas',
+    'Mindanao',
+    'International',
+    'Nationwide'
+  ];
+
   // Reset form when modal opens (but preserve email verification state if it exists)
   useEffect(() => {
     if (isOpen) {
@@ -126,6 +172,10 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
           business_name: '',
           business_type: '',
           location: '',
+          years_experience: '',
+          team_size: '',
+          specialties: [],
+          service_areas: [],
           agreeToTerms: false,
           receiveUpdates: false,
         });
@@ -157,13 +207,21 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       if (!formData.location.trim()) errors.location = 'Business location is required';
     }
     
+    // Coordinator-specific required fields
+    if (userType === 'coordinator') {
+      if (!formData.years_experience) errors.years_experience = 'Years of experience is required';
+      if (!formData.team_size) errors.team_size = 'Team size is required';
+      if (formData.specialties.length === 0) errors.specialties = 'At least one specialty is required';
+      if (formData.service_areas.length === 0) errors.service_areas = 'At least one service area is required';
+    }
+    
     if (!formData.agreeToTerms) errors.agreeToTerms = 'You must agree to the terms';
     
     return errors;
   };
 
   // Helper function to update form data and clear errors
-  const updateFormData = (field: string, value: any) => {
+  const updateFormData = (field: string, value: string | boolean | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Clear validation errors for this field
@@ -178,6 +236,26 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     // Clear general error if any
     if (error) {
       setError(null);
+    }
+  };
+
+  // Helper function to toggle multi-select items
+  const toggleMultiSelect = (field: 'specialties' | 'service_areas', value: string) => {
+    setFormData(prev => {
+      const current = prev[field];
+      const updated = current.includes(value)
+        ? current.filter(item => item !== value)
+        : [...current, value];
+      return { ...prev, [field]: updated };
+    });
+    
+    // Clear validation error for this field
+    if (validationErrors[field]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
     }
   };
 
@@ -255,16 +333,39 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         error
       });
       
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       console.error('❌ RegisterModal: Registration failed with error:', error);
-      console.error('❌ RegisterModal: Error message:', error.message);
-      console.error('❌ RegisterModal: Error stack:', error.stack);
+      console.error('❌ RegisterModal: Error message:', err.message);
+      console.error('❌ RegisterModal: Error stack:', err.stack);
       console.error('❌ RegisterModal: Full error object:', JSON.stringify(error, null, 2));
       
-      const errorMessage = error.message || 'Registration failed. Please try again.';
+      // Parse Firebase error codes for better user feedback
+      let errorMessage = err.message || 'Registration failed. Please try again.';
+      
+      if (errorMessage.includes('email-already-in-use') || errorMessage.includes('EMAIL_EXISTS')) {
+        errorMessage = '⚠️ This email is already registered. Please login instead or use a different email address.';
+      } else if (errorMessage.includes('weak-password')) {
+        errorMessage = '⚠️ Password is too weak. Please use at least 6 characters.';
+      } else if (errorMessage.includes('invalid-email')) {
+        errorMessage = '⚠️ Invalid email address. Please check and try again.';
+      } else if (errorMessage.includes('network')) {
+        errorMessage = '⚠️ Network error. Please check your internet connection and try again.';
+      } else if (errorMessage.includes('Firebase')) {
+        errorMessage = '⚠️ Registration service unavailable. Please try again later or use email registration.';
+      }
+      
       console.error('❌ RegisterModal: Setting error message:', errorMessage);
       
       setError(errorMessage);
+      
+      // Scroll to top to show error message
+      setTimeout(() => {
+        const modalContent = document.querySelector('[role="dialog"]');
+        if (modalContent) {
+          modalContent.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 100);
     } finally {
       setIsLoading(false);
     }
@@ -281,8 +382,9 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       // Since user is signed out after registration, we need to show a helpful message
       setError('To resend verification email, please try registering again or contact support if you continue to have issues.');
       
-    } catch (error: any) {
-      setError(error.message || 'Failed to resend verification email');
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'Failed to resend verification email');
     } finally {
       setCheckingVerification(false);
     }
@@ -312,12 +414,13 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         }
       }, 2000);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       console.error('Google registration error:', error);
-      if (error.message.includes('Firebase')) {
+      if (err.message.includes('Firebase')) {
         setError('Google sign-in is not available. Please use email registration or check your internet connection.');
       } else {
-        setError(error.message || 'Google registration failed. Please try again.');
+        setError(err.message || 'Google registration failed. Please try again.');
       }
     } finally {
       setIsLoading(false);
@@ -357,7 +460,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       }
     };
 
-    const handleUnload = (e: Event) => {
+    const handleUnload = () => {
       console.log('⚠️ UNLOAD detected - page is actually reloading');
       console.log('📊 Modal state:', { isOpen, showEmailVerification, verificationSent });
     };
@@ -389,7 +492,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       setVerificationSent(true);
       onEmailVerificationModeChange?.(true);
     }
-  }, [isOpen, showEmailVerification, verificationSent, isSuccess, verificationEmail, formData.email]);
+  }, [isOpen, showEmailVerification, verificationSent, isSuccess, verificationEmail, formData.email, onEmailVerificationModeChange]);
 
   // Custom close handler that resets email verification state
   const handleModalClose = () => {
@@ -432,25 +535,14 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       <Modal isOpen={isOpen} onClose={debugModalClose} maxWidth="xl" preventBackdropClose={!!error || Object.keys(validationErrors).length > 0 || showEmailVerification}>
         <div className={cn("relative overflow-hidden px-6 py-6", fadeIn && "animate-in fade-in duration-500")}>
           
-          {/* Ultra-Enhanced Multi-Layer Background */}
+          {/* Minimalist Elegant Background */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            {/* Primary gradient orbs */}
-            <div className="absolute -top-12 -right-12 w-72 h-72 bg-gradient-to-br from-rose-400/40 via-pink-500/30 to-purple-600/40 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute -bottom-16 -left-16 w-64 h-64 bg-gradient-to-tr from-indigo-400/35 via-purple-500/30 to-pink-500/35 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+            {/* Subtle gradient mesh */}
+            <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-rose-100/40 to-pink-100/30 rounded-full blur-3xl"></div>
+            <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-purple-100/30 to-pink-100/40 rounded-full blur-3xl"></div>
             
-            {/* Secondary accent orbs */}
-            <div className="absolute top-1/3 right-1/4 w-48 h-48 bg-gradient-to-br from-amber-400/20 via-yellow-400/15 to-orange-500/20 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-            <div className="absolute bottom-1/3 left-1/4 w-40 h-40 bg-gradient-to-br from-cyan-400/20 via-blue-400/15 to-indigo-500/20 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1.5s' }}></div>
-            
-            {/* Floating particles */}
-            <div className="absolute top-1/4 left-1/3 w-2 h-2 bg-rose-400/60 rounded-full animate-ping" style={{ animationDelay: '0.5s' }}></div>
-            <div className="absolute top-2/3 right-1/3 w-2 h-2 bg-purple-400/60 rounded-full animate-ping" style={{ animationDelay: '1.2s' }}></div>
-            <div className="absolute bottom-1/4 left-2/3 w-2 h-2 bg-pink-400/60 rounded-full animate-ping" style={{ animationDelay: '0.8s' }}></div>
-            
-            {/* Radial gradient overlay for depth */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),rgba(255,182,193,0.3)_40%,transparent_70%)]"></div>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(216,180,254,0.3),transparent_50%)]"></div>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(255,192,203,0.3),transparent_50%)]"></div>
+            {/* Clean overlay */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-white/30"></div>
           </div>
 
           {/* Success Overlay with enhanced animations */}
@@ -494,22 +586,21 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
             </div>
           )}
 
-          {/* Single Page Registration Form */}
+          {/* Minimalist Registration Form */}
           <div className="relative">
-            {/* Enhanced Background Glass Effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-rose-50/40 to-purple-50/30 rounded-2xl backdrop-blur-md border border-white/50 shadow-2xl -m-3"></div>
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent rounded-2xl -m-2"></div>
+            {/* Clean glass card */}
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100/50 shadow-lg"></div>
             
-            {/* Enhanced Header */}
-            <div className="relative text-center mb-8 pt-2">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-rose-500 via-pink-500 to-purple-600 rounded-2xl shadow-xl mb-4 rotate-3 hover:rotate-0 transition-transform duration-500">
-                <PartyPopper className="h-8 w-8 text-white" />
+            {/* Sleek Header */}
+            <div className="relative text-center mb-10 pt-4">
+              <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl mb-5 transition-transform hover:scale-105">
+                <PartyPopper className="h-7 w-7 text-white" />
               </div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-rose-600 to-purple-600 bg-clip-text text-transparent mb-3">
-                Join Wedding Bazaar
+              <h2 className="text-3xl font-light text-gray-900 mb-2 tracking-tight">
+                Create Account
               </h2>
-              <p className="text-gray-600 text-base max-w-md mx-auto leading-relaxed">
-                Create your account and start planning your perfect wedding with the best vendors
+              <p className="text-gray-500 text-sm max-w-sm mx-auto">
+                Join Wedding Bazaar and start your journey
               </p>
             </div>
 
@@ -619,32 +710,32 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                 /* Regular Registration Form */
                 <>
               
-              {/* Enhanced User Type Selection */}
-              <div className="space-y-4">
-                <label className="block text-lg font-bold text-gray-800 text-center">I am a:</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Minimalist User Type Selection */}
+              <div className="space-y-3">
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Account Type</label>
+                <div className="grid grid-cols-3 gap-3">
                   <button
                     type="button"
                     onClick={() => setUserType('couple')}
                     className={cn(
-                      "group p-6 rounded-2xl border-3 transition-all duration-500 text-left transform hover:scale-105 hover:shadow-2xl",
+                      "group relative p-5 rounded-xl border transition-all duration-300",
                       userType === 'couple'
-                        ? "border-rose-500 bg-gradient-to-br from-rose-50 via-pink-50 to-rose-100 text-rose-800 shadow-xl scale-105"
-                        : "border-gray-200 bg-gradient-to-br from-white to-gray-50 hover:border-rose-300 hover:shadow-lg"
+                        ? "border-rose-500 bg-rose-50 shadow-sm"
+                        : "border-gray-200 bg-white hover:border-rose-300 hover:bg-rose-50/50"
                     )}
                   >
-                    <div className="flex items-center space-x-4">
+                    <div className="flex flex-col items-center space-y-2">
                       <div className={cn(
-                        "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:rotate-12",
+                        "w-10 h-10 rounded-lg flex items-center justify-center transition-all",
                         userType === 'couple' 
-                          ? "bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-lg" 
-                          : "bg-gradient-to-br from-gray-100 to-gray-200 text-gray-500 group-hover:from-rose-100 group-hover:to-pink-100 group-hover:text-rose-500"
+                          ? "bg-rose-500 text-white" 
+                          : "bg-gray-100 text-gray-600 group-hover:bg-rose-100 group-hover:text-rose-600"
                       )}>
-                        <Heart className="h-7 w-7" />
+                        <Heart className="h-5 w-5" />
                       </div>
-                      <div className="flex-1">
-                        <div className="font-bold text-lg">Planning My Wedding</div>
-                        <div className="text-sm opacity-75 mt-1">Find amazing vendors and plan your dream wedding</div>
+                      <div className="text-center">
+                        <div className="font-medium text-sm">Couple</div>
+                        <div className="text-xs text-gray-500 mt-0.5">Plan your wedding</div>
                       </div>
                     </div>
                   </button>
@@ -653,24 +744,24 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     type="button"
                     onClick={() => setUserType('vendor')}
                     className={cn(
-                      "group p-6 rounded-2xl border-3 transition-all duration-500 text-left transform hover:scale-105 hover:shadow-2xl",
+                      "group relative p-5 rounded-xl border transition-all duration-300",
                       userType === 'vendor'
-                        ? "border-purple-500 bg-gradient-to-br from-purple-50 via-indigo-50 to-purple-100 text-purple-800 shadow-xl scale-105"
-                        : "border-gray-200 bg-gradient-to-br from-white to-gray-50 hover:border-purple-300 hover:shadow-lg"
+                        ? "border-purple-500 bg-purple-50 shadow-sm"
+                        : "border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/50"
                     )}
                   >
-                    <div className="flex items-center space-x-4">
+                    <div className="flex flex-col items-center space-y-2">
                       <div className={cn(
-                        "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:rotate-12",
+                        "w-10 h-10 rounded-lg flex items-center justify-center transition-all",
                         userType === 'vendor' 
-                          ? "bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg" 
-                          : "bg-gradient-to-br from-gray-100 to-gray-200 text-gray-500 group-hover:from-purple-100 group-hover:to-indigo-100 group-hover:text-purple-500"
+                          ? "bg-purple-500 text-white" 
+                          : "bg-gray-100 text-gray-600 group-hover:bg-purple-100 group-hover:text-purple-600"
                       )}>
-                        <Building className="h-7 w-7" />
+                        <Building className="h-5 w-5" />
                       </div>
-                      <div className="flex-1">
-                        <div className="font-bold text-lg">Wedding Vendor</div>
-                        <div className="text-sm opacity-75 mt-1">Offer your services to happy couples</div>
+                      <div className="text-center">
+                        <div className="font-medium text-sm">Vendor</div>
+                        <div className="text-xs text-gray-500 mt-0.5">Offer services</div>
                       </div>
                     </div>
                   </button>
@@ -679,40 +770,56 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     type="button"
                     onClick={() => setUserType('coordinator')}
                     className={cn(
-                      "group p-6 rounded-2xl border-3 transition-all duration-500 text-left transform hover:scale-105 hover:shadow-2xl",
+                      "group relative p-5 rounded-xl border transition-all duration-300",
                       userType === 'coordinator'
-                        ? "border-amber-500 bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 text-amber-800 shadow-xl scale-105"
-                        : "border-gray-200 bg-gradient-to-br from-white to-gray-50 hover:border-amber-300 hover:shadow-lg"
+                        ? "border-amber-500 bg-amber-50 shadow-sm"
+                        : "border-gray-200 bg-white hover:border-amber-300 hover:bg-amber-50/50"
                     )}
                   >
-                    <div className="flex items-center space-x-4">
+                    <div className="flex flex-col items-center space-y-2">
                       <div className={cn(
-                        "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:rotate-12",
+                        "w-10 h-10 rounded-lg flex items-center justify-center transition-all",
                         userType === 'coordinator' 
-                          ? "bg-gradient-to-br from-amber-500 to-yellow-600 text-white shadow-lg" 
-                          : "bg-gradient-to-br from-gray-100 to-gray-200 text-gray-500 group-hover:from-amber-100 group-hover:to-yellow-100 group-hover:text-amber-500"
+                          ? "bg-amber-500 text-white" 
+                          : "bg-gray-100 text-gray-600 group-hover:bg-amber-100 group-hover:text-amber-600"
                       )}>
-                        <PartyPopper className="h-7 w-7" />
+                        <PartyPopper className="h-5 w-5" />
                       </div>
-                      <div className="flex-1">
-                        <div className="font-bold text-lg">Wedding Coordinator</div>
-                        <div className="text-sm opacity-75 mt-1">Coordinate multiple weddings and manage vendors</div>
+                      <div className="text-center">
+                        <div className="font-medium text-sm">Coordinator</div>
+                        <div className="text-xs text-gray-500 mt-0.5">Manage weddings</div>
                       </div>
                     </div>
                   </button>
                 </div>
               </div>
 
-              {/* Enhanced Basic Information */}
-              <div className="bg-gradient-to-br from-white/80 to-gray-50/60 p-6 rounded-2xl border border-white/50 shadow-lg">
-                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                  <User className="h-6 w-6 mr-3 text-rose-500" />
-                  Personal Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <label className="block text-sm font-bold text-gray-700 flex items-center">
-                      <span className="w-2 h-2 bg-rose-500 rounded-full mr-2"></span>
+              {/* Minimalist Form Section */}
+              <div className="space-y-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
+                  <span className="text-xs text-gray-400 uppercase tracking-wider">Your Details</span>
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
+                </div>
+
+                {/* Error Display - Prominent */}
+                {error && (
+                  <div className="mb-4 p-4 bg-red-50 border-2 border-red-300 rounded-xl text-red-700 flex items-start gap-3 animate-shake">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm">{error}</p>
+                      {error.includes('already registered') && (
+                        <p className="text-xs mt-1 text-red-600">
+                          Try logging in instead, or use a different email address.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-600">
                       First Name *
                     </label>
                     <input
@@ -720,25 +827,22 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                       value={formData.firstName}
                       onChange={(e) => updateFormData('firstName', e.target.value)}
                       className={cn(
-                        "w-full px-4 py-4 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg",
-                        "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
+                        "w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all bg-white",
                         validationErrors.firstName
-                          ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
-                          : "border-gray-200 focus:border-rose-400 focus:shadow-2xl focus:shadow-rose-500/20 focus:ring-4 focus:ring-rose-100"
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-100"
+                          : "border-gray-200 focus:border-rose-400 focus:ring-rose-100"
                       )}
-                      placeholder="Enter your first name"
+                      placeholder="John"
                     />
                     {validationErrors.firstName && (
-                      <p className="text-red-500 text-sm mt-2 flex items-center">
-                        <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                      <p className="text-red-500 text-xs mt-1">
                         {validationErrors.firstName}
                       </p>
                     )}
                   </div>
 
-                  <div className="space-y-3">
-                    <label className="block text-sm font-bold text-gray-700 flex items-center">
-                      <span className="w-2 h-2 bg-rose-500 rounded-full mr-2"></span>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-600">
                       Last Name *
                     </label>
                     <input
@@ -746,43 +850,39 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                       value={formData.lastName}
                       onChange={(e) => updateFormData('lastName', e.target.value)}
                       className={cn(
-                        "w-full px-4 py-4 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg",
-                        "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
+                        "w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all bg-white",
                         validationErrors.lastName
-                          ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
-                          : "border-gray-200 focus:border-rose-400 focus:shadow-2xl focus:shadow-rose-500/20 focus:ring-4 focus:ring-rose-100"
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-100"
+                          : "border-gray-200 focus:border-rose-400 focus:ring-rose-100"
                       )}
-                      placeholder="Enter your last name"
+                      placeholder="Doe"
                     />
                     {validationErrors.lastName && (
-                      <p className="text-red-500 text-sm mt-2 flex items-center">
-                        <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                      <p className="text-red-500 text-xs mt-1">
                         {validationErrors.lastName}
                       </p>
                     )}
                   </div>
 
-                  <div className="space-y-3">
-                    <label className="block text-sm font-bold text-gray-700 flex items-center">
-                      <Mail className="w-4 h-4 mr-2 text-rose-500" />
-                      Email Address *
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-600 flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-gray-400" />
+                      Email *
                     </label>
                     <input
                       type="email"
                       value={formData.email}
                       onChange={(e) => updateFormData('email', e.target.value)}
                       className={cn(
-                        "w-full px-4 py-4 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg",
-                        "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
+                        "w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all bg-white",
                         validationErrors.email
-                          ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
-                          : "border-gray-200 focus:border-rose-400 focus:shadow-2xl focus:shadow-rose-500/20 focus:ring-4 focus:ring-rose-100"
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-100"
+                          : "border-gray-200 focus:border-rose-400 focus:ring-rose-100"
                       )}
                       placeholder="your.email@example.com"
                     />
                     {validationErrors.email && (
-                      <p className="text-red-500 text-sm mt-2 flex items-center">
-                        <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                      <p className="text-red-500 text-xs mt-1">
                         {validationErrors.email}
                       </p>
                     )}
@@ -895,7 +995,10 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3">
                       <label className="block text-sm font-bold text-gray-700 flex items-center">
-                        <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                        <span className={cn(
+                          "w-2 h-2 rounded-full mr-2",
+                          userType === 'coordinator' ? "bg-amber-500" : "bg-purple-500"
+                        )}></span>
                         Business Name *
                       </label>
                       <input
@@ -907,9 +1010,11 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                           "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
                           validationErrors.business_name
                             ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
+                            : userType === 'coordinator'
+                            ? "border-gray-200 focus:border-amber-400 focus:shadow-2xl focus:shadow-amber-500/20 focus:ring-4 focus:ring-amber-100"
                             : "border-gray-200 focus:border-purple-400 focus:shadow-2xl focus:shadow-purple-500/20 focus:ring-4 focus:ring-purple-100"
                         )}
-                        placeholder="Your Amazing Business Name"
+                        placeholder={userType === 'coordinator' ? "Dream Day Wedding Coordinators" : "Your Amazing Business Name"}
                       />
                       {validationErrors.business_name && (
                         <p className="text-red-500 text-sm mt-2 flex items-center">
@@ -921,7 +1026,10 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
 
                     <div className="space-y-3">
                       <label className="block text-sm font-bold text-gray-700 flex items-center">
-                        <Tag className="w-4 h-4 mr-2 text-purple-500" />
+                        <Tag className={cn(
+                          "w-4 h-4 mr-2",
+                          userType === 'coordinator' ? "text-amber-500" : "text-purple-500"
+                        )} />
                         Business Category *
                       </label>
                       <select
@@ -933,11 +1041,13 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                           "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
                           validationErrors.business_type
                             ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
+                            : userType === 'coordinator'
+                            ? "border-gray-200 focus:border-amber-400 focus:shadow-2xl focus:shadow-amber-500/20 focus:ring-4 focus:ring-amber-100"
                             : "border-gray-200 focus:border-purple-400 focus:shadow-2xl focus:shadow-purple-500/20 focus:ring-4 focus:ring-purple-100"
                         )}
                       >
                         <option value="">Choose your specialty...</option>
-                        {vendorCategories.map((category) => (
+                        {(userType === 'coordinator' ? coordinatorCategories : vendorCategories).map((category) => (
                           <option key={category.value} value={category.value}>
                             {category.label}
                           </option>
@@ -953,7 +1063,10 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
 
                     <div className="space-y-3 md:col-span-2">
                       <label className="block text-sm font-bold text-gray-700 flex items-center">
-                        <MapPin className="w-4 h-4 mr-2 text-purple-500" />
+                        <MapPin className={cn(
+                          "w-4 h-4 mr-2",
+                          userType === 'coordinator' ? "text-amber-500" : "text-purple-500"
+                        )} />
                         Business Location *
                       </label>
                       <div className="relative">
@@ -986,33 +1099,168 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                         </p>
                       )}
                     </div>
+
+                    {/* Coordinator-specific required fields */}
+                    {userType === 'coordinator' && (
+                      <>
+                        {/* Years of Experience */}
+                        <div className="space-y-3">
+                          <label className="block text-sm font-bold text-gray-700 flex items-center">
+                            <Sparkles className="w-4 h-4 mr-2 text-amber-500" />
+                            Years of Experience *
+                          </label>
+                          <select
+                            value={formData.years_experience}
+                            onChange={(e) => updateFormData('years_experience', e.target.value)}
+                            title="Select years of experience"
+                            className={cn(
+                              "w-full px-4 py-4 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg cursor-pointer",
+                              "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
+                              validationErrors.years_experience
+                                ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
+                                : "border-gray-200 focus:border-amber-400 focus:shadow-2xl focus:shadow-amber-500/20 focus:ring-4 focus:ring-amber-100"
+                            )}
+                          >
+                            <option value="">Select experience...</option>
+                            <option value="0-1">Less than 1 year</option>
+                            <option value="1-3">1-3 years</option>
+                            <option value="3-5">3-5 years</option>
+                            <option value="5-10">5-10 years</option>
+                            <option value="10+">10+ years</option>
+                          </select>
+                          {validationErrors.years_experience && (
+                            <p className="text-red-500 text-sm mt-2 flex items-center">
+                              <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                              {validationErrors.years_experience}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Team Size */}
+                        <div className="space-y-3">
+                          <label className="block text-sm font-bold text-gray-700 flex items-center">
+                            <User className="w-4 h-4 mr-2 text-amber-500" />
+                            Team Size *
+                          </label>
+                          <select
+                            value={formData.team_size}
+                            onChange={(e) => updateFormData('team_size', e.target.value)}
+                            title="Select team size"
+                            className={cn(
+                              "w-full px-4 py-4 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg cursor-pointer",
+                              "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
+                              validationErrors.team_size
+                                ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
+                                : "border-gray-200 focus:border-amber-400 focus:shadow-2xl focus:shadow-amber-500/20 focus:ring-4 focus:ring-amber-100"
+                            )}
+                          >
+                            <option value="">Select team size...</option>
+                            <option value="Solo">Solo (1 person)</option>
+                            <option value="2-5">Small Team (2-5 people)</option>
+                            <option value="6-10">Medium Team (6-10 people)</option>
+                            <option value="11-20">Large Team (11-20 people)</option>
+                            <option value="20+">Enterprise (20+ people)</option>
+                          </select>
+                          {validationErrors.team_size && (
+                            <p className="text-red-500 text-sm mt-2 flex items-center">
+                              <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                              {validationErrors.team_size}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Specialties - Multi-select */}
+                        <div className="space-y-3 md:col-span-2">
+                          <label className="block text-sm font-bold text-gray-700 flex items-center">
+                            <Crown className="w-4 h-4 mr-2 text-amber-500" />
+                            Wedding Specialties * (Select at least one)
+                          </label>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-white/90 rounded-xl border-2 border-gray-200">
+                            {coordinatorSpecialties.map((specialty) => (
+                              <label
+                                key={specialty}
+                                className={cn(
+                                  "flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all",
+                                  formData.specialties.includes(specialty)
+                                    ? "bg-amber-100 border-2 border-amber-500"
+                                    : "bg-gray-50 border-2 border-gray-200 hover:bg-amber-50 hover:border-amber-300"
+                                )}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={formData.specialties.includes(specialty)}
+                                  onChange={() => toggleMultiSelect('specialties', specialty)}
+                                  className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                                />
+                                <span className="text-sm font-medium text-gray-700">{specialty}</span>
+                              </label>
+                            ))}
+                          </div>
+                          {validationErrors.specialties && (
+                            <p className="text-red-500 text-sm mt-2 flex items-center">
+                              <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                              {validationErrors.specialties}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Service Areas - Multi-select */}
+                        <div className="space-y-3 md:col-span-2">
+                          <label className="block text-sm font-bold text-gray-700 flex items-center">
+                            <Globe className="w-4 h-4 mr-2 text-amber-500" />
+                            Service Areas * (Select at least one)
+                          </label>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-white/90 rounded-xl border-2 border-gray-200">
+                            {serviceAreas.map((area) => (
+                              <label
+                                key={area}
+                                className={cn(
+                                  "flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all",
+                                  formData.service_areas.includes(area)
+                                    ? "bg-amber-100 border-2 border-amber-500"
+                                    : "bg-gray-50 border-2 border-gray-200 hover:bg-amber-50 hover:border-amber-300"
+                                )}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={formData.service_areas.includes(area)}
+                                  onChange={() => toggleMultiSelect('service_areas', area)}
+                                  className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                                />
+                                <span className="text-sm font-medium text-gray-700">{area}</span>
+                              </label>
+                            ))}
+                          </div>
+                          {validationErrors.service_areas && (
+                            <p className="text-red-500 text-sm mt-2 flex items-center">
+                              <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                              {validationErrors.service_areas}
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* Enhanced Terms & Conditions */}
-              <div className="bg-gradient-to-br from-gray-50/80 to-slate-50/60 p-6 rounded-2xl border border-gray-200/50 shadow-lg space-y-5">
-                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                  <span className="w-6 h-6 bg-gradient-to-br from-rose-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
-                    <span className="text-white text-sm">✓</span>
-                  </span>
-                  Agreement & Preferences
-                </h3>
-                
-                <div className="flex items-start space-x-4 p-4 bg-white/60 rounded-xl border border-gray-100">
+              {/* Terms & Conditions and Submit Section */}
+              <div className="space-y-6">
+                {/* Terms checkbox */}
+                <div className="flex items-start space-x-3">
                   <input
                     type="checkbox"
                     id="agreeToTerms"
                     checked={formData.agreeToTerms}
                     onChange={(e) => updateFormData('agreeToTerms', e.target.checked)}
-                    className="mt-1 h-5 w-5 text-rose-600 border-2 border-gray-300 rounded-lg focus:ring-rose-500 focus:ring-4"
+                    className="mt-1 h-5 w-5 text-rose-600 border-2 border-gray-300 rounded focus:ring-rose-500"
                   />
-                  <label htmlFor="agreeToTerms" className="text-sm text-gray-700 leading-relaxed">
+                  <label htmlFor="agreeToTerms" className="text-sm text-gray-700">
                     I agree to the{' '}
                     <button
                       type="button"
                       onClick={() => setShowTermsModal(true)}
-                      className="text-rose-600 hover:text-rose-700 font-bold underline decoration-2 underline-offset-2 transition-colors"
+                      className="text-rose-600 hover:text-rose-700 font-semibold underline"
                     >
                       Terms of Service
                     </button>{' '}
@@ -1020,158 +1268,63 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowPrivacyModal(true)}
-                      className="text-rose-600 hover:text-rose-700 font-bold underline decoration-2 underline-offset-2 transition-colors"
+                      className="text-rose-600 hover:text-rose-700 font-semibold underline"
                     >
                       Privacy Policy
                     </button>
-                    {!formData.agreeToTerms && (
-                      <span className="block text-red-500 text-xs mt-1 font-medium">
-                        * Required to create your account
+                    {validationErrors.agreeToTerms && (
+                      <span className="block text-red-500 text-xs mt-1">
+                        {validationErrors.agreeToTerms}
                       </span>
                     )}
                   </label>
                 </div>
-                
-                <div className="flex items-start space-x-4 p-4 bg-gradient-to-br from-blue-50/60 to-indigo-50/40 rounded-xl border border-blue-100">
-                  <input
-                    type="checkbox"
-                    id="receiveUpdates"
-                    checked={formData.receiveUpdates}
-                    onChange={(e) => setFormData(prev => ({ ...prev, receiveUpdates: e.target.checked }))}
-                    className="mt-1 h-5 w-5 text-blue-600 border-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:ring-4"
-                  />
-                  <label htmlFor="receiveUpdates" className="text-sm text-gray-700 leading-relaxed">
-                    <span className="font-medium">Stay in the loop!</span> 
-                    <br />
-                    Receive updates about new features, wedding planning tips, and exclusive vendor offers
-                  </label>
-                </div>
-              </div>
 
-              {/* Enhanced Submit Button */}
-              <div className="flex flex-col items-center space-y-6 pt-4">
+                {/* Submit button */}
                 <button
-                  type="button"
+                  type="submit"
                   onClick={handleSubmit}
-                  disabled={isLoading || !formData.agreeToTerms}
-                  className={cn(
-                    "group relative w-full max-w-lg flex items-center justify-center px-8 py-5 rounded-2xl font-bold text-lg transition-all duration-500 shadow-2xl transform",
-                    "bg-gradient-to-r from-rose-600 via-pink-600 to-purple-600 text-white",
-                    "hover:from-rose-700 hover:via-pink-700 hover:to-purple-700",
-                    "hover:shadow-3xl hover:scale-105 hover:-translate-y-1",
-                    "focus:outline-none focus:ring-4 focus:ring-rose-300",
-                    "disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-2xl disabled:hover:scale-100 disabled:hover:translate-y-0",
-                    !formData.agreeToTerms && "animate-pulse"
-                  )}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  {isLoading ? (
-                    <>
-                      <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin mr-3"></div>
-                      Creating Your Account...
-                    </>
-                  ) : (
-                    <>
-                      <PartyPopper className="h-6 w-6 mr-3 group-hover:rotate-12 transition-transform duration-300" />
-                      Create My {userType === 'vendor' ? 'Business' : 'Wedding'} Account
-                    </>
-                  )}
-                </button>
-
-                {/* OR Divider */}
-                <div className="flex items-center justify-center space-x-4 my-6">
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
-                  <span className="text-gray-500 text-sm font-medium px-4 bg-white/80 rounded-full">or</span>
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
-                </div>
-
-                {/* Google OAuth Button */}
-                <button
-                  onClick={handleGoogleRegistration}
                   disabled={isLoading}
                   className={cn(
-                    "group relative w-full max-w-lg flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-base transition-all duration-300 shadow-lg transform",
-                    "bg-white border-2 border-gray-300 text-gray-700",
-                    "hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700",
-                    "hover:shadow-xl hover:scale-105 hover:-translate-y-0.5",
-                    "focus:outline-none focus:ring-4 focus:ring-blue-200",
-                    "disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-lg disabled:hover:scale-100 disabled:hover:translate-y-0"
+                    "w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300",
+                    "bg-gradient-to-r from-rose-500 to-pink-600 text-white",
+                    "hover:from-rose-600 hover:to-pink-700 hover:shadow-lg",
+                    "disabled:opacity-50 disabled:cursor-not-allowed",
+                    "focus:outline-none focus:ring-4 focus:ring-rose-100"
                   )}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-50/0 via-blue-50/30 to-blue-50/0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  {isLoading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin mr-3"></div>
-                      Signing up with Google...
-                    </>
-                  ) : (
-                    <>
-                      {/* Google Logo SVG */}
-                      <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                      </svg>
-                      Continue with Google
-                    </>
-                  )}
+                  {isLoading ? 'Creating Account...' : 'Create Account'}
                 </button>
 
-                {/* Google OAuth Status Note */}
-                {(() => {
-                  const isFirebaseConfigured = import.meta.env.VITE_FIREBASE_API_KEY && 
-                                               import.meta.env.VITE_FIREBASE_API_KEY !== "demo-api-key" &&
-                                               !import.meta.env.VITE_FIREBASE_API_KEY?.includes('demo');
-                  
-                  if (!isFirebaseConfigured) {
-                    return (
-                      <div className="max-w-lg mx-auto">
-                        <p className="text-xs text-gray-500 text-center bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
-                          💡 Google sign-in requires Firebase configuration. Use email registration for now.
-                        </p>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
+                {/* Google registration button */}
+                <button
+                  type="button"
+                  onClick={handleGoogleRegistration}
+                  disabled={isLoading}
+                  className="w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 border-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                  Continue with Google
+                </button>
 
-                <div className="text-center space-y-3">
-                  <p className="text-gray-500 text-sm">
-                    Already have an account?{' '}
-                    <button
-                      onClick={onSwitchToLogin}
-                      className="text-rose-600 hover:text-rose-700 font-bold transition-colors underline decoration-2 underline-offset-2"
-                    >
-                      Sign in here
-                    </button>
-                  </p>
-                  
-                  <div className="flex items-center justify-center space-x-2 text-xs text-gray-400">
-                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                    <span>Secure Registration</span>
-                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                    <span>SSL Protected</span>
-                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                  </div>
+                {/* Already have account */}
+                <div className="text-center text-sm text-gray-600">
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={onSwitchToLogin}
+                    className="text-rose-600 hover:text-rose-700 font-semibold"
+                  >
+                    Sign in here
+                  </button>
                 </div>
               </div>
-
-              {/* Enhanced Error Display */}
-              {error && (
-                <div className="max-w-lg mx-auto p-5 bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-200 rounded-2xl shadow-lg animate-in slide-in-from-bottom duration-300">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-sm font-bold">!</span>
-                    </div>
-                    <div>
-                      <h4 className="text-red-800 font-bold text-sm">Registration Error</h4>
-                      <p className="text-red-600 text-sm mt-1">{error}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-                </>
+              </>
               )}
             </div>
           </div>

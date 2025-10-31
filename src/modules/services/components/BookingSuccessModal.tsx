@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, Calendar, Clock, X, ExternalLink } from 'lucide-react';
+import { CheckCircle, Calendar, Clock, X, ExternalLink, DollarSign, Users, Package } from 'lucide-react';
 
 interface BookingSuccessModalProps {
   isOpen: boolean;
@@ -11,6 +11,16 @@ interface BookingSuccessModalProps {
     eventDate: string;
     eventTime?: string;
     eventLocation?: string;
+    guestCount?: number;
+    budgetRange?: string;
+    estimatedQuote?: {
+      basePrice: number;
+      guestFee: number;
+      totalGuests: number;
+      subtotal: number;
+      tax: number;
+      total: number;
+    };
   };
   onViewBookings?: () => void;
 }
@@ -159,7 +169,94 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
                 </div>
               </div>
             )}
+
+            {/* Guest Count & Budget */}
+            {(bookingData.guestCount || bookingData.budgetRange) && (
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                {bookingData.guestCount && (
+                  <div className="p-3 bg-white rounded-xl border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 font-medium flex items-center space-x-1">
+                        <Users className="h-4 w-4" />
+                        <span>Guests:</span>
+                      </span>
+                      <span className="font-semibold text-gray-900">{bookingData.guestCount}</span>
+                    </div>
+                  </div>
+                )}
+                {bookingData.budgetRange && (
+                  <div className="p-3 bg-white rounded-xl border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 font-medium flex items-center space-x-1">
+                        <DollarSign className="h-4 w-4" />
+                        <span>Budget:</span>
+                      </span>
+                      <span className="font-semibold text-gray-900">{bookingData.budgetRange}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Estimated Quote Breakdown */}
+          {bookingData.estimatedQuote && (
+            <div className="p-8 pt-0">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50/30 rounded-2xl p-6 border border-purple-200/50 mb-6">
+                <h4 className="text-xl font-bold text-purple-900 mb-4 flex items-center space-x-2">
+                  <div className="p-1 bg-purple-100 rounded-lg">
+                    <Package className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <span>Estimated Quote Breakdown</span>
+                </h4>
+                
+                <div className="space-y-3 bg-white rounded-xl p-4 border border-purple-200">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="text-gray-700">Base Service Fee</span>
+                    <span className="font-semibold text-gray-900">
+                      ₱{bookingData.estimatedQuote.basePrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="text-gray-700">
+                      Per Guest Fee ({bookingData.estimatedQuote.totalGuests} guests × ₱{bookingData.estimatedQuote.guestFee.toLocaleString('en-PH')})
+                    </span>
+                    <span className="font-semibold text-gray-900">
+                      ₱{(bookingData.estimatedQuote.guestFee * bookingData.estimatedQuote.totalGuests).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="text-gray-700">Subtotal</span>
+                    <span className="font-semibold text-gray-900">
+                      ₱{bookingData.estimatedQuote.subtotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="text-gray-700">Tax & Fees (12%)</span>
+                    <span className="font-semibold text-gray-900">
+                      ₱{bookingData.estimatedQuote.tax.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg px-4 mt-2">
+                    <span className="text-lg font-bold text-purple-900">Estimated Total</span>
+                    <span className="text-2xl font-bold text-purple-900">
+                      ₱{bookingData.estimatedQuote.total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Note:</strong> This is an estimated quote. The vendor will provide a final quote based on your specific requirements and may adjust pricing accordingly.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Next Steps */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50/30 rounded-2xl p-6 border border-blue-200/50 mb-6">

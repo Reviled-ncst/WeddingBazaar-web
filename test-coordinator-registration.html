@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Coordinator Registration</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+        }
+        .checkbox-item input {
+            width: auto;
+            margin-right: 8px;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        .result.success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+        }
+        .result.error {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            color: #721c24;
+        }
+        .result pre {
+            background: rgba(0,0,0,0.05);
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .note {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .note strong {
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Coordinator Registration Test</h1>
+        
+        <div class="note">
+            <strong>📋 Test Information:</strong><br>
+            This form tests the complete coordinator registration flow with all required fields.
+            All fields are pre-filled with test data. Click "Register Coordinator" to test.
+        </div>
+
+        <form id="registrationForm">
+            <!-- Personal Information -->
+            <h3>👤 Personal Information</h3>
+            <div class="form-group">
+                <label for="firstName">First Name *</label>
+                <input type="text" id="firstName" required value="Maria">
+            </div>
+            <div class="form-group">
+                <label for="lastName">Last Name *</label>
+                <input type="text" id="lastName" required value="Santos">
+            </div>
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" required value="maria.santos.coordinator@test.com">
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone *</label>
+                <input type="tel" id="phone" required value="+63 917 123 4567">
+            </div>
+            <div class="form-group">
+                <label for="password">Password *</label>
+                <input type="password" id="password" required value="TestPass123!">
+            </div>
+
+            <!-- Business Information -->
+            <h3>🏢 Business Information</h3>
+            <div class="form-group">
+                <label for="businessName">Business Name *</label>
+                <input type="text" id="businessName" required value="Elite Wedding Coordination Services">
+            </div>
+            <div class="form-group">
+                <label for="businessType">Business Type *</label>
+                <input type="text" id="businessType" required value="Wedding Coordination">
+            </div>
+            <div class="form-group">
+                <label for="location">Primary Location *</label>
+                <input type="text" id="location" required value="Makati City, Metro Manila">
+            </div>
+
+            <!-- Professional Details -->
+            <h3>💼 Professional Details</h3>
+            <div class="form-group">
+                <label for="yearsExperience">Years of Experience *</label>
+                <input type="number" id="yearsExperience" required min="0" max="50" value="8">
+            </div>
+            <div class="form-group">
+                <label for="teamSize">Team Size *</label>
+                <select id="teamSize" required>
+                    <option value="">Select team size</option>
+                    <option value="Solo">Solo (Just me)</option>
+                    <option value="2-5" selected>Small Team (2-5 people)</option>
+                    <option value="6-10">Medium Team (6-10 people)</option>
+                    <option value="11+">Large Team (11+ people)</option>
+                </select>
+            </div>
+
+            <!-- Specialties -->
+            <h3>✨ Specialties (Select all that apply)</h3>
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="spec1" value="Full Wedding Planning" checked>
+                    <label for="spec1">Full Wedding Planning</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="spec2" value="Day-of Coordination" checked>
+                    <label for="spec2">Day-of Coordination</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="spec3" value="Partial Planning">
+                    <label for="spec3">Partial Planning</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="spec4" value="Destination Weddings" checked>
+                    <label for="spec4">Destination Weddings</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="spec5" value="Luxury Weddings">
+                    <label for="spec5">Luxury Weddings</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="spec6" value="Budget Weddings">
+                    <label for="spec6">Budget Weddings</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="spec7" value="Cultural Weddings">
+                    <label for="spec7">Cultural Weddings</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="spec8" value="Vendor Management" checked>
+                    <label for="spec8">Vendor Management</label>
+                </div>
+            </div>
+
+            <!-- Service Areas -->
+            <h3>📍 Service Areas</h3>
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="area1" value="Metro Manila" checked>
+                    <label for="area1">Metro Manila</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="area2" value="Cavite" checked>
+                    <label for="area2">Cavite</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="area3" value="Laguna">
+                    <label for="area3">Laguna</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="area4" value="Rizal">
+                    <label for="area4">Rizal</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="area5" value="Bulacan">
+                    <label for="area5">Bulacan</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="area6" value="Pampanga" checked>
+                    <label for="area6">Pampanga</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="area7" value="Batangas">
+                    <label for="area7">Batangas</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="area8" value="Nationwide">
+                    <label for="area8">Nationwide</label>
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn">
+                Register Coordinator
+            </button>
+        </form>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'https://weddingbazaar-web.onrender.com/api';
+
+        document.getElementById('registrationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const resultDiv = document.getElementById('result');
+            
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Registering... <span class="spinner"></span>';
+            resultDiv.style.display = 'none';
+            
+            // Collect specialties
+            const specialties = [];
+            for (let i = 1; i <= 8; i++) {
+                const checkbox = document.getElementById(`spec${i}`);
+                if (checkbox.checked) {
+                    specialties.push(checkbox.value);
+                }
+            }
+            
+            // Collect service areas
+            const serviceAreas = [];
+            for (let i = 1; i <= 8; i++) {
+                const checkbox = document.getElementById(`area${i}`);
+                if (checkbox.checked) {
+                    serviceAreas.push(checkbox.value);
+                }
+            }
+            
+            // Prepare registration data
+            const registrationData = {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                first_name: document.getElementById('firstName').value,
+                last_name: document.getElementById('lastName').value,
+                phone: document.getElementById('phone').value,
+                user_type: 'coordinator',
+                business_name: document.getElementById('businessName').value,
+                business_type: document.getElementById('businessType').value,
+                location: document.getElementById('location').value,
+                years_experience: parseInt(document.getElementById('yearsExperience').value),
+                team_size: document.getElementById('teamSize').value,
+                specialties: specialties,
+                service_areas: serviceAreas
+            };
+            
+            console.log('📤 Sending registration data:', registrationData);
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(registrationData)
+                });
+                
+                const data = await response.json();
+                
+                console.log('📥 Response:', data);
+                
+                if (response.ok && data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Registration Successful!</h3>
+                        <p><strong>User ID:</strong> ${data.user.id}</p>
+                        <p><strong>Email:</strong> ${data.user.email}</p>
+                        <p><strong>User Type:</strong> ${data.user.user_type}</p>
+                        <p><strong>Token:</strong> ${data.token.substring(0, 20)}...</p>
+                        <details>
+                            <summary><strong>Full Response (click to expand)</strong></summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `;
+                    
+                    // Test verification by fetching profile
+                    setTimeout(async () => {
+                        try {
+                            const verifyResponse = await fetch(`${API_URL}/vendors/profile/${data.user.id}`, {
+                                headers: {
+                                    'Authorization': `Bearer ${data.token}`
+                                }
+                            });
+                            const profileData = await verifyResponse.json();
+                            
+                            console.log('✅ Profile verification:', profileData);
+                            
+                            resultDiv.innerHTML += `
+                                <hr style="margin: 20px 0;">
+                                <h3>✅ Profile Verification</h3>
+                                <p><strong>Business Name:</strong> ${profileData.business_name || 'N/A'}</p>
+                                <p><strong>Years Experience:</strong> ${profileData.years_experience || 'N/A'}</p>
+                                <p><strong>Team Size:</strong> ${profileData.team_size || 'N/A'}</p>
+                                <p><strong>Specialties:</strong> ${JSON.stringify(profileData.specialties || [])}</p>
+                                <p><strong>Service Areas:</strong> ${JSON.stringify(profileData.service_areas || [])}</p>
+                                <details>
+                                    <summary><strong>Full Profile (click to expand)</strong></summary>
+                                    <pre>${JSON.stringify(profileData, null, 2)}</pre>
+                                </details>
+                            `;
+                        } catch (error) {
+                            console.error('Profile verification error:', error);
+                            resultDiv.innerHTML += `
+                                <hr style="margin: 20px 0;">
+                                <h3>⚠️ Profile Verification Failed</h3>
+                                <p>${error.message}</p>
+                            `;
+                        }
+                    }, 2000);
+                    
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `
+                        <h3>❌ Registration Failed</h3>
+                        <p><strong>Error:</strong> ${data.error || 'Unknown error'}</p>
+                        <details>
+                            <summary><strong>Full Response (click to expand)</strong></summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `;
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                resultDiv.className = 'result error';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <h3>❌ Network Error</h3>
+                    <p>${error.message}</p>
+                `;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Register Coordinator';
+            }
+        });
+    </script>
+</body>
+</html>

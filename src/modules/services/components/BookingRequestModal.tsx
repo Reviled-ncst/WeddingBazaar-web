@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   Calendar,
-  MapPin,
   Users,
   DollarSign,
   MessageSquare,
@@ -23,6 +22,8 @@ import type {
 import { availabilityService } from '../../../services/availabilityService';
 import { optimizedBookingApiService } from '../../../services/api/optimizedBookingApiService';
 import { BookingSuccessModal } from './BookingSuccessModal';
+import { VisualCalendar } from '../../../components/calendar/VisualCalendar';
+import { LocationPicker } from '../../../shared/components/forms/LocationPicker';
 
 interface BookingRequestModalProps {
   service: Service;
@@ -70,6 +71,48 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
 
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
 
+  // Auto-computed pricing based on guest count
+  const estimatedQuote = useMemo(() => {
+    const guestCount = parseInt(formData.guestCount) || 0;
+    if (guestCount === 0) return null;
+
+    // Pricing calculation based on service category
+    const basePrices: Record<string, number> = {
+      'Photography': 15000,
+      'Catering': 25000,
+      'Venue': 50000,
+      'Music': 12000,
+      'Planning': 20000,
+      'Videography': 18000,
+      'Flowers': 10000,
+      'Decoration': 15000,
+      'default': 15000
+    };
+
+    const perGuestFees: Record<string, number> = {
+      'Catering': 500,
+      'Venue': 300,
+      'default': 150
+    };
+
+    const category = service.category || 'default';
+    const basePrice = basePrices[category] || basePrices['default'];
+    const perGuestFee = perGuestFees[category] || perGuestFees['default'];
+
+    const subtotal = basePrice + (perGuestFee * guestCount);
+    const tax = subtotal * 0.12; // 12% tax
+    const total = subtotal + tax;
+
+    return {
+      basePrice,
+      guestFee: perGuestFee,
+      totalGuests: guestCount,
+      subtotal,
+      tax,
+      total
+    };
+  }, [formData.guestCount, service.category]);
+
   // Prefill user data
   useEffect(() => {
     if (isOpen && user) {
@@ -95,21 +138,25 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
     }
   }, [isOpen]);
 
-  // Calculate form completion
+  // Calculate form completion (5 steps now)
   const formProgress = useMemo(() => {
-    const step1Complete = formData.eventDate && formData.eventLocation;
-    const step2Complete = formData.guestCount && formData.budgetRange;
-    const step3Complete = formData.contactPhone && formData.contactPerson;
+    const step1Complete = formData.eventDate;
+    const step2Complete = formData.eventLocation;
+    const step3Complete = formData.guestCount && formData.eventTime;
+    const step4Complete = formData.budgetRange;
+    const step5Complete = formData.contactPhone && formData.contactPerson;
     
     let completed = 0;
     if (step1Complete) completed++;
     if (step2Complete) completed++;
     if (step3Complete) completed++;
+    if (step4Complete) completed++;
+    if (step5Complete) completed++;
     
     return {
       completed,
-      total: 3,
-      percentage: Math.round((completed / 3) * 100)
+      total: 5,
+      percentage: Math.round((completed / 5) * 100)
     };
   }, [formData]);
 
@@ -117,9 +164,13 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
     const errors: {[key: string]: string} = {};
     
     if (step === 1) {
+      // Step 1: Calendar only
       if (!formData.eventDate) errors.eventDate = 'Event date is required';
-      if (!formData.eventLocation) errors.eventLocation = 'Location is required';
     } else if (step === 2) {
+      // Step 2: Location only
+      if (!formData.eventLocation) errors.eventLocation = 'Location is required';
+    } else if (step === 3) {
+      // Step 3: Time and Guests
       if (!formData.guestCount) {
         errors.guestCount = 'Number of guests is required';
       } else {
@@ -128,8 +179,11 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
           errors.guestCount = 'Please enter a valid number';
         }
       }
+    } else if (step === 4) {
+      // Step 4: Budget
       if (!formData.budgetRange) errors.budgetRange = 'Budget range is required';
-    } else if (step === 3) {
+    } else if (step === 5) {
+      // Step 5: Contact Info
       if (!formData.contactPerson) errors.contactPerson = 'Name is required';
       if (!formData.contactPhone) errors.contactPhone = 'Phone number is required';
       if (formData.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactEmail)) {
@@ -143,7 +197,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, 3));
+      setCurrentStep(prev => Math.min(prev + 1, 5));
     }
   };
 
@@ -152,7 +206,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(3)) return;
+    if (!validateStep(5)) return;
 
     setIsSubmitting(true);
     setSubmitStatus('idle');
@@ -207,13 +261,26 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
         eventDate: string;
         eventTime?: string;
         eventLocation?: string;
+        guestCount?: number;
+        budgetRange?: string;
+        estimatedQuote?: {
+          basePrice: number;
+          guestFee: number;
+          totalGuests: number;
+          subtotal: number;
+          tax: number;
+          total: number;
+        };
       } = {
         id: createdBooking.id || createdBooking.booking_id || 'pending',
         serviceName: service.name,
         vendorName: service.vendorName || 'Wedding Vendor',
         eventDate: formData.eventDate,
         eventTime: formData.eventTime,
-        eventLocation: formData.eventLocation
+        eventLocation: formData.eventLocation,
+        guestCount: parseInt(formData.guestCount) || undefined,
+        budgetRange: formData.budgetRange || undefined,
+        estimatedQuote: estimatedQuote || undefined
       };
 
       // Success! Show inline success message first
@@ -265,32 +332,34 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-6 text-white relative overflow-hidden">
+        <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-4 text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-30"></div>
           
           <div className="relative flex items-center justify-between">
             <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-1">Book {service.name}</h2>
+              <h2 className="text-xl font-bold mb-1">Book {service.name}</h2>
               <p className="text-pink-100 text-sm">{service.vendorName}</p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-full transition-colors"
+              className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+              aria-label="Close booking modal"
+              title="Close"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Progress Steps */}
-          <div className="mt-6 flex items-center justify-between relative">
-            {[1, 2, 3].map((step) => (
+          {/* Progress Steps - 5 Steps */}
+          <div className="mt-4 flex items-center justify-between relative">
+            {[1, 2, 3, 4, 5].map((step) => (
               <div key={step} className="flex items-center flex-1">
                 <div className="relative flex flex-col items-center">
                   <div
                     className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300",
+                      "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-300",
                       currentStep >= step
                         ? "bg-white text-purple-600 shadow-lg scale-110"
                         : "bg-purple-400/50 text-white"
@@ -298,14 +367,16 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                   >
                     {step}
                   </div>
-                  <span className="text-xs mt-2 font-medium text-white/90">
-                    {step === 1 && "Event Details"}
-                    {step === 2 && "Requirements"}
-                    {step === 3 && "Contact Info"}
+                  <span className="text-[10px] sm:text-xs mt-1 sm:mt-2 font-medium text-white/90 text-center">
+                    {step === 1 && "Date"}
+                    {step === 2 && "Location"}
+                    {step === 3 && "Details"}
+                    {step === 4 && "Budget"}
+                    {step === 5 && "Contact"}
                   </span>
                 </div>
-                {step < 3 && (
-                  <div className="flex-1 h-1 mx-2 mb-6">
+                {step < 5 && (
+                  <div className="flex-1 h-1 mx-1 sm:mx-2 mb-4 sm:mb-6">
                     <div className={cn(
                       "h-full rounded-full transition-all duration-300",
                       currentStep > step ? "bg-white" : "bg-purple-400/50"
@@ -318,7 +389,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-280px)]">
+        <div className="p-4 overflow-y-auto max-h-[calc(92vh-220px)]">
           {/* Success Message */}
           {submitStatus === 'success' && (
             <div className="mb-4 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl flex items-start gap-4 animate-in zoom-in-95 duration-300 shadow-lg">
@@ -351,31 +422,83 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
             </div>
           )}
 
-          {/* Step 1: Event Details */}
+          {/* Step 1: Select Date (Calendar Only) */}
           {submitStatus !== 'success' && currentStep === 1 && (
-            <div className="space-y-5 animate-in slide-in-from-right duration-300">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <Calendar className="w-4 h-4 inline mr-2" />
-                  Event Date *
-                </label>
-                <input
-                  type="date"
-                  value={formData.eventDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, eventDate: e.target.value }))}
-                  min={new Date().toISOString().split('T')[0]}
-                  className={cn(
-                    "w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all",
-                    formErrors.eventDate ? "border-red-300" : "border-gray-200"
-                  )}
-                />
-                {formErrors.eventDate && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.eventDate}</p>
+            <div className="space-y-3 animate-in slide-in-from-right duration-300">
+              <div className="text-center mb-2">
+                <h3 className="text-xl font-bold text-gray-800 mb-1">📅 When is your event?</h3>
+                <p className="text-sm text-gray-600">Select an available date from the calendar</p>
+              </div>
+              
+              {/* Visual Calendar with Availability - Compact */}
+              <VisualCalendar
+                vendorId={service.vendorId || ''}
+                selectedDate={formData.eventDate}
+                onDateSelect={(date) => {
+                  setFormData(prev => ({ ...prev, eventDate: date }));
+                  // Clear date error when valid date is selected
+                  setFormErrors(prev => {
+                    const { eventDate, ...rest } = prev;
+                    return rest;
+                  });
+                }}
+                minDate={new Date().toISOString().split('T')[0]}
+                className="shadow-none border-0"
+              />
+              {formErrors.eventDate && (
+                <p className="text-sm text-red-600 flex items-center gap-2 bg-red-50 p-2.5 rounded-lg">
+                  <AlertCircle className="w-4 h-4" />
+                  {formErrors.eventDate}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Step 2: Select Location (Map Only) */}
+          {submitStatus !== 'success' && currentStep === 2 && (
+            <div className="space-y-4 animate-in slide-in-from-right duration-300">
+              <div className="text-center mb-4">
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">📍 Where will it be?</h3>
+                <p className="text-gray-600">Search or click on the map to select your event location</p>
+              </div>
+
+              {/* Interactive Map Location Picker */}
+              <div className="bg-white rounded-xl border-2 border-purple-100 shadow-lg overflow-hidden">
+                <div className="p-4">
+                  <LocationPicker
+                    value={formData.eventLocation}
+                    onChange={(location) => {
+                      setFormData(prev => ({ ...prev, eventLocation: location }));
+                      // Clear location error when valid location is selected
+                      setFormErrors(prev => {
+                        const { eventLocation, ...rest } = prev;
+                        return rest;
+                      });
+                    }}
+                    placeholder="Search for venue or city (e.g., Manila, Philippines)"
+                    className="w-full"
+                  />
+                </div>
+                {formErrors.eventLocation && (
+                  <div className="px-4 pb-4">
+                    <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{formErrors.eventLocation}</p>
+                  </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Event Details (Time & Guests) */}
+          {submitStatus !== 'success' && currentStep === 3 && (
+            <div className="space-y-5 animate-in slide-in-from-right duration-300">
+              <div className="text-center mb-4">
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">⏰ Event Details</h3>
+                <p className="text-gray-600">Tell us more about your event</p>
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <Calendar className="w-4 h-4 inline mr-2" />
                   Event Time (Optional)
                 </label>
                 <input
@@ -383,34 +506,11 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                   value={formData.eventTime}
                   onChange={(e) => setFormData(prev => ({ ...prev, eventTime: e.target.value }))}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                  aria-label="Event time"
+                  title="Select event time"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <MapPin className="w-4 h-4 inline mr-2" />
-                  Event Location *
-                </label>
-                <input
-                  type="text"
-                  value={formData.eventLocation}
-                  onChange={(e) => setFormData(prev => ({ ...prev, eventLocation: e.target.value }))}
-                  placeholder="e.g., Manila, Philippines"
-                  className={cn(
-                    "w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all",
-                    formErrors.eventLocation ? "border-red-300" : "border-gray-200"
-                  )}
-                />
-                {formErrors.eventLocation && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.eventLocation}</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Requirements */}
-          {submitStatus !== 'success' && currentStep === 2 && (
-            <div className="space-y-5 animate-in slide-in-from-right duration-300">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   <Users className="w-4 h-4 inline mr-2" />
@@ -430,6 +530,34 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                 {formErrors.guestCount && (
                   <p className="mt-1 text-sm text-red-600">{formErrors.guestCount}</p>
                 )}
+
+                {/* Live Quote Preview */}
+                {estimatedQuote && (
+                  <div className="mt-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Sparkles className="h-5 w-5 text-green-600" />
+                        <span className="text-sm font-semibold text-green-900">Estimated Total:</span>
+                      </div>
+                      <span className="text-xl font-bold text-green-900">
+                        ₱{estimatedQuote.total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <p className="text-xs text-green-700 mt-2">
+                      Based on {estimatedQuote.totalGuests} guests. Full breakdown shown after submission.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Budget & Special Requests */}
+          {submitStatus !== 'success' && currentStep === 4 && (
+            <div className="space-y-5 animate-in slide-in-from-right duration-300">
+              <div className="text-center mb-4">
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">💰 Budget & Requirements</h3>
+                <p className="text-gray-600">Help us understand your needs</p>
               </div>
 
               <div>
@@ -444,6 +572,8 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                     "w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all",
                     formErrors.budgetRange ? "border-red-300" : "border-gray-200"
                   )}
+                  aria-label="Budget range"
+                  title="Select your budget range"
                 >
                   <option value="">Select your budget</option>
                   <option value="₱10,000-₱25,000">₱10,000 - ₱25,000</option>
@@ -466,16 +596,22 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                   value={formData.specialRequests}
                   onChange={(e) => setFormData(prev => ({ ...prev, specialRequests: e.target.value }))}
                   placeholder="Any specific requirements or questions?"
-                  rows={4}
+                  rows={6}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all resize-none"
                 />
+                <p className="mt-1 text-xs text-gray-500">Tell us about any specific needs, preferences, or questions you have</p>
               </div>
             </div>
           )}
 
-          {/* Step 3: Contact Info */}
-          {submitStatus !== 'success' && currentStep === 3 && (
+          {/* Step 5: Contact Info */}
+          {submitStatus !== 'success' && currentStep === 5 && (
             <div className="space-y-5 animate-in slide-in-from-right duration-300">
+              <div className="text-center mb-4">
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">📞 Contact Information</h3>
+                <p className="text-gray-600">How can we reach you?</p>
+              </div>
+
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Full Name *
@@ -576,7 +712,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
               <div></div>
             )}
 
-            {currentStep < 3 ? (
+            {currentStep < 5 ? (
               <button
                 onClick={handleNext}
                 className="px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all flex items-center gap-2 group"
