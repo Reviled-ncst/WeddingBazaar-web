@@ -274,7 +274,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
       } = {
         id: createdBooking.id || createdBooking.booking_id || 'pending',
         serviceName: service.name,
-        vendorName: service.vendorName || 'Wedding Vendor',
+        vendorName: service.vendorName || 'Service Provider',
         eventDate: formData.eventDate,
         eventTime: formData.eventTime,
         eventLocation: formData.eventLocation,
@@ -331,55 +331,85 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-4 text-white relative overflow-hidden">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-30"></div>
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Enhanced backdrop with blur */}
+      <div className="fixed inset-0 bg-gradient-to-br from-black/60 via-purple-900/30 to-black/60 backdrop-blur-md animate-in fade-in duration-300" 
+           onClick={submitStatus !== 'success' ? onClose : undefined} />
+      
+      {/* Modal container with better positioning */}
+      <div className="min-h-screen px-4 text-center">
+        {/* Vertical centering trick */}
+        <span className="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
+        
+        {/* Modal */}
+        <div className="inline-block align-middle bg-white rounded-3xl max-w-3xl w-full shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-8 duration-300 text-left overflow-hidden transform transition-all">
+          {/* Header with enhanced gradient */}
+          <div className="relative bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 p-6 text-white overflow-hidden">
+            {/* Animated background pattern */}
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-20 animate-pulse"></div>
+            
+            {/* Floating orbs for depth */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-300/10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }}></div>
           
-          <div className="relative flex items-center justify-between">
+          {/* Header content */}
+          <div className="relative flex items-center justify-between mb-6">
             <div className="flex-1">
-              <h2 className="text-xl font-bold mb-1">Book {service.name}</h2>
-              <p className="text-pink-100 text-sm">{service.vendorName}</p>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight">Book {service.name}</h2>
+                  <p className="text-pink-100 text-sm font-medium mt-0.5">with {service.vendorName}</p>
+                </div>
+              </div>
             </div>
             <button
-              onClick={onClose}
-              className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+              onClick={submitStatus !== 'success' ? onClose : undefined}
+              disabled={submitStatus === 'success'}
+              className="p-2.5 hover:bg-white/20 rounded-xl transition-all hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Close booking modal"
               title="Close"
             >
-              <X className="w-5 h-5" />
+              <X className="w-6 h-6" />
             </button>
           </div>
 
-          {/* Progress Steps - 5 Steps */}
-          <div className="mt-4 flex items-center justify-between relative">
-            {[1, 2, 3, 4, 5].map((step) => (
-              <div key={step} className="flex items-center flex-1">
+          {/* Enhanced Progress Steps - 5 Steps */}
+          <div className="flex items-center justify-between relative">
+            {[
+              { num: 1, label: "Date", icon: "📅" },
+              { num: 2, label: "Location", icon: "📍" },
+              { num: 3, label: "Details", icon: "👥" },
+              { num: 4, label: "Budget", icon: "💰" },
+              { num: 5, label: "Contact", icon: "📞" }
+            ].map((stepInfo, index) => (
+              <div key={stepInfo.num} className="flex items-center flex-1">
                 <div className="relative flex flex-col items-center">
                   <div
                     className={cn(
-                      "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-300",
-                      currentStep >= step
-                        ? "bg-white text-purple-600 shadow-lg scale-110"
-                        : "bg-purple-400/50 text-white"
+                      "w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center font-bold transition-all duration-500 transform",
+                      currentStep >= stepInfo.num
+                        ? "bg-white text-purple-600 shadow-2xl scale-110 ring-4 ring-white/30"
+                        : "bg-white/20 backdrop-blur-sm text-white/70 scale-95",
+                      currentStep === stepInfo.num && "animate-pulse"
                     )}
                   >
-                    {step}
+                    <span className="text-xl">{stepInfo.icon}</span>
                   </div>
-                  <span className="text-[10px] sm:text-xs mt-1 sm:mt-2 font-medium text-white/90 text-center">
-                    {step === 1 && "Date"}
-                    {step === 2 && "Location"}
-                    {step === 3 && "Details"}
-                    {step === 4 && "Budget"}
-                    {step === 5 && "Contact"}
+                  <span className={cn(
+                    "text-[10px] sm:text-xs mt-2 font-semibold text-center transition-all duration-300 whitespace-nowrap",
+                    currentStep >= stepInfo.num ? "text-white drop-shadow-lg" : "text-white/60"
+                  )}>
+                    {stepInfo.label}
                   </span>
                 </div>
-                {step < 5 && (
-                  <div className="flex-1 h-1 mx-1 sm:mx-2 mb-4 sm:mb-6">
+                {index < 4 && (
+                  <div className="flex-1 h-1.5 mx-2 sm:mx-3 mb-6 sm:mb-8 rounded-full overflow-hidden bg-white/20">
                     <div className={cn(
-                      "h-full rounded-full transition-all duration-300",
-                      currentStep > step ? "bg-white" : "bg-purple-400/50"
+                      "h-full rounded-full transition-all duration-500 ease-out",
+                      currentStep > stepInfo.num ? "bg-white shadow-lg w-full" : "bg-transparent w-0"
                     )}></div>
                   </div>
                 )}
@@ -401,7 +431,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
               <div className="flex-1">
                 <p className="text-lg font-bold text-green-800 mb-1">🎉 Booking Request Submitted!</p>
                 <p className="text-sm text-green-700">
-                  Your booking request has been sent successfully. The vendor will review and respond soon!
+                  Your booking request has been sent successfully. The service provider will review and respond soon!
                 </p>
                 <div className="mt-3 flex items-center gap-2 text-xs text-green-600">
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -757,6 +787,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
             </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

@@ -260,7 +260,12 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   };
 
   // Handle form submission - handles both Firebase and backend registration
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    // Prevent default form submission if called from form onSubmit
+    if (e) {
+      e.preventDefault();
+    }
+    
     const errors = validateForm();
     setValidationErrors(errors);
     
@@ -299,6 +304,13 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
           business_name: formData.business_name,
           business_type: formData.business_type,
           location: formData.location,
+        }),
+        // 🎯 FIX: Include coordinator-specific fields
+        ...(userType === 'coordinator' && {
+          years_experience: formData.years_experience,
+          team_size: formData.team_size,
+          specialties: formData.specialties,
+          service_areas: formData.service_areas,
         }),
         receiveUpdates: formData.receiveUpdates,
       });
@@ -343,7 +355,13 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       // Parse Firebase error codes for better user feedback
       let errorMessage = err.message || 'Registration failed. Please try again.';
       
-      if (errorMessage.includes('email-already-in-use') || errorMessage.includes('EMAIL_EXISTS')) {
+      // 🚨 ORPHANED ACCOUNT DETECTION: Check if this was an orphaned account cleanup
+      if (errorMessage.includes('Account setup incomplete') || errorMessage.includes('orphaned')) {
+        errorMessage = `⚠️ Registration Incomplete\n\n` +
+          `Your Firebase account was created, but the backend registration failed. ` +
+          `The system has cleaned up the incomplete account.\n\n` +
+          `Please try again with a NEW email address, or contact support if this issue persists.`;
+      } else if (errorMessage.includes('email-already-in-use') || errorMessage.includes('EMAIL_EXISTS')) {
         errorMessage = '⚠️ This email is already registered. Please login instead or use a different email address.';
       } else if (errorMessage.includes('weak-password')) {
         errorMessage = '⚠️ Password is too weak. Please use at least 6 characters.';
@@ -353,6 +371,14 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         errorMessage = '⚠️ Network error. Please check your internet connection and try again.';
       } else if (errorMessage.includes('Firebase')) {
         errorMessage = '⚠️ Registration service unavailable. Please try again later or use email registration.';
+      } else if (errorMessage.includes('400') || errorMessage.includes('Bad Request')) {
+        // Backend validation error
+        errorMessage = `⚠️ Registration Failed\n\n` +
+          `The backend could not process your registration. This may be due to:\n` +
+          `• Missing required fields\n` +
+          `• Invalid data format\n` +
+          `• Email already exists in database\n\n` +
+          `Please try again with a different email address.`;
       }
       
       console.error('❌ RegisterModal: Setting error message:', errorMessage);
@@ -401,7 +427,38 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     setError(null);
 
     try {
-      await registerWithGoogle(userType);
+      // 🎯 FIX: Pass coordinator-specific fields to registerWithGoogle
+      const additionalData = (userType === 'vendor' || userType === 'coordinator') ? {
+        businessName: formData.business_name,
+        businessType: formData.business_type,
+        location: formData.location,
+        // Coordinator-specific fields
+        ...(userType === 'coordinator' && {
+          yearsExperience: formData.years_experience ? parseInt(formData.years_experience) : undefined,
+          teamSize: formData.team_size ? parseInt(formData.team_size) : undefined,
+          specialties: formData.specialties,
+          serviceAreas: formData.service_areas,
+        })
+      } : undefined;
+
+      // 🎯 DEBUG: Log coordinator data before sending
+      if (userType === 'coordinator') {
+        console.log('🎉 [RegisterModal] Sending coordinator data to registerWithGoogle:', {
+          userType,
+          additionalData,
+          formData: {
+            business_name: formData.business_name,
+            business_type: formData.business_type,
+            location: formData.location,
+            years_experience: formData.years_experience,
+            team_size: formData.team_size,
+            specialties: formData.specialties,
+            service_areas: formData.service_areas,
+          }
+        });
+      }
+
+      await registerWithGoogle(userType, additionalData);
       setIsSuccess(true);
       
       // Redirect after a delay
@@ -409,6 +466,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         onClose();
         if (userType === 'couple') {
           navigate('/individual');
+        } else if (userType === 'coordinator') {
+          navigate('/coordinator');
         } else {
           navigate('/vendor');
         }
@@ -708,7 +767,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                 </div>
               ) : (
                 /* Regular Registration Form */
-                <>
+                <form onSubmit={handleSubmit}>
               
               {/* Minimalist User Type Selection */}
               <div className="space-y-3">
@@ -1324,7 +1383,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                   </button>
                 </div>
               </div>
-              </>
+              </form>
               )}
             </div>
           </div>

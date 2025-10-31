@@ -18,6 +18,7 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
+import { CoordinatorHeader } from '../layout/CoordinatorHeader';
 
 interface Integration {
   id?: string;
@@ -334,19 +335,25 @@ export const CoordinatorIntegrations: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-8 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-12 h-12 text-pink-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading integrations...</p>
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+        <CoordinatorHeader />
+        <div className="pt-24 pb-16 px-8 flex items-center justify-center">
+          <div className="text-center">
+            <RefreshCw className="w-12 h-12 text-pink-500 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading integrations...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-8">
-      {/* Header */}
-      <motion.div
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+      <CoordinatorHeader />
+      
+      <div className="pt-24 pb-16 px-8">
+        {/* Header */}
+        <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="mb-8 flex justify-between items-start"
@@ -629,6 +636,7 @@ export const CoordinatorIntegrations: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 };

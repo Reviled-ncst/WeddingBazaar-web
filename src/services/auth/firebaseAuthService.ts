@@ -358,7 +358,18 @@ class FirebaseAuthService {
   /**
    * Register/Sign in with Google OAuth (handles both new and existing users)
    */
-  async registerWithGoogle(userType: 'couple' | 'vendor' | 'coordinator' = 'couple'): Promise<UserCredential> {
+  async registerWithGoogle(
+    userType: 'couple' | 'vendor' | 'coordinator' = 'couple',
+    additionalData?: {
+      businessName?: string;
+      businessType?: string;
+      location?: string;
+      yearsExperience?: number;
+      teamSize?: number;
+      specialties?: string[];
+      serviceAreas?: string[];
+    }
+  ): Promise<UserCredential> {
     if (!auth) {
       throw new Error('Firebase Auth is not configured');
     }
@@ -374,19 +385,44 @@ class FirebaseAuthService {
       console.log('✅ Firebase Auth: User registered/signed in with Google');
       
       // Store user type for backend profile creation
-      const pendingProfile = {
+      const pendingProfile: any = {
         firebase_uid: userCredential.user.uid,
         email: userCredential.user.email,
         first_name: userCredential.user.displayName?.split(' ')[0] || '',
         last_name: userCredential.user.displayName?.split(' ').slice(1).join(' ') || '',
         user_type: userType,
         phone: '',
-        business_name: userType === 'vendor' ? 'Google Vendor' : undefined,
-        business_type: userType === 'vendor' ? 'other' : undefined
       };
+
+      // Add vendor-specific fields
+      if (userType === 'vendor') {
+        pendingProfile.business_name = additionalData?.businessName || 'Google Vendor';
+        pendingProfile.business_type = additionalData?.businessType || 'other';
+        pendingProfile.location = additionalData?.location;
+      }
+
+      // 🎯 FIX: Add coordinator-specific fields
+      if (userType === 'coordinator') {
+        pendingProfile.business_name = additionalData?.businessName || 'Google Coordinator';
+        pendingProfile.business_type = additionalData?.businessType || 'Wedding Planning';
+        pendingProfile.location = additionalData?.location;
+        pendingProfile.years_experience = additionalData?.yearsExperience || 0;
+        pendingProfile.team_size = additionalData?.teamSize || 1;
+        pendingProfile.specialties = additionalData?.specialties || [];
+        pendingProfile.service_areas = additionalData?.serviceAreas || [];
+      }
       
       localStorage.setItem('pending_user_profile', JSON.stringify(pendingProfile));
-      console.log('💾 Stored Google user profile for backend creation');
+      console.log('💾 Stored Google user profile for backend creation:', {
+        userType,
+        hasCoordinatorFields: userType === 'coordinator',
+        fields: userType === 'coordinator' ? {
+          years_experience: pendingProfile.years_experience,
+          team_size: pendingProfile.team_size,
+          specialties: pendingProfile.specialties,
+          service_areas: pendingProfile.service_areas
+        } : undefined
+      });
       
       return userCredential;
     } catch (error: any) {

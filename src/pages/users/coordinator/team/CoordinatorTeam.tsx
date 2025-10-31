@@ -15,6 +15,7 @@ import {
   AlertCircle,
   MoreVertical
 } from 'lucide-react';
+import { CoordinatorHeader } from '../layout/CoordinatorHeader';
 
 interface TeamMember {
   id: string;
@@ -227,9 +228,12 @@ const CoordinatorTeam: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 p-4 md:p-6">
-      {/* Header */}
-      <div className="mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
+      <CoordinatorHeader />
+      
+      <div className="pt-24 pb-16 px-4 md:px-6">
+        {/* Header */}
+        <div className="mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">
@@ -490,6 +494,7 @@ const CoordinatorTeam: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

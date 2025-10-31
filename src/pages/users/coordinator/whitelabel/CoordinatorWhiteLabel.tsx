@@ -16,6 +16,7 @@ import {
   Phone,
   MapPin
 } from 'lucide-react';
+import { CoordinatorHeader } from '../layout/CoordinatorHeader';
 
 interface BrandingSettings {
   business_name: string;
@@ -161,19 +162,25 @@ export const CoordinatorWhiteLabel: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-8 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-12 h-12 text-pink-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading white-label settings...</p>
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+        <CoordinatorHeader />
+        <div className="pt-24 pb-16 px-8 flex items-center justify-center">
+          <div className="text-center">
+            <RefreshCw className="w-12 h-12 text-pink-500 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading white-label settings...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-8">
-      {/* Header */}
-      <motion.div
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+      <CoordinatorHeader />
+      
+      <div className="pt-24 pb-16 px-8">
+        {/* Header */}
+        <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
@@ -621,6 +628,7 @@ export const CoordinatorWhiteLabel: React.FC = () => {
           </div>
         </motion.div>
       )}
+      </div>
     </div>
   );
 };

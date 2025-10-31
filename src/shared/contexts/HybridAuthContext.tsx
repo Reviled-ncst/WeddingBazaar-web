@@ -31,7 +31,18 @@ interface AuthContextType {
   loginBackendOnly: (email: string, password: string) => Promise<User>;
   register: (userData: RegisterData) => Promise<void>;
   loginWithGoogle: () => Promise<User>;
-  registerWithGoogle: (userType?: 'couple' | 'vendor' | 'coordinator') => Promise<User>;
+  registerWithGoogle: (
+    userType?: 'couple' | 'vendor' | 'coordinator',
+    additionalData?: {
+      businessName?: string;
+      businessType?: string;
+      location?: string;
+      yearsExperience?: number;
+      teamSize?: number;
+      specialties?: string[];
+      serviceAreas?: string[];
+    }
+  ) => Promise<User>;
   logout: () => void;
   setUser: (user: User | null) => void;
   sendEmailVerification: () => Promise<void>;
@@ -563,11 +574,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const registerWithGoogle = async (userType?: 'couple' | 'vendor' | 'coordinator'): Promise<User> => {
+  const registerWithGoogle = async (
+    userType?: 'couple' | 'vendor' | 'coordinator',
+    additionalData?: {
+      businessName?: string;
+      businessType?: string;
+      location?: string;
+      yearsExperience?: number;
+      teamSize?: number;
+      specialties?: string[];
+      serviceAreas?: string[];
+    }
+  ): Promise<User> => {
     try {
       setIsLoading(true);
+      
+      // 🎯 DEBUG: Log coordinator data before sending to Firebase
+      if (userType === 'coordinator') {
+        console.log('🎉 [HybridAuth] Sending coordinator data to Firebase registerWithGoogle:', {
+          userType,
+          businessName: additionalData?.businessName,
+          businessType: additionalData?.businessType,
+          location: additionalData?.location,
+          yearsExperience: additionalData?.yearsExperience,
+          teamSize: additionalData?.teamSize,
+          specialties: additionalData?.specialties,
+          serviceAreas: additionalData?.serviceAreas,
+        });
+      }
+      
       // Sign up with Firebase using Google (this handles profile storage)
-      const userCredential = await firebaseAuthService.registerWithGoogle(userType);
+      const userCredential = await firebaseAuthService.registerWithGoogle(userType, additionalData);
       // The Firebase service already stored the pending profile
       // Backend creation will happen automatically via syncWithBackend when auth state changes
 
@@ -602,10 +639,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         lastName: userData.lastName,
         userType: userData.role,
         phone: userData.phone,
-        ...(userData.role === 'vendor' && {
+        ...((userData.role === 'vendor' || userData.role === 'coordinator') && {
           businessName: userData.business_name,
           businessType: userData.business_type,
           location: userData.location
+        }),
+        // 🎯 FIX: Include coordinator-specific fields
+        ...(userData.role === 'coordinator' && {
+          yearsExperience: userData.years_experience,
+          teamSize: userData.team_size,
+          specialties: userData.specialties,
+          serviceAreas: userData.service_areas,
         })
       };
       const result = await firebaseAuthService.registerWithEmailVerification(registrationData);
@@ -623,12 +667,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         phone: userData.phone,
         firebase_uid: result.firebaseUid, // Link to Firebase account
         oauth_provider: null, // Regular email/password registration (not OAuth)
-        ...(userData.role === 'vendor' && {
+        ...((userData.role === 'vendor' || userData.role === 'coordinator') && {
           business_name: userData.business_name,
           business_type: userData.business_type,
           location: userData.location
+        }),
+        // 🎯 FIX: Include coordinator-specific fields for backend
+        ...(userData.role === 'coordinator' && {
+          years_experience: userData.years_experience,
+          team_size: userData.team_size,
+          specialties: userData.specialties,
+          service_areas: userData.service_areas,
         })
       };
+      
+      // 🎯 DEBUG: Log coordinator data before sending to backend
+      if (userData.role === 'coordinator') {
+        console.log('🎉 [HybridAuth] Sending coordinator registration data to backend:', {
+          business_name: backendData.business_name,
+          business_type: backendData.business_type,
+          location: backendData.location,
+          years_experience: backendData.years_experience,
+          team_size: backendData.team_size,
+          specialties: backendData.specialties,
+          service_areas: backendData.service_areas,
+        });
+      }
       const backendResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: {

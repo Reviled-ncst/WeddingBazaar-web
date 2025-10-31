@@ -2,10 +2,40 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   esbuild: {
-    // TEMPORARILY DISABLED FOR DEBUGGING: drop: ['console', 'debugger'], // Drop all console calls and debuggers in production
+    // Drop console.log ONLY in production builds
+    drop: mode === 'production' ? ['console', 'debugger'] : [],
+  },
+  build: {
+    // Production optimizations
+    minify: 'esbuild', // Fast minification with esbuild
+    target: 'es2015', // Browser compatibility
+    cssCodeSplit: true, // Split CSS for better caching
+    sourcemap: false, // Disable sourcemaps in production for smaller bundles
+    
+    // Rollup options for code splitting
+    rollupOptions: {
+      output: {
+        // Manual chunks for better caching
+        manualChunks: {
+          // Core React libraries
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // Firebase
+          'firebase': ['firebase/app', 'firebase/auth'],
+          // UI libraries
+          'lucide': ['lucide-react'],
+        },
+        // Better asset naming for caching
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'js/[name]-[hash].js',
+        entryFileNames: 'js/[name]-[hash].js',
+      },
+    },
+    
+    // Chunk size warnings
+    chunkSizeWarningLimit: 1000, // Increase limit to 1000kb
   },
   server: {
     host: true, // Always expose to network
@@ -19,5 +49,9 @@ export default defineConfig({
     //     secure: false,
     //   }
     // }
-  }
-})
+  },
+  // Performance optimizations
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'lucide-react'],
+  },
+}))

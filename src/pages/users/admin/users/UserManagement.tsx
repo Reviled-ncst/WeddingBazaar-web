@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Users,
   Search,
@@ -12,7 +12,10 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  UserPlus
+  UserPlus,
+  AlertCircle,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { AdminLayout, DataTable, StatCard, Badge, Button, Modal } from '../shared';
 
@@ -49,137 +52,96 @@ export const UserManagement: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  const loadUsers = async () => {
+  // Optimized load users with better error handling
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       
-      // Check if mock data is enabled
-      const useMockData = import.meta.env.VITE_USE_MOCK_USERS === 'true';
-      
-      if (useMockData) {
-        console.log('📊 [UserManagement] Using mock data (VITE_USE_MOCK_USERS=true)');
-        
-        // Generate mock users
-        const mockUsers: User[] = [
-          {
-            id: '1',
-            email: 'john.doe@example.com',
-            first_name: 'John',
-            last_name: 'Doe',
-            phone: '+1234567890',
-            role: 'individual',
-            status: 'active',
-            created_at: '2024-01-15T10:30:00Z',
-            last_login: '2024-12-20T15:45:00Z'
-          },
-          {
-            id: '2',
-            email: 'sarah.vendor@weddingpro.com',
-            first_name: 'Sarah',
-            last_name: 'Johnson',
-            phone: '+1234567891',
-            role: 'vendor',
-            status: 'active',
-            created_at: '2024-02-20T09:15:00Z',
-            last_login: '2024-12-21T08:30:00Z'
-          },
-          {
-            id: '3',
-            email: 'admin@weddingbazaar.com',
-            first_name: 'Admin',
-            last_name: 'User',
-            phone: '+1234567892',
-            role: 'admin',
-            status: 'active',
-            created_at: '2024-01-01T00:00:00Z',
-            last_login: '2024-12-22T10:00:00Z'
-          },
-          {
-            id: '4',
-            email: 'mike.photographer@example.com',
-            first_name: 'Mike',
-            last_name: 'Wilson',
-            phone: '+1234567893',
-            role: 'vendor',
-            status: 'active',
-            created_at: '2024-03-10T14:20:00Z',
-            last_login: '2024-12-19T16:00:00Z'
-          },
-          {
-            id: '5',
-            email: 'emily.bride@example.com',
-            first_name: 'Emily',
-            last_name: 'Brown',
-            phone: '+1234567894',
-            role: 'individual',
-            status: 'active',
-            created_at: '2024-04-05T11:00:00Z',
-            last_login: '2024-12-21T12:30:00Z'
-          },
-          {
-            id: '6',
-            email: 'inactive.user@example.com',
-            first_name: 'Test',
-            last_name: 'Inactive',
-            phone: '+1234567895',
-            role: 'individual',
-            status: 'inactive',
-            created_at: '2024-05-01T08:00:00Z'
-          },
-          {
-            id: '7',
-            email: 'suspended.vendor@example.com',
-            first_name: 'Suspended',
-            last_name: 'Vendor',
-            phone: '+1234567896',
-            role: 'vendor',
-            status: 'suspended',
-            created_at: '2024-06-15T09:30:00Z',
-            last_login: '2024-11-01T10:00:00Z'
-          }
-        ];
-        
-        const mockStats: Stats = {
-          total: mockUsers.length,
-          active: mockUsers.filter(u => u.status === 'active').length,
-          inactive: mockUsers.filter(u => u.status === 'inactive').length,
-          suspended: mockUsers.filter(u => u.status === 'suspended').length
-        };
-        
-        setUsers(mockUsers);
-        setStats(mockStats);
-        setLoading(false);
-        return;
-      }
-      
-      // Use real API data
       console.log('📡 [UserManagement] Fetching from API');
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || localStorage.getItem('jwt_token')}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || []);
-        setStats(data.stats || stats);
-      } else {
-        console.error('❌ [UserManagement] API request failed, using empty data');
-        setUsers([]);
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
       }
+
+      const data = await response.json();
+      
+      // Enhanced data mapping with proper null/undefined checks
+      const mappedUsers = (data.users || []).map((user: Partial<User> & { 
+        user_id?: string; 
+        firstName?: string; 
+        lastName?: string; 
+        contact_phone?: string; 
+        user_type?: string;
+        account_status?: string;
+        createdAt?: string;
+        lastLogin?: string;
+      }) => ({
+        id: user.id || user.user_id || String(Math.random()),
+        email: user.email || 'no-email@example.com',
+        first_name: user.first_name || user.firstName || 'Unknown',
+        last_name: user.last_name || user.lastName || 'User',
+        phone: user.phone || user.contact_phone || undefined,
+        role: (user.role || user.user_type || 'individual') as 'individual' | 'vendor' | 'admin',
+        status: (user.status || user.account_status || 'active') as 'active' | 'inactive' | 'suspended',
+        created_at: user.created_at || user.createdAt || new Date().toISOString(),
+        last_login: user.last_login || user.lastLogin || undefined
+      }));
+
+      // Calculate stats from mapped users
+      const calculatedStats: Stats = {
+        total: mappedUsers.length,
+        active: mappedUsers.filter((u: User) => u.status === 'active').length,
+        inactive: mappedUsers.filter((u: User) => u.status === 'inactive').length,
+        suspended: mappedUsers.filter((u: User) => u.status === 'suspended').length
+      };
+
+      setUsers(mappedUsers);
+      setStats(data.stats || calculatedStats);
+      
+      console.log('✅ [UserManagement] Loaded', mappedUsers.length, 'users');
     } catch (error) {
-      console.error('❌ [UserManagement] Error loading users:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load users';
+      console.error('❌ [UserManagement] Error:', errorMessage);
+      setError(errorMessage);
       setUsers([]);
+      setStats({
+        total: 0,
+        active: 0,
+        inactive: 0,
+        suspended: 0
+      });
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
-  };
+  }, []);
+
+  // Manual refresh handler
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await loadUsers();
+  }, [loadUsers]);
+
+  // Load users on mount
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const handleViewUser = (user: User) => {
     setSelectedUser(user);
@@ -205,30 +167,55 @@ export const UserManagement: React.FC = () => {
     }
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = filterRole === 'all' || user.role === filterRole;
-    const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  // Memoized filtered users for performance
+  const filteredUsers = useMemo(() => {
+    const searchLower = searchQuery.toLowerCase().trim();
+    
+    return users.filter(user => {
+      if (!user) return false;
+      
+      // Search filter
+      const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase();
+      const email = (user.email || '').toLowerCase();
+      const phone = (user.phone || '').toLowerCase();
+      const matchesSearch = !searchLower || 
+                           fullName.includes(searchLower) ||
+                           email.includes(searchLower) ||
+                           phone.includes(searchLower);
+      
+      // Role filter
+      const matchesRole = filterRole === 'all' || user.role === filterRole;
+      
+      // Status filter
+      const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
+      
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [users, searchQuery, filterRole, filterStatus]);
 
-  const columns = [
+  // Memoized columns for performance
+  const columns = useMemo(() => [
     {
       key: 'name',
       label: 'User',
       render: (user: User) => {
-        if (!user) return null;
+        if (!user) return <div className="text-slate-400 text-sm">N/A</div>;
+        
+        const initials = (user.first_name?.charAt(0) || '') + (user.last_name?.charAt(0) || '');
+        const displayInitials = initials || user.email?.charAt(0)?.toUpperCase() || '?';
+        const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+        const displayName = fullName || 'No Name';
+        
         return (
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-              {user.first_name?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || '?'}
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
+              {displayInitials}
             </div>
-            <div>
-              <div className="font-medium text-slate-900">
-                {user.first_name || ''} {user.last_name || ''}
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-slate-900 truncate">
+                {displayName}
               </div>
-              <div className="text-sm text-slate-500">{user.email || 'No email'}</div>
+              <div className="text-sm text-slate-500 truncate">{user.email || 'No email'}</div>
             </div>
           </div>
         );
@@ -238,10 +225,17 @@ export const UserManagement: React.FC = () => {
       key: 'role',
       label: 'Role',
       render: (user: User) => {
-        if (!user) return null;
+        if (!user || !user.role) return <Badge variant="default">Unknown</Badge>;
+        
+        const roleColors = {
+          admin: 'info' as const,
+          vendor: 'warning' as const,
+          individual: 'default' as const
+        };
+        
         return (
-          <Badge variant={user.role === 'admin' ? 'info' : user.role === 'vendor' ? 'warning' : 'default'}>
-            {user.role || 'Unknown'}
+          <Badge variant={roleColors[user.role] || 'default'}>
+            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
           </Badge>
         );
       }
@@ -250,10 +244,26 @@ export const UserManagement: React.FC = () => {
       key: 'status',
       label: 'Status',
       render: (user: User) => {
-        if (!user) return null;
+        if (!user || !user.status) return <Badge variant="default">Unknown</Badge>;
+        
+        const statusColors = {
+          active: 'success' as const,
+          inactive: 'default' as const,
+          suspended: 'error' as const
+        };
+        
+        const statusIcons = {
+          active: CheckCircle,
+          inactive: Clock,
+          suspended: XCircle
+        };
+        
+        const StatusIcon = statusIcons[user.status];
+        
         return (
-          <Badge variant={user.status === 'active' ? 'success' : user.status === 'suspended' ? 'error' : 'default'}>
-            {user.status || 'Unknown'}
+          <Badge variant={statusColors[user.status] || 'default'}>
+            {StatusIcon && <StatusIcon className="w-3 h-3 mr-1 inline" />}
+            {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
           </Badge>
         );
       }
@@ -262,49 +272,90 @@ export const UserManagement: React.FC = () => {
       key: 'created_at',
       label: 'Joined',
       render: (user: User) => {
-        if (!user || !user.created_at) return <div className="text-sm text-slate-600">N/A</div>;
-        return (
-          <div className="text-sm text-slate-600">
-            {new Date(user.created_at).toLocaleDateString()}
-          </div>
-        );
+        if (!user || !user.created_at) {
+          return <div className="text-sm text-slate-400">N/A</div>;
+        }
+        
+        try {
+          const date = new Date(user.created_at);
+          return (
+            <div className="text-sm text-slate-600 font-medium">
+              {date.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+              })}
+            </div>
+          );
+        } catch {
+          return <div className="text-sm text-slate-400">Invalid date</div>;
+        }
       }
     },
     {
       key: 'last_login',
       label: 'Last Login',
       render: (user: User) => {
-        if (!user) return <div className="text-sm text-slate-600">N/A</div>;
-        return (
-          <div className="text-sm text-slate-600">
-            {user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}
-          </div>
-        );
+        if (!user || !user.last_login) {
+          return <div className="text-sm text-slate-400 italic">Never</div>;
+        }
+        
+        try {
+          const date = new Date(user.last_login);
+          const now = new Date();
+          const diffMs = now.getTime() - date.getTime();
+          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          
+          if (diffDays === 0) {
+            return <div className="text-sm text-green-600 font-medium">Today</div>;
+          } else if (diffDays === 1) {
+            return <div className="text-sm text-slate-600">Yesterday</div>;
+          } else if (diffDays < 7) {
+            return <div className="text-sm text-slate-600">{diffDays} days ago</div>;
+          } else {
+            return (
+              <div className="text-sm text-slate-500">
+                {date.toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric' 
+                })}
+              </div>
+            );
+          }
+        } catch {
+          return <div className="text-sm text-slate-400">Invalid date</div>;
+        }
       }
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (user: User) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleViewUser(user)}
-          >
-            <Eye className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {/* Edit user */}}
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
-        </div>
-      )
+      render: (user: User) => {
+        if (!user) return null;
+        
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleViewUser(user)}
+              title="View details"
+            >
+              <Eye className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {/* Edit user */}}
+              title="Edit user"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+          </div>
+        );
+      }
     }
-  ];
+  ], []);
 
   return (
     <AdminLayout
@@ -342,6 +393,26 @@ export const UserManagement: React.FC = () => {
         />
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-xl p-4 animate-in slide-in-from-top duration-300">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h4 className="text-sm font-semibold text-red-900 mb-1">Failed to load users</h4>
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+            <button
+              onClick={handleRefresh}
+              className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
@@ -350,10 +421,10 @@ export const UserManagement: React.FC = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search users..."
+                placeholder="Search by name, email, or phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
             </div>
           </div>
@@ -380,6 +451,15 @@ export const UserManagement: React.FC = () => {
               <option value="inactive">Inactive</option>
               <option value="suspended">Suspended</option>
             </select>
+            <Button 
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title="Refresh user list"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
             <Button variant="outline">
               <Filter className="w-4 h-4 mr-2" />
               More Filters
@@ -390,15 +470,71 @@ export const UserManagement: React.FC = () => {
             </Button>
           </div>
         </div>
+        
+        {/* Results count */}
+        <div className="mt-4 pt-4 border-t border-slate-200">
+          <p className="text-sm text-slate-600">
+            Showing <span className="font-semibold text-slate-900">{filteredUsers.length}</span> of{' '}
+            <span className="font-semibold text-slate-900">{users.length}</span> users
+            {(searchQuery || filterRole !== 'all' || filterStatus !== 'all') && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterRole('all');
+                  setFilterStatus('all');
+                }}
+                className="ml-3 text-blue-600 hover:text-blue-700 font-medium underline"
+              >
+                Clear filters
+              </button>
+            )}
+          </p>
+        </div>
       </div>
 
       {/* Users Table */}
-      <DataTable
-        columns={columns}
-        data={filteredUsers}
-        loading={loading}
-        emptyMessage="No users found"
-      />
+      {loading && !users.length ? (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+            <div className="text-center">
+              <p className="text-lg font-semibold text-slate-900 mb-1">Loading users...</p>
+              <p className="text-sm text-slate-500">Please wait while we fetch the data</p>
+            </div>
+          </div>
+        </div>
+      ) : filteredUsers.length === 0 && !loading ? (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12">
+          <div className="text-center">
+            <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">No users found</h3>
+            <p className="text-slate-500 mb-6">
+              {searchQuery || filterRole !== 'all' || filterStatus !== 'all'
+                ? 'Try adjusting your filters to see more results.'
+                : 'No users have been registered yet.'}
+            </p>
+            {(searchQuery || filterRole !== 'all' || filterStatus !== 'all') && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterRole('all');
+                  setFilterStatus('all');
+                }}
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              >
+                Clear all filters
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filteredUsers}
+          loading={loading}
+          emptyMessage="No users found"
+        />
+      )}
 
       {/* User Detail Modal */}
       {selectedUser && (
