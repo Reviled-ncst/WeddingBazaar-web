@@ -3,6 +3,48 @@ const { sql } = require('../config/database.cjs');
 
 const router = express.Router();
 
+// Get vendor categories
+router.get('/categories', async (req, res) => {
+  try {
+    console.log('📂 [VENDORS] GET /api/vendors/categories called');
+    
+    // Return predefined vendor categories
+    const categories = [
+      { id: 'photographer', name: 'Photographer', icon: '📸' },
+      { id: 'videographer', name: 'Videographer', icon: '🎥' },
+      { id: 'catering', name: 'Catering', icon: '🍽️' },
+      { id: 'venue', name: 'Venue', icon: '🏛️' },
+      { id: 'florist', name: 'Florist', icon: '💐' },
+      { id: 'music', name: 'Music & DJ', icon: '🎵' },
+      { id: 'makeup', name: 'Makeup & Hair', icon: '💄' },
+      { id: 'decoration', name: 'Decoration', icon: '🎨' },
+      { id: 'coordinator', name: 'Wedding Coordinator', icon: '📋' },
+      { id: 'transportation', name: 'Transportation', icon: '🚗' },
+      { id: 'invitations', name: 'Invitations', icon: '💌' },
+      { id: 'cake', name: 'Cake & Desserts', icon: '🎂' },
+      { id: 'photo_booth', name: 'Photo Booth', icon: '📷' },
+      { id: 'entertainment', name: 'Entertainment', icon: '🎭' },
+      { id: 'other', name: 'Other Services', icon: '✨' }
+    ];
+    
+    console.log(`✅ [VENDORS] Returning ${categories.length} categories`);
+    
+    res.json({
+      success: true,
+      categories: categories,
+      count: categories.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ [VENDORS] Categories error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Get featured vendors
 router.get('/featured', async (req, res) => {
   try {
