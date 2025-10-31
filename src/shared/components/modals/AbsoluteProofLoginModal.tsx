@@ -113,6 +113,9 @@ export const AbsoluteProofLoginModal: React.FC<AbsoluteProofLoginModalProps> = (
           case 'vendor':
             navigate('/vendor/dashboard');
             break;
+          case 'coordinator':
+            navigate('/coordinator/dashboard');
+            break;
           case 'admin':
             navigate('/admin/dashboard');
             break;
