@@ -52,6 +52,8 @@ export const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
       switch (actualRole) {
         case 'vendor':
           return <Navigate to="/vendor" replace />;
+        case 'coordinator':
+          return <Navigate to="/coordinator" replace />;
         case 'admin':
           return <Navigate to="/admin" replace />;
         case 'couple':
