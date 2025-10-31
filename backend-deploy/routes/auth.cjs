@@ -294,16 +294,52 @@ router.post('/register', async (req, res) => {
       console.log('🎉 Creating coordinator profile for user:', userId);
       
       // Extract coordinator-specific fields from request
-      const years_experience = req.body.years_experience || 0;
-      const team_size = req.body.team_size || 'Solo';
-      const specialties = req.body.specialties || [];
-      const coordinator_service_areas = req.body.service_areas || [location || 'Not specified'];
+      // Parse years_experience: could be '3-5', '5', or empty string
+      let years_experience = 0;
+      if (req.body.years_experience) {
+        const yearsStr = String(req.body.years_experience);
+        // If it's a range like '3-5', take the first number
+        if (yearsStr.includes('-')) {
+          years_experience = parseInt(yearsStr.split('-')[0]);
+        } else {
+          years_experience = parseInt(yearsStr) || 0;
+        }
+      }
       
-      console.log('📋 Coordinator details:', {
+      const team_size = req.body.team_size || 'Solo';
+      
+      // Parse specialties: ensure it's an array
+      let specialties = [];
+      if (req.body.specialties) {
+        if (Array.isArray(req.body.specialties)) {
+          specialties = req.body.specialties;
+        } else if (typeof req.body.specialties === 'string') {
+          specialties = req.body.specialties.split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+      
+      // Parse service_areas: ensure it's an array
+      let coordinator_service_areas = [];
+      if (req.body.service_areas) {
+        if (Array.isArray(req.body.service_areas)) {
+          coordinator_service_areas = req.body.service_areas;
+        } else if (typeof req.body.service_areas === 'string') {
+          coordinator_service_areas = req.body.service_areas.split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+      // Fallback to location if no service areas provided
+      if (coordinator_service_areas.length === 0) {
+        coordinator_service_areas = [location || 'Not specified'];
+      }
+      
+      console.log('📋 Coordinator details (parsed):', {
         years_experience,
+        years_experience_type: typeof years_experience,
         team_size,
         specialties,
-        service_areas: coordinator_service_areas
+        specialties_count: specialties.length,
+        service_areas: coordinator_service_areas,
+        service_areas_count: coordinator_service_areas.length
       });
       
       // Create coordinator profile with all coordinator-specific fields
