@@ -127,7 +127,8 @@ router.post('/register', async (req, res) => {
       password, 
       first_name, 
       last_name, 
-      user_type = 'couple',
+      user_type, // Will be set below with fallback
+      role, // Frontend might send 'role' instead of 'user_type'
       phone,
       firebase_uid, // New field for Firebase integration
       send_verification_email = false, // New field for backend email verification
@@ -141,6 +142,10 @@ router.post('/register', async (req, res) => {
       budget_range
     } = req.body;
     
+    // 🎯 FIX: Accept both 'user_type' and 'role' from frontend
+    const actualUserType = user_type || role || 'couple';
+    console.log('👤 [AUTH] User type:', { user_type, role, actualUserType });
+    
     // Validate required fields
     if (!email || !password || !first_name) {
       return res.status(400).json({
@@ -152,7 +157,7 @@ router.post('/register', async (req, res) => {
     
     // Validate user_type
     const validUserTypes = ['couple', 'vendor', 'admin', 'coordinator'];
-    if (!validUserTypes.includes(user_type)) {
+    if (!validUserTypes.includes(actualUserType)) {
       return res.status(400).json({
         success: false,
         error: 'Invalid user_type. Must be one of: couple, vendor, admin, coordinator',
@@ -161,10 +166,10 @@ router.post('/register', async (req, res) => {
     }
     
     // Vendor-specific and Coordinator-specific validation
-    if ((user_type === 'vendor' || user_type === 'coordinator') && (!business_name || !business_type)) {
+    if ((actualUserType === 'vendor' || actualUserType === 'coordinator') && (!business_name || !business_type)) {
       return res.status(400).json({
         success: false,
-        error: `${user_type === 'vendor' ? 'Vendor' : 'Coordinator'} registration requires business_name and business_type`,
+        error: `${actualUserType === 'vendor' ? 'Vendor' : 'Coordinator'} registration requires business_name and business_type`,
         timestamp: new Date().toISOString()
       });
     }
@@ -209,7 +214,7 @@ router.post('/register', async (req, res) => {
     
     // Generate unique user ID using proper sequential format
     const { getNextUserId } = require('../utils/id-generation.cjs');
-    const userId = await getNextUserId(sql, user_type === 'vendor' ? 'vendor' : 'individual');
+    const userId = await getNextUserId(sql, actualUserType === 'vendor' ? 'vendor' : 'individual');
     
     // 1. Create user account in users table (with Firebase UID support)
     // Email verification logic:
@@ -222,7 +227,7 @@ router.post('/register', async (req, res) => {
     console.log('💾 Inserting user into database:', { 
       userId, 
       email, 
-      user_type, 
+      user_type: actualUserType, 
       firebase_uid, 
       oauth_provider: req.body.oauth_provider || 'email/password',
       email_verified: isFirebaseVerified,
@@ -235,7 +240,7 @@ router.post('/register', async (req, res) => {
       )
       VALUES (
         ${userId}, ${email}, ${hashedPassword}, ${first_name}, ${last_name || ''}, 
-        ${user_type}, ${phone || null}, ${firebase_uid || null}, ${isFirebaseVerified}, NOW()
+        ${actualUserType}, ${phone || null}, ${firebase_uid || null}, ${isFirebaseVerified}, NOW()
       )
       RETURNING id, email, first_name, last_name, user_type, phone, firebase_uid, email_verified, created_at
     `;
@@ -246,7 +251,7 @@ router.post('/register', async (req, res) => {
     // 2. Create appropriate profile based on user_type
     let profileResult = null;
     
-    if (user_type === 'vendor') {
+    if (actualUserType === 'vendor') {
       console.log('🏢 Creating vendor profile for user:', userId);
       
       // Create vendor profile with verification placeholders
@@ -290,7 +295,7 @@ router.post('/register', async (req, res) => {
       
       console.log('✅ Vendor profile created:', profileResult[0]?.user_id);
       
-    } else if (user_type === 'coordinator') {
+    } else if (actualUserType === 'coordinator') {
       console.log('🎉 Creating coordinator profile for user:', userId);
       
       // Extract coordinator-specific fields from request
@@ -397,7 +402,7 @@ router.post('/register', async (req, res) => {
         service_areas: profileResult[0]?.service_areas
       });
       
-    } else if (user_type === 'couple') {
+    } else if (actualUserType === 'couple') {
       console.log('💑 Creating couple profile for user:', userId);
       
       // Generate unique couple profile ID
@@ -422,7 +427,7 @@ router.post('/register', async (req, res) => {
       
       console.log('✅ Couple profile created:', profileResult[0]?.id);
       
-    } else if (user_type === 'admin') {
+    } else if (actualUserType === 'admin') {
       console.log('👨‍💼 Creating admin profile for user:', userId);
       
       profileResult = await sql`
