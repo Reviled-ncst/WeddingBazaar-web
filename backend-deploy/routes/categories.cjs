@@ -174,26 +174,33 @@ router.get('/by-name/:categoryName/fields', async (req, res) => {
     const category = categories[0];
     console.log(`✅ [API] Found category: ${category.display_name} (ID: ${category.id})`);
     
-    // Get fields for this category
-    const fields = await sql`
-      SELECT 
-        id, 
-        category_id,
-        field_name,
-        field_label,
-        field_type,
-        is_required,
-        options,
-        help_text,
-        validation_rules,
-        sort_order
-      FROM service_category_fields 
-      WHERE category_id = ${category.id}
-        AND is_active = true
-      ORDER BY sort_order ASC, field_label ASC
-    `;
-    
-    console.log(`✅ [API] Found ${fields.length} fields for category ${category.display_name}`);
+    // Get fields for this category (with fallback if table doesn't exist)
+    let fields = [];
+    try {
+      fields = await sql`
+        SELECT 
+          id, 
+          category_id,
+          field_name,
+          field_label,
+          field_type,
+          is_required,
+          options,
+          help_text,
+          validation_rules,
+          sort_order
+        FROM service_category_fields 
+        WHERE category_id = ${category.id}
+          AND is_active = true
+        ORDER BY sort_order ASC, field_label ASC
+      `;
+      console.log(`✅ [API] Found ${fields.length} fields for category ${category.display_name}`);
+    } catch (tableError) {
+      // Table doesn't exist, return empty array
+      console.log(`⚠️  [API] service_category_fields table not found, returning empty fields array`);
+      console.log(`   Error: ${tableError.message}`);
+      fields = [];
+    }
     
     res.json({
       success: true,

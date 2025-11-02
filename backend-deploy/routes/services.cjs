@@ -455,6 +455,9 @@ router.post('/', async (req, res) => {
       price: price ? parseFloat(price) : null
     });
 
+    // Normalize service_tier to lowercase (constraint requires 'basic', 'standard', 'premium')
+    const normalizedServiceTier = service_tier ? service_tier.toLowerCase() : null;
+    
     // Insert into database with DSS fields
     const result = await sql`
       INSERT INTO services (
@@ -476,7 +479,7 @@ router.post('/', async (req, res) => {
         ${Boolean(featured)},
         ${Boolean(is_active)},
         ${years_in_business ? parseInt(years_in_business) : null},
-        ${service_tier || null},
+        ${normalizedServiceTier},
         ${Array.isArray(wedding_styles) ? wedding_styles : null},
         ${Array.isArray(cultural_specialties) ? cultural_specialties : null},
         ${availability || null},
@@ -496,10 +499,30 @@ router.post('/', async (req, res) => {
 
   } catch (error) {
     console.error('❌ [POST /api/services] Error creating service:', error);
-    res.status(500).json({
+    
+    // Provide helpful error messages for common issues
+    let userMessage = 'Failed to create service';
+    let statusCode = 500;
+    
+    if (error.code === '23503') {
+      // Foreign key violation
+      if (error.constraint === 'services_vendor_id_fkey') {
+        userMessage = 'Vendor ID does not exist. Please ensure you are logged in as a vendor.';
+        statusCode = 400;
+      }
+    } else if (error.code === '23514') {
+      // Check constraint violation
+      if (error.constraint === 'services_service_tier_check') {
+        userMessage = 'Invalid service tier. Must be one of: basic, standard, premium';
+        statusCode = 400;
+      }
+    }
+    
+    res.status(statusCode).json({
       success: false,
-      error: 'Failed to create service',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      error: userMessage,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      details: process.env.NODE_ENV === 'development' ? error : undefined
     });
   }
 });
