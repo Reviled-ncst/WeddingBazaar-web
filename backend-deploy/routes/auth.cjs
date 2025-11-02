@@ -295,6 +295,49 @@ router.post('/register', async (req, res) => {
       
       console.log('✅ Vendor profile created:', profileResult[0]?.user_id);
       
+      // 🎯 FIX: ALSO create entry in legacy 'vendors' table for backward compatibility
+      // This is needed because services endpoint checks 'vendors' table, not 'vendor_profiles'
+      console.log('🔧 Creating entry in vendors table for backward compatibility...');
+      try {
+        // Generate vendor ID
+        const vendorCountResult = await sql`SELECT COUNT(*) as count FROM vendors`;
+        const vendorCount = parseInt(vendorCountResult[0].count) + 1;
+        const vendorId = `VEN-${vendorCount.toString().padStart(5, '0')}`;
+        
+        await sql`
+          INSERT INTO vendors (
+            id,
+            user_id,
+            business_name,
+            business_type,
+            description,
+            location,
+            rating,
+            review_count,
+            verified,
+            created_at,
+            updated_at
+          ) VALUES (
+            ${vendorId},
+            ${userId},
+            ${business_name},
+            ${business_type},
+            ${`Professional ${business_type} service provider`},
+            ${location || 'Not specified'},
+            0.0,
+            0,
+            false,
+            NOW(),
+            NOW()
+          )
+        `;
+        
+        console.log(`✅ Legacy vendors table entry created: ${vendorId}`);
+      } catch (vendorTableError) {
+        console.error('⚠️  Failed to create vendors table entry (non-critical):', vendorTableError.message);
+        // Don't fail registration if this fails - vendor_profiles is the primary table
+      }
+      
     } else if (actualUserType === 'coordinator') {
       console.log('🎉 Creating coordinator profile for user:', userId);
       
