@@ -328,7 +328,9 @@ router.post('/', async (req, res) => {
       description,
       category,
       price,
+      max_price, // ✅ FIX: Add max_price to destructuring
       location,
+      location_data, // ✅ FIX: Add location_data to destructuring
       images,
       features,
       is_active = true,
