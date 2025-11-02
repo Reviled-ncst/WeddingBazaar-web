@@ -74,10 +74,21 @@ router.post('/login', async (req, res) => {
 
     console.log('✅ Login successful for:', email);
 
-    // For vendor and coordinator users, get their vendor profile ID
+    // For vendor and coordinator users, get their ACTUAL vendor ID from vendors table
+    let vendorId = null;
     let vendorProfileId = null;
     if (user.user_type === 'vendor' || user.user_type === 'coordinator') {
       try {
+        // Get vendor ID from vendors table (VEN-XXXXX format)
+        const vendors = await sql`
+          SELECT id FROM vendors WHERE user_id = ${user.id}
+        `;
+        if (vendors.length > 0) {
+          vendorId = vendors[0].id;
+          console.log('📋 Found vendor ID:', vendorId);
+        }
+        
+        // Also get vendor profile ID for legacy compatibility
         const vendorProfiles = await sql`
           SELECT id FROM vendor_profiles WHERE user_id = ${user.id}
         `;
@@ -86,7 +97,7 @@ router.post('/login', async (req, res) => {
           console.log('📋 Found vendor profile ID:', vendorProfileId);
         }
       } catch (error) {
-        console.log('⚠️ Could not fetch vendor profile ID:', error.message);
+        console.log('⚠️ Could not fetch vendor IDs:', error.message);
       }
     }
 
@@ -101,7 +112,8 @@ router.post('/login', async (req, res) => {
         lastName: user.last_name,
         emailVerified: user.email_verified || false,
         phoneVerified: user.phone_verified || false,
-        vendorId: vendorProfileId // Add vendor profile ID for vendor users
+        vendorId: vendorId, // ✅ FIX: Return actual vendor ID (VEN-XXXXX)
+        vendorProfileId: vendorProfileId // Keep for legacy compatibility
       },
       timestamp: new Date().toISOString()
     });

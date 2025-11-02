@@ -156,8 +156,9 @@ export const VendorServices: React.FC = () => {
   // FIXED: Track Firebase email verification status directly (same as VendorProfile.tsx)
   const [firebaseEmailVerified, setFirebaseEmailVerified] = useState(false);
 
-  // Get current vendor ID from auth context - no fallback for non-vendors
-  const vendorId = user?.role === 'vendor' ? (user?.id || getVendorIdForUser(user as any)) : null;
+  // ✅ FIX: Use actual vendor ID from auth (VEN-XXXXX), not user ID
+  // Backend login now returns vendorId from vendors table
+  const vendorId = user?.role === 'vendor' ? (user?.vendorId || user?.id || getVendorIdForUser(user as any)) : null;
   
   // Use the same vendor profile hook as VendorProfile component
   const { profile, refetch: refetchProfile } = useVendorProfile(vendorId || '');
