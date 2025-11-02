@@ -376,18 +376,36 @@ router.post('/', async (req, res) => {
     console.log('🔑 [Vendor Check] Final vendor ID:', finalVendorId);
 
     // Check if vendor exists before proceeding
+    // NOTE: Frontend may send either vendor.id (VEN-XXXXX) or user.id (2-2025-XXX)
+    // We need to handle both cases for flexibility
+    let actualVendorId = finalVendorId;
     try {
-      const vendorCheck = await sql`
-        SELECT id FROM vendors WHERE id = ${finalVendorId} LIMIT 1
+      // First, try to find vendor by vendor ID
+      let vendorCheck = await sql`
+        SELECT id, user_id FROM vendors WHERE id = ${finalVendorId} LIMIT 1
       `;
       
+      // If not found, maybe they sent user_id instead of vendor_id
       if (vendorCheck.length === 0) {
-        console.log(`❌ [Vendor Check] Vendor not found: ${finalVendorId}`);
+        console.log(`🔍 [Vendor Check] Not found by vendor ID, trying user_id...`);
+        vendorCheck = await sql`
+          SELECT id, user_id FROM vendors WHERE user_id = ${finalVendorId} LIMIT 1
+        `;
+        
+        if (vendorCheck.length > 0) {
+          actualVendorId = vendorCheck[0].id; // Use the actual vendor ID
+          console.log(`✅ [Vendor Check] Found vendor by user_id: ${actualVendorId}`);
+        }
+      }
+      
+      if (vendorCheck.length === 0) {
+        console.log(`❌ [Vendor Check] Vendor not found with ID or user_id: ${finalVendorId}`);
         return res.status(400).json({
           success: false,
-          error: 'Vendor not found',
-          message: 'Please ensure you are logged in as a vendor with a valid profile',
-          vendor_id: finalVendorId
+          error: 'Vendor profile not found',
+          message: 'Please ensure you are logged in as a vendor and have completed your business profile',
+          vendor_id_sent: finalVendorId,
+          hint: 'You may need to complete vendor onboarding first'
         });
       }
       
@@ -402,14 +420,14 @@ router.post('/', async (req, res) => {
     }
 
     // ✅ SUBSCRIPTION LIMIT CHECK - Check if vendor can create more services
-    console.log('🔍 [Subscription Check] Checking service limits for vendor:', finalVendorId);
+    console.log('🔍 [Subscription Check] Checking service limits for vendor:', actualVendorId);
     
     try {
       // 1. Count vendor's current active services
       const vendorServiceCount = await sql`
         SELECT COUNT(*) as count 
         FROM services 
-        WHERE vendor_id = ${finalVendorId} 
+        WHERE vendor_id = ${actualVendorId} 
         AND is_active = true
       `;
       const currentCount = parseInt(vendorServiceCount[0].count);
@@ -424,7 +442,7 @@ router.post('/', async (req, res) => {
           vs.plan_name,
           vs.status
         FROM vendor_subscriptions vs
-        WHERE vs.vendor_id = ${finalVendorId}
+        WHERE vs.vendor_id = ${actualVendorId}
         AND vs.status IN ('active', 'trial')
         ORDER BY vs.created_at DESC
         LIMIT 1
@@ -479,7 +497,7 @@ router.post('/', async (req, res) => {
     console.log('🆔 Generated service ID:', serviceId);
     console.log('💾 [POST /api/services] Inserting service data:', {
       id: serviceId,
-      vendor_id: finalVendorId,
+      vendor_id: actualVendorId, // Use the resolved vendor ID
       title: finalTitle,
       category,
       price: price ? parseFloat(price) : null
@@ -497,7 +515,7 @@ router.post('/', async (req, res) => {
         created_at, updated_at
       ) VALUES (
         ${serviceId},
-        ${finalVendorId},
+        ${actualVendorId},
         ${finalTitle},
         ${description || ''},
         ${category},
