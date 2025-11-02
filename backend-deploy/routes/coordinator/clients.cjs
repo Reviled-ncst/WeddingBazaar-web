@@ -13,7 +13,7 @@ const router = express.Router();
  * GET /api/coordinator/clients
  * Get all clients managed by coordinator
  */
-router.get('/clients', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const coordinatorId = req.user.userId;
     const { status, search, limit = 50, offset = 0 } = req.query;
@@ -92,7 +92,7 @@ router.get('/clients', authenticateToken, async (req, res) => {
  * GET /api/coordinator/clients/:userId
  * Get detailed client profile
  */
-router.get('/clients/:userId', authenticateToken, async (req, res) => {
+router.get('/:userId', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
     const coordinatorId = req.user.userId;
@@ -164,7 +164,7 @@ router.get('/clients/:userId', authenticateToken, async (req, res) => {
  * POST /api/coordinator/clients
  * Create a new client (standalone client without wedding)
  */
-router.post('/clients', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const coordinatorId = req.user.userId;
     const {
@@ -243,7 +243,7 @@ router.post('/clients', authenticateToken, async (req, res) => {
  * PUT /api/coordinator/clients/:id
  * Update client information
  */
-router.put('/clients/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const coordinatorId = req.user.userId;
@@ -303,7 +303,7 @@ router.put('/clients/:id', authenticateToken, async (req, res) => {
  * DELETE /api/coordinator/clients/:id
  * Delete client (soft delete - archive)
  */
-router.delete('/clients/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const coordinatorId = req.user.userId;
@@ -340,7 +340,7 @@ router.delete('/clients/:id', authenticateToken, async (req, res) => {
  * POST /api/coordinator/clients/:userId/notes
  * Add private note about client
  */
-router.post('/clients/:userId/notes', authenticateToken, async (req, res) => {
+router.post('/:userId/notes', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
     const coordinatorId = req.user.userId;
@@ -388,7 +388,7 @@ router.post('/clients/:userId/notes', authenticateToken, async (req, res) => {
  * GET /api/coordinator/clients/:userId/communication
  * Get communication history with client
  */
-router.get('/clients/:userId/communication', authenticateToken, async (req, res) => {
+router.get('/:userId/communication', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
     const coordinatorId = req.user.userId;
@@ -443,7 +443,7 @@ router.get('/clients/:userId/communication', authenticateToken, async (req, res)
  * GET /api/coordinator/clients/stats
  * Get client statistics for coordinator
  */
-router.get('/clients/stats', authenticateToken, async (req, res) => {
+router.get('/stats', authenticateToken, async (req, res) => {
   try {
     const coordinatorId = req.user.userId;
 

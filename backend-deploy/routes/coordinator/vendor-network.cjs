@@ -13,7 +13,7 @@ const router = express.Router();
  * GET /api/coordinator/vendor-network
  * Get coordinator's vendor network
  */
-router.get('/vendor-network', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const coordinatorId = req.user.userId;
     const { category, rating_min, search } = req.query;
@@ -78,7 +78,7 @@ router.get('/vendor-network', authenticateToken, async (req, res) => {
  * POST /api/coordinator/vendor-network
  * Add vendor to network
  */
-router.post('/vendor-network', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const coordinatorId = req.user.userId;
     const { 
@@ -143,7 +143,7 @@ router.post('/vendor-network', authenticateToken, async (req, res) => {
  * PUT /api/coordinator/vendor-network/:networkId
  * Update vendor network entry
  */
-router.put('/vendor-network/:networkId', authenticateToken, async (req, res) => {
+router.put('/:networkId', authenticateToken, async (req, res) => {
   try {
     const { networkId } = req.params;
     const coordinatorId = req.user.userId;
@@ -198,7 +198,7 @@ router.put('/vendor-network/:networkId', authenticateToken, async (req, res) => 
  * DELETE /api/coordinator/vendor-network/:networkId
  * Remove vendor from network
  */
-router.delete('/vendor-network/:networkId', authenticateToken, async (req, res) => {
+router.delete('/:networkId', authenticateToken, async (req, res) => {
   try {
     const { networkId } = req.params;
     const coordinatorId = req.user.userId;
@@ -239,7 +239,7 @@ router.delete('/vendor-network/:networkId', authenticateToken, async (req, res) 
  * GET /api/coordinator/vendor-network/:networkId/performance
  * Get vendor performance metrics
  */
-router.get('/vendor-network/:networkId/performance', authenticateToken, async (req, res) => {
+router.get('/:networkId/performance', authenticateToken, async (req, res) => {
   try {
     const { networkId } = req.params;
     const coordinatorId = req.user.userId;
@@ -304,7 +304,7 @@ router.get('/vendor-network/:networkId/performance', authenticateToken, async (r
  * GET /api/coordinator/vendor-network/preferred
  * Get only preferred vendors
  */
-router.get('/vendor-network/preferred', authenticateToken, async (req, res) => {
+router.get('/preferred', authenticateToken, async (req, res) => {
   try {
     const coordinatorId = req.user.userId;
 
