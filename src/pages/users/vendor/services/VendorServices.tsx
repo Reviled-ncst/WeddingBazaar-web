@@ -156,9 +156,39 @@ export const VendorServices: React.FC = () => {
   // FIXED: Track Firebase email verification status directly (same as VendorProfile.tsx)
   const [firebaseEmailVerified, setFirebaseEmailVerified] = useState(false);
 
-  // ✅ FIX: Use actual vendor ID from auth (VEN-XXXXX), not user ID
-  // Backend login now returns vendorId from vendors table
-  const vendorId = user?.role === 'vendor' ? (user?.vendorId || user?.id || getVendorIdForUser(user as any)) : null;
+  // Get API base URL (moved up before useEffect)
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+
+  // ✅ FIX: Fetch actual vendor ID from backend if not in session
+  const [actualVendorId, setActualVendorId] = useState<string | null>(null);
+  
+  // Fetch vendor ID from backend if user.vendorId is not available
+  React.useEffect(() => {
+    const fetchVendorId = async () => {
+      if (user?.role === 'vendor' && !user?.vendorId && user?.id) {
+        try {
+          console.log('🔍 [VendorServices] Fetching vendor ID for user:', user.id);
+          const response = await fetch(`${apiUrl}/api/vendors/user/${user.id}`);
+          const data = await response.json();
+          
+          if (data.success && data.vendor?.id) {
+            console.log('✅ [VendorServices] Found vendor ID:', data.vendor.id);
+            setActualVendorId(data.vendor.id);
+          }
+        } catch (error) {
+          console.error('❌ [VendorServices] Error fetching vendor ID:', error);
+        }
+      } else if (user?.vendorId) {
+        // User already has vendorId in session
+        setActualVendorId(user.vendorId);
+      }
+    };
+    
+    fetchVendorId();
+  }, [user, apiUrl]);
+
+  // Use actual vendor ID (VEN-XXXXX) instead of user ID
+  const vendorId = actualVendorId || (user?.role === 'vendor' ? (user?.vendorId || user?.id || getVendorIdForUser(user as any)) : null);
   
   // Use the same vendor profile hook as VendorProfile component
   const { profile, refetch: refetchProfile } = useVendorProfile(vendorId || '');
@@ -170,9 +200,6 @@ export const VendorServices: React.FC = () => {
     upgradePrompt,
     hideUpgradePrompt
   } = useSubscription();
-
-  // Get API base URL
-  const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
 
   // Handle upgrade modal opening - FIXED to use centralized UpgradePrompt
   const handleOpenUpgradeModal = () => {
@@ -1535,7 +1562,7 @@ export const VendorServices: React.FC = () => {
                                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                         </svg>
                                       ` : `
-                                        <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
                                         </svg>
                                       `}
@@ -1549,7 +1576,7 @@ export const VendorServices: React.FC = () => {
                                     <button onclick="
                                       navigator.clipboard.writeText('${serviceUrl}').then(() => {
                                         this.innerHTML = '<svg class=\\'w-5 h-5\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M5 13l4 4L19 7\\'></path></svg><span class=\\'ml-1\\'>Copied!</span>';
-                                        this.className = 'absolute right-2 top-1/2 -translate-y-1/2 bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700 transition-colors flex items-center text-xs font-semibold';
+                                        this.className = 'absolute right-2 top-1/2 -translate-y-1/2 bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700 transition-colors';
                                         setTimeout(() => {
                                           this.innerHTML = '<svg class=\\'w-5 h-5\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z\\'></path></svg>';
                                           this.className = 'absolute right-2 top-1/2 -translate-y-1/2 bg-pink-600 text-white px-3 py-1.5 rounded-md hover:bg-pink-700 transition-colors';
@@ -2011,8 +2038,8 @@ export const VendorServices: React.FC = () => {
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
                   getVerificationStatus().emailVerified 
-                    ? 'bg-green-100 text-green-600' 
-                    : 'bg-red-100 text-red-600'
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-red-500 text-white'
                 }`}>
                   {getVerificationStatus().emailVerified ? '✓' : '✕'}
                 </div>
@@ -2027,8 +2054,8 @@ export const VendorServices: React.FC = () => {
               <div className={`flex items-center gap-3 p-3 bg-gray-50 rounded-xl ${!getVerificationStatus().documentsVerified ? 'border-l-4 border-orange-500' : ''}`}>
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
                   getVerificationStatus().documentsVerified
-                    ? 'bg-green-100 text-green-600' 
-                    : 'bg-red-100 text-red-600'
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-red-500 text-white'
                 }`}>
                   {getVerificationStatus().documentsVerified ? '✓' : '✕'}
                 </div>

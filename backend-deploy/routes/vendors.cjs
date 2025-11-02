@@ -45,6 +45,45 @@ router.get('/categories', async (req, res) => {
   }
 });
 
+// ✅ NEW: Get vendor ID by user ID
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log('🔍 [VENDORS] GET /api/vendors/user/:userId - Looking up vendor for user:', userId);
+    
+    const vendors = await sql`
+      SELECT id, user_id, business_name, category, location 
+      FROM vendors 
+      WHERE user_id = ${userId}
+      LIMIT 1
+    `;
+    
+    if (vendors.length === 0) {
+      console.log('❌ [VENDORS] No vendor found for user:', userId);
+      return res.status(404).json({
+        success: false,
+        error: 'Vendor not found for this user',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    console.log('✅ [VENDORS] Found vendor:', vendors[0].id, 'for user:', userId);
+    
+    res.json({
+      success: true,
+      vendor: vendors[0],
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ [VENDORS] Error fetching vendor by user ID:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // GET /api/vendors/:id/dashboard - Get vendor dashboard statistics
 router.get('/:id/dashboard', async (req, res) => {
   try {
