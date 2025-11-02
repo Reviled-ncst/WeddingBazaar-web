@@ -616,6 +616,37 @@ export const VendorProfile: React.FC = () => {
                             ) : (
                               <p className="text-pink-600 font-medium">{profile.businessType}</p>
                             )}
+                            
+                            {/* NEW: Vendor Type Selection */}
+                            {isEditing && (
+                              <div className="mt-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Account Type
+                                </label>
+                                <select
+                                  value={editForm.vendorType || profile.vendorType || 'business'}
+                                  onChange={(e) => setEditForm({
+                                    ...editForm, 
+                                    vendorType: e.target.value as 'business' | 'freelancer'
+                                  })}
+                                  className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                                  title="Select account type"
+                                >
+                                  <option value="business">🏢 Business (Company/Agency)</option>
+                                  <option value="freelancer">👤 Freelancer (Individual)</option>
+                                </select>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {editForm.vendorType === 'freelancer' || profile.vendorType === 'freelancer'
+                                    ? 'Freelancers need: Valid ID + Portfolio + Certification'
+                                    : 'Businesses need: Business License/Permit'}
+                                </p>
+                              </div>
+                            )}
+                            {!isEditing && profile.vendorType && (
+                              <p className="text-sm text-gray-500 mt-2">
+                                {profile.vendorType === 'freelancer' ? '👤 Freelancer' : '🏢 Business'}
+                              </p>
+                            )}
                           </div>
                           
                           <div className="flex items-center space-x-6 text-sm text-gray-600">
@@ -882,7 +913,7 @@ export const VendorProfile: React.FC = () => {
                                 const newSocialMedia = { ...editForm.socialMedia, facebook: e.target.value };
                                 setEditForm({...editForm, socialMedia: newSocialMedia});
                               }}
-                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                               placeholder="https://facebook.com/yourbusiness"
                             />
                           ) : (
@@ -915,7 +946,7 @@ export const VendorProfile: React.FC = () => {
                                 const newSocialMedia = { ...editForm.socialMedia, twitter: e.target.value };
                                 setEditForm({...editForm, socialMedia: newSocialMedia});
                               }}
-                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                               placeholder="https://twitter.com/yourbusiness"
                             />
                           ) : (
@@ -948,7 +979,7 @@ export const VendorProfile: React.FC = () => {
                                 const newSocialMedia = { ...editForm.socialMedia, linkedin: e.target.value };
                                 setEditForm({...editForm, socialMedia: newSocialMedia});
                               }}
-                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                               placeholder="https://linkedin.com/company/yourbusiness"
                             />
                           ) : (
@@ -1156,9 +1187,14 @@ export const VendorProfile: React.FC = () => {
                           
                           {/* Document Upload Section */}
                           <div className="space-y-4">
-                            <h4 className="font-medium text-gray-900">Upload Business Documents</h4>
+                            <h4 className="font-medium text-gray-900">
+                              {(profile.vendorType || 'business') === 'freelancer' 
+                                ? 'Upload Verification Documents' 
+                                : 'Upload Business Documents'}
+                            </h4>
                             <DocumentUploadComponent 
                               vendorId={vendorId}
+                              vendorType={(profile.vendorType || 'business') as 'business' | 'freelancer'}
                               className="max-w-4xl"
                             />
                           </div>

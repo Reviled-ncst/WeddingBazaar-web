@@ -414,6 +414,89 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // ✅ DOCUMENT VERIFICATION CHECK - Required for service creation
+    console.log('🔍 [Document Check] Verifying documents for vendor:', actualVendorId);
+    
+    try {
+      // Get vendor profile to check vendor_type
+      const vendorProfile = await sql`
+        SELECT vp.vendor_type, v.id as vendor_id
+        FROM vendor_profiles vp
+        LEFT JOIN vendors v ON v.user_id = vp.user_id
+        WHERE vp.user_id = ${actualVendorId}
+        LIMIT 1
+      `;
+      
+      if (vendorProfile.length === 0) {
+        console.log('❌ [Document Check] No vendor profile found');
+        return res.status(403).json({
+          success: false,
+          error: 'Vendor profile not found',
+          message: 'Please complete your vendor profile first'
+        });
+      }
+      
+      const vendorType = vendorProfile[0].vendor_type || 'business';
+      const vendorTableId = vendorProfile[0].vendor_id;
+      
+      console.log(`📋 [Document Check] Vendor type: ${vendorType}`);
+      
+      // Get approved documents for this vendor
+      const approvedDocs = await sql`
+        SELECT DISTINCT document_type 
+        FROM documents 
+        WHERE vendor_id = ${vendorTableId}
+        AND verification_status = 'approved'
+      `;
+      
+      const approvedTypes = approvedDocs.map(d => d.document_type);
+      console.log(`📄 [Document Check] Approved documents: ${approvedTypes.join(', ')}`);
+      
+      // Check requirements based on vendor type
+      let missingDocs = [];
+      
+      if (vendorType === 'freelancer') {
+        // FREELANCERS need: valid_id + portfolio_samples + professional_certification
+        if (!approvedTypes.includes('valid_id')) {
+          missingDocs.push('Valid ID (government-issued)');
+        }
+        if (!approvedTypes.includes('portfolio_samples')) {
+          missingDocs.push('Portfolio Samples');
+        }
+        if (!approvedTypes.includes('professional_certification')) {
+          missingDocs.push('Professional Certification');
+        }
+      } else {
+        // BUSINESSES need: business_license
+        if (!approvedTypes.includes('business_license')) {
+          missingDocs.push('Business License/Permit');
+        }
+      }
+      
+      if (missingDocs.length > 0) {
+        console.log(`❌ [Document Check] Missing required documents: ${missingDocs.join(', ')}`);
+        return res.status(403).json({
+          success: false,
+          error: 'Documents not verified',
+          message: vendorType === 'freelancer'
+            ? 'Freelancers must have approved: Valid ID, Portfolio Samples, and Professional Certification'
+            : 'Businesses must have an approved Business License/Permit',
+          missing_documents: missingDocs,
+          vendor_type: vendorType,
+          approved_documents: approvedTypes
+        });
+      }
+      
+      console.log(`✅ [Document Check] All required documents verified for ${vendorType}`);
+    } catch (docError) {
+      console.error('❌ [Document Check] Error checking documents:', docError);
+      return res.status(500).json({
+        success: false,
+        error: 'Error checking document verification',
+        message: docError.message
+      });
+    }
+
     // ✅ SUBSCRIPTION LIMIT CHECK - Check if vendor can create more services
     console.log('🔍 [Subscription Check] Checking service limits for vendor:', actualVendorId);
     

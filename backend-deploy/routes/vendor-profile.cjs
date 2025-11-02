@@ -653,6 +653,7 @@ router.put('/:vendorId', async (req, res) => {
     const updates = {
       businessName: updateData.businessName || updateData.business_name,
       businessType: updateData.businessType || updateData.business_type,
+      vendorType: updateData.vendorType || updateData.vendor_type,  // NEW: vendor type
       businessDescription: updateData.description || updateData.business_description,
       serviceArea: updateData.location || updateData.serviceArea || updateData.service_areas,
       yearsInBusiness: updateData.yearsInBusiness || updateData.years_in_business,
@@ -669,6 +670,7 @@ router.put('/:vendorId', async (req, res) => {
       SET 
         business_name = COALESCE(${updates.businessName}, business_name),
         business_type = COALESCE(${updates.businessType}, business_type),
+        vendor_type = COALESCE(${updates.vendorType}, vendor_type),
         business_description = COALESCE(${updates.businessDescription}, business_description),
         service_area = COALESCE(${updates.serviceArea}, service_area),
         years_in_business = COALESCE(${updates.yearsInBusiness}, years_in_business),

@@ -51,10 +51,13 @@ router.get('/user/:userId', async (req, res) => {
     const { userId } = req.params;
     console.log('🔍 [VENDORS] GET /api/vendors/user/:userId - Looking up vendor for user:', userId);
     
+    // ✅ PREFER NEW FORMAT: Prioritize vendor entries where id = user_id (e.g., id='2-2025-003')
+    // This ensures we return the synced vendor entry, not the old VEN-XXXXX format
     const vendors = await sql`
       SELECT id, user_id, business_name, category, location 
       FROM vendors 
       WHERE user_id = ${userId}
+      ORDER BY CASE WHEN id = user_id THEN 0 ELSE 1 END
       LIMIT 1
     `;
     

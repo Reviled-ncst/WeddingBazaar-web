@@ -31,6 +31,7 @@ export interface VendorProfile {
   userId: string;
   businessName: string;
   businessType: string;
+  vendorType?: 'business' | 'freelancer';  // NEW: Vendor type for verification requirements
   description?: string;  // Backend returns 'description' not 'businessDescription'
   location?: string;     // Backend returns 'location'
   email: string;

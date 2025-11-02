@@ -18,17 +18,29 @@ import styles from './DocumentUpload.module.css';
 
 interface DocumentUploadComponentProps {
   vendorId: string;
+  vendorType?: 'business' | 'freelancer';
   className?: string;
 }
 
-const DOCUMENT_TYPES = [
-  { value: 'business_license', label: 'Business License', icon: FileText },
-  { value: 'insurance_certificate', label: 'Insurance Certificate', icon: FileText },
-  { value: 'tax_certificate', label: 'Tax Certificate', icon: FileText },
-  { value: 'professional_certification', label: 'Professional Certification', icon: FileText },
-  { value: 'portfolio_samples', label: 'Portfolio Samples', icon: Image },
-  { value: 'contract_template', label: 'Contract Template', icon: FileText },
-  { value: 'other', label: 'Other Document', icon: File }
+// Document types for BUSINESS vendors
+const BUSINESS_DOCUMENT_TYPES = [
+  { value: 'business_license', label: 'Business License', icon: FileText, required: true },
+  { value: 'insurance_certificate', label: 'Insurance Certificate', icon: FileText, required: false },
+  { value: 'tax_certificate', label: 'Tax Certificate', icon: FileText, required: false },
+  { value: 'professional_certification', label: 'Professional Certification', icon: FileText, required: false },
+  { value: 'portfolio_samples', label: 'Portfolio Samples', icon: Image, required: false },
+  { value: 'contract_template', label: 'Contract Template', icon: FileText, required: false },
+  { value: 'other', label: 'Other Document', icon: File, required: false }
+];
+
+// Document types for FREELANCER vendors
+const FREELANCER_DOCUMENT_TYPES = [
+  { value: 'valid_id', label: 'Valid ID (Government Issued)', icon: FileText, required: true },
+  { value: 'portfolio_samples', label: 'Portfolio Samples', icon: Image, required: true },
+  { value: 'professional_certification', label: 'Professional Certification', icon: FileText, required: true },
+  { value: 'insurance_certificate', label: 'Insurance Certificate', icon: FileText, required: false },
+  { value: 'contract_template', label: 'Contract Template', icon: FileText, required: false },
+  { value: 'other', label: 'Other Document', icon: File, required: false }
 ];
 
 const getStatusColor = (status: string) => {
@@ -63,9 +75,15 @@ const formatFileSize = (bytes: number): string => {
 
 export const DocumentUploadComponent: React.FC<DocumentUploadComponentProps> = ({
   vendorId,
+  vendorType = 'business',
   className
 }) => {
-  const [selectedDocumentType, setSelectedDocumentType] = useState('business_license');
+  // Get appropriate document types based on vendor type
+  const DOCUMENT_TYPES = vendorType === 'freelancer' ? FREELANCER_DOCUMENT_TYPES : BUSINESS_DOCUMENT_TYPES;
+  
+  const [selectedDocumentType, setSelectedDocumentType] = useState(
+    vendorType === 'freelancer' ? 'valid_id' : 'business_license'
+  );
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -151,11 +169,56 @@ export const DocumentUploadComponent: React.FC<DocumentUploadComponentProps> = (
 
   return (
     <div className={cn('space-y-6', className)}>
+      {/* Requirements Banner */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 mb-4">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h4 className="font-semibold text-blue-900 mb-2">
+              {vendorType === 'freelancer' 
+                ? '📋 Required Documents for Freelancers' 
+                : '📋 Required Documents for Businesses'}
+            </h4>
+            <div className="text-sm text-blue-800 space-y-1">
+              {vendorType === 'freelancer' ? (
+                <>
+                  <p className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    <strong>Valid ID</strong> (Government-issued: Driver's License, Passport, National ID, etc.)
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    <strong>Portfolio Samples</strong> (Previous work, photos, videos, or projects)
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    <strong>Professional Certification</strong> (Relevant certificates, training, or awards)
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    <strong>Business License/Permit</strong> (DTI, SEC, or Mayor's Permit)
+                  </p>
+                  <p className="text-xs text-blue-700 mt-1 ml-6">
+                    Optional: Insurance Certificate, Tax Certificate, Professional Certifications
+                  </p>
+                </>
+              )}
+            </div>
+            <p className="text-xs text-blue-700 mt-3 font-medium">
+              💡 All required documents must be approved before you can add services
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Upload Section */}
       <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
         <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Upload className="w-5 h-5 text-pink-600" />
-          Upload Business Documents
+          {vendorType === 'freelancer' ? 'Upload Verification Documents' : 'Upload Business Documents'}
         </h3>
 
         {/* Document Type Selection */}

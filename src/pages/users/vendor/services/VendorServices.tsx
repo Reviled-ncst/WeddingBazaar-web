@@ -242,17 +242,21 @@ export const VendorServices: React.FC = () => {
     };
   };
 
-  // Check if user can add services (requires ONLY email verification for now)
-  // TODO: Re-enable document verification requirement in production
+  // Check if user can add services (requires BOTH email AND document verification)
   const canAddServices = () => {
     const verification = getVerificationStatus();
     
-    // Check email verification first
+    // ✅ REQUIREMENT 1: Email verification is REQUIRED
     if (!verification.emailVerified) {
       return false;
     }
     
-    // Check subscription limits
+    // ✅ REQUIREMENT 2: Business documents verification is REQUIRED
+    if (!verification.documentsVerified) {
+      return false;
+    }
+    
+    // ✅ REQUIREMENT 3: Check subscription limits
     const maxServices = subscription?.plan?.limits?.max_services || 5; // Default 5 for free tier
     const currentServicesCount = services.length;
     
