@@ -312,11 +312,13 @@ router.get('/:id', async (req, res) => {
 // CREATE SERVICE - POST /api/services
 router.post('/', async (req, res) => {
   try {
-    console.log('📤 [POST /api/services] Creating new service:', {
-      vendor_id: req.body.vendor_id,
-      title: req.body.title,
-      category: req.body.category
-    });
+    console.log('📤 [POST /api/services] Creating new service');
+    console.log('   Request body keys:', Object.keys(req.body));
+    console.log('   vendor_id:', req.body.vendor_id);
+    console.log('   vendorId:', req.body.vendorId);
+    console.log('   title:', req.body.title);
+    console.log('   category:', req.body.category);
+    console.log('   service_tier:', req.body.service_tier);
 
     const {
       vendor_id,
@@ -370,6 +372,34 @@ router.post('/', async (req, res) => {
     // Use vendor_id or fallback to vendorId
     const finalVendorId = vendor_id || vendorId;
     const finalTitle = title || name;
+
+    console.log('🔑 [Vendor Check] Final vendor ID:', finalVendorId);
+
+    // Check if vendor exists before proceeding
+    try {
+      const vendorCheck = await sql`
+        SELECT id FROM vendors WHERE id = ${finalVendorId} LIMIT 1
+      `;
+      
+      if (vendorCheck.length === 0) {
+        console.log(`❌ [Vendor Check] Vendor not found: ${finalVendorId}`);
+        return res.status(400).json({
+          success: false,
+          error: 'Vendor not found',
+          message: 'Please ensure you are logged in as a vendor with a valid profile',
+          vendor_id: finalVendorId
+        });
+      }
+      
+      console.log(`✅ [Vendor Check] Vendor exists: ${vendorCheck[0].id}`);
+    } catch (vendorError) {
+      console.error('❌ [Vendor Check] Error checking vendor:', vendorError);
+      return res.status(500).json({
+        success: false,
+        error: 'Error validating vendor',
+        message: vendorError.message
+      });
+    }
 
     // ✅ SUBSCRIPTION LIMIT CHECK - Check if vendor can create more services
     console.log('🔍 [Subscription Check] Checking service limits for vendor:', finalVendorId);
