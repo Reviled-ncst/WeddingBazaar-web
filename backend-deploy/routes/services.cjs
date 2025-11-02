@@ -371,52 +371,45 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Use vendor_id or fallback to vendorId
-    const finalVendorId = vendor_id || vendorId;
+    // ✅ SIMPLIFIED: Use user ID directly as vendor_id
+    // No more VEN-XXXXX format - just use the user.id (2-2025-XXX)
+    const actualVendorId = vendor_id || vendorId;
     const finalTitle = title || name;
 
-    console.log('🔑 [Vendor Check] Final vendor ID:', finalVendorId);
+    console.log('🔑 [Service Creation] Using vendor ID (user.id):', actualVendorId);
 
-    // Check if vendor exists before proceeding
-    // NOTE: Frontend may send either vendor.id (VEN-XXXXX) or user.id (2-2025-XXX)
-    // We need to handle both cases for flexibility
-    let actualVendorId = finalVendorId;
+    // Basic validation: check if user exists and is a vendor
     try {
-      // First, try to find vendor by vendor ID
-      let vendorCheck = await sql`
-        SELECT id, user_id FROM vendors WHERE id = ${finalVendorId} LIMIT 1
+      const userCheck = await sql`
+        SELECT id, user_type FROM users WHERE id = ${actualVendorId} LIMIT 1
       `;
       
-      // If not found, maybe they sent user_id instead of vendor_id
-      if (vendorCheck.length === 0) {
-        console.log(`🔍 [Vendor Check] Not found by vendor ID, trying user_id...`);
-        vendorCheck = await sql`
-          SELECT id, user_id FROM vendors WHERE user_id = ${finalVendorId} LIMIT 1
-        `;
-        
-        if (vendorCheck.length > 0) {
-          actualVendorId = vendorCheck[0].id; // Use the actual vendor ID
-          console.log(`✅ [Vendor Check] Found vendor by user_id: ${actualVendorId}`);
-        }
-      }
-      
-      if (vendorCheck.length === 0) {
-        console.log(`❌ [Vendor Check] Vendor not found with ID or user_id: ${finalVendorId}`);
+      if (userCheck.length === 0) {
+        console.log(`❌ [Vendor Check] User not found: ${actualVendorId}`);
         return res.status(400).json({
           success: false,
-          error: 'Vendor profile not found',
-          message: 'Please ensure you are logged in as a vendor and have completed your business profile',
-          vendor_id_sent: finalVendorId,
-          hint: 'You may need to complete vendor onboarding first'
+          error: 'User not found',
+          message: 'Please ensure you are logged in',
+          vendor_id_sent: actualVendorId
         });
       }
       
-      console.log(`✅ [Vendor Check] Vendor exists: ${vendorCheck[0].id}`);
+      if (userCheck[0].user_type !== 'vendor') {
+        console.log(`❌ [Vendor Check] User is not a vendor: ${actualVendorId}, type: ${userCheck[0].user_type}`);
+        return res.status(403).json({
+          success: false,
+          error: 'Not authorized',
+          message: 'Only vendors can create services',
+          user_type: userCheck[0].user_type
+        });
+      }
+      
+      console.log(`✅ [Vendor Check] User is valid vendor: ${actualVendorId}`);
     } catch (vendorError) {
-      console.error('❌ [Vendor Check] Error checking vendor:', vendorError);
+      console.error('❌ [Vendor Check] Error checking user:', vendorError);
       return res.status(500).json({
         success: false,
-        error: 'Error validating vendor',
+        error: 'Error validating user',
         message: vendorError.message
       });
     }
