@@ -506,11 +506,15 @@ router.post('/', async (req, res) => {
     // Normalize service_tier to lowercase (constraint requires 'basic', 'standard', 'premium')
     const normalizedServiceTier = service_tier ? service_tier.toLowerCase() : null;
     
-    // Insert into database with DSS fields
+    // ✅ COMPLETE FIX: Insert ALL fields that frontend sends (no data loss)
     const result = await sql`
       INSERT INTO services (
-        id, vendor_id, title, description, category, price, price_range, location, images, features,
+        id, vendor_id, title, description, category, 
+        price, price_range, max_price, 
+        location, location_data, location_coordinates, location_details,
+        images, features,
         featured, is_active,
+        contact_info, tags, keywords,
         years_in_business, service_tier, wedding_styles, cultural_specialties, availability,
         created_at, updated_at
       ) VALUES (
@@ -521,11 +525,18 @@ router.post('/', async (req, res) => {
         ${category},
         ${price ? parseFloat(price) : null},
         ${price_range || null},
+        ${max_price ? parseFloat(max_price) : null},
         ${location || ''},
+        ${location_data || null},
+        ${location_coordinates || null},
+        ${location_details || null},
         ${Array.isArray(images) ? images : []},
         ${Array.isArray(features) ? features : []},
         ${Boolean(featured)},
         ${Boolean(is_active)},
+        ${contact_info || null},
+        ${Array.isArray(tags) ? tags : null},
+        ${keywords || null},
         ${years_in_business ? parseInt(years_in_business) : null},
         ${normalizedServiceTier},
         ${Array.isArray(wedding_styles) ? wedding_styles : null},
