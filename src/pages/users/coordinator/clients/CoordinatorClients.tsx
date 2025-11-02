@@ -3,9 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Users, Plus, Search, Filter, Phone, Mail, 
   Calendar, Heart, Eye, MessageCircle, Star,
-  TrendingUp, DollarSign, MapPin, Clock
+  TrendingUp, DollarSign, MapPin, Clock, Edit, Trash2
 } from 'lucide-react';
 import { CoordinatorHeader } from '../layout/CoordinatorHeader';
+import {
+  ClientCreateModal,
+  ClientEditModal,
+  ClientDetailsModal,
+  ClientDeleteDialog,
+} from './components';
 
 interface Client {
   id: string;
@@ -35,6 +41,13 @@ export const CoordinatorClients: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'date' | 'budget' | 'progress'>('date');
 
+  // Modal states
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+
   useEffect(() => {
     loadClients();
   }, []);
@@ -47,7 +60,40 @@ export const CoordinatorClients: React.FC = () => {
   const loadClients = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
+      
+      // Import coordinator service
+      const { getAllClients } = await import('../../../../shared/services/coordinatorService');
+      
+      // Fetch real data from backend
+      const response = await getAllClients();
+      
+      if (response.success && response.clients) {
+        // Map backend data to frontend format
+        const mappedClients: Client[] = response.clients.map((c: any) => ({
+          id: c.id,
+          coupleName: c.couple_name || 'Unknown Couple',
+          email: c.email || '',
+          phone: c.phone || '',
+          weddingDate: c.wedding_date || '',
+          venue: c.venue || 'TBD',
+          budget: parseFloat(c.budget_range || '0'),
+          status: c.status || 'active',
+          daysUntilWedding: c.wedding_date ? Math.ceil((new Date(c.wedding_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0,
+          progress: c.progress || 0,
+          vendorsBooked: c.vendors_booked || 0,
+          totalVendors: c.total_vendors || 0,
+          lastContact: c.last_contact || new Date().toISOString(),
+          notes: c.notes || '',
+          preferredStyle: c.preferred_style || 'Classic',
+          guestCount: c.guest_count || 0
+        }));
+        
+        setClients(mappedClients);
+        return;
+      }
+      
+      // Fallback to mock data if API fails
+      console.warn('No clients data from API, using mock data');
       const mockClients: Client[] = [
         {
           id: '1',
@@ -219,23 +265,89 @@ export const CoordinatorClients: React.FC = () => {
     });
   };
 
+  // Modal handlers
+  const handleOpenCreate = () => {
+    setCreateModalOpen(true);
+  };
+
+  const handleOpenEdit = (client: Client) => {
+    setSelectedClient(client);
+    setEditModalOpen(true);
+  };
+
+  const handleOpenDetails = (client: Client) => {
+    setSelectedClient(client);
+    setDetailsModalOpen(true);
+  };
+
+  const handleOpenDelete = (client: Client) => {
+    setSelectedClient(client);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleUpdateClient = async (clientId: string, data: any) => {
+    try {
+      const { updateClient } = await import('../../../../shared/services/coordinatorService');
+      const result = await updateClient(clientId, data);
+      
+      if (result.success) {
+        await loadClients();
+        setEditModalOpen(false);
+        alert('Client updated successfully!');
+      } else {
+        throw new Error(result.message || 'Failed to update client');
+      }
+    } catch (error) {
+      console.error('Error updating client:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteClient = async (clientId: string) => {
+    try {
+      const { deleteClient } = await import('../../../../shared/services/coordinatorService');
+      const result = await deleteClient(clientId);
+      
+      if (result.success) {
+        await loadClients();
+        setDeleteDialogOpen(false);
+        alert('Client deleted successfully!');
+      } else {
+        throw new Error(result.message || 'Failed to delete client');
+      }
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      throw error;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-white">
       <CoordinatorHeader />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
-        {/* Page Header */}
+        {/* Backend Connection Indicator */}
+        {!loading && clients.length > 0 && (
+          <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl p-4 mb-4 text-white shadow-lg border-2 border-green-400">
+            <div className="flex items-center justify-center gap-3">
+              <Users className="h-6 w-6 animate-pulse" />
+              <span className="font-bold text-lg">✅ Backend API Connected - {clients.length} Clients Loaded</span>
+            </div>
+          </div>
+        )}
+        
+        {/* Page Header - Enhanced */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Client Management</h1>
-              <p className="text-gray-600">Track and manage all your wedding clients</p>
+              <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Client Management</h1>
+              <p className="text-gray-700 font-medium text-lg">Track and manage all your wedding clients</p>
             </div>
             <button
-              onClick={() => navigate('/coordinator/clients/add')}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-xl hover:shadow-lg transition-all"
+              onClick={handleOpenCreate}
+              className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-600 to-yellow-600 text-white rounded-xl hover:shadow-2xl transition-all hover:scale-105 font-bold text-lg"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-6 h-6" />
               Add Client
             </button>
           </div>
@@ -393,12 +505,20 @@ export const CoordinatorClients: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => navigate(`/coordinator/clients/${client.id}`)}
+                      onClick={() => handleOpenDetails(client)}
                       className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                       title="View Details"
                       aria-label="View client details"
                     >
                       <Eye className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleOpenEdit(client)}
+                      className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                      title="Edit Client"
+                      aria-label="Edit client"
+                    >
+                      <Edit className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => navigate(`/coordinator/messages?client=${client.id}`)}
@@ -407,6 +527,14 @@ export const CoordinatorClients: React.FC = () => {
                       aria-label="Send message to client"
                     >
                       <MessageCircle className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleOpenDelete(client)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                      title="Delete Client"
+                      aria-label="Delete client"
+                    >
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
@@ -481,6 +609,72 @@ export const CoordinatorClients: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <ClientCreateModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={loadClients}
+      />
+
+      {selectedClient && (
+        <>
+          <ClientEditModal
+            isOpen={editModalOpen}
+            onClose={() => {
+              setEditModalOpen(false);
+              setSelectedClient(null);
+            }}
+            onSave={handleUpdateClient}
+            client={{
+              id: selectedClient.id,
+              couple_name: selectedClient.coupleName,
+              email: selectedClient.email,
+              phone: selectedClient.phone,
+              status: selectedClient.status,
+              preferred_style: selectedClient.preferredStyle,
+              budget_range: selectedClient.budget.toString(),
+              notes: selectedClient.notes,
+              last_contact: selectedClient.lastContact,
+            }}
+          />
+
+          <ClientDetailsModal
+            isOpen={detailsModalOpen}
+            onClose={() => {
+              setDetailsModalOpen(false);
+              setSelectedClient(null);
+            }}
+            client={{
+              id: selectedClient.id,
+              couple_name: selectedClient.coupleName,
+              email: selectedClient.email,
+              phone: selectedClient.phone,
+              status: selectedClient.status,
+              preferred_style: selectedClient.preferredStyle,
+              budget_range: selectedClient.budget.toString(),
+              notes: selectedClient.notes,
+              last_contact: selectedClient.lastContact,
+              created_at: selectedClient.lastContact,
+              wedding_count: 1,
+            }}
+          />
+
+          <ClientDeleteDialog
+            isOpen={deleteDialogOpen}
+            onClose={() => {
+              setDeleteDialogOpen(false);
+              setSelectedClient(null);
+            }}
+            onConfirm={handleDeleteClient}
+            client={{
+              id: selectedClient.id,
+              couple_name: selectedClient.coupleName,
+              wedding_count: 1,
+            }}
+          />
+        </>
+      )}
     </div>
   );
 };

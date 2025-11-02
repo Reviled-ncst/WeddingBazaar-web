@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
@@ -349,8 +350,8 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-20 animate-pulse"></div>
             
             {/* Floating orbs for depth */}
-            <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-300/10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+            <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl animate-pulse [animation-delay:500ms]"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-300/10 rounded-full blur-2xl animate-pulse [animation-delay:1000ms]"></div>
           
           {/* Header content */}
           <div className="relative flex items-center justify-between mb-6">
@@ -467,10 +468,13 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                 onDateSelect={(date) => {
                   setFormData(prev => ({ ...prev, eventDate: date }));
                   // Clear date error when valid date is selected
-                  setFormErrors(prev => {
-                    const { eventDate, ...rest } = prev;
-                    return rest;
-                  });
+                  if (formErrors.eventDate) {
+                    setFormErrors(prev => {
+                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                      const { eventDate, ...rest } = prev;
+                      return rest;
+                    });
+                  }
                 }}
                 minDate={new Date().toISOString().split('T')[0]}
                 className="shadow-none border-0"
@@ -500,10 +504,13 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                     onChange={(location) => {
                       setFormData(prev => ({ ...prev, eventLocation: location }));
                       // Clear location error when valid location is selected
-                      setFormErrors(prev => {
-                        const { eventLocation, ...rest } = prev;
-                        return rest;
-                      });
+                      if (formErrors.eventLocation) {
+                        setFormErrors(prev => {
+                          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                          const { eventLocation, ...rest } = prev;
+                          return rest;
+                        });
+                      }
                     }}
                     placeholder="Search for venue or city (e.g., Manila, Philippines)"
                     className="w-full"
@@ -782,7 +789,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
             <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-pink-500 to-purple-600 rounded-full transition-all duration-300"
-                style={{ width: `${formProgress.percentage}%` }}
+                style={{ width: `${formProgress.percentage}%` } as React.CSSProperties}
               ></div>
             </div>
             </div>

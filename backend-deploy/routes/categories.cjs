@@ -147,6 +147,74 @@ router.get('/:categoryId/subcategories', async (req, res) => {
 // SERVICE FEATURES ENDPOINTS
 // ============================================================================
 
+// GET /api/categories/by-name/:categoryName/fields - Get fields by category name
+router.get('/by-name/:categoryName/fields', async (req, res) => {
+  try {
+    const { categoryName } = req.params;
+    console.log(`📋 [API] GET /api/categories/by-name/${categoryName}/fields called`);
+    
+    // First, find the category by name (check both name and display_name)
+    const categories = await sql`
+      SELECT id, name, display_name
+      FROM service_categories 
+      WHERE (name = ${categoryName} OR display_name = ${categoryName})
+        AND is_active = true
+      LIMIT 1
+    `;
+    
+    if (categories.length === 0) {
+      console.log(`❌ [API] Category not found: ${categoryName}`);
+      return res.status(404).json({
+        success: false,
+        error: 'Category not found',
+        categoryName
+      });
+    }
+    
+    const category = categories[0];
+    console.log(`✅ [API] Found category: ${category.display_name} (ID: ${category.id})`);
+    
+    // Get fields for this category
+    const fields = await sql`
+      SELECT 
+        id, 
+        category_id,
+        field_name,
+        field_label,
+        field_type,
+        is_required,
+        options,
+        help_text,
+        validation_rules,
+        sort_order
+      FROM service_category_fields 
+      WHERE category_id = ${category.id}
+        AND is_active = true
+      ORDER BY sort_order ASC, field_label ASC
+    `;
+    
+    console.log(`✅ [API] Found ${fields.length} fields for category ${category.display_name}`);
+    
+    res.json({
+      success: true,
+      category: {
+        id: category.id,
+        name: category.name,
+        display_name: category.display_name
+      },
+      fields: fields,
+      total: fields.length
+    });
+  } catch (error) {
+    console.error('❌ [API] Error fetching category fields by name:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch category fields',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // GET /api/categories/:categoryId/features - Get features for a category
 router.get('/:categoryId/features', async (req, res) => {
   try {

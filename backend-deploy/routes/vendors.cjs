@@ -45,6 +45,104 @@ router.get('/categories', async (req, res) => {
   }
 });
 
+// GET /api/vendors/:id/dashboard - Get vendor dashboard statistics
+router.get('/:id/dashboard', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`📊 [VENDORS] GET /api/vendors/${id}/dashboard called`);
+    
+    // Get vendor basic info
+    const vendors = await sql`
+      SELECT 
+        id, business_name, business_type, rating, review_count,
+        location, verified, profile_image
+      FROM vendors 
+      WHERE id = ${id}
+    `;
+    
+    if (vendors.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Vendor not found'
+      });
+    }
+    
+    const vendor = vendors[0];
+    
+    // Get services count
+    const servicesCount = await sql`
+      SELECT COUNT(*) as count 
+      FROM services 
+      WHERE vendor_id = ${id} AND is_active = true
+    `;
+    
+    // Get bookings statistics
+    const bookingsStats = await sql`
+      SELECT 
+        COUNT(*) as total_bookings,
+        COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed_bookings,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_bookings,
+        COUNT(CASE WHEN status = 'request' THEN 1 END) as pending_requests
+      FROM bookings 
+      WHERE vendor_id = ${id}
+    `;
+    
+    // Get total revenue from completed bookings
+    const revenueData = await sql`
+      SELECT 
+        COALESCE(SUM(amount), 0) as total_revenue,
+        COALESCE(SUM(downpayment_amount), 0) as total_deposits
+      FROM bookings 
+      WHERE vendor_id = ${id} 
+        AND status IN ('completed', 'paid_in_full', 'fully_paid')
+    `;
+    
+    // Get recent bookings
+    const recentBookings = await sql`
+      SELECT 
+        id, booking_reference, status, amount, event_date, created_at
+      FROM bookings 
+      WHERE vendor_id = ${id}
+      ORDER BY created_at DESC
+      LIMIT 5
+    `;
+    
+    console.log(`✅ [VENDORS] Dashboard data fetched for vendor ${id}`);
+    
+    res.json({
+      success: true,
+      vendor: {
+        id: vendor.id,
+        name: vendor.business_name,
+        category: vendor.business_type,
+        rating: parseFloat(vendor.rating) || 0,
+        reviewCount: parseInt(vendor.review_count) || 0,
+        location: vendor.location,
+        verified: vendor.verified,
+        profileImage: vendor.profile_image
+      },
+      statistics: {
+        totalServices: parseInt(servicesCount[0].count) || 0,
+        totalBookings: parseInt(bookingsStats[0].total_bookings) || 0,
+        confirmedBookings: parseInt(bookingsStats[0].confirmed_bookings) || 0,
+        completedBookings: parseInt(bookingsStats[0].completed_bookings) || 0,
+        pendingRequests: parseInt(bookingsStats[0].pending_requests) || 0,
+        totalRevenue: parseFloat(revenueData[0].total_revenue) || 0,
+        totalDeposits: parseFloat(revenueData[0].total_deposits) || 0
+      },
+      recentBookings: recentBookings,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ [VENDORS] Dashboard error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Get featured vendors
 router.get('/featured', async (req, res) => {
   try {

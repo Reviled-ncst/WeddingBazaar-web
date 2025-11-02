@@ -843,7 +843,7 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                   </h3>
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Vendor:</span>
+                      <span className="text-gray-600">Service Provider:</span>
                       <span className="font-semibold text-gray-900">{booking.vendorName}</span>
                     </div>
                     <div className="flex justify-between items-center">

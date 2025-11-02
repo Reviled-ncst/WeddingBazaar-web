@@ -373,7 +373,7 @@ const TransactionHistory: React.FC = () => {
             />
             <StatCard
               icon={<Building2 className="w-6 h-6" />}
-              title={isVendor ? "Customers" : "Vendors"}
+              title={isVendor ? "Customers" : "Service Providers"}
               value={statistics.uniqueVendors.toString()}
               gradient="from-orange-500 to-red-500"
               delay={0.4}
@@ -393,7 +393,7 @@ const TransactionHistory: React.FC = () => {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search by vendor, service, or receipt number..."
+              placeholder="Search by service provider, service, or receipt number..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
@@ -474,7 +474,7 @@ const TransactionHistory: React.FC = () => {
                     >
                       <option value="date">Date</option>
                       <option value="amount">Amount</option>
-                      <option value="vendor">Vendor</option>
+                      <option value="vendor">Service Provider</option>
                     </select>
                     <button
                       onClick={toggleSortOrder}

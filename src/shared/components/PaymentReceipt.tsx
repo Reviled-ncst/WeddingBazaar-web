@@ -229,7 +229,7 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = ({
               <User className="w-4 h-4 text-gray-400 mt-0.5" />
               <div>
                 <p className="font-medium text-gray-900">{issuedBy?.name || booking?.vendorName}</p>
-                <p className="text-sm text-gray-600">Wedding Bazaar Vendor</p>
+                <p className="text-sm text-gray-600">Wedding Bazaar Service Provider</p>
               </div>
             </div>
           </div>

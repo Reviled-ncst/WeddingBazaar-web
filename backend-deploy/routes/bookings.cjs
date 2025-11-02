@@ -2,6 +2,7 @@ const express = require('express');
 const { sql } = require('../config/database.cjs');
 const { createDepositReceipt, createBalanceReceipt, createFullPaymentReceipt } = require('../helpers/receiptGenerator.cjs');
 const emailService = require('../utils/emailService.cjs');
+const { handleCoordinatorBooking } = require('./coordinator/auto-integration.cjs');
 
 const router = express.Router();
 
@@ -887,6 +888,17 @@ router.post('/request', async (req, res) => {
     const bookingId = booking[0].id; // Get the auto-generated UUID
     console.log(`✅ Booking request created with ID: ${bookingId}`);
     console.log('📊 Created booking data:', booking[0]);
+    
+    // 🤖 AUTO-INTEGRATION: Check if coordinator booking and auto-create records
+    try {
+      const coordinatorIntegration = await handleCoordinatorBooking(booking[0]);
+      if (coordinatorIntegration.success) {
+        console.log('🎉 AUTO-INTEGRATION SUCCESS:', coordinatorIntegration);
+      }
+    } catch (integrationError) {
+      // Log but don't fail booking creation
+      console.error('⚠️ AUTO-INTEGRATION ERROR:', integrationError.message);
+    }
     
     // 📧 Send email notification to vendor (async, don't wait)
     try {

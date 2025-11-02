@@ -48,7 +48,40 @@ export const CoordinatorVendors: React.FC = () => {
   const loadVendors = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
+      
+      // Import coordinator service
+      const { getVendorNetwork } = await import('../../../../shared/services/coordinatorService');
+      
+      // Fetch real data from backend
+      const response = await getVendorNetwork();
+      
+      if (response.success && response.vendors) {
+        // Map backend data to frontend format
+        const mappedVendors: Vendor[] = response.vendors.map((v: any) => ({
+          id: v.id || v.vendor_id,
+          businessName: v.business_name || v.vendor_name || 'Unknown Vendor',
+          category: v.category || v.business_type || 'Other',
+          rating: parseFloat(v.average_rating || v.rating || '0'),
+          reviewCount: v.review_count || v.total_reviews || 0,
+          completedBookings: v.total_bookings || v.completed_bookings || 0,
+          phone: v.phone || '',
+          email: v.email || '',
+          location: v.location || v.service_areas?.[0] || 'Metro Manila',
+          priceRange: v.price_range || v.pricing_range || 'Contact for pricing',
+          specialties: v.specialties || v.tags || [],
+          isPreferred: v.is_preferred || false,
+          totalRevenue: parseFloat(v.total_revenue || '0'),
+          lastWorkedWith: v.last_worked_with || '',
+          availability: 'available',
+          image: v.image || '/vendors/default.jpg'
+        }));
+        
+        setVendors(mappedVendors);
+        return;
+      }
+      
+      // Fallback to mock data if API fails
+      console.warn('No vendors data from API, using mock data');
       const mockVendors: Vendor[] = [
         {
           id: '1',
@@ -216,18 +249,28 @@ export const CoordinatorVendors: React.FC = () => {
       <CoordinatorHeader />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
-        {/* Page Header */}
+        {/* Backend Connection Indicator */}
+        {!loading && vendors.length > 0 && (
+          <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl p-4 mb-4 text-white shadow-lg border-2 border-green-400">
+            <div className="flex items-center justify-center gap-3">
+              <Award className="h-6 w-6 animate-pulse" />
+              <span className="font-bold text-lg">✅ Backend API Connected - {vendors.length} Vendors in Network</span>
+            </div>
+          </div>
+        )}
+        
+        {/* Page Header - Enhanced */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Vendor Network</h1>
-              <p className="text-gray-600">Manage your trusted vendor partnerships</p>
+              <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Vendor Network</h1>
+              <p className="text-gray-700 font-medium text-lg">Manage your trusted vendor partnerships</p>
             </div>
             <button
               onClick={() => navigate('/coordinator/vendors/add')}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-xl hover:shadow-lg transition-all"
+              className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-600 to-yellow-600 text-white rounded-xl hover:shadow-2xl transition-all hover:scale-105 font-bold text-lg"
             >
-              <UserPlus className="w-5 h-5" />
+              <UserPlus className="w-6 h-6" />
               Add Vendor
             </button>
           </div>

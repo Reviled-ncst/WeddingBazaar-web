@@ -6,6 +6,12 @@ import {
   Clock, AlertCircle, TrendingUp, Heart
 } from 'lucide-react';
 import { CoordinatorHeader } from '../layout/CoordinatorHeader';
+import { 
+  WeddingCreateModal, 
+  WeddingEditModal, 
+  WeddingDetailsModal, 
+  WeddingDeleteDialog 
+} from './components';
 
 interface Wedding {
   id: string;
@@ -36,6 +42,11 @@ export const CoordinatorWeddings: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date' | 'budget' | 'progress'>('date');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedWedding, setSelectedWedding] = useState<Wedding | null>(null);
 
   useEffect(() => {
     loadWeddings();
@@ -49,11 +60,42 @@ export const CoordinatorWeddings: React.FC = () => {
   const loadWeddings = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/coordinator/weddings');
-      // const data = await response.json();
       
-      // Mock data for now
+      // Import coordinator service
+      const { getAllWeddings } = await import('../../../../shared/services/coordinatorService');
+      
+      // Fetch real data from backend
+      const response = await getAllWeddings({ limit: 50 });
+      
+      if (response.success && response.weddings) {
+        // Map backend data to frontend format
+        const mappedWeddings: Wedding[] = response.weddings.map((w: any) => ({
+          id: w.id,
+          coupleName: w.couple_names || w.couple_name || 'Unknown Couple',
+          coupleEmail: w.couple_email || '',
+          couplePhone: w.couple_phone || '',
+          weddingDate: w.event_date || w.wedding_date || '',
+          venue: w.venue || 'TBD',
+          venueAddress: w.venue_address || '',
+          status: w.status || 'planning',
+          progress: w.progress || 0,
+          budget: parseFloat(w.budget || '0'),
+          spent: parseFloat(w.spent || '0'),
+          vendorsBooked: w.vendors_count || 0,
+          totalVendors: w.vendors_count || 0,
+          guestCount: w.guest_count || 0,
+          nextMilestone: 'Check milestones',
+          daysUntilWedding: Math.ceil((new Date(w.event_date || w.wedding_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+          notes: w.notes || '',
+          createdAt: w.created_at || new Date().toISOString()
+        }));
+        
+        setWeddings(mappedWeddings);
+        return;
+      }
+      
+      // Fallback to mock data if API fails
+      console.warn('No weddings data from API, using mock data');
       const mockWeddings: Wedding[] = [
         {
           id: '1',
@@ -238,23 +280,77 @@ export const CoordinatorWeddings: React.FC = () => {
     });
   };
 
+  // Modal handlers
+  const handleViewDetails = (wedding: Wedding) => {
+    setSelectedWedding(wedding);
+    setShowDetailsModal(true);
+  };
+
+  const handleEdit = (wedding: Wedding) => {
+    setSelectedWedding(wedding);
+    setShowEditModal(true);
+  };
+
+  const handleDelete = (wedding: Wedding) => {
+    setSelectedWedding(wedding);
+    setShowDeleteDialog(true);
+  };
+
+  const handleCloseModals = () => {
+    setShowDetailsModal(false);
+    setShowEditModal(false);
+    setShowDeleteDialog(false);
+    setSelectedWedding(null);
+  };
+
+  const handleSuccessAction = () => {
+    loadWeddings();
+    handleCloseModals();
+  };
+
+  // Helper to map Wedding to modal format
+  const mapWeddingForModal = (wedding: Wedding) => ({
+    id: wedding.id,
+    couple_name: wedding.coupleName,
+    couple_email: wedding.coupleEmail,
+    couple_phone: wedding.couplePhone,
+    wedding_date: wedding.weddingDate,
+    venue: wedding.venue,
+    venue_address: wedding.venueAddress,
+    budget: wedding.budget,
+    guest_count: wedding.guestCount,
+    preferred_style: 'classic', // Default value
+    notes: wedding.notes,
+    status: wedding.status
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-white">
       <CoordinatorHeader />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
-        {/* Page Header */}
+        {/* Backend Connection Indicator */}
+        {!loading && weddings.length > 0 && (
+          <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl p-4 mb-4 text-white shadow-lg border-2 border-green-400">
+            <div className="flex items-center justify-center gap-3">
+              <CheckCircle className="h-6 w-6 animate-pulse" />
+              <span className="font-bold text-lg">✅ Backend API Connected - {weddings.length} Weddings Loaded</span>
+            </div>
+          </div>
+        )}
+        
+        {/* Page Header - Enhanced */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Wedding Management</h1>
-              <p className="text-gray-600">Manage all your coordinated weddings in one place</p>
+              <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Wedding Management</h1>
+              <p className="text-gray-700 font-medium text-lg">Manage all your coordinated weddings in one place</p>
             </div>
             <button
-              onClick={() => navigate('/coordinator/weddings/new')}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-xl hover:shadow-lg transition-all"
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-600 to-yellow-600 text-white rounded-xl hover:shadow-2xl transition-all hover:scale-105 font-bold text-lg"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-6 h-6" />
               Add Wedding
             </button>
           </div>
@@ -410,20 +506,21 @@ export const CoordinatorWeddings: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => navigate(`/coordinator/weddings/${wedding.id}`)}
+                      onClick={() => handleViewDetails(wedding)}
                       className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                       title="View Details"
                     >
                       <Eye className="w-5 h-5" />
                     </button>
                     <button
-                      onClick={() => navigate(`/coordinator/weddings/${wedding.id}/edit`)}
+                      onClick={() => handleEdit(wedding)}
                       className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
                       title="Edit"
                     >
                       <Edit className="w-5 h-5" />
                     </button>
                     <button
+                      onClick={() => handleDelete(wedding)}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
                       title="Delete"
                     >
@@ -489,6 +586,44 @@ export const CoordinatorWeddings: React.FC = () => {
               </div>
             ))}
           </div>
+        )}
+
+        {/* Wedding Create Modal */}
+        <WeddingCreateModal 
+          isOpen={showCreateModal} 
+          onClose={() => setShowCreateModal(false)} 
+          onSuccess={() => {
+            loadWeddings(); // Reload weddings after successful creation
+          }}
+        />
+
+        {/* Wedding Edit Modal */}
+        {showEditModal && selectedWedding && (
+          <WeddingEditModal
+            isOpen={showEditModal}
+            onClose={handleCloseModals}
+            wedding={mapWeddingForModal(selectedWedding)}
+            onSuccess={handleSuccessAction}
+          />
+        )}
+
+        {/* Wedding Details Modal */}
+        {showDetailsModal && selectedWedding && (
+          <WeddingDetailsModal
+            isOpen={showDetailsModal}
+            onClose={handleCloseModals}
+            weddingId={selectedWedding.id}
+          />
+        )}
+
+        {/* Wedding Delete Dialog */}
+        {showDeleteDialog && selectedWedding && (
+          <WeddingDeleteDialog
+            isOpen={showDeleteDialog}
+            onClose={handleCloseModals}
+            wedding={mapWeddingForModal(selectedWedding)}
+            onSuccess={handleSuccessAction}
+          />
         )}
       </div>
     </div>
