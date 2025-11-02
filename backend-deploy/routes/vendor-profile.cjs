@@ -150,6 +150,7 @@ router.get('/:vendorId', async (req, res) => {
       userId: vendor.user_id,
       businessName: vendor.business_name,
       businessType: vendor.business_type,
+      vendorType: vendor.vendor_type, // NEW: Return actual DB value (no fallback!)
       description: vendor.business_description,
       location: vendor.service_areas ? (Array.isArray(vendor.service_areas) ? vendor.service_areas.join(', ') : vendor.service_areas) : null,
       
@@ -211,6 +212,9 @@ router.get('/:vendorId', async (req, res) => {
       createdAt: vendor.created_at,
       updatedAt: vendor.updated_at
     };
+    
+    console.log('✅ [GET PROFILE] Returning vendor_type:', vendorProfile.vendorType);
+    console.log('📦 [GET PROFILE] Profile response keys:', Object.keys(vendorProfile));
     
     res.json(vendorProfile);
     
@@ -664,6 +668,9 @@ router.put('/:vendorId', async (req, res) => {
       profileImage: updateData.profileImage || updateData.featured_image_url
     };
     
+    console.log('🔑 [VENDOR TYPE UPDATE] Vendor Type from request:', updateData.vendorType);
+    console.log('📦 [VENDOR TYPE UPDATE] Final update object:', { vendorType: updates.vendorType });
+    
     // Build dynamic SQL update using actual database column names
     result = await sql`
       UPDATE vendor_profiles 
@@ -722,6 +729,7 @@ router.put('/:vendorId', async (req, res) => {
       userId: updatedVendor.user_id,
       businessName: updatedVendor.business_name,
       businessType: updatedVendor.business_type,
+      vendorType: updatedVendor.vendor_type, // ✅ Return actual DB value (no fallback!)
       description: updatedVendor.business_description,
       location: updatedVendor.service_area,
       yearsInBusiness: updatedVendor.years_in_business,
@@ -737,6 +745,9 @@ router.put('/:vendorId', async (req, res) => {
       portfolioImages: updatedVendor.portfolio_images || [],
       updatedAt: updatedVendor.updated_at
     };
+    
+    console.log('✅ [PUT RESPONSE] Returning vendorType:', formattedResponse.vendorType);
+    console.log('📦 [PUT RESPONSE] Updated vendor from DB:', updatedVendor.vendor_type);
     
     res.json({
       success: true,
