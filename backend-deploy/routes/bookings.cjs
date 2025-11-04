@@ -1708,7 +1708,7 @@ router.post('/:bookingId/cancel', async (req, res) => {
     const { bookingId } = req.params;
     const { userId, reason } = req.body;
     
-    console.log(`🚫 [CANCEL-BOOKING] Booking ID: ${bookingId}, User ID: ${userId}`);
+    console.log(`🚫 [CANCEL-BOOKING] Booking ID: ${bookingId}, User ID from request: ${userId}`);
     
     // Get booking details
     const bookings = await sql`
@@ -1724,11 +1724,22 @@ router.post('/:bookingId/cancel', async (req, res) => {
     
     const booking = bookings[0];
     
-    // Security: Verify user owns this booking
-    if (booking.user_id !== userId) {
+    console.log(`🔍 [CANCEL-BOOKING] Booking user_id: ${booking.user_id}, Request userId: ${userId}`);
+    console.log(`🔍 [CANCEL-BOOKING] Type comparison: ${typeof booking.user_id} vs ${typeof userId}`);
+    console.log(`🔍 [CANCEL-BOOKING] Strict equality: ${booking.user_id === userId}, Loose equality: ${booking.user_id == userId}`);
+    
+    // Security: Verify user owns this booking (use loose equality to handle string/number differences)
+    if (booking.user_id != userId) {
+      console.log(`❌ [CANCEL-BOOKING] Authorization failed! Booking user: ${booking.user_id}, Request user: ${userId}`);
       return res.status(403).json({
         success: false,
-        error: 'Unauthorized: You can only cancel your own bookings'
+        error: 'Unauthorized: You can only cancel your own bookings',
+        debug: {
+          bookingUserId: booking.user_id,
+          requestUserId: userId,
+          bookingUserIdType: typeof booking.user_id,
+          requestUserIdType: typeof userId
+        }
       });
     }
     
@@ -1778,7 +1789,7 @@ router.post('/:bookingId/request-cancellation', async (req, res) => {
     const { bookingId } = req.params;
     const { userId, reason } = req.body;
     
-    console.log(`📝 [REQUEST-CANCELLATION] Booking ID: ${bookingId}, User ID: ${userId}`);
+    console.log(`📝 [REQUEST-CANCELLATION] Booking ID: ${bookingId}, User ID from request: ${userId}`);
     
     // Get booking details
     const bookings = await sql`
@@ -1794,8 +1805,12 @@ router.post('/:bookingId/request-cancellation', async (req, res) => {
     
     const booking = bookings[0];
     
-    // Security: Verify user owns this booking
-    if (booking.user_id !== userId) {
+    console.log(`🔍 [REQUEST-CANCELLATION] Booking user_id: ${booking.user_id}, Request userId: ${userId}`);
+    console.log(`🔍 [REQUEST-CANCELLATION] Type comparison: ${typeof booking.user_id} vs ${typeof userId}`);
+    
+    // Security: Verify user owns this booking (use loose equality to handle string/number differences)
+    if (booking.user_id != userId) {
+      console.log(`❌ [REQUEST-CANCELLATION] Authorization failed! Booking user: ${booking.user_id}, Request user: ${userId}`);
       return res.status(403).json({
         success: false,
         error: 'Unauthorized: You can only request cancellation for your own bookings'
