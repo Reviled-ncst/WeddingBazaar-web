@@ -969,26 +969,52 @@ router.post('/request', async (req, res) => {
     
     // 📧 Send email notification to vendor (async, don't wait)
     try {
+      console.log('🔍 [EMAIL DEBUG] Looking up vendor email for vendor_id:', vendorId);
+      
       // Fetch vendor email from database
       const vendorData = await sql`
         SELECT 
+          vp.id as vendor_profile_id,
           vp.business_name,
+          vp.user_id,
+          u.id as user_id_from_users,
           u.email,
-          u.first_name
+          u.first_name,
+          u.full_name
         FROM vendor_profiles vp
         LEFT JOIN users u ON vp.user_id::text = u.id::text
         WHERE vp.id::text = ${vendorId}::text
         LIMIT 1
       `;
       
+      console.log('📊 [EMAIL DEBUG] Vendor lookup result:', {
+        foundRecords: vendorData?.length || 0,
+        vendorData: vendorData && vendorData.length > 0 ? {
+          vendor_profile_id: vendorData[0].vendor_profile_id,
+          business_name: vendorData[0].business_name,
+          user_id: vendorData[0].user_id,
+          user_id_from_users: vendorData[0].user_id_from_users,
+          email: vendorData[0].email,
+          first_name: vendorData[0].first_name
+        } : 'No data found'
+      });
+      
       if (vendorData && vendorData.length > 0 && vendorData[0].email) {
-        console.log('📧 Sending new booking notification to vendor:', vendorData[0].email);
+        console.log('📧 [EMAIL] Sending new booking notification to vendor:', vendorData[0].email);
+        console.log('📧 [EMAIL] Booking details:', {
+          bookingId,
+          coupleName: coupleName || 'A couple',
+          coupleEmail: contactEmail || 'Not provided',
+          serviceType: serviceType || 'Wedding Service',
+          eventDate: eventDate,
+          eventLocation: location
+        });
         
         // Send email notification (don't await - fire and forget)
         emailService.sendNewBookingNotification({
           email: vendorData[0].email,
           businessName: vendorData[0].business_name,
-          firstName: vendorData[0].first_name
+          firstName: vendorData[0].first_name || vendorData[0].full_name || 'Vendor'
         }, {
           id: bookingId,
           coupleName: coupleName || 'A couple',
@@ -1000,16 +1026,25 @@ router.post('/request', async (req, res) => {
           budgetRange: budgetRange,
           specialRequests: specialRequests,
           createdAt: new Date().toISOString()
+        }).then(() => {
+          console.log('✅ [EMAIL] Vendor notification sent successfully to:', vendorData[0].email);
         }).catch(err => {
           // Log email error but don't fail booking creation
-          console.error('❌ Failed to send vendor notification email:', err.message);
+          console.error('❌ [EMAIL] Failed to send vendor notification email:', err.message);
+          console.error('❌ [EMAIL] Error stack:', err.stack);
         });
       } else {
-        console.log('⚠️ Vendor email not found, skipping notification');
+        console.log('⚠️ [EMAIL] Vendor email not found - Details:', {
+          vendorIdSearched: vendorId,
+          recordsFound: vendorData?.length || 0,
+          hasEmail: vendorData && vendorData.length > 0 ? !!vendorData[0].email : false
+        });
+        console.log('💡 [EMAIL] Tip: Check if vendor_id matches vendor_profiles.id in database');
       }
     } catch (emailError) {
       // Log email error but don't fail booking creation
-      console.error('❌ Error preparing vendor notification:', emailError.message);
+      console.error('❌ [EMAIL] Error preparing vendor notification:', emailError.message);
+      console.error('❌ [EMAIL] Error stack:', emailError.stack);
     }
     
     res.json({
