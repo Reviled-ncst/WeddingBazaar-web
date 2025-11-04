@@ -1724,24 +1724,38 @@ router.post('/:bookingId/cancel', async (req, res) => {
     
     const booking = bookings[0];
     
-    console.log(`🔍 [CANCEL-BOOKING] Booking user_id: ${booking.user_id}, Request userId: ${userId}`);
+    console.log(`🔍 [CANCEL-BOOKING] Booking user_id: "${booking.user_id}", Request userId: "${userId}"`);
     console.log(`🔍 [CANCEL-BOOKING] Type comparison: ${typeof booking.user_id} vs ${typeof userId}`);
+    console.log(`🔍 [CANCEL-BOOKING] String representation: "${String(booking.user_id)}" vs "${String(userId)}"`);
     console.log(`🔍 [CANCEL-BOOKING] Strict equality: ${booking.user_id === userId}, Loose equality: ${booking.user_id == userId}`);
+    console.log(`🔍 [CANCEL-BOOKING] String equality: ${String(booking.user_id) === String(userId)}`);
     
-    // Security: Verify user owns this booking (use loose equality to handle string/number differences)
-    if (booking.user_id != userId) {
-      console.log(`❌ [CANCEL-BOOKING] Authorization failed! Booking user: ${booking.user_id}, Request user: ${userId}`);
+    // Security: Verify user owns this booking
+    // Convert both to strings for comparison to handle any type mismatch
+    const bookingUserId = String(booking.user_id);
+    const requestUserId = String(userId);
+    
+    if (bookingUserId !== requestUserId) {
+      console.log(`❌ [CANCEL-BOOKING] Authorization failed!`);
+      console.log(`   Booking user: "${booking.user_id}" (${typeof booking.user_id})`);
+      console.log(`   Request user: "${userId}" (${typeof userId})`);
+      console.log(`   As strings: "${bookingUserId}" !== "${requestUserId}"`);
       return res.status(403).json({
         success: false,
         error: 'Unauthorized: You can only cancel your own bookings',
         debug: {
           bookingUserId: booking.user_id,
-          requestUserId: userId,
           bookingUserIdType: typeof booking.user_id,
-          requestUserIdType: typeof userId
+          requestUserId: userId,
+          requestUserIdType: typeof userId,
+          bookingUserIdString: bookingUserId,
+          requestUserIdString: requestUserId,
+          stringMatch: bookingUserId === requestUserId
         }
       });
     }
+    
+    console.log(`✅ [CANCEL-BOOKING] Authorization passed: "${bookingUserId}" === "${requestUserId}"`);
     
     // Only allow direct cancellation for request/quote_requested status
     const allowedStatuses = ['request', 'quote_requested'];
@@ -1805,17 +1819,36 @@ router.post('/:bookingId/request-cancellation', async (req, res) => {
     
     const booking = bookings[0];
     
-    console.log(`🔍 [REQUEST-CANCELLATION] Booking user_id: ${booking.user_id}, Request userId: ${userId}`);
+    console.log(`🔍 [REQUEST-CANCELLATION] Booking user_id: "${booking.user_id}", Request userId: "${userId}"`);
     console.log(`🔍 [REQUEST-CANCELLATION] Type comparison: ${typeof booking.user_id} vs ${typeof userId}`);
+    console.log(`🔍 [REQUEST-CANCELLATION] String representation: "${String(booking.user_id)}" vs "${String(userId)}"`);
     
-    // Security: Verify user owns this booking (use loose equality to handle string/number differences)
-    if (booking.user_id != userId) {
-      console.log(`❌ [REQUEST-CANCELLATION] Authorization failed! Booking user: ${booking.user_id}, Request user: ${userId}`);
+    // Security: Verify user owns this booking
+    // Convert both to strings for comparison to handle any type mismatch
+    const bookingUserId = String(booking.user_id);
+    const requestUserId = String(userId);
+    
+    if (bookingUserId !== requestUserId) {
+      console.log(`❌ [REQUEST-CANCELLATION] Authorization failed!`);
+      console.log(`   Booking user: "${booking.user_id}" (${typeof booking.user_id})`);
+      console.log(`   Request user: "${userId}" (${typeof userId})`);
+      console.log(`   As strings: "${bookingUserId}" !== "${requestUserId}"`);
       return res.status(403).json({
         success: false,
-        error: 'Unauthorized: You can only request cancellation for your own bookings'
+        error: 'Unauthorized: You can only request cancellation for your own bookings',
+        debug: {
+          bookingUserId: booking.user_id,
+          bookingUserIdType: typeof booking.user_id,
+          requestUserId: userId,
+          requestUserIdType: typeof userId,
+          bookingUserIdString: bookingUserId,
+          requestUserIdString: requestUserId,
+          stringMatch: bookingUserId === requestUserId
+        }
       });
     }
+    
+    console.log(`✅ [REQUEST-CANCELLATION] Authorization passed: "${bookingUserId}" === "${requestUserId}"`);
     
     // Cannot request cancellation if already cancelled or completed
     if (booking.status === 'cancelled') {
