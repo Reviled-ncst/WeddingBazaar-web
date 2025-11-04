@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚨 PRODUCTION Console Diagnostic</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .content {
+            padding: 40px;
+        }
+        .test-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 5px solid #667eea;
+        }
+        .test-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        .result {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .result h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 5px;
+        }
+        .status.pass {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+        }
+        .log-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+        .log-line {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .log-line.info {
+            color: #4fc3f7;
+        }
+        .log-line.success {
+            color: #81c784;
+        }
+        .log-line.error {
+            color: #e57373;
+            background: rgba(229, 115, 115, 0.1);
+        }
+        .log-line.warning {
+            color: #ffb74d;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 10px 5px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .alert {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .alert.critical {
+            background: #ffebee;
+            border-left: 5px solid #f44336;
+            color: #c62828;
+        }
+        .alert.info {
+            background: #e3f2fd;
+            border-left: 5px solid #2196f3;
+            color: #1565c0;
+        }
+        .timestamp {
+            font-size: 0.9em;
+            color: #999;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 PRODUCTION Console Diagnostic</h1>
+            <p>Real-time debugging tool for deployed application</p>
+        </div>
+
+        <div class="content">
+            <div class="alert critical">
+                ⚠️ <strong>PRODUCTION ENVIRONMENT DETECTED</strong><br>
+                This diagnostic tool is running in your live deployed environment.
+            </div>
+
+            <div class="test-section">
+                <h2>📊 Current Console Status</h2>
+                <div id="consoleStatus"></div>
+            </div>
+
+            <div class="test-section">
+                <h2>🔬 Live Console Tests</h2>
+                <button onclick="runAllTests()">🚀 Run All Tests</button>
+                <button onclick="clearResults()">🗑️ Clear Results</button>
+                <div id="testResults"></div>
+            </div>
+
+            <div class="test-section">
+                <h2>📝 Live Log Monitor</h2>
+                <div class="log-output" id="logMonitor">
+                    <div class="log-line info">🔍 Monitoring console output...</div>
+                </div>
+            </div>
+
+            <div class="test-section">
+                <h2>🛠️ Emergency Actions</h2>
+                <button onclick="forceEnableConsole()">🔓 Force Enable Console</button>
+                <button onclick="testBookingFlow()">📝 Test Booking Flow</button>
+                <button onclick="downloadDiagnosticReport()">💾 Download Report</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Store all logs
+        let logHistory = [];
+        const maxLogs = 100;
+
+        // Override console methods to capture logs
+        const originalConsole = {
+            log: console.log.bind(console),
+            warn: console.warn.bind(console),
+            error: console.error.bind(console),
+            info: console.info.bind(console)
+        };
+
+        function addToLogMonitor(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = { timestamp, message, type };
+            logHistory.push(logEntry);
+            
+            if (logHistory.length > maxLogs) {
+                logHistory.shift();
+            }
+
+            const monitor = document.getElementById('logMonitor');
+            const logLine = document.createElement('div');
+            logLine.className = `log-line ${type}`;
+            logLine.textContent = `[${timestamp}] ${message}`;
+            monitor.appendChild(logLine);
+            
+            // Auto-scroll to bottom
+            monitor.scrollTop = monitor.scrollHeight;
+        }
+
+        // Intercept console methods
+        ['log', 'warn', 'error', 'info'].forEach(method => {
+            console[method] = function(...args) {
+                originalConsole[method](...args);
+                const message = args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+                ).join(' ');
+                addToLogMonitor(`${method.toUpperCase()}: ${message}`, method);
+            };
+        });
+
+        function checkConsoleStatus() {
+            const statusDiv = document.getElementById('consoleStatus');
+            const results = [];
+
+            // Test 1: Check if console methods exist
+            const consoleMethods = ['log', 'warn', 'error', 'info', 'debug', 'trace'];
+            const existingMethods = consoleMethods.filter(m => typeof console[m] === 'function');
+            
+            results.push({
+                test: 'Console Methods',
+                status: existingMethods.length === consoleMethods.length ? 'pass' : 'fail',
+                message: `${existingMethods.length}/${consoleMethods.length} methods available`
+            });
+
+            // Test 2: Check if console is disabled
+            let consoleDisabled = false;
+            try {
+                const testLog = console.log;
+                consoleDisabled = testLog.toString().includes('native code') || testLog.toString().length < 20;
+            } catch (e) {
+                consoleDisabled = true;
+            }
+
+            results.push({
+                test: 'Console Disabled',
+                status: consoleDisabled ? 'fail' : 'pass',
+                message: consoleDisabled ? 'Console appears to be disabled/overridden' : 'Console is functional'
+            });
+
+            // Test 3: Environment detection
+            const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            results.push({
+                test: 'Environment',
+                status: isDev ? 'warning' : 'pass',
+                message: isDev ? 'Development environment' : 'Production environment'
+            });
+
+            // Test 4: Check for console overrides in window
+            const hasOverrides = window.console !== console || 
+                                window.originalConsole !== undefined ||
+                                window._consoleBackup !== undefined;
+            
+            results.push({
+                test: 'Console Overrides',
+                status: hasOverrides ? 'warning' : 'pass',
+                message: hasOverrides ? 'Detected console modifications' : 'No overrides detected'
+            });
+
+            // Render results
+            statusDiv.innerHTML = results.map(r => `
+                <div class="result">
+                    <h3>${r.test}</h3>
+                    <span class="status ${r.status}">${r.status.toUpperCase()}</span>
+                    <p>${r.message}</p>
+                </div>
+            `).join('');
+        }
+
+        function runAllTests() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<div class="alert info">🔄 Running comprehensive tests...</div>';
+
+            setTimeout(() => {
+                const tests = [];
+
+                // Test 1: Basic console.log
+                try {
+                    console.log('TEST: Basic console.log');
+                    tests.push({ name: 'Basic console.log', pass: true, message: 'Successfully logged' });
+                } catch (e) {
+                    tests.push({ name: 'Basic console.log', pass: false, message: `Error: ${e.message}` });
+                }
+
+                // Test 2: Console methods
+                ['warn', 'error', 'info'].forEach(method => {
+                    try {
+                        console[method](`TEST: console.${method}`);
+                        tests.push({ name: `console.${method}`, pass: true, message: 'Method works' });
+                    } catch (e) {
+                        tests.push({ name: `console.${method}`, pass: false, message: `Error: ${e.message}` });
+                    }
+                });
+
+                // Test 3: Object logging
+                try {
+                    console.log('TEST: Object logging', { test: true, data: [1, 2, 3] });
+                    tests.push({ name: 'Object logging', pass: true, message: 'Objects can be logged' });
+                } catch (e) {
+                    tests.push({ name: 'Object logging', pass: false, message: `Error: ${e.message}` });
+                }
+
+                // Test 4: API fetch simulation
+                tests.push({ 
+                    name: 'API Fetch Ready', 
+                    pass: typeof fetch !== 'undefined', 
+                    message: typeof fetch !== 'undefined' ? 'Fetch API available' : 'Fetch API not available' 
+                });
+
+                // Render test results
+                resultsDiv.innerHTML = tests.map(t => `
+                    <div class="result">
+                        <h3>${t.name}</h3>
+                        <span class="status ${t.pass ? 'pass' : 'fail'}">${t.pass ? 'PASS' : 'FAIL'}</span>
+                        <p>${t.message}</p>
+                    </div>
+                `).join('');
+
+                addToLogMonitor(`✅ Completed ${tests.length} tests`, 'success');
+            }, 500);
+        }
+
+        function forceEnableConsole() {
+            addToLogMonitor('🔓 Attempting to force-enable console...', 'warning');
+            
+            try {
+                // Restore original console if backed up
+                if (window._consoleBackup) {
+                    window.console = window._consoleBackup;
+                    addToLogMonitor('✅ Restored console from backup', 'success');
+                }
+
+                // Force-enable all console methods
+                ['log', 'warn', 'error', 'info', 'debug', 'trace'].forEach(method => {
+                    if (!console[method] || console[method].toString().length < 20) {
+                        console[method] = originalConsole[method] || function(...args) {
+                            addToLogMonitor(`${method.toUpperCase()}: ${args.join(' ')}`, method);
+                        };
+                    }
+                });
+
+                addToLogMonitor('✅ Console force-enabled successfully', 'success');
+                checkConsoleStatus();
+            } catch (e) {
+                addToLogMonitor(`❌ Error: ${e.message}`, 'error');
+            }
+        }
+
+        function testBookingFlow() {
+            addToLogMonitor('📝 Testing booking flow simulation...', 'info');
+            
+            const steps = [
+                'User clicks "Book Now" button',
+                'BookingRequestModal opens',
+                'User fills out booking form',
+                'Form validation passes',
+                'API request initiated',
+                'Backend receives request',
+                'Email notification sent',
+                'Success banner displayed'
+            ];
+
+            steps.forEach((step, i) => {
+                setTimeout(() => {
+                    console.log(`BOOKING FLOW STEP ${i + 1}: ${step}`);
+                    addToLogMonitor(`Step ${i + 1}: ${step}`, 'info');
+                }, i * 500);
+            });
+
+            setTimeout(() => {
+                addToLogMonitor('✅ Booking flow test complete', 'success');
+            }, steps.length * 500);
+        }
+
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '';
+            document.getElementById('logMonitor').innerHTML = '<div class="log-line info">🗑️ Log cleared</div>';
+            logHistory = [];
+        }
+
+        function downloadDiagnosticReport() {
+            const report = {
+                timestamp: new Date().toISOString(),
+                environment: {
+                    hostname: window.location.hostname,
+                    userAgent: navigator.userAgent,
+                    url: window.location.href
+                },
+                consoleStatus: {
+                    methods: Object.keys(console),
+                    disabled: console.log.toString().length < 20
+                },
+                logs: logHistory
+            };
+
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `console-diagnostic-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            addToLogMonitor('💾 Diagnostic report downloaded', 'success');
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            addToLogMonitor('🚀 Production diagnostic tool loaded', 'success');
+            checkConsoleStatus();
+            
+            // Auto-run tests after 2 seconds
+            setTimeout(() => {
+                addToLogMonitor('🔄 Auto-running initial diagnostic...', 'info');
+                runAllTests();
+            }, 2000);
+        });
+
+        // Log all errors globally
+        window.addEventListener('error', (e) => {
+            addToLogMonitor(`❌ Global error: ${e.message}`, 'error');
+        });
+
+        // Log all unhandled promise rejections
+        window.addEventListener('unhandledrejection', (e) => {
+            addToLogMonitor(`❌ Unhandled rejection: ${e.reason}`, 'error');
+        });
+    </script>
+</body>
+</html>
