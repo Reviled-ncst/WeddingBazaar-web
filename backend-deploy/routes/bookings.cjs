@@ -2198,6 +2198,37 @@ router.get('/:id/completion-status', async (req, res) => {
   }
 });
 
+// ============================================
+// 🔍 DEBUG ENDPOINT - Verify Email Configuration
+// ============================================
+router.get('/test-email-config', (req, res) => {
+  console.log('🔍 DEBUG ENDPOINT CALLED - Testing Email Configuration');
+  console.log('🔍 EMAIL_USER:', process.env.EMAIL_USER);
+  console.log('🔍 EMAIL_PASS:', process.env.EMAIL_PASS ? '***' + process.env.EMAIL_PASS.slice(-4) : 'NOT SET');
+  
+  const isConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+  
+  res.json({
+    success: true,
+    debug: {
+      emailConfigured: isConfigured,
+      emailUser: process.env.EMAIL_USER || 'NOT SET',
+      emailPassLength: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0,
+      emailPassLastFour: process.env.EMAIL_PASS ? '***' + process.env.EMAIL_PASS.slice(-4) : 'NOT SET',
+      emailPassHasSpaces: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.includes(' ') : false,
+      nodeEnv: process.env.NODE_ENV || 'NOT SET',
+      port: process.env.PORT || 'NOT SET'
+    },
+    message: isConfigured 
+      ? '✅ Email is configured correctly!' 
+      : '❌ Email is NOT configured - environment variables missing',
+    instructions: isConfigured 
+      ? 'Email should be working. Check Render logs for actual email sending attempts.'
+      : 'Add EMAIL_USER and EMAIL_PASS to Render environment variables, then redeploy.',
+    timestamp: new Date().toISOString()
+  });
+});
+
 module.exports = router;
 
-// Force deploy - workaround fix
+// Force deploy - workaround fix v2
