@@ -228,24 +228,30 @@ export class OptimizedBookingApiService {
       timestamp: new Date().toISOString()
     });
 
+    // 🔧 TEMPORARY FIX: Skip health check to prevent fallback bookings
+    // Health check was causing bookings to fail and use mock data
+    // TODO: Re-enable after fixing /api/health endpoint timeout
+    
     // Parallel health check and booking creation preparation
-    const [healthOk] = await Promise.allSettled([
-      this.healthCheck()
-    ]);
+    // const [healthOk] = await Promise.allSettled([
+    //   this.healthCheck()
+    // ]);
 
-    const isHealthy = healthOk.status === 'fulfilled' && healthOk.value;
+    // const isHealthy = healthOk.status === 'fulfilled' && healthOk.value;
 
-    console.log('🏥 [BOOKING API] Health check result:', { 
-      isHealthy, 
-      status: healthOk.status,
-      value: healthOk.status === 'fulfilled' ? healthOk.value : null,
-      reason: healthOk.status === 'rejected' ? healthOk.reason : null
-    });
+    // console.log('🏥 [BOOKING API] Health check result:', { 
+    //   isHealthy, 
+    //   status: healthOk.status,
+    //   value: healthOk.status === 'fulfilled' ? healthOk.value : null,
+    //   reason: healthOk.status === 'rejected' ? healthOk.reason : null
+    // });
 
-    if (!isHealthy) {
-      console.warn('⚠️ [BOOKING API] Health check failed, using fallback booking');
-      return this.createFallbackBooking(bookingData, userId);
-    }
+    // if (!isHealthy) {
+    //   console.warn('⚠️ [BOOKING API] Health check failed, using fallback booking');
+    //   return this.createFallbackBooking(bookingData, userId);
+    // }
+    
+    console.log('✅ [BOOKING API] Skipping health check, proceeding with direct API call');
 
     try {
       // Optimized payload preparation
