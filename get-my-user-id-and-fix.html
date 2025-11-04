@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get My User ID & Fix SQL</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #e91e63;
+            margin-bottom: 10px;
+        }
+        .user-info {
+            background: #e8f5e9;
+            border: 3px solid #4caf50;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .sql-code {
+            background: #263238;
+            color: #aed581;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 20px 0;
+            white-space: pre;
+        }
+        button {
+            background: linear-gradient(135deg, #e91e63, #9c27b0);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
+        }
+        .copy-btn {
+            background: #4caf50;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        .warning {
+            background: #fff3e0;
+            border: 2px solid #ff9800;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .info {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .label {
+            font-weight: bold;
+            color: #666;
+        }
+        .value {
+            color: #e91e63;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Get My User ID & Generate Fix SQL</h1>
+        <p>This tool will extract your user ID and generate the SQL to fix your bookings.</p>
+        
+        <button onclick="getUserInfo()">🔍 Get My User ID</button>
+        
+        <div id="userInfo"></div>
+        <div id="sqlCode"></div>
+        
+        <div class="warning">
+            <strong>⚠️ Important:</strong> Make sure you're logged in to Wedding Bazaar before clicking the button above.
+        </div>
+    </div>
+
+    <script>
+        function getUserInfo() {
+            const userInfoDiv = document.getElementById('userInfo');
+            const sqlCodeDiv = document.getElementById('sqlCode');
+            
+            try {
+                const token = localStorage.getItem('auth_token');
+                
+                if (!token) {
+                    userInfoDiv.innerHTML = `
+                        <div style="background: #ffebee; border: 2px solid #f44336; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                            ❌ <strong>Not Logged In</strong><br>
+                            Please log in at <a href="https://weddingbazaarph.web.app" target="_blank">Wedding Bazaar</a> first.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const userId = payload.userId;
+                const email = payload.email;
+                const role = payload.role;
+                
+                userInfoDiv.innerHTML = `
+                    <div class="user-info">
+                        <strong>✅ YOUR USER INFORMATION</strong><br><br>
+                        <span class="label">User ID:</span> <span class="value">${userId}</span><br>
+                        <span class="label">Email:</span> <span class="value">${email}</span><br>
+                        <span class="label">Role:</span> <span class="value">${role}</span>
+                    </div>
+                `;
+                
+                const sql = `-- ============================================
+-- AUTO-GENERATED SQL TO FIX YOUR BOOKINGS
+-- ============================================
+-- Your User ID: ${userId}
+-- Your Email: ${email}
+-- Generated: ${new Date().toLocaleString()}
+-- ============================================
+
+-- STEP 1: Verify your user exists
+SELECT id, email, full_name, role 
+FROM users 
+WHERE id = '${userId}';
+
+-- STEP 2: Check current ownership of booking 128
+SELECT id, user_id, status, service_type, amount 
+FROM bookings 
+WHERE id = '128';
+
+-- STEP 3: Update booking 128 to belong to you
+UPDATE bookings 
+SET user_id = '${userId}'
+WHERE id = '128';
+
+-- STEP 4: Verify the update
+SELECT id, user_id, status, service_type, 'UPDATED!' as result
+FROM bookings 
+WHERE id = '128';
+
+-- STEP 5 (OPTIONAL): Update ALL bookings to belong to you
+-- Uncomment the line below if you want to fix all bookings at once
+-- UPDATE bookings SET user_id = '${userId}' WHERE user_id != '${userId}';
+
+-- STEP 6: Check all your bookings
+SELECT id, user_id, status, service_type, event_date, amount, created_at
+FROM bookings 
+WHERE user_id = '${userId}'
+ORDER BY created_at DESC;
+
+-- ============================================
+-- DONE! Copy this SQL and run it in Neon SQL Console
+-- Then refresh your bookings page and try canceling again
+-- ============================================
+`;
+                
+                sqlCodeDiv.innerHTML = `
+                    <div class="info">
+                        <strong>📋 Ready to Copy!</strong> Your personalized SQL is generated below.
+                        <button class="copy-btn" onclick="copySQLToClipboard()">📋 Copy SQL to Clipboard</button>
+                    </div>
+                    <div class="sql-code" id="sqlContent">${sql}</div>
+                    <div class="info">
+                        <strong>🚀 Next Steps:</strong><br>
+                        1. Click "Copy SQL to Clipboard" above<br>
+                        2. Go to <a href="https://console.neon.tech" target="_blank">Neon SQL Console</a><br>
+                        3. Paste and run the SQL queries<br>
+                        4. Refresh your bookings page<br>
+                        5. Try canceling booking 128 - it should work now! ✅
+                    </div>
+                `;
+                
+                window.generatedSQL = sql;
+                
+            } catch (error) {
+                userInfoDiv.innerHTML = `
+                    <div style="background: #ffebee; border: 2px solid #f44336; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                        ❌ <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        function copySQLToClipboard() {
+            const sql = window.generatedSQL;
+            
+            if (!sql) {
+                alert('Please click "Get My User ID" first!');
+                return;
+            }
+            
+            navigator.clipboard.writeText(sql).then(() => {
+                alert('✅ SQL copied to clipboard!\n\nNow go to Neon SQL Console and paste it there.');
+            }).catch(err => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = sql;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('✅ SQL copied to clipboard!');
+            });
+        }
+        
+        // Auto-run on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(getUserInfo, 500);
+        });
+    </script>
+</body>
+</html>

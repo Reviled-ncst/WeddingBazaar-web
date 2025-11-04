@@ -60,11 +60,17 @@ interface RegisterData {
   // Vendor-specific fields
   business_name?: string;
   business_type?: string;
+  vendor_type?: 'business' | 'freelancer'; // 🎯 ADD vendor_type
   location?: {
     lat: number;
     lng: number;
     address: string;
   } | string;
+  // Coordinator-specific fields
+  years_experience?: string;
+  team_size?: string;
+  specialties?: string[];
+  service_areas?: string[];
   receiveUpdates?: boolean;
   [key: string]: any;
 }
@@ -670,6 +676,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ...((userData.role === 'vendor' || userData.role === 'coordinator') && {
           business_name: userData.business_name,
           business_type: userData.business_type,
+          vendor_type: userData.role === 'coordinator' ? 'business' : userData.vendor_type, // 🎯 ADD vendor_type
           location: userData.location
         }),
         // 🎯 FIX: Include coordinator-specific fields for backend

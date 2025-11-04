@@ -147,7 +147,13 @@ router.post('/register', async (req, res) => {
       // Vendor-specific fields
       business_name,
       business_type,
+      vendor_type, // 🎯 ADD: 'business' or 'freelancer'
       location,
+      // Coordinator-specific fields
+      years_experience,
+      team_size,
+      specialties,
+      service_areas,
       // Couple-specific fields
       wedding_date,
       partner_name,
@@ -185,6 +191,18 @@ router.post('/register', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
+    
+    // 🎯 ADD: Set default vendor_type and validate
+    const actualVendorType = vendor_type || (actualUserType === 'coordinator' ? 'business' : 'business');
+    const validVendorTypes = ['business', 'freelancer'];
+    if ((actualUserType === 'vendor' || actualUserType === 'coordinator') && !validVendorTypes.includes(actualVendorType)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid vendor_type. Must be either "business" or "freelancer"',
+        timestamp: new Date().toISOString()
+      });
+    }
+    console.log('🏢 [AUTH] Vendor type:', { vendor_type, actualVendorType, actualUserType });
     
     // Check if user already exists
     console.log('🔍 Checking if user exists:', email);
@@ -269,7 +287,7 @@ router.post('/register', async (req, res) => {
       // Create vendor profile with verification placeholders
       profileResult = await sql`
         INSERT INTO vendor_profiles (
-          user_id, business_name, business_type, business_description,
+          user_id, business_name, business_type, vendor_type, business_description,
           verification_status, verification_documents,
           service_areas, pricing_range, business_hours,
           average_rating, total_reviews, total_bookings,
@@ -277,7 +295,7 @@ router.post('/register', async (req, res) => {
           created_at, updated_at
         )
         VALUES (
-          ${userId}, ${business_name}, ${business_type}, null,
+          ${userId}, ${business_name}, ${business_type}, ${actualVendorType}, null,
           'unverified',
           ${{
             business_registration: null,
@@ -406,7 +424,7 @@ router.post('/register', async (req, res) => {
       // FIXED: Use JSON.stringify for TEXT[] columns to prevent Postgres array literal errors
       profileResult = await sql`
         INSERT INTO vendor_profiles (
-          user_id, business_name, business_type, business_description,
+          user_id, business_name, business_type, vendor_type, business_description,
           years_experience, team_size, specialties, service_areas,
           verification_status, verification_documents,
           pricing_range, business_hours,
@@ -418,6 +436,7 @@ router.post('/register', async (req, res) => {
           ${userId}, 
           ${business_name}, 
           ${business_type || 'Wedding Coordination'}, 
+          ${actualVendorType},
           'Wedding Coordinator - Manage multiple weddings and coordinate vendors',
           ${years_experience},
           ${team_size},

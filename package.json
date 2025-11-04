@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\"",
-    "dev:backend": "nodemon --exec tsx server/index.ts",
+    "dev:backend": "nodemon --watch backend-deploy --exec node backend-deploy/production-backend.js",
     "build": "vite build",
     "build:prod": "vite build --mode production",
     "build:staging": "vite build --mode staging",

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check My User ID - Wedding Bazaar Debug</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .info-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .info-box p {
+            color: #555;
+            line-height: 1.6;
+            margin: 5px 0;
+        }
+        .info-box code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+            font-weight: bold;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .result h3 {
+            color: #28a745;
+            margin-bottom: 15px;
+        }
+        .result table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .result td {
+            padding: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .result td:first-child {
+            font-weight: 600;
+            color: #495057;
+            width: 40%;
+        }
+        .result td:last-child {
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+            word-break: break-all;
+        }
+        .error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        .error h3 {
+            color: #dc3545;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Check My User ID</h1>
+        <p class="subtitle">Wedding Bazaar - Authentication Debug Tool</p>
+
+        <div class="info-box">
+            <h3>📋 What This Tool Does:</h3>
+            <p>• Extracts your <code>user.id</code> from the JWT token stored in your browser</p>
+            <p>• Shows your actual user ID that the backend is expecting</p>
+            <p>• Compares with booking <code>couple_id</code> to verify ownership</p>
+        </div>
+
+        <div class="info-box">
+            <h3>⚠️ Important:</h3>
+            <p>This tool reads data from <code>localStorage</code> - make sure you're logged into Wedding Bazaar first!</p>
+        </div>
+
+        <button class="btn" onclick="checkUserId()">Check My User ID</button>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        function checkUserId() {
+            const resultDiv = document.getElementById('result');
+            
+            // Show loading
+            resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Checking...</p></div>';
+            resultDiv.classList.add('show');
+
+            setTimeout(() => {
+                try {
+                    // Get JWT token
+                    const jwtToken = localStorage.getItem('jwt_token');
+                    
+                    if (!jwtToken) {
+                        resultDiv.innerHTML = `
+                            <div class="error">
+                                <h3>❌ Not Logged In</h3>
+                                <p>No JWT token found in localStorage.</p>
+                                <p><strong>Solution:</strong> Please log in to Wedding Bazaar first, then run this tool again.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    // Decode JWT token (simple base64 decode - don't use in production!)
+                    const base64Url = jwtToken.split('.')[1];
+                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                    }).join(''));
+                    
+                    const tokenData = JSON.parse(jsonPayload);
+                    
+                    // Get user data from localStorage
+                    const backendUser = localStorage.getItem('backend_user');
+                    const userData = backendUser ? JSON.parse(backendUser) : null;
+
+                    // Sample booking couple_id (from your data)
+                    const sampleCoupleId = "1-2025-001";
+
+                    // Check if IDs match
+                    const userIdMatches = tokenData.userId === sampleCoupleId;
+                    
+                    resultDiv.innerHTML = `
+                        <h3>✅ User ID Retrieved Successfully</h3>
+                        <table>
+                            <tr>
+                                <td>Your User ID (from JWT):</td>
+                                <td>${tokenData.userId || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <td>Your Email:</td>
+                                <td>${tokenData.email || userData?.email || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <td>User Type:</td>
+                                <td>${tokenData.userType || userData?.role || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <td>Sample Booking couple_id:</td>
+                                <td>${sampleCoupleId}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>IDs Match?</strong></td>
+                                <td><strong style="color: ${userIdMatches ? '#28a745' : '#dc3545'}">${userIdMatches ? '✅ YES - Authorization should work!' : '❌ NO - This is the problem!'}</strong></td>
+                            </tr>
+                        </table>
+                        
+                        ${!userIdMatches ? `
+                            <div class="info-box error" style="margin-top: 20px;">
+                                <h3>🔧 The Problem:</h3>
+                                <p>Your user ID (<code>${tokenData.userId}</code>) doesn't match the booking's couple_id (<code>${sampleCoupleId}</code>).</p>
+                                <p><strong>This explains the 403 errors!</strong></p>
+                                <p><strong>Solution:</strong> The bookings need to be updated to use <code>couple_id = "${tokenData.userId}"</code></p>
+                            </div>
+                        ` : `
+                            <div class="info-box" style="margin-top: 20px; border-left-color: #28a745;">
+                                <h3>✅ Everything Looks Good!</h3>
+                                <p>Your user ID matches the booking couple_id.</p>
+                                <p>The cancellation should work now after the backend fix!</p>
+                            </div>
+                        `}
+
+                        <div class="info-box" style="margin-top: 20px;">
+                            <h3>📝 SQL to Fix Bookings (if needed):</h3>
+                            <p><code style="display: block; margin-top: 10px; padding: 10px; background: #fff;">
+                                UPDATE bookings<br>
+                                SET couple_id = '${tokenData.userId}'<br>
+                                WHERE couple_id = '${sampleCoupleId}';
+                            </code></p>
+                        </div>
+                    `;
+
+                } catch (error) {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h3>❌ Error</h3>
+                            <p>${error.message}</p>
+                            <p><strong>Debug Info:</strong></p>
+                            <p><code>${error.stack}</code></p>
+                        </div>
+                    `;
+                }
+            }, 500);
+        }
+    </script>
+</body>
+</html>

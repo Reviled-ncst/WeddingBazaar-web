@@ -928,7 +928,10 @@ export const ServiceDetailsModal: React.FC<ServiceDetailsModalProps> = ({
       <BookingRequestModal
         service={service}
         isOpen={showBookingModal}
-        onClose={() => setShowBookingModal(false)}
+        onClose={() => {
+          console.log('🔴 [ServiceDetailsModal] Parent closing BookingRequestModal');
+          setShowBookingModal(false);
+        }}
         onBookingCreated={handleBookingCreated}
       />
       

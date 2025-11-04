@@ -9,24 +9,24 @@ import { config } from 'dotenv';
 // DEPLOYMENT TRIGGER: 2025-10-21 16:35 - Accept quote and itemized quotes fix
 import { db, testDatabaseConnection } from '../backend/database/connection';
 import { vendorService } from '../backend/services/vendorService';
-import { BookingService } from '../backend/services/bookingService';
+// import { BookingService } from '../backend/services/bookingService'; // REMOVED: Service doesn't exist
 import { AuthService } from '../backend/services/authService';
-import { MockAuthService } from '../backend/services/mockAuthService';
-import { messagingService } from '../backend/services/messagingService';
+// import { MockAuthService } from '../backend/services/mockAuthService'; // REMOVED: Service doesn't exist
+// import { messagingService } from '../backend/services/messagingService'; // REMOVED: Service doesn't exist
 import { servicesService } from '../backend/services/servicesService';
-import { reviewsService } from '../backend/services/reviewsService';
-import { userProfileService } from '../backend/services/userProfileService';
-import { ImageProxyService } from '../backend/services/imageProxyService';
-import { otpService } from '../backend/services/otpService';
+// import { reviewsService } from '../backend/services/reviewsService'; // REMOVED: Service doesn't exist
+// import { userProfileService } from '../backend/services/userProfileService'; // REMOVED: Service doesn't exist
+// import { ImageProxyService } from '../backend/services/imageProxyService'; // REMOVED: Service doesn't exist
+// import { otpService } from '../backend/services/otpService'; // REMOVED: Service doesn't exist
 import { BookingStatus } from '../src/shared/types/comprehensive-booking.types';
-import vendorRoutes from '../backend/api/vendors/routes';
-import bookingRoutes from '../backend/api/bookings/routes';
+// import vendorRoutes from '../backend/api/vendors/routes'; // REMOVED: Routes file doesn't exist
+// import bookingRoutes from '../backend/api/bookings/routes'; // REMOVED: Routes file doesn't exist
 // NOTE: enhanced_routes removed - implemented inline below to avoid gitignore issues
-import messagingRoutes from '../backend/api/messaging/routes';
-import subscriptionRoutes from '../backend/api/subscriptions/routes';
-import paymentRoutes from '../backend/api/payment/routes';
-import dssRoutes from '../backend/api/dss/routes';
-import adminRoutes from '../backend/src/api/admin/index';
+// import messagingRoutes from '../backend/api/messaging/routes'; // REMOVED: Routes file doesn't exist
+// import subscriptionRoutes from '../backend/api/subscriptions/routes'; // REMOVED: Routes file doesn't exist
+// import paymentRoutes from '../backend/api/payment/routes'; // REMOVED: Routes file doesn't exist
+// import dssRoutes from '../backend/api/dss/routes'; // REMOVED: Routes file doesn't exist
+// import adminRoutes from '../backend/src/api/admin/index'; // REMOVED: Routes file doesn't exist
 
 // Load environment variables
 config();
@@ -53,7 +53,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Services
-const bookingService = new BookingService();
+// const bookingService = new BookingService(); // REMOVED: BookingService doesn't exist
 const authService = new AuthService();
 
 // Health check endpoint

@@ -1550,13 +1550,16 @@ Best regards`;
           service={convertToBookingService(selectedServiceForBooking)}
           isOpen={showBookingModal}
           onClose={() => {
+            console.log('🚪 [Services] Closing booking modal and service details');
             setShowBookingModal(false);
             setSelectedServiceForBooking(null);
+            setSelectedService(null); // 🔑 ALSO close the service details modal!
           }}
           onBookingCreated={(booking) => {
             console.log('📅 [Services] Booking created:', booking);
             setShowBookingModal(false);
             setSelectedServiceForBooking(null);
+            setSelectedService(null); // 🔑 ALSO close the service details modal!
           }}
         />
       )}

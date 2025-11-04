@@ -1,87 +1,100 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Header } from '../shared/components/layout/Header';
 import { Footer } from '../shared/components/layout/Footer';
 import { ProtectedRoute } from './ProtectedRoute';
 import { RoleProtectedRoute } from './RoleProtectedRoute';
 
-// Landing Pages
+// Loading fallback component
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-pink-500 mx-auto mb-4"></div>
+      <p className="text-gray-600 font-medium">Loading...</p>
+    </div>
+  </div>
+);
+
+// ✅ EAGER LOAD: Critical pages (homepage only)
 import { Homepage } from '../pages/homepage/Homepage';
-import { IndividualLanding } from '../pages/users/individual/landing';
-import { VendorLanding } from '../pages/users/vendor/landing';
-import { AdminLanding } from '../pages/users/admin/landing';
+
+// 🚀 LAZY LOAD: All other pages (code splitting)
+// Landing Pages
+const IndividualLanding = lazy(() => import('../pages/users/individual/landing').then(m => ({ default: m.IndividualLanding })));
+const VendorLanding = lazy(() => import('../pages/users/vendor/landing').then(m => ({ default: m.VendorLanding })));
+const AdminLanding = lazy(() => import('../pages/users/admin/landing').then(m => ({ default: m.AdminLanding })));
 
 // Shared Pages
-import { ServicePreview } from '../pages/shared/service-preview';
-import { ServiceHighlightDemo } from '../pages/shared/service-demo';
+const ServicePreview = lazy(() => import('../pages/shared/service-preview').then(m => ({ default: m.ServicePreview })));
+const ServiceHighlightDemo = lazy(() => import('../pages/shared/service-demo').then(m => ({ default: m.ServiceHighlightDemo })));
 
 // Admin Pages  
-import { AdminDashboard } from '../pages/users/admin/dashboard';
-import { UserManagement } from '../pages/users/admin/users';
-import { AdminBookings } from '../pages/users/admin/bookings';
-import { AdminAnalytics } from '../pages/users/admin/analytics';
-import { AdminDatabase } from '../pages/users/admin/database';
-import { AdminFinances } from '../pages/users/admin/finances';
-import { AdminSecurity } from '../pages/users/admin/security';
-import { AdminContentModeration } from '../pages/users/admin/content';
-import { AdminSettings } from '../pages/users/admin/settings';
-import { AdminSystemStatus } from '../pages/users/admin/system-status';
-import { AdminEmergency } from '../pages/users/admin/emergency';
-import { VendorManagement } from '../pages/users/admin/vendors';
-import { DocumentVerification } from '../pages/users/admin/documents';
-import { AdminMessages } from '../pages/users/admin/messages';
+const AdminDashboard = lazy(() => import('../pages/users/admin/dashboard').then(m => ({ default: m.AdminDashboard })));
+const UserManagement = lazy(() => import('../pages/users/admin/users').then(m => ({ default: m.UserManagement })));
+const AdminBookings = lazy(() => import('../pages/users/admin/bookings').then(m => ({ default: m.AdminBookings })));
+const AdminAnalytics = lazy(() => import('../pages/users/admin/analytics').then(m => ({ default: m.AdminAnalytics })));
+const AdminDatabase = lazy(() => import('../pages/users/admin/database').then(m => ({ default: m.AdminDatabase })));
+const AdminFinances = lazy(() => import('../pages/users/admin/finances').then(m => ({ default: m.AdminFinances })));
+const AdminSecurity = lazy(() => import('../pages/users/admin/security').then(m => ({ default: m.AdminSecurity })));
+const AdminContentModeration = lazy(() => import('../pages/users/admin/content').then(m => ({ default: m.AdminContentModeration })));
+const AdminSettings = lazy(() => import('../pages/users/admin/settings').then(m => ({ default: m.AdminSettings })));
+const AdminSystemStatus = lazy(() => import('../pages/users/admin/system-status').then(m => ({ default: m.AdminSystemStatus })));
+const AdminEmergency = lazy(() => import('../pages/users/admin/emergency').then(m => ({ default: m.AdminEmergency })));
+const VendorManagement = lazy(() => import('../pages/users/admin/vendors').then(m => ({ default: m.VendorManagement })));
+const DocumentVerification = lazy(() => import('../pages/users/admin/documents').then(m => ({ default: m.DocumentVerification })));
+const AdminMessages = lazy(() => import('../pages/users/admin/messages').then(m => ({ default: m.AdminMessages })));
 
 // Individual Pages
-import { Services } from '../pages/users/individual/services';
-import { IndividualDashboard } from '../pages/users/individual/dashboard';
-import { BudgetManagement } from '../pages/users/individual/budget';
-import { GuestManagement } from '../pages/users/individual/guests';
-import { IndividualBookings } from '../pages/users/individual/bookings';
-import { TransactionHistory } from '../pages/users/individual/transaction-history';
-import { ProfileSettings } from '../pages/users/individual/profile';
-import { PremiumFeatures } from '../pages/users/individual/premium';
-import { AccountSettings } from '../pages/users/individual/settings';
-import { WeddingRegistry } from '../pages/users/individual/registry';
-import { ReviewsRatings } from '../pages/users/individual/reviews';
-import { HelpSupport } from '../pages/users/individual/help';
-import { IndividualMessages } from '../pages/users/individual/messages/IndividualMessages';
-import { WeddingTimeline } from '../pages/users/individual/timeline/WeddingTimeline';
-import { ForYouPage } from '../pages/users/individual/foryou/ForYouPage';
+const Services = lazy(() => import('../pages/users/individual/services').then(m => ({ default: m.Services })));
+const IndividualDashboard = lazy(() => import('../pages/users/individual/dashboard').then(m => ({ default: m.IndividualDashboard })));
+const BudgetManagement = lazy(() => import('../pages/users/individual/budget').then(m => ({ default: m.BudgetManagement })));
+const GuestManagement = lazy(() => import('../pages/users/individual/guests').then(m => ({ default: m.GuestManagement })));
+const IndividualBookings = lazy(() => import('../pages/users/individual/bookings').then(m => ({ default: m.IndividualBookings })));
+const TransactionHistory = lazy(() => import('../pages/users/individual/transaction-history').then(m => ({ default: m.TransactionHistory })));
+const ProfileSettings = lazy(() => import('../pages/users/individual/profile').then(m => ({ default: m.ProfileSettings })));
+const PremiumFeatures = lazy(() => import('../pages/users/individual/premium').then(m => ({ default: m.PremiumFeatures })));
+const AccountSettings = lazy(() => import('../pages/users/individual/settings').then(m => ({ default: m.AccountSettings })));
+const WeddingRegistry = lazy(() => import('../pages/users/individual/registry').then(m => ({ default: m.WeddingRegistry })));
+const ReviewsRatings = lazy(() => import('../pages/users/individual/reviews').then(m => ({ default: m.ReviewsRatings })));
+const HelpSupport = lazy(() => import('../pages/users/individual/help').then(m => ({ default: m.HelpSupport })));
+const IndividualMessages = lazy(() => import('../pages/users/individual/messages/IndividualMessages').then(m => ({ default: m.IndividualMessages })));
+const WeddingTimeline = lazy(() => import('../pages/users/individual/timeline/WeddingTimeline').then(m => ({ default: m.WeddingTimeline })));
+const ForYouPage = lazy(() => import('../pages/users/individual/foryou/ForYouPage').then(m => ({ default: m.ForYouPage })));
 
 // Vendor Pages
-import { VendorDashboard } from '../pages/users/vendor/dashboard';
-import { VendorDashboardEnhanced } from '../pages/users/vendor/dashboard/VendorDashboardEnhanced';
-import { VendorBookingsSecure } from '../pages/users/vendor/bookings/VendorBookingsSecure';
-import { VendorProfile } from '../pages/users/vendor/profile';
-import { VendorServices } from '../pages/users/vendor/services';
-import { VendorAnalytics } from '../pages/users/vendor/analytics';
-import { VendorAvailability } from '../pages/users/vendor/availability';
-import { VendorMessages } from '../pages/users/vendor/messages';
-import { VendorMarketInsights } from '../pages/users/vendor/market-insights';
-import { VendorFeaturedListings } from '../pages/users/vendor/featured';
-import { VendorSEO } from '../pages/users/vendor/seo';
-import { VendorTeamManagement } from '../pages/users/vendor/team';
-import { VendorReviews } from '../pages/users/vendor/reviews';
-import { VendorAccountSettings } from '../pages/users/vendor/settings';
-import { VendorSecurity } from '../pages/users/vendor/security';
-import { VendorContact } from '../pages/users/vendor/contact';
-import { VendorHelp } from '../pages/users/vendor/help';
-import { VendorBilling } from '../pages/users/vendor/billing';
-import { VendorPromotions } from '../pages/users/vendor/promotions';
-import { VendorSubscriptionPage } from '../pages/users/vendor/subscription';
-import { VendorFinances } from '../pages/users/vendor/finances/VendorFinances';
+const VendorDashboard = lazy(() => import('../pages/users/vendor/dashboard').then(m => ({ default: m.VendorDashboard })));
+const VendorDashboardEnhanced = lazy(() => import('../pages/users/vendor/dashboard/VendorDashboardEnhanced').then(m => ({ default: m.VendorDashboardEnhanced })));
+const VendorBookingsSecure = lazy(() => import('../pages/users/vendor/bookings/VendorBookingsSecure').then(m => ({ default: m.VendorBookingsSecure })));
+const VendorProfile = lazy(() => import('../pages/users/vendor/profile').then(m => ({ default: m.VendorProfile })));
+const VendorServices = lazy(() => import('../pages/users/vendor/services').then(m => ({ default: m.VendorServices })));
+const VendorAnalytics = lazy(() => import('../pages/users/vendor/analytics').then(m => ({ default: m.VendorAnalytics })));
+const VendorAvailability = lazy(() => import('../pages/users/vendor/availability').then(m => ({ default: m.VendorAvailability })));
+const VendorMessages = lazy(() => import('../pages/users/vendor/messages').then(m => ({ default: m.VendorMessages })));
+const VendorMarketInsights = lazy(() => import('../pages/users/vendor/market-insights').then(m => ({ default: m.VendorMarketInsights })));
+const VendorFeaturedListings = lazy(() => import('../pages/users/vendor/featured').then(m => ({ default: m.VendorFeaturedListings })));
+const VendorSEO = lazy(() => import('../pages/users/vendor/seo').then(m => ({ default: m.VendorSEO })));
+const VendorTeamManagement = lazy(() => import('../pages/users/vendor/team').then(m => ({ default: m.VendorTeamManagement })));
+const VendorReviews = lazy(() => import('../pages/users/vendor/reviews').then(m => ({ default: m.VendorReviews })));
+const VendorAccountSettings = lazy(() => import('../pages/users/vendor/settings').then(m => ({ default: m.VendorAccountSettings })));
+const VendorSecurity = lazy(() => import('../pages/users/vendor/security').then(m => ({ default: m.VendorSecurity })));
+const VendorContact = lazy(() => import('../pages/users/vendor/contact').then(m => ({ default: m.VendorContact })));
+const VendorHelp = lazy(() => import('../pages/users/vendor/help').then(m => ({ default: m.VendorHelp })));
+const VendorBilling = lazy(() => import('../pages/users/vendor/billing').then(m => ({ default: m.VendorBilling })));
+const VendorPromotions = lazy(() => import('../pages/users/vendor/promotions').then(m => ({ default: m.VendorPromotions })));
+const VendorSubscriptionPage = lazy(() => import('../pages/users/vendor/subscription').then(m => ({ default: m.VendorSubscriptionPage })));
+const VendorFinances = lazy(() => import('../pages/users/vendor/finances/VendorFinances').then(m => ({ default: m.VendorFinances })));
 
 // Coordinator Pages
-import { CoordinatorDashboard } from '../pages/users/coordinator/dashboard';
-import { CoordinatorWeddings } from '../pages/users/coordinator/weddings';
-import { CoordinatorVendors } from '../pages/users/coordinator/vendors';
-import { CoordinatorClients } from '../pages/users/coordinator/clients';
-import { CoordinatorAnalytics } from '../pages/users/coordinator/analytics';
-import CoordinatorCalendar from '../pages/users/coordinator/calendar/CoordinatorCalendar';
-import { CoordinatorTeam } from '../pages/users/coordinator/team';
-import { CoordinatorWhiteLabel } from '../pages/users/coordinator/whitelabel';
-import { CoordinatorIntegrations } from '../pages/users/coordinator/integrations';
-import { CoordinatorRegistrationForm } from '../pages/users/coordinator/registration';
+const CoordinatorDashboard = lazy(() => import('../pages/users/coordinator/dashboard').then(m => ({ default: m.CoordinatorDashboard })));
+const CoordinatorWeddings = lazy(() => import('../pages/users/coordinator/weddings').then(m => ({ default: m.CoordinatorWeddings })));
+const CoordinatorVendors = lazy(() => import('../pages/users/coordinator/vendors').then(m => ({ default: m.CoordinatorVendors })));
+const CoordinatorClients = lazy(() => import('../pages/users/coordinator/clients').then(m => ({ default: m.CoordinatorClients })));
+const CoordinatorAnalytics = lazy(() => import('../pages/users/coordinator/analytics').then(m => ({ default: m.CoordinatorAnalytics })));
+const CoordinatorCalendar = lazy(() => import('../pages/users/coordinator/calendar/CoordinatorCalendar'));
+const CoordinatorTeam = lazy(() => import('../pages/users/coordinator/team').then(m => ({ default: m.CoordinatorTeam })));
+const CoordinatorWhiteLabel = lazy(() => import('../pages/users/coordinator/whitelabel').then(m => ({ default: m.CoordinatorWhiteLabel })));
+const CoordinatorIntegrations = lazy(() => import('../pages/users/coordinator/integrations').then(m => ({ default: m.CoordinatorIntegrations })));
+const CoordinatorRegistrationForm = lazy(() => import('../pages/users/coordinator/registration').then(m => ({ default: m.CoordinatorRegistrationForm })));
 
 // Auth Context
 import { AuthProvider } from '../shared/contexts/HybridAuthContext';
@@ -107,6 +120,7 @@ export const AppRouter: React.FC = () => {
             <MessagingModalConnector>
               <Router>
           <div className="min-h-screen flex flex-col">
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public Homepage - NO AUTH CHECK to prevent re-renders */}
               {/* Auto-redirect removed to fix Services refetch bug on login failure */}
@@ -493,6 +507,7 @@ export const AppRouter: React.FC = () => {
             {/* 404 Page */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
           
           {/* Unified Floating Chat Components - Single Source of Truth */}
           <GlobalFloatingChatButton />

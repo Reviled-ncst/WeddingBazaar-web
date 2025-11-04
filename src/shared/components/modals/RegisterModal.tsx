@@ -87,6 +87,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     // Vendor Business Info (only if vendor)
     business_name: '',
     business_type: '',
+    vendor_type: 'business', // 'business' or 'freelancer' (coordinators are always 'business')
     location: '',
     
     // Coordinator-specific fields
@@ -171,6 +172,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
           confirmPassword: '',
           business_name: '',
           business_type: '',
+          vendor_type: 'business',
           location: '',
           years_experience: '',
           team_size: '',
@@ -304,6 +306,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
           business_name: formData.business_name,
           business_type: formData.business_type,
           location: formData.location,
+          // 🎯 FIX: Include vendor_type (coordinators are always 'business')
+          vendor_type: userType === 'coordinator' ? 'business' : formData.vendor_type,
         }),
         // 🎯 FIX: Include coordinator-specific fields
         ...(userType === 'coordinator' && {

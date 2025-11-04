@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cancel Booking Test Tool</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-cancel {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .btn-cancel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+        .btn-request {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        .btn-request:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+        .btn-get-info {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+        .btn-get-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 233, 123, 0.4);
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .result.success {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            color: #155724;
+        }
+        .result.error {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+        }
+        .result.info {
+            background: #d1ecf1;
+            border: 2px solid #bee5eb;
+            color: #0c5460;
+        }
+        .help-text {
+            background: #fff3cd;
+            border: 2px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .help-text strong {
+            color: #856404;
+        }
+        .code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚫 Cancel Booking Test Tool</h1>
+        <p class="subtitle">Test the cancellation endpoints with detailed debugging</p>
+        
+        <div class="help-text">
+            <strong>📝 How to use this tool:</strong><br>
+            1. Get your <span class="code">userId</span> by checking localStorage: <span class="code">localStorage.getItem('auth_token')</span><br>
+            2. Get a <span class="code">bookingId</span> from your bookings page<br>
+            3. Click "Direct Cancel" for request/quote_requested status, or "Request Cancel" for others<br>
+            4. Check the detailed response below
+        </div>
+        
+        <div class="input-group">
+            <label for="apiUrl">API Base URL</label>
+            <input type="text" id="apiUrl" value="https://weddingbazaar-web.onrender.com">
+        </div>
+        
+        <div class="input-group">
+            <label for="bookingId">Booking ID</label>
+            <input type="text" id="bookingId" placeholder="e.g., 550e8400-e29b-41d4-a716-446655440000">
+        </div>
+        
+        <div class="input-group">
+            <label for="userId">User ID</label>
+            <input type="text" id="userId" placeholder="Your user ID from auth token">
+        </div>
+        
+        <div class="input-group">
+            <label for="reason">Cancellation Reason (Optional)</label>
+            <textarea id="reason" rows="3" placeholder="Why are you canceling?"></textarea>
+        </div>
+        
+        <div class="button-group">
+            <button class="btn-get-info" onclick="getBookingInfo()">
+                📋 Get Booking Info
+            </button>
+            <button class="btn-cancel" onclick="directCancel()">
+                🚫 Direct Cancel
+            </button>
+            <button class="btn-request" onclick="requestCancel()">
+                📝 Request Cancel
+            </button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function getBookingInfo() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const bookingId = document.getElementById('bookingId').value;
+            const resultDiv = document.getElementById('result');
+            
+            if (!bookingId) {
+                showResult('error', '❌ Please enter a booking ID');
+                return;
+            }
+            
+            try {
+                showResult('info', '⏳ Fetching booking information...');
+                
+                const response = await fetch(`${apiUrl}/api/bookings/${bookingId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('success', `✅ Booking Information:\n\n${JSON.stringify(data, null, 2)}`);
+                } else {
+                    showResult('error', `❌ Error fetching booking:\n\n${JSON.stringify(data, null, 2)}`);
+                }
+            } catch (error) {
+                showResult('error', `❌ Network Error:\n\n${error.message}`);
+            }
+        }
+        
+        async function directCancel() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const bookingId = document.getElementById('bookingId').value;
+            const userId = document.getElementById('userId').value;
+            const reason = document.getElementById('reason').value;
+            const resultDiv = document.getElementById('result');
+            
+            if (!bookingId || !userId) {
+                showResult('error', '❌ Please enter both Booking ID and User ID');
+                return;
+            }
+            
+            try {
+                showResult('info', '⏳ Sending direct cancellation request...');
+                
+                const payload = {
+                    userId: userId,
+                    ...(reason && { reason: reason })
+                };
+                
+                console.log('Request Payload:', payload);
+                
+                const response = await fetch(`${apiUrl}/api/bookings/${bookingId}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                console.log('Response:', data);
+                
+                if (response.ok) {
+                    showResult('success', `✅ Booking Cancelled Successfully!\n\n${JSON.stringify(data, null, 2)}`);
+                } else {
+                    showResult('error', `❌ Cancellation Failed:\n\nStatus: ${response.status}\n\nResponse:\n${JSON.stringify(data, null, 2)}`);
+                }
+            } catch (error) {
+                showResult('error', `❌ Network Error:\n\n${error.message}`);
+            }
+        }
+        
+        async function requestCancel() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const bookingId = document.getElementById('bookingId').value;
+            const userId = document.getElementById('userId').value;
+            const reason = document.getElementById('reason').value;
+            const resultDiv = document.getElementById('result');
+            
+            if (!bookingId || !userId) {
+                showResult('error', '❌ Please enter both Booking ID and User ID');
+                return;
+            }
+            
+            try {
+                showResult('info', '⏳ Sending cancellation request...');
+                
+                const payload = {
+                    userId: userId,
+                    ...(reason && { reason: reason })
+                };
+                
+                console.log('Request Payload:', payload);
+                
+                const response = await fetch(`${apiUrl}/api/bookings/${bookingId}/request-cancellation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                console.log('Response:', data);
+                
+                if (response.ok) {
+                    showResult('success', `✅ Cancellation Request Submitted!\n\n${JSON.stringify(data, null, 2)}`);
+                } else {
+                    showResult('error', `❌ Request Failed:\n\nStatus: ${response.status}\n\nResponse:\n${JSON.stringify(data, null, 2)}`);
+                }
+            } catch (error) {
+                showResult('error', `❌ Network Error:\n\n${error.message}`);
+            }
+        }
+        
+        function showResult(type, message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = `result ${type}`;
+            resultDiv.textContent = message;
+        }
+        
+        // Auto-populate userId from localStorage if available
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                const token = localStorage.getItem('auth_token');
+                if (token) {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    document.getElementById('userId').value = payload.userId || '';
+                    showResult('info', `ℹ️ Auto-detected User ID: ${payload.userId}\nEmail: ${payload.email}`);
+                }
+            } catch (e) {
+                console.log('No auth token found or unable to decode');
+            }
+        });
+    </script>
+</body>
+</html>

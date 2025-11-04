@@ -221,6 +221,13 @@ export class OptimizedBookingApiService {
   }
 
   private async _createBookingRequestInternal(bookingData: any, userId?: string): Promise<any> {
+    console.log('🚀 [BOOKING API] Starting booking request', {
+      userId,
+      serviceId: bookingData.service_id,
+      vendorId: bookingData.vendor_id,
+      timestamp: new Date().toISOString()
+    });
+
     // Parallel health check and booking creation preparation
     const [healthOk] = await Promise.allSettled([
       this.healthCheck()
@@ -228,13 +235,30 @@ export class OptimizedBookingApiService {
 
     const isHealthy = healthOk.status === 'fulfilled' && healthOk.value;
 
+    console.log('🏥 [BOOKING API] Health check result:', { 
+      isHealthy, 
+      status: healthOk.status,
+      value: healthOk.status === 'fulfilled' ? healthOk.value : null,
+      reason: healthOk.status === 'rejected' ? healthOk.reason : null
+    });
+
     if (!isHealthy) {
+      console.warn('⚠️ [BOOKING API] Health check failed, using fallback booking');
       return this.createFallbackBooking(bookingData, userId);
     }
 
     try {
       // Optimized payload preparation
       const optimizedPayload = this.prepareBookingPayload(bookingData, userId);
+      
+      console.log('📡 [BOOKING API] Sending POST /api/bookings/request', {
+        endpoint: '/api/bookings/request',
+        payload: optimizedPayload,
+        headers: {
+          'x-user-id': userId || bookingData.user_id || '1-2025-001'
+        }
+      });
+
       const response = await this.fetcher.fetch<ApiResponse<BookingRequest>>(
         '/api/bookings/request',
         {
@@ -246,6 +270,12 @@ export class OptimizedBookingApiService {
         },
         FETCH_TIMEOUTS.BOOKING_CREATE
       );
+
+      console.log('✅ [BOOKING API] Response received:', {
+        success: response.success,
+        hasData: !!(response.data || (response as any).booking),
+        message: response.message
+      });
 
       // 🔧 FIX: Backend returns 'booking' property, not 'data'
       const bookingData_response = response.data || (response as any).booking;

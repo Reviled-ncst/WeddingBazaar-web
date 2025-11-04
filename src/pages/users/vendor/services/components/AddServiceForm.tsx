@@ -21,7 +21,8 @@ import {
   Calendar
 } from 'lucide-react';
 import { LocationPicker } from '../../../../../shared/components/forms/LocationPicker';
-import { categoryService, Category, CategoryField } from '../../../../../services/api/categoryService';
+import categoryService from '../../../../../services/api/categoryService';
+import type { Category, CategoryField } from '../../../../../services/api/categoryService';
 import { AvailabilityCalendar } from './AvailabilityCalendar';
 import { analytics } from '../../../../../utils/analytics';
 

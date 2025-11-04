@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking 128 Debug Tool</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #e91e63;
+            margin-bottom: 10px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #e91e63;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #333;
+            font-size: 18px;
+        }
+        .info-box {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .success-box {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .error-box {
+            background: #ffebee;
+            border: 2px solid #f44336;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .warning-box {
+            background: #fff3e0;
+            border: 2px solid #ff9800;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #e91e63, #9c27b0);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .code {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .label {
+            font-weight: 600;
+            color: #666;
+            margin-right: 10px;
+        }
+        .value {
+            color: #333;
+            font-family: 'Courier New', monospace;
+        }
+        .match {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .no-match {
+            color: #f44336;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Booking 128 - Debug Tool</h1>
+        <p>This tool will help diagnose why you're getting a 403 error when trying to cancel booking 128.</p>
+        
+        <div class="section">
+            <h2>Step 1: Check Your Auth Token</h2>
+            <button onclick="checkAuthToken()">Check My User ID</button>
+            <div id="authResult"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Step 2: Get Booking 128 Details</h2>
+            <button onclick="getBookingDetails()">Fetch Booking Info</button>
+            <div id="bookingResult"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Step 3: Compare User IDs</h2>
+            <button onclick="compareUserIds()" id="compareBtn" disabled>Compare IDs</button>
+            <div id="compareResult"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Step 4: Test Cancellation</h2>
+            <button onclick="testCancellation()" id="cancelBtn" disabled>Try Cancellation</button>
+            <div id="cancelResult"></div>
+        </div>
+        
+        <div class="warning-box">
+            <strong>⚠️ Important:</strong> Make sure you're logged in to the Wedding Bazaar app before using this tool.
+            Open this page while logged in at https://weddingbazaarph.web.app
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://weddingbazaar-web.onrender.com';
+        let myUserId = null;
+        let bookingUserId = null;
+        let bookingData = null;
+
+        function checkAuthToken() {
+            const resultDiv = document.getElementById('authResult');
+            
+            try {
+                const token = localStorage.getItem('auth_token');
+                
+                if (!token) {
+                    resultDiv.innerHTML = `
+                        <div class="error-box">
+                            ❌ <strong>No Auth Token Found</strong><br>
+                            You're not logged in. Please log in at 
+                            <a href="https://weddingbazaarph.web.app" target="_blank">Wedding Bazaar</a> first.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                myUserId = payload.userId;
+                
+                resultDiv.innerHTML = `
+                    <div class="success-box">
+                        ✅ <strong>Auth Token Found!</strong><br><br>
+                        <span class="label">Your User ID:</span>
+                        <span class="value">${myUserId}</span><br>
+                        <span class="label">Email:</span>
+                        <span class="value">${payload.email}</span><br>
+                        <span class="label">Role:</span>
+                        <span class="value">${payload.role}</span><br>
+                        <span class="label">Token Expiry:</span>
+                        <span class="value">${new Date(payload.exp * 1000).toLocaleString()}</span>
+                    </div>
+                `;
+                
+                document.getElementById('compareBtn').disabled = false;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error-box">
+                        ❌ <strong>Error Decoding Token:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function getBookingDetails() {
+            const resultDiv = document.getElementById('bookingResult');
+            resultDiv.innerHTML = '<div class="info-box">⏳ Fetching booking details...</div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/bookings/128`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch booking');
+                }
+                
+                bookingData = data.booking || data;
+                bookingUserId = bookingData.user_id;
+                
+                resultDiv.innerHTML = `
+                    <div class="success-box">
+                        ✅ <strong>Booking 128 Found!</strong><br><br>
+                        <span class="label">Booking User ID:</span>
+                        <span class="value">${bookingUserId}</span><br>
+                        <span class="label">Status:</span>
+                        <span class="value">${bookingData.status}</span><br>
+                        <span class="label">Service:</span>
+                        <span class="value">${bookingData.service_type || 'N/A'}</span><br>
+                        <span class="label">Created:</span>
+                        <span class="value">${new Date(bookingData.created_at).toLocaleString()}</span>
+                    </div>
+                `;
+                
+                document.getElementById('compareBtn').disabled = false;
+                document.getElementById('cancelBtn').disabled = false;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error-box">
+                        ❌ <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function compareUserIds() {
+            const resultDiv = document.getElementById('compareResult');
+            
+            if (!myUserId || !bookingUserId) {
+                resultDiv.innerHTML = `
+                    <div class="warning-box">
+                        ⚠️ Please complete Steps 1 and 2 first.
+                    </div>
+                `;
+                return;
+            }
+            
+            const myUserIdStr = String(myUserId);
+            const bookingUserIdStr = String(bookingUserId);
+            const match = myUserIdStr === bookingUserIdStr;
+            
+            resultDiv.innerHTML = `
+                <div class="${match ? 'success-box' : 'error-box'}">
+                    <strong>${match ? '✅ USER IDs MATCH!' : '❌ USER IDs DO NOT MATCH!'}</strong><br><br>
+                    
+                    <span class="label">Your User ID:</span><br>
+                    <span class="value">${myUserId}</span> (type: ${typeof myUserId})<br><br>
+                    
+                    <span class="label">Booking's User ID:</span><br>
+                    <span class="value">${bookingUserId}</span> (type: ${typeof bookingUserId})<br><br>
+                    
+                    <span class="label">As Strings:</span><br>
+                    "${myUserIdStr}" ${match ? '===' : '!=='} "${bookingUserIdStr}"<br><br>
+                    
+                    ${match 
+                        ? '<strong class="match">✅ Authorization should PASS!</strong>' 
+                        : '<strong class="no-match">❌ This is why you get 403 Forbidden!</strong>'
+                    }
+                </div>
+                
+                ${!match ? `
+                    <div class="warning-box">
+                        <strong>💡 Solution:</strong><br>
+                        Booking 128 belongs to a different user. You have two options:<br><br>
+                        
+                        <strong>Option 1:</strong> Create a new booking with your current account<br>
+                        <strong>Option 2:</strong> Update booking 128's user_id in the database:
+                        
+                        <div class="code">
+UPDATE bookings 
+SET user_id = '${myUserId}'
+WHERE id = '128';
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        async function testCancellation() {
+            const resultDiv = document.getElementById('cancelResult');
+            resultDiv.innerHTML = '<div class="info-box">⏳ Attempting to cancel booking 128...</div>';
+            
+            if (!myUserId) {
+                resultDiv.innerHTML = `
+                    <div class="error-box">
+                        ❌ Please complete Step 1 first.
+                    </div>
+                `;
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/bookings/128/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: myUserId,
+                        reason: 'Test cancellation from debug tool'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success-box">
+                            ✅ <strong>Cancellation Successful!</strong><br><br>
+                            <div class="code">${JSON.stringify(data, null, 2)}</div>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error-box">
+                            ❌ <strong>Cancellation Failed (${response.status})</strong><br><br>
+                            ${data.error || 'Unknown error'}<br><br>
+                            ${data.debug ? `
+                                <strong>Debug Info:</strong>
+                                <div class="code">${JSON.stringify(data.debug, null, 2)}</div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error-box">
+                        ❌ <strong>Network Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-run Step 1 on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(checkAuthToken, 500);
+        });
+    </script>
+</body>
+</html>

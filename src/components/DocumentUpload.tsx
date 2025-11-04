@@ -224,7 +224,9 @@ export const DocumentUploadComponent: React.FC<DocumentUploadComponentProps> = (
         {/* Document Type Selection */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Document Type
+            Document Type {DOCUMENT_TYPES.find(t => t.value === selectedDocumentType)?.required && (
+              <span className="text-red-500 text-xs ml-1">(Required)</span>
+            )}
           </label>
           <select
             value={selectedDocumentType}
@@ -235,10 +237,15 @@ export const DocumentUploadComponent: React.FC<DocumentUploadComponentProps> = (
           >
             {DOCUMENT_TYPES.map((type) => (
               <option key={type.value} value={type.value}>
-                {type.label}
+                {type.label}{type.required ? ' ⭐ REQUIRED' : ''}
               </option>
             ))}
           </select>
+          {selectedDocumentType && DOCUMENT_TYPES.find(t => t.value === selectedDocumentType)?.required && (
+            <p className="text-xs text-red-600 mt-1">
+              ⚠️ This document is required for service creation
+            </p>
+          )}
         </div>
 
         {/* Drop Zone or Status Display */}

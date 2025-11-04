@@ -270,8 +270,14 @@ class VendorApiService {
       
       const result = await response.json();
       console.log('Modular update API response:', result);
+      console.log('🔑 vendorType in response:', result.data?.vendorType || result.vendorType);
       
-      // New modular endpoint returns the updated profile directly
+      // New modular endpoint returns { success: true, data: profile }
+      if (result.success && result.data) {
+        return result.data;
+      }
+      
+      // Fallback: return result directly (in case format changes)
       return result;
     } catch (error) {
       console.error('Error updating vendor profile:', error);

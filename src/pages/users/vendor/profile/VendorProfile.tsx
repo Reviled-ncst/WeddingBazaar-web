@@ -90,6 +90,7 @@ export const VendorProfile: React.FC = () => {
         // Use correct backend field names (camelCase from API response)
         businessName: profile.businessName || '',
         businessType: profile.businessType || '',
+        vendorType: profile.vendorType || 'business', // NEW: Include vendor type
         description: profile.description || '',
         location: profile.location || '',
         yearsInBusiness: profile.yearsInBusiness || 0,
@@ -230,7 +231,8 @@ export const VendorProfile: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      console.log('Saving profile changes to database:', editForm);
+      console.log('💾 Saving profile changes to database:', editForm);
+      console.log('🔑 Vendor Type being saved:', editForm.vendorType);
       
       // Now that we have the backend API, save to the actual database
       await updateProfile(editForm);
@@ -238,13 +240,14 @@ export const VendorProfile: React.FC = () => {
       setIsEditing(false);
       
       // Refresh the profile data to get the latest changes
+      console.log('🔄 Refetching profile data...');
       await refetch();
       
       // Show success message
-      alert('✅ Profile updated successfully and saved to database!');
+      alert('✅ Profile updated successfully! Vendor type: ' + (editForm.vendorType || 'business'));
       
     } catch (error) {
-      console.error('Failed to update profile:', error);
+      console.error('❌ Failed to update profile:', error);
       alert('❌ Failed to save changes to database. Please try again.');
     }
   };
@@ -254,6 +257,7 @@ export const VendorProfile: React.FC = () => {
       setEditForm({
         businessName: profile.businessName || '',
         businessType: profile.businessType || '',
+        vendorType: profile.vendorType || 'business', // NEW: Include vendor type
         description: profile.description || '',
         location: profile.location || '',
         yearsInBusiness: profile.yearsInBusiness || 0,
@@ -617,36 +621,40 @@ export const VendorProfile: React.FC = () => {
                               <p className="text-pink-600 font-medium">{profile.businessType}</p>
                             )}
                             
-                            {/* NEW: Vendor Type Selection */}
-                            {isEditing && (
-                              <div className="mt-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Account Type
-                                </label>
-                                <select
-                                  value={editForm.vendorType || profile.vendorType || 'business'}
-                                  onChange={(e) => setEditForm({
-                                    ...editForm, 
-                                    vendorType: e.target.value as 'business' | 'freelancer'
-                                  })}
-                                  className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                                  title="Select account type"
-                                >
-                                  <option value="business">🏢 Business (Company/Agency)</option>
-                                  <option value="freelancer">👤 Freelancer (Individual)</option>
-                                </select>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  {editForm.vendorType === 'freelancer' || profile.vendorType === 'freelancer'
-                                    ? 'Freelancers need: Valid ID + Portfolio + Certification'
-                                    : 'Businesses need: Business License/Permit'}
-                                </p>
-                              </div>
-                            )}
-                            {!isEditing && profile.vendorType && (
-                              <p className="text-sm text-gray-500 mt-2">
-                                {profile.vendorType === 'freelancer' ? '👤 Freelancer' : '🏢 Business'}
-                              </p>
-                            )}
+                            {/* Account Type Display/Edit */}
+                            <div className="mt-3">
+                              {isEditing ? (
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Account Type
+                                  </label>
+                                  <select
+                                    value={editForm.vendorType || profile.vendorType || 'business'}
+                                    onChange={(e) => setEditForm({
+                                      ...editForm, 
+                                      vendorType: e.target.value as 'business' | 'freelancer'
+                                    })}
+                                    className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                                    title="Select account type"
+                                  >
+                                    <option value="business">🏢 Business (Company/Agency)</option>
+                                    <option value="freelancer">👤 Freelancer (Individual)</option>
+                                  </select>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {(editForm.vendorType || profile.vendorType) === 'freelancer'
+                                      ? 'Freelancers need: Valid ID + Portfolio + Certification'
+                                      : 'Businesses need: Business License/Permit'}
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-gray-600">Account Type:</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700">
+                                    {(profile.vendorType || 'business') === 'freelancer' ? '👤 Freelancer' : '🏢 Business'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                           
                           <div className="flex items-center space-x-6 text-sm text-gray-600">
@@ -1188,13 +1196,13 @@ export const VendorProfile: React.FC = () => {
                           {/* Document Upload Section */}
                           <div className="space-y-4">
                             <h4 className="font-medium text-gray-900">
-                              {(profile.vendorType || 'business') === 'freelancer' 
+                              {(isEditing ? editForm.vendorType : profile.vendorType) === 'freelancer' 
                                 ? 'Upload Verification Documents' 
                                 : 'Upload Business Documents'}
                             </h4>
                             <DocumentUploadComponent 
                               vendorId={vendorId}
-                              vendorType={(profile.vendorType || 'business') as 'business' | 'freelancer'}
+                              vendorType={(isEditing ? editForm.vendorType : profile.vendorType || 'business') as 'business' | 'freelancer'}
                               className="max-w-4xl"
                             />
                           </div>

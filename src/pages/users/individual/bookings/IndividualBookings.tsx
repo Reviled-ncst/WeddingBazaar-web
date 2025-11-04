@@ -1249,18 +1249,27 @@ export const IndividualBookings: React.FC = () => {
 
                       {/* Action Buttons - Compact grid layout for multiple buttons */}
                       <div className="pt-4 space-y-2">
-                        {/* Quote Requested/Pending - Show View Details */}
+                        {/* Quote Requested/Pending - Show View Details + Cancel in 2-column grid */}
                         {(booking.status === 'quote_requested' || booking.status === 'request' || booking.status === 'pending') && (
-                          <button
-                            onClick={() => {
-                              setSelectedBooking(booking);
-                              setShowDetails(true);
-                            }}
-                            className="w-full px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
-                          >
-                            <Eye className="w-4 h-4" />
-                            View Details
-                          </button>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedBooking(booking);
+                                setShowDetails(true);
+                              }}
+                              className="px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View Details
+                            </button>
+                            <button
+                              onClick={() => handleCancelBooking(booking)}
+                              className="px-3 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
+                            >
+                              <XCircle className="w-4 h-4" />
+                              Cancel
+                            </button>
+                          </div>
                         )}
 
                         {/* Quote Sent - Show View Quote + Accept in 2-column grid */}
@@ -1285,44 +1294,64 @@ export const IndividualBookings: React.FC = () => {
 
                         {/* Quote Accepted/Confirmed - Show Pay Deposit AND Pay Full in 2-column grid */}
                         {(booking.status === 'quote_accepted' || booking.status === 'confirmed' || booking.status === 'approved') && (
-                          <div className="grid grid-cols-2 gap-2">
+                          <>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                onClick={() => handlePayment(booking as any, 'downpayment')}
+                                className="px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex flex-col items-center justify-center gap-1 font-medium text-sm"
+                              >
+                                <CreditCard className="w-4 h-4" />
+                                <span>Pay Deposit</span>
+                              </button>
+                              <button
+                                onClick={() => handlePayment(booking as any, 'full_payment')}
+                                className="px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex flex-col items-center justify-center gap-1 font-medium text-sm"
+                              >
+                                <DollarSign className="w-4 h-4" />
+                                <span>Full Payment</span>
+                              </button>
+                            </div>
+                            {/* Cancel button - full width below payment options */}
                             <button
-                              onClick={() => handlePayment(booking as any, 'downpayment')}
-                              className="px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex flex-col items-center justify-center gap-1 font-medium text-sm"
+                              onClick={() => handleCancelBooking(booking)}
+                              className="w-full px-3 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
                             >
-                              <CreditCard className="w-4 h-4" />
-                              <span>Pay Deposit</span>
+                              <XCircle className="w-4 h-4" />
+                              Request Cancellation
                             </button>
-                            <button
-                              onClick={() => handlePayment(booking as any, 'full_payment')}
-                              className="px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex flex-col items-center justify-center gap-1 font-medium text-sm"
-                            >
-                              <DollarSign className="w-4 h-4" />
-                              <span>Full Payment</span>
-                            </button>
-                          </div>
+                          </>
                         )}
 
                         {/* Deposit Paid - Show Pay Balance + View Receipt in 2-column */}
                         {(booking.status === 'downpayment_paid' || booking.status === 'deposit_paid' || booking.status === 'downpayment') && (
-                          <div className="grid grid-cols-2 gap-2">
-                            {booking.remainingBalance && booking.remainingBalance > 0 && (
+                          <>
+                            <div className="grid grid-cols-2 gap-2">
+                              {booking.remainingBalance && booking.remainingBalance > 0 && (
+                                <button
+                                  onClick={() => handlePayment(booking as any, 'remaining_balance')}
+                                  className="px-3 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-1.5 font-medium text-sm"
+                                >
+                                  <DollarSign className="w-4 h-4" />
+                                  Pay Balance
+                                </button>
+                              )}
                               <button
-                                onClick={() => handlePayment(booking as any, 'remaining_balance')}
-                                className="px-3 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-1.5 font-medium text-sm"
+                                onClick={() => handleViewReceipt(booking)}
+                                className="px-3 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-1.5 font-medium text-sm"
                               >
-                                <DollarSign className="w-4 h-4" />
-                                Pay Balance
+                                <FileText className="w-4 h-4" />
+                                View Receipt
                               </button>
-                            )}
+                            </div>
+                            {/* Cancel button - requires approval for paid bookings */}
                             <button
-                              onClick={() => handleViewReceipt(booking)}
-                              className="px-3 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-1.5 font-medium text-sm"
+                              onClick={() => handleCancelBooking(booking)}
+                              className="w-full px-3 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
                             >
-                              <FileText className="w-4 h-4" />
-                              View Receipt
+                              <XCircle className="w-4 h-4" />
+                              Request Cancellation
                             </button>
-                          </div>
+                          </>
                         )}
 
                         {/* View Receipt Button - Show for fully paid bookings only (deposit paid is handled above) */}
@@ -1340,13 +1369,23 @@ export const IndividualBookings: React.FC = () => {
                         {/* Only show if status is fully_paid/paid_in_full AND not already completed */}
                         {(booking.status === 'fully_paid' || booking.status === 'paid_in_full') && 
                          booking.status !== 'completed' && (
-                          <button
-                            onClick={() => handleMarkComplete(booking)}
-                            className="w-full px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            Mark as Complete
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleMarkComplete(booking)}
+                              className="w-full px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                              Mark as Complete
+                            </button>
+                            {/* Cancel button - for fully paid bookings before completion */}
+                            <button
+                              onClick={() => handleCancelBooking(booking)}
+                              className="w-full px-3 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm"
+                            >
+                              <XCircle className="w-4 h-4" />
+                              Request Cancellation
+                            </button>
+                          </>
                         )}
 
                         {/* Fully Completed Badge - Show when both sides confirmed */}

@@ -1,5 +1,6 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { flushSync } from 'react-dom';
 import {
   X,
   Calendar,
@@ -23,6 +24,7 @@ import type {
 import { availabilityService } from '../../../services/availabilityService';
 import { optimizedBookingApiService } from '../../../services/api/optimizedBookingApiService';
 import { BookingSuccessModal } from './BookingSuccessModal';
+import { SuccessBanner } from './SuccessBanner';
 import { VisualCalendar } from '../../../components/calendar/VisualCalendar';
 import { LocationPicker } from '../../../shared/components/forms/LocationPicker';
 
@@ -47,6 +49,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
   const [successBookingData, setSuccessBookingData] = useState<{
     id: string | number;
     serviceName: string;
@@ -117,18 +120,23 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
   // Prefill user data
   useEffect(() => {
     if (isOpen && user) {
-      const fullName = user.firstName && user.lastName 
-        ? `${user.firstName} ${user.lastName}`.trim() 
-        : user.firstName || user.lastName || '';
-      
       setFormData(prev => ({
         ...prev,
-        contactPerson: fullName || prev.contactPerson,
-        contactEmail: user.email || prev.contactEmail,
-        contactPhone: user.phone || prev.contactPhone
+        contactName: user.full_name || user.email.split('@')[0],
+        contactPhone: user.phone || '',
+        contactEmail: user.email
       }));
     }
   }, [isOpen, user]);
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        console.log('Notification permission:', permission);
+      });
+    }
+  }, []);
 
   // Reset on modal close
   useEffect(() => {
@@ -139,13 +147,14 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
     }
   }, [isOpen]);
 
-  // Calculate form completion (5 steps now)
+  // Calculate form completion (6 steps now - added review step)
   const formProgress = useMemo(() => {
-    const step1Complete = formData.eventDate;
-    const step2Complete = formData.eventLocation;
-    const step3Complete = formData.guestCount && formData.eventTime;
-    const step4Complete = formData.budgetRange;
-    const step5Complete = formData.contactPhone && formData.contactPerson;
+    // Step completion based on REQUIRED fields only
+    const step1Complete = !!formData.eventDate;
+    const step2Complete = !!formData.eventLocation;
+    const step3Complete = !!formData.guestCount; // Only guests required (time is optional)
+    const step4Complete = !!formData.budgetRange;
+    const step5Complete = !!formData.contactPhone && !!formData.contactPerson;
     
     let completed = 0;
     if (step1Complete) completed++;
@@ -154,10 +163,11 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
     if (step4Complete) completed++;
     if (step5Complete) completed++;
     
+    // Step 6 is review (doesn't count toward data completion)
     return {
       completed,
       total: 5,
-      percentage: Math.round((completed / 5) * 100)
+      percentage: Math.min(100, Math.round((completed / 5) * 100)) // Cap at 100%
     };
   }, [formData]);
 
@@ -198,7 +208,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, 5));
+      setCurrentStep(prev => Math.min(prev + 1, 6));
     }
   };
 
@@ -284,10 +294,71 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
         estimatedQuote: estimatedQuote || undefined
       };
 
-      // Success! Show inline success message first
-      setSubmitStatus('success');
+      // Success! Show success modal using flushSync for immediate rendering
+      flushSync(() => {
+        setSuccessBookingData(successData);
+        setShowSuccessModal(true);
+        setShowSuccessBanner(true);
+        setSubmitStatus('success');
+      });
       
-      // Dispatch event
+      // MULTI-LAYERED NOTIFICATION SYSTEM
+      // 1. Browser notification (if permission granted)
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('✅ Booking Request Sent!', {
+          body: `Your booking request for ${service.name} on ${formData.eventDate} has been submitted successfully.`,
+          icon: '/favicon.ico',
+          tag: 'booking-success',
+          requireInteraction: true
+        });
+      }
+      
+      // 2. Toast notification (always visible, top-right)
+      const toastContainer = document.createElement('div');
+      toastContainer.className = 'fixed top-4 right-4 z-[10000] animate-in slide-in-from-top-5 duration-500';
+      toastContainer.innerHTML = `
+        <div class="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl max-w-md">
+          <div class="flex items-start gap-3">
+            <svg class="w-6 h-6 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div>
+              <p class="font-bold text-lg">Booking Request Sent! ✅</p>
+              <p class="text-sm text-green-50 mt-1">Your request for <strong>${service.name}</strong> on <strong>${formData.eventDate}</strong> has been submitted.</p>
+              <p class="text-xs text-green-100 mt-2">Check your email and bookings page for updates.</p>
+            </div>
+            <button onclick="this.parentElement.parentElement.parentElement.remove()" class="ml-auto flex-shrink-0 text-white hover:text-green-100">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(toastContainer);
+      
+      // Auto-remove toast after 10 seconds
+      setTimeout(() => {
+        if (toastContainer.parentNode) {
+          toastContainer.style.animation = 'fade-out 500ms ease-out';
+          setTimeout(() => toastContainer.remove(), 500);
+        }
+      }, 10000);
+      
+      // 3. Console log with styled output
+      console.log(
+        '%c✅ BOOKING SUCCESS!',
+        'background: linear-gradient(to right, #10b981, #059669); color: white; padding: 8px 16px; border-radius: 8px; font-size: 16px; font-weight: bold;',
+        '\n📅 Service:', service.name,
+        '\n📆 Date:', formData.eventDate,
+        '\n🏢 Vendor:', service.vendorName || 'Service Provider',
+        '\n📍 Location:', formData.eventLocation,
+        '\n👥 Guests:', formData.guestCount || 'Not specified',
+        '\n💰 Budget:', formData.budgetRange || 'To be discussed',
+        '\n🆔 Booking ID:', successData.id
+      );
+      
+      // 4. Dispatch event
       window.dispatchEvent(new CustomEvent('bookingCreated', {
         detail: createdBooking
       }));
@@ -295,12 +366,6 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
       if (onBookingCreated) {
         onBookingCreated(createdBooking);
       }
-
-      // After 2 seconds, show the full success modal
-      setTimeout(() => {
-        setSuccessBookingData(successData);
-        setShowSuccessModal(true);
-      }, 2000);
 
     } catch (error) {
       console.error('Booking submission failed:', error);
@@ -313,25 +378,10 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Show success modal
-  if (showSuccessModal && successBookingData) {
-    return (
-      <BookingSuccessModal
-        isOpen={showSuccessModal}
-        onClose={() => {
-          setShowSuccessModal(false);
-          setSuccessBookingData(null);
-          onClose();
-        }}
-        bookingData={successBookingData}
-        onViewBookings={() => {
-          window.location.href = '/individual/bookings';
-        }}
-      />
-    );
-  }
-
   return (
+    <>
+    {/* Booking Modal - Hide when success modal is active */}
+    {!showSuccessModal && (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Enhanced backdrop with blur */}
       <div className="fixed inset-0 bg-gradient-to-br from-black/60 via-purple-900/30 to-black/60 backdrop-blur-md animate-in fade-in duration-300" 
@@ -377,14 +427,15 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
             </button>
           </div>
 
-          {/* Enhanced Progress Steps - 5 Steps */}
+          {/* Enhanced Progress Steps - 6 Steps (Added Review) */}
           <div className="flex items-center justify-between relative">
             {[
               { num: 1, label: "Date", icon: "📅" },
               { num: 2, label: "Location", icon: "📍" },
               { num: 3, label: "Details", icon: "👥" },
               { num: 4, label: "Budget", icon: "💰" },
-              { num: 5, label: "Contact", icon: "📞" }
+              { num: 5, label: "Contact", icon: "📞" },
+              { num: 6, label: "Review", icon: "✅" }
             ].map((stepInfo, index) => (
               <div key={stepInfo.num} className="flex items-center flex-1">
                 <div className="relative flex flex-col items-center">
@@ -406,7 +457,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                     {stepInfo.label}
                   </span>
                 </div>
-                {index < 4 && (
+                {index < 5 && (
                   <div className="flex-1 h-1.5 mx-2 sm:mx-3 mb-6 sm:mb-8 rounded-full overflow-hidden bg-white/20">
                     <div className={cn(
                       "h-full rounded-full transition-all duration-500 ease-out",
@@ -421,27 +472,6 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
 
         {/* Content */}
         <div className="p-4 overflow-y-auto max-h-[calc(92vh-220px)]">
-          {/* Success Message */}
-          {submitStatus === 'success' && (
-            <div className="mb-4 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl flex items-start gap-4 animate-in zoom-in-95 duration-300 shadow-lg">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center animate-bounce">
-                  <Sparkles className="w-6 h-6 text-white" />
-                </div>
-              </div>
-              <div className="flex-1">
-                <p className="text-lg font-bold text-green-800 mb-1">🎉 Booking Request Submitted!</p>
-                <p className="text-sm text-green-700">
-                  Your booking request has been sent successfully. The service provider will review and respond soon!
-                </p>
-                <div className="mt-3 flex items-center gap-2 text-xs text-green-600">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Redirecting to confirmation...</span>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Error Message */}
           {submitStatus === 'error' && errorMessage && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 animate-in slide-in-from-top duration-300">
@@ -732,6 +762,240 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* Step 6: Review & Confirm */}
+          {submitStatus !== 'success' && currentStep === 6 && (
+            <div className="space-y-4 animate-in slide-in-from-right duration-300">
+              <div className="text-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">✅ Review Your Booking</h3>
+                <p className="text-gray-600">Please confirm all details before submitting</p>
+              </div>
+
+              {/* Review Cards */}
+              <div className="space-y-3">
+                {/* Event Details Card */}
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4">
+                  <h4 className="font-bold text-purple-900 mb-3 flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Event Details
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Date:</span>
+                      <span className="font-semibold text-gray-900">{new Date(formData.eventDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    </div>
+                    {formData.eventTime && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Time:</span>
+                        <span className="font-semibold text-gray-900">{formData.eventTime}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Location:</span>
+                      <span className="font-semibold text-gray-900">{formData.eventLocation}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Guests:</span>
+                      <span className="font-semibold text-gray-900">{formData.guestCount} people</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Budget & Requirements Card */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
+                  <h4 className="font-bold text-green-900 mb-3 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
+                    Budget & Requirements
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Budget Range:</span>
+                      <span className="font-semibold text-gray-900">{formData.budgetRange}</span>
+                    </div>
+                    {estimatedQuote && (
+                      <div className="flex justify-between pt-2 border-t border-green-200">
+                        <span className="text-gray-600">Estimated Quote:</span>
+                        <span className="font-bold text-green-700">₱{estimatedQuote.total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+                    {formData.specialRequests && (
+                      <div className="pt-2 border-t border-green-200">
+                        <span className="text-gray-600 block mb-1">Special Requests:</span>
+                        <p className="text-gray-900 text-xs bg-white/50 p-2 rounded">{formData.specialRequests}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Contact Information Card */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
+                  <h4 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
+                    <Phone className="w-5 h-5" />
+                    Contact Information
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Name:</span>
+                      <span className="font-semibold text-gray-900">{formData.contactPerson}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Phone:</span>
+                      <span className="font-semibold text-gray-900">{formData.contactPhone}</span>
+                    </div>
+                    {formData.contactEmail && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Email:</span>
+                        <span className="font-semibold text-gray-900">{formData.contactEmail}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Preferred Contact:</span>
+                      <span className="font-semibold text-gray-900 capitalize">{formData.preferredContactMethod}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Confirmation Notice */}
+              <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 mt-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-yellow-900 mb-1">Please Review Carefully</p>
+                    <p className="text-xs text-yellow-700">
+                      By clicking "Confirm & Submit", you agree to send this booking request to the vendor. 
+                      The vendor will review your request and get back to you shortly.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 6: Review & Confirm */}
+          {submitStatus !== 'success' && currentStep === 6 && (
+            <div className="space-y-4 animate-in slide-in-from-right duration-300">
+              <div className="text-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">✅ Review Your Booking</h3>
+                <p className="text-gray-600">Please review all details before submitting</p>
+              </div>
+
+              {/* Event Details Card */}
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 border-2 border-purple-200 space-y-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar className="w-5 h-5 text-purple-600" />
+                  <h4 className="font-bold text-gray-800">Event Details</h4>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Service</p>
+                    <p className="font-semibold text-gray-900">{service.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Vendor</p>
+                    <p className="font-semibold text-gray-900">{service.vendorName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Date</p>
+                    <p className="font-semibold text-gray-900">{new Date(formData.eventDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  </div>
+                  {formData.eventTime && (
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1">Time</p>
+                      <p className="font-semibold text-gray-900">{formData.eventTime}</p>
+                    </div>
+                  )}
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-600 mb-1">Location</p>
+                    <p className="font-semibold text-gray-900">{formData.eventLocation}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Guest & Budget Card */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 border-2 border-green-200 space-y-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-5 h-5 text-green-600" />
+                  <h4 className="font-bold text-gray-800">Guest & Budget</h4>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Number of Guests</p>
+                    <p className="font-semibold text-gray-900">{formData.guestCount} guests</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Budget Range</p>
+                    <p className="font-semibold text-gray-900">{formData.budgetRange}</p>
+                  </div>
+                  {estimatedQuote && (
+                    <div className="col-span-2 bg-white/50 rounded-lg p-3 border border-green-300">
+                      <p className="text-xs text-gray-600 mb-1">Estimated Total</p>
+                      <p className="text-2xl font-bold text-green-700">
+                        ₱{estimatedQuote.total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">Based on {estimatedQuote.totalGuests} guests (inclusive of tax)</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Contact Info Card */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border-2 border-blue-200 space-y-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Phone className="w-5 h-5 text-blue-600" />
+                  <h4 className="font-bold text-gray-800">Contact Information</h4>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Name</p>
+                    <p className="font-semibold text-gray-900">{formData.contactPerson}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Phone</p>
+                    <p className="font-semibold text-gray-900">{formData.contactPhone}</p>
+                  </div>
+                  {formData.contactEmail && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-gray-600 mb-1">Email</p>
+                      <p className="font-semibold text-gray-900">{formData.contactEmail}</p>
+                    </div>
+                  )}
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-600 mb-1">Preferred Contact</p>
+                    <p className="font-semibold text-gray-900 capitalize">{formData.preferredContactMethod}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Special Requests (if provided) */}
+              {formData.specialRequests && (
+                <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-5 border-2 border-amber-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MessageSquare className="w-5 h-5 text-amber-600" />
+                    <h4 className="font-bold text-gray-800">Special Requests</h4>
+                  </div>
+                  <p className="text-gray-700 whitespace-pre-wrap">{formData.specialRequests}</p>
+                </div>
+              )}
+
+              {/* Confirmation Notice */}
+              <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-4 border-2 border-purple-300 mt-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-purple-700 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-purple-900 mb-1">Ready to submit?</p>
+                    <p className="text-xs text-purple-800">
+                      By clicking "Confirm & Submit", you agree to send this booking request to {service.vendorName}. 
+                      The vendor will review your request and send you a detailed quote.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -749,19 +1013,19 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
               <div></div>
             )}
 
-            {currentStep < 5 ? (
+            {currentStep < 6 ? (
               <button
                 onClick={handleNext}
                 className="px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all flex items-center gap-2 group"
               >
-                Next
+                {currentStep === 5 ? 'Review Booking' : 'Next'}
                 <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
             ) : (
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-bold hover:shadow-xl transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group transform hover:scale-105"
               >
                 {isSubmitting ? (
                   <>
@@ -771,7 +1035,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                 ) : (
                   <>
                     <Sparkles className="w-5 h-5" />
-                    Submit Request
+                    Confirm & Submit Request
                   </>
                 )}
               </button>
@@ -798,5 +1062,39 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
         </div>
       </div>
     </div>
+    )}
+    
+    {/* Render success modal using Portal at body level */}
+    {showSuccessModal && successBookingData && createPortal(
+      <BookingSuccessModal
+        isOpen={true}
+        onClose={() => {
+          setShowSuccessModal(false);
+          setSuccessBookingData(null);
+          setShowSuccessBanner(false);
+          onClose();
+        }}
+        bookingData={successBookingData}
+        onViewBookings={() => {
+          window.location.href = '/individual/bookings';
+        }}
+      />,
+      document.body
+    )}
+    
+    {/* Success Banner - Top of page, always visible */}
+    {showSuccessBanner && successBookingData && (
+      <SuccessBanner
+        message="Booking Request Sent Successfully!"
+        details={{
+          serviceName: successBookingData.serviceName,
+          eventDate: successBookingData.eventDate,
+          vendorName: successBookingData.vendorName,
+          bookingId: String(successBookingData.id)
+        }}
+        onClose={() => setShowSuccessBanner(false)}
+      />
+    )}
+    </>
   );
 };
