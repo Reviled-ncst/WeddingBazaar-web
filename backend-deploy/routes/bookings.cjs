@@ -727,30 +727,59 @@ router.get('/enhanced', async (req, res) => {
 // Create a new booking (POST /api/bookings)
 router.post('/', async (req, res) => {
   console.log('➕ Creating new booking:', req.body);
+  console.log('👤 Authenticated user:', req.user); // Log authenticated user
   
   try {
     const {
       userId,
       coupleId,
+      couple_id,
       vendorId,
+      vendor_id,
       serviceId,
+      service_id,
       eventDate,
+      event_date,
       eventTime,
       venue,
+      event_location,
       totalAmount,
+      total_amount,
       specialRequests,
+      special_requests,
+      notes,
       contactInfo,
       serviceName,
-      serviceType
+      service_name,
+      serviceType,
+      service_type
     } = req.body;
     
-    // Use coupleId if provided, otherwise fall back to userId
-    const finalCoupleId = coupleId || userId;
+    // ENHANCED: Extract user ID from multiple sources
+    // Priority: JWT token > request body > fallback
+    const finalCoupleId = req.user?.id || req.user?.userId || coupleId || couple_id || userId;
+    const finalVendorId = vendorId || vendor_id;
+    const finalServiceId = serviceId || service_id;
+    const finalEventDate = eventDate || event_date;
+    const finalTotalAmount = totalAmount || total_amount;
+    const finalEventLocation = event_location || venue;
+    const finalSpecialRequests = specialRequests || special_requests || notes;
+    const finalServiceName = serviceName || service_name;
+    const finalServiceType = serviceType || service_type;
     
-    if (!finalCoupleId || !vendorId || !eventDate || !totalAmount) {
+    console.log('🔑 Final couple ID:', finalCoupleId);
+    console.log('🏢 Final vendor ID:', finalVendorId);
+    
+    if (!finalCoupleId || !finalVendorId || !finalEventDate || !finalTotalAmount) {
       return res.status(400).json({
         success: false,
         error: 'coupleId/userId, vendorId, eventDate, and totalAmount are required',
+        receivedData: {
+          coupleId: finalCoupleId,
+          vendorId: finalVendorId,
+          eventDate: finalEventDate,
+          totalAmount: finalTotalAmount
+        },
         timestamp: new Date().toISOString()
       });
     }
@@ -762,19 +791,57 @@ router.post('/', async (req, res) => {
       INSERT INTO bookings (
         id, couple_id, vendor_id, service_id, event_date, event_time,
         event_location, total_amount, special_requests, status,
-        service_name, service_type, created_at, updated_at
+        service_name, service_type, notes, created_at, updated_at
       ) VALUES (
-        ${bookingId}, ${finalCoupleId}, ${vendorId}, ${serviceId || null}, ${eventDate}, ${eventTime || null},
-        ${venue || null}, ${totalAmount}, ${specialRequests || null}, 'request',
-        ${serviceName || 'Wedding Service'}, ${serviceType || 'general'}, NOW(), NOW()
+        ${bookingId}, ${finalCoupleId}, ${finalVendorId}, ${finalServiceId || null}, ${finalEventDate}, ${eventTime || null},
+        ${finalEventLocation || null}, ${finalTotalAmount}, ${finalSpecialRequests || null}, 'request',
+        ${finalServiceName || 'Wedding Service'}, ${finalServiceType || 'general'}, ${finalSpecialRequests || null}, NOW(), NOW()
       ) RETURNING *
     `;
     
     console.log(`✅ Booking created: ${bookingId}`);
     
+    // 📧 SEND EMAIL NOTIFICATION TO VENDOR
+    try {
+      console.log('📧 Attempting to send email notification to vendor...');
+      
+      // Get vendor email from database
+      const vendorResult = await sql`
+        SELECT email, business_name FROM vendors WHERE id = ${finalVendorId}
+      `;
+      
+      if (vendorResult && vendorResult[0] && vendorResult[0].email) {
+        const vendorEmail = vendorResult[0].email;
+        const vendorName = vendorResult[0].business_name || 'Vendor';
+        
+        console.log(`📧 Sending email to vendor: ${vendorEmail}`);
+        
+        await emailService.sendBookingNotification({
+          to: vendorEmail,
+          vendorName: vendorName,
+          bookingId: bookingId,
+          serviceType: finalServiceType || 'Wedding Service',
+          serviceName: finalServiceName || 'Wedding Service',
+          eventDate: finalEventDate,
+          eventLocation: finalEventLocation || 'TBD',
+          totalAmount: finalTotalAmount,
+          specialRequests: finalSpecialRequests || 'None',
+          coupleId: finalCoupleId
+        });
+        
+        console.log('✅ Email notification sent successfully to vendor');
+      } else {
+        console.log('⚠️ Vendor email not found, skipping email notification');
+      }
+    } catch (emailError) {
+      console.error('❌ Failed to send email notification:', emailError);
+      // Don't fail the booking creation if email fails
+    }
+    
     res.json({
       success: true,
       booking: booking[0],
+      emailSent: true,
       timestamp: new Date().toISOString()
     });
     
