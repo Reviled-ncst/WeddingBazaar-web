@@ -1,0 +1,123 @@
+═══════════════════════════════════════════════════════════════════════════
+   ⏳ RENDER IS STILL DEPLOYING - USE THIS WORKAROUND
+═══════════════════════════════════════════════════════════════════════════
+
+The test failed because Render hasn't finished deploying the new backend code yet.
+
+The backend still expects couple_id in the request body.
+
+───────────────────────────────────────────────────────────────────────────
+OPTION 1: Wait for Render to Finish Deploying (RECOMMENDED)
+───────────────────────────────────────────────────────────────────────────
+
+Check deployment status: https://dashboard.render.com/
+
+Look for:
+- "Building..." → "Deploying..." → "Live"
+- Usually takes 2-3 minutes
+
+Once you see "Live", re-run the test.
+
+───────────────────────────────────────────────────────────────────────────
+OPTION 2: Use Hardcoded Test User ID (TEMPORARY WORKAROUND)
+───────────────────────────────────────────────────────────────────────────
+
+While waiting, test with a hardcoded couple_id:
+
+fetch('https://weddingbazaar-web.onrender.com/api/bookings', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${localStorage.getItem('token')}`
+  },
+  body: JSON.stringify({
+    service_id: "SRV-00005",
+    vendor_id: "2-2025-003",
+    couple_id: "TEST-COUPLE-001",  // ← Temporary hardcoded ID
+    service_type: "Officiant",
+    event_date: "2025-12-25",
+    total_amount: 5000,
+    event_location: "Makati City",
+    notes: "Test booking with hardcoded couple ID"
+  })
+}).then(r => r.json()).then(result => {
+  console.log('📦 Result:', result);
+  if (result.success) {
+    console.log('✅ ✅ ✅ SUCCESS!');
+    console.log('📧 Check Render logs for email!');
+    console.log('📋 Booking ID:', result.booking?.id);
+  } else {
+    console.error('❌ FAILED:', result.error);
+  }
+});
+
+───────────────────────────────────────────────────────────────────────────
+OPTION 3: Extract User ID from JWT Token
+───────────────────────────────────────────────────────────────────────────
+
+If you want to use the real user ID from your JWT token:
+
+(async () => {
+  const token = localStorage.getItem('token');
+  
+  // Decode JWT to get user ID
+  let userId = 'TEST-COUPLE-001'; // fallback
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    userId = payload.id || payload.userId || payload.sub || userId;
+    console.log('🔑 Extracted User ID:', userId);
+  } catch (e) {
+    console.warn('Could not extract user ID from token, using fallback');
+  }
+  
+  const result = await fetch('https://weddingbazaar-web.onrender.com/api/bookings', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      service_id: "SRV-00005",
+      vendor_id: "2-2025-003",
+      couple_id: userId,
+      service_type: "Officiant",
+      event_date: "2025-12-25",
+      total_amount: 5000,
+      event_location: "Makati City",
+      notes: "Test booking"
+    })
+  }).then(r => r.json());
+  
+  console.log('📦 Result:', result);
+  if (result.success) {
+    console.log('✅ SUCCESS!');
+    console.log('📧 Check Render logs for email!');
+  } else {
+    console.error('❌ FAILED:', result.error);
+  }
+})();
+
+───────────────────────────────────────────────────────────────────────────
+WHAT TO DO:
+───────────────────────────────────────────────────────────────────────────
+
+1. ✅ Go to Render dashboard: https://dashboard.render.com/
+
+2. ⏳ Wait for deployment to finish (should be done soon)
+
+3. 🧪 Once "Live", re-run the original test WITHOUT couple_id
+
+4. 📧 If successful, check Render logs for email notification
+
+───────────────────────────────────────────────────────────────────────────
+IMPORTANT: The New Backend Code WILL:
+───────────────────────────────────────────────────────────────────────────
+
+✅ Extract user ID from JWT token automatically
+✅ Send email notification to vendor
+✅ Accept both snake_case and camelCase fields
+✅ Provide better error messages
+
+Once Render finishes deploying, the test will work!
+
+═══════════════════════════════════════════════════════════════════════════

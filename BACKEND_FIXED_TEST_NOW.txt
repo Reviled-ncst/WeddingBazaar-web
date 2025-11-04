@@ -1,0 +1,130 @@
+═══════════════════════════════════════════════════════════════════════════
+   ✅ BACKEND FIXED - Ready to Test!
+═══════════════════════════════════════════════════════════════════════════
+
+CHANGES DEPLOYED:
+
+1. ✅ Backend now extracts user ID from JWT token automatically
+2. ✅ Email notification added to booking creation endpoint
+3. ✅ Support for both snake_case and camelCase field names
+4. ✅ Improved error messages with debugging info
+
+───────────────────────────────────────────────────────────────────────────
+WAIT FOR RENDER TO REDEPLOY (2-3 minutes)
+───────────────────────────────────────────────────────────────────────────
+
+After pushing to GitHub, Render will automatically redeploy the backend.
+
+Check deployment status:
+https://dashboard.render.com/
+
+Look for: "Deploy succeeded" or "Live" status
+
+───────────────────────────────────────────────────────────────────────────
+TEST 1: With User ID from Token (RECOMMENDED)
+───────────────────────────────────────────────────────────────────────────
+
+After Render finishes redeploying, run this in browser console:
+
+fetch('https://weddingbazaar-web.onrender.com/api/bookings', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${localStorage.getItem('token')}`
+  },
+  body: JSON.stringify({
+    service_id: "SRV-00005",
+    vendor_id: "2-2025-003",
+    service_type: "Officiant",
+    event_date: "2025-12-25",
+    total_amount: 5000,
+    event_location: "Makati City",
+    notes: "Test booking - backend extracts user ID from token"
+  })
+}).then(r => r.json()).then(result => {
+  console.log('📦 Result:', result);
+  if (result.success) {
+    console.log('✅ ✅ ✅ SUCCESS! BOOKING CREATED!');
+    console.log('📧 Check Render logs for email notification!');
+  } else {
+    console.error('❌ FAILED:', result.error);
+  }
+});
+
+───────────────────────────────────────────────────────────────────────────
+EXPECTED RESULT:
+───────────────────────────────────────────────────────────────────────────
+
+Console:
+{
+  "success": true,
+  "booking": {
+    "id": ...,
+    "couple_id": "...",  ← Extracted from JWT token!
+    "vendor_id": "2-2025-003",
+    "service_id": "SRV-00005",
+    ...
+  },
+  "emailSent": true,  ← Email notification sent!
+  "timestamp": "..."
+}
+
+Render Logs:
+✅ Booking created: ...
+📧 Attempting to send email notification to vendor...
+📧 Sending email to vendor: vendor@example.com
+✅ Email notification sent successfully to vendor
+
+───────────────────────────────────────────────────────────────────────────
+TEST 2: Verify JWT Token has User ID
+───────────────────────────────────────────────────────────────────────────
+
+Run this to see what's in your JWT token:
+
+(function() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    console.error('❌ No token found');
+    return;
+  }
+  
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  console.log('📋 JWT Token Payload:', payload);
+  console.log('🔑 User ID:', payload.id || payload.userId || payload.sub);
+})();
+
+───────────────────────────────────────────────────────────────────────────
+WHAT WE FIXED:
+───────────────────────────────────────────────────────────────────────────
+
+BEFORE:
+❌ Backend required couple_id in request body
+❌ Frontend localStorage.getItem('userData') was undefined
+❌ No email notification on booking creation
+
+AFTER:
+✅ Backend extracts user ID from JWT token (req.user.id)
+✅ couple_id is now OPTIONAL in request body
+✅ Email notification sent automatically after booking created
+✅ Supports both snake_case and camelCase field names
+✅ Better error messages with debugging info
+
+───────────────────────────────────────────────────────────────────────────
+NEXT STEPS:
+───────────────────────────────────────────────────────────────────────────
+
+1. ⏳ Wait for Render to finish redeploying (check dashboard)
+
+2. 🧪 Run TEST 1 above in browser console
+
+3. 📧 Check Render logs for:
+   - "✅ Booking created: ..."
+   - "📧 Sending email to vendor: ..."
+   - "✅ Email notification sent successfully"
+
+4. 📬 Check vendor email inbox for booking notification
+
+5. 🎉 If successful: Backend is working! Move on to investigating frontend
+                     booking modal to see why it's not triggering.
+
+═══════════════════════════════════════════════════════════════════════════

@@ -115,98 +115,53 @@ CREATE INDEX idx_vendor_wallets_vendor ON vendor_wallets(vendor_id);
 
 **Location**: `backend-deploy/routes/booking-completion.cjs`
 
-**⭐ ENHANCED PAYMENT TRANSFER SYSTEM**
-
-The system now pulls **ACTUAL payment data from the receipts table** instead of using booking amounts:
-
 ```javascript
 // After both vendor and couple confirm completion
 if (coupleCompleted && vendorCompleted && !booking.fully_completed) {
-  
-  // ⭐ STEP 1: Fetch ALL receipts for this booking
-  const receipts = await sql`
-    SELECT * FROM receipts 
-    WHERE booking_id = ${bookingId}
-    ORDER BY created_at ASC
-  `;
+  // 1. Update booking status to 'completed'
+  await pool.query(`
+    UPDATE bookings 
+    SET status = 'completed', 
+        fully_completed = true,
+        fully_completed_at = NOW()
+    WHERE id = $1
+  `, [bookingId]);
 
-  // ⭐ STEP 2: Calculate ACTUAL total paid from receipts
-  let totalPaidCentavos = 0;
-  let paymentMethods = [];
-  let receiptNumbers = [];
+  // 2. Create/update vendor wallet
+  await pool.query(`
+    INSERT INTO vendor_wallets (vendor_id, total_earnings, available_balance)
+    VALUES ($1, 0, 0)
+    ON CONFLICT (vendor_id) DO NOTHING
+  `, [booking.vendor_id]);
 
-  receipts.forEach(receipt => {
-    totalPaidCentavos += receipt.amount || 0;
-    if (receipt.payment_method) paymentMethods.push(receipt.payment_method);
-    if (receipt.receipt_number) receiptNumbers.push(receipt.receipt_number);
-  });
-
-  // Convert from centavos to PHP
-  const totalPaidAmount = totalPaidCentavos / 100;
-
-  // ⭐ STEP 3: Prepare transaction metadata with receipt details
-  const transactionMetadata = {
-    receipts: receipts.map(r => ({
-      receipt_number: r.receipt_number,
-      amount: r.amount / 100,
-      payment_type: r.payment_type,
-      payment_method: r.payment_method,
-      payment_intent_id: r.payment_intent_id,
-      created_at: r.created_at
-    })),
-    total_payments: receipts.length,
-    booking_reference: booking.booking_reference
-  };
-
-  // ⭐ STEP 4: Create wallet transaction with ACTUAL payment data
-  const transactionId = `TXN-${bookingId}-${Date.now()}`;
-  await sql`
+  // 3. Create wallet transaction
+  const transactionId = `TXN-${bookingId}`;
+  await pool.query(`
     INSERT INTO wallet_transactions (
-      transaction_id, vendor_id, booking_id, 
-      transaction_type, amount, currency, status,
-      description, payment_method, payment_reference,
-      service_name, customer_name, customer_email,
-      event_date, metadata
-    ) VALUES (
-      ${transactionId},
-      ${booking.vendor_id},
-      ${bookingId},
-      'earning',
-      ${totalPaidAmount}, -- ACTUAL amount from receipts
-      'PHP',
-      'completed',
-      ${'Payment received for ' + booking.service_type},
-      ${paymentMethods.join(', ')}, -- All payment methods used
-      ${receiptNumbers.join(', ')}, -- All receipt numbers
-      ${booking.service_type},
-      ${coupleName},
-      ${coupleEmail},
-      ${booking.event_date},
-      ${JSON.stringify(transactionMetadata)} -- Full receipt details
-    )
+      transaction_id, vendor_id, booking_id, transaction_type,
+      amount, status, description, service_name, event_date
+    ) VALUES ($1, $2, $3, 'earning', $4, 'completed', $5, $6, $7)
     ON CONFLICT (transaction_id) DO NOTHING
-  `;
+  `, [
+    transactionId,
+    booking.vendor_id,
+    bookingId,
+    booking.amount,
+    `Payment for ${booking.service_type}`,
+    booking.service_type,
+    booking.event_date
+  ]);
 
-  // ⭐ STEP 5: Update vendor wallet with ACTUAL amount
-  await sql`
+  // 4. Update wallet balance
+  await pool.query(`
     UPDATE vendor_wallets
-    SET 
-      total_earnings = total_earnings + ${totalPaidAmount},
-      available_balance = available_balance + ${totalPaidAmount},
-      updated_at = NOW()
-    WHERE vendor_id = ${booking.vendor_id}
-  `;
+    SET total_earnings = total_earnings + $1,
+        available_balance = available_balance + $1,
+        updated_at = NOW()
+    WHERE vendor_id = $2
+  `, [booking.amount, booking.vendor_id]);
 }
 ```
-
-**Key Features**:
-- ✅ Pulls actual payment amounts from receipts table
-- ✅ Supports multiple payments per booking (deposit + balance)
-- ✅ Tracks all payment methods used
-- ✅ Stores all receipt numbers for reference
-- ✅ Includes full payment history in metadata
-- ✅ Converts amounts correctly (centavos → PHP)
-- ✅ Fallback to booking amount if no receipts found
 
 ---
 

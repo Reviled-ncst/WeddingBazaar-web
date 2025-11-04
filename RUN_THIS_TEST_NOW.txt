@@ -1,0 +1,91 @@
+═══════════════════════════════════════════════════════════════════════════
+   ✅ FINAL CHECKLIST - Run This Test NOW
+═══════════════════════════════════════════════════════════════════════════
+
+VALID DATABASE IDs CONFIRMED:
+   [✓] Service ID: SRV-00005
+   [✓] Vendor ID: 2-2025-003
+   [✓] Category: Officiant
+
+───────────────────────────────────────────────────────────────────────────
+YOUR TASK: Run the Browser Console Test
+───────────────────────────────────────────────────────────────────────────
+
+STEP 1: Open Application
+   [ ] Go to: https://weddingbazaarph.web.app
+   [ ] Log in with your couple account
+   [ ] Navigate to: /individual/bookings
+
+STEP 2: Open Browser Console
+   [ ] Press F12
+   [ ] Click "Console" tab
+
+STEP 3: Run Test Script
+   [ ] Open file: TEST_VALID_BOOKING_CONSOLE.js
+   [ ] Copy ENTIRE contents (Ctrl+A, Ctrl+C)
+   [ ] Paste into console (Ctrl+V)
+   [ ] Press Enter
+
+STEP 4: Check Console Output
+   [ ] Did you see "✅ SUCCESS! Booking created!"? → YES / NO
+   [ ] Or did you see "❌ FAILED!"? → YES / NO
+   [ ] Copy the entire console output
+
+STEP 5: Check Render Logs
+   [ ] Go to: https://dashboard.render.com/
+   [ ] Click your backend service
+   [ ] Click "Logs" tab
+   [ ] Look for "Creating new booking..."
+   [ ] Look for "Email sent successfully"
+   [ ] Screenshot the logs
+
+STEP 6: Check Vendor Email
+   [ ] Check vendor email inbox
+   [ ] Subject: "New Booking Request - Wedding Bazaar"
+   [ ] Check spam/junk folder if not in inbox
+   [ ] Did vendor receive email? → YES / NO
+
+───────────────────────────────────────────────────────────────────────────
+REPORT BACK WITH:
+───────────────────────────────────────────────────────────────────────────
+
+1. Console output (copy/paste or screenshot)
+2. Render logs (screenshot)
+3. Did vendor receive email? (YES/NO)
+
+───────────────────────────────────────────────────────────────────────────
+QUICK ONE-LINER TEST (Alternative)
+───────────────────────────────────────────────────────────────────────────
+
+If you want a quick test, paste this in console:
+
+fetch('https://weddingbazaar-web.onrender.com/api/bookings', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${localStorage.getItem('token')}`
+  },
+  body: JSON.stringify({
+    service_id: "SRV-00005",
+    vendor_id: "2-2025-003",
+    service_type: "Officiant",
+    event_date: "2025-12-25",
+    total_amount: 5000,
+    event_location: "Makati City",
+    notes: "Test booking"
+  })
+}).then(r => r.json()).then(console.log);
+
+───────────────────────────────────────────────────────────────────────────
+FILES TO REFERENCE:
+───────────────────────────────────────────────────────────────────────────
+
+📄 TEST_VALID_BOOKING_CONSOLE.js        - Full test script
+📄 VALID_BOOKING_TEST_VISUAL_GUIDE.txt  - Detailed step-by-step guide
+📄 QUICK_TEST_REFERENCE.txt             - Quick reference card
+📄 VALID_BOOKING_TEST_READY.md          - Test documentation
+📄 get-valid-service-ids.cjs            - Script to get valid IDs
+
+═══════════════════════════════════════════════════════════════════════════
+   🚀 RUN THE TEST NOW AND REPORT RESULTS
+═══════════════════════════════════════════════════════════════════════════

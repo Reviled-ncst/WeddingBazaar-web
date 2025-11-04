@@ -1,0 +1,139 @@
+═══════════════════════════════════════════════════════════════════════════
+   🆔 USER ID NOT FOUND - ALTERNATIVE SOLUTIONS
+═══════════════════════════════════════════════════════════════════════════
+
+PROBLEM: localStorage.getItem('userData') is empty or undefined
+
+SOLUTIONS:
+
+───────────────────────────────────────────────────────────────────────────
+SOLUTION 1: Extract User ID from JWT Token (RECOMMENDED)
+───────────────────────────────────────────────────────────────────────────
+
+Copy and paste this in browser console:
+
+(function() {
+  const token = localStorage.getItem('token');
+  if (!token) { console.error('❌ No token'); return; }
+  
+  const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+  const userId = payload.id || payload.userId || payload.sub || payload.coupleId;
+  
+  console.log('🔑 USER ID:', userId);
+  console.log('📋 Full payload:', payload);
+  
+  if (!userId) {
+    console.error('❌ No user ID in token');
+    return;
+  }
+  
+  // Test booking
+  fetch('https://weddingbazaar-web.onrender.com/api/bookings', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      service_id: "SRV-00005",
+      vendor_id: "2-2025-003",
+      couple_id: userId,
+      service_type: "Officiant",
+      event_date: "2025-12-25",
+      total_amount: 5000,
+      event_location: "Makati City",
+      notes: "Test booking"
+    })
+  })
+  .then(r => r.json())
+  .then(result => {
+    console.log('📦 Result:', result);
+    if (result.success) {
+      console.log('✅ SUCCESS! Check Render logs for email!');
+    } else {
+      console.error('❌ FAILED:', result.error);
+    }
+  });
+})();
+
+───────────────────────────────────────────────────────────────────────────
+SOLUTION 2: Use Backend to Get Current User
+───────────────────────────────────────────────────────────────────────────
+
+The backend can extract user ID from the JWT token automatically!
+
+// Simplified - Backend extracts user from token
+fetch('https://weddingbazaar-web.onrender.com/api/bookings', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${localStorage.getItem('token')}`
+  },
+  body: JSON.stringify({
+    service_id: "SRV-00005",
+    vendor_id: "2-2025-003",
+    // couple_id: NOT NEEDED - backend gets it from token
+    service_type: "Officiant",
+    event_date: "2025-12-25",
+    total_amount: 5000,
+    event_location: "Makati City"
+  })
+}).then(r => r.json()).then(console.log);
+
+───────────────────────────────────────────────────────────────────────────
+SOLUTION 3: Check All localStorage Keys
+───────────────────────────────────────────────────────────────────────────
+
+Run this to see what's in localStorage:
+
+Object.keys(localStorage).forEach(key => {
+  console.log(key + ':', localStorage.getItem(key));
+});
+
+───────────────────────────────────────────────────────────────────────────
+SOLUTION 4: Use a Hardcoded Test User ID (TEMPORARY)
+───────────────────────────────────────────────────────────────────────────
+
+If all else fails, we can create a test user ID in the database and use it:
+
+fetch('https://weddingbazaar-web.onrender.com/api/bookings', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${localStorage.getItem('token')}`
+  },
+  body: JSON.stringify({
+    service_id: "SRV-00005",
+    vendor_id: "2-2025-003",
+    couple_id: "TEST-USER-001",  // Temporary test ID
+    service_type: "Officiant",
+    event_date: "2025-12-25",
+    total_amount: 5000,
+    event_location: "Makati City"
+  })
+}).then(r => r.json()).then(console.log);
+
+───────────────────────────────────────────────────────────────────────────
+BEST APPROACH: Modify Backend to Extract User from Token
+───────────────────────────────────────────────────────────────────────────
+
+The cleanest solution is to modify the backend bookings endpoint to:
+
+1. Extract user ID from the JWT token (already authenticated)
+2. Use that user ID automatically (no need to send couple_id)
+3. This is more secure and prevents user ID spoofing
+
+Backend code change:
+```javascript
+// In bookings.cjs POST /api/bookings
+const userId = req.user.id;  // From JWT token (already available)
+const coupleId = req.body.couple_id || userId;  // Use from body OR from token
+```
+
+This way, couple_id becomes OPTIONAL in the request.
+
+═══════════════════════════════════════════════════════════════════════════
+
+TRY SOLUTION 1 FIRST - It will extract user ID from your JWT token!
+
+═══════════════════════════════════════════════════════════════════════════

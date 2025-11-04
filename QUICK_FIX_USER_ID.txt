@@ -1,0 +1,81 @@
+═══════════════════════════════════════════════════════════════════════════
+   🎯 QUICK FIX: Add User ID to Booking Request
+═══════════════════════════════════════════════════════════════════════════
+
+PROBLEM: Backend returned 400 error saying "coupleId/userId is required"
+
+SOLUTION: Extract user ID from localStorage and include it in the request
+
+───────────────────────────────────────────────────────────────────────────
+QUICK ONE-LINER TEST (Copy and paste in browser console):
+───────────────────────────────────────────────────────────────────────────
+
+(async () => {
+  const token = localStorage.getItem('token');
+  const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+  const userId = userData.id || userData.userId;
+  
+  console.log('User ID:', userId);
+  
+  const result = await fetch('https://weddingbazaar-web.onrender.com/api/bookings', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      service_id: "SRV-00005",
+      vendor_id: "2-2025-003",
+      couple_id: userId,
+      service_type: "Officiant",
+      event_date: "2025-12-25",
+      total_amount: 5000,
+      event_location: "Makati City",
+      notes: "Test booking"
+    })
+  }).then(r => r.json());
+  
+  console.log('Result:', result);
+})();
+
+───────────────────────────────────────────────────────────────────────────
+ALTERNATIVE: Full Test Script
+───────────────────────────────────────────────────────────────────────────
+
+Open file: TEST_VALID_BOOKING_WITH_USER_ID.js
+Copy entire contents and paste in browser console
+
+───────────────────────────────────────────────────────────────────────────
+WHAT TO CHECK AFTER RUNNING:
+───────────────────────────────────────────────────────────────────────────
+
+Console Output:
+   ✅ "SUCCESS! Booking created!" → GOOD! Check Render logs for email
+   ❌ "FAILED!" → Check error message
+
+Render Logs:
+   Look for: "Creating new booking..."
+   Look for: "📧 Sending email to vendor"
+   Look for: "✅ Email sent successfully"
+
+Vendor Email:
+   Check inbox for "New Booking Request - Wedding Bazaar"
+
+───────────────────────────────────────────────────────────────────────────
+NEXT STEPS BASED ON RESULTS:
+───────────────────────────────────────────────────────────────────────────
+
+✅ If booking succeeds + email logs appear:
+   → Backend is working perfectly!
+   → Issue is in the FRONTEND booking modal
+   → Need to check which API the modal is calling
+
+⚠️ If booking succeeds but no email logs:
+   → Backend creates booking but doesn't send email
+   → Check email service integration in bookings.cjs
+
+❌ If booking fails:
+   → Share the error message
+   → Check Render logs for details
+
+═══════════════════════════════════════════════════════════════════════════
