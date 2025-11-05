@@ -3,29 +3,97 @@ const { sql } = require('../config/database.cjs');
 
 const router = express.Router();
 
-// Get vendor categories
+// Get vendor categories from database
 router.get('/categories', async (req, res) => {
   try {
     console.log('📂 [VENDORS] GET /api/vendors/categories called');
     
-    // Return predefined vendor categories
-    const categories = [
-      { id: 'photographer', name: 'Photographer', icon: '📸' },
-      { id: 'videographer', name: 'Videographer', icon: '🎥' },
-      { id: 'catering', name: 'Catering', icon: '🍽️' },
-      { id: 'venue', name: 'Venue', icon: '🏛️' },
-      { id: 'florist', name: 'Florist', icon: '💐' },
-      { id: 'music', name: 'Music & DJ', icon: '🎵' },
-      { id: 'makeup', name: 'Makeup & Hair', icon: '💄' },
-      { id: 'decoration', name: 'Decoration', icon: '🎨' },
-      { id: 'coordinator', name: 'Wedding Coordinator', icon: '📋' },
-      { id: 'transportation', name: 'Transportation', icon: '🚗' },
-      { id: 'invitations', name: 'Invitations', icon: '💌' },
-      { id: 'cake', name: 'Cake & Desserts', icon: '🎂' },
-      { id: 'photo_booth', name: 'Photo Booth', icon: '📷' },
-      { id: 'entertainment', name: 'Entertainment', icon: '🎭' },
-      { id: 'other', name: 'Other Services', icon: '✨' }
-    ];
+    // Query categories from database (try both possible table names)
+    let categories = [];
+    
+    try {
+      // Try service_categories table first (from service_categories.json)
+      const result = await sql`
+        SELECT 
+          id,
+          name,
+          display_name,
+          description,
+          icon,
+          sort_order,
+          is_active
+        FROM service_categories
+        WHERE is_active = true
+        ORDER BY sort_order ASC
+      `;
+      
+      if (result && result.length > 0) {
+        categories = result.map(cat => ({
+          id: cat.id,
+          name: cat.display_name || cat.name,
+          displayName: cat.display_name,
+          description: cat.description,
+          icon: cat.icon,
+          sortOrder: cat.sort_order
+        }));
+        console.log(`✅ [VENDORS] Fetched ${categories.length} categories from service_categories table`);
+      }
+    } catch (tableError) {
+      console.log('⚠️ [VENDORS] service_categories table not found, trying categories table...');
+      
+      try {
+        // Try categories table (from categories.json)
+        const result = await sql`
+          SELECT 
+            id,
+            name,
+            display_name,
+            description,
+            icon,
+            sort_order,
+            is_active
+          FROM categories
+          WHERE is_active = true
+          ORDER BY sort_order ASC
+        `;
+        
+        if (result && result.length > 0) {
+          categories = result.map(cat => ({
+            id: cat.id,
+            name: cat.display_name || cat.name,
+            displayName: cat.display_name,
+            description: cat.description,
+            icon: cat.icon,
+            sortOrder: cat.sort_order
+          }));
+          console.log(`✅ [VENDORS] Fetched ${categories.length} categories from categories table`);
+        }
+      } catch (fallbackError) {
+        console.warn('⚠️ [VENDORS] Categories table also not found, using fallback');
+      }
+    }
+    
+    // Fallback to hardcoded categories if database query fails
+    if (categories.length === 0) {
+      console.log('📋 [VENDORS] Using fallback categories');
+      categories = [
+        { id: 'CAT-001', name: 'Photographer & Videographer', displayName: 'Photographer & Videographer', icon: '📸', sortOrder: 1 },
+        { id: 'CAT-002', name: 'Wedding Planner', displayName: 'Wedding Planner', icon: '📋', sortOrder: 2 },
+        { id: 'CAT-003', name: 'Florist', displayName: 'Florist', icon: '🌸', sortOrder: 3 },
+        { id: 'CAT-004', name: 'Hair & Makeup Artists', displayName: 'Hair & Makeup Artists', icon: '💄', sortOrder: 4 },
+        { id: 'CAT-005', name: 'Caterer', displayName: 'Caterer', icon: '🍽️', sortOrder: 5 },
+        { id: 'CAT-006', name: 'DJ/Band', displayName: 'DJ/Band', icon: '🎵', sortOrder: 6 },
+        { id: 'CAT-007', name: 'Officiant', displayName: 'Officiant', icon: '👔', sortOrder: 7 },
+        { id: 'CAT-008', name: 'Venue Coordinator', displayName: 'Venue Coordinator', icon: '🏛️', sortOrder: 8 },
+        { id: 'CAT-009', name: 'Event Rentals', displayName: 'Event Rentals', icon: '🪑', sortOrder: 9 },
+        { id: 'CAT-010', name: 'Cake Designer', displayName: 'Cake Designer', icon: '🎂', sortOrder: 10 },
+        { id: 'CAT-011', name: 'Dress Designer/Tailor', displayName: 'Dress Designer/Tailor', icon: '�', sortOrder: 11 },
+        { id: 'CAT-012', name: 'Security & Guest Management', displayName: 'Security & Guest Management', icon: '🛡️', sortOrder: 12 },
+        { id: 'CAT-013', name: 'Sounds & Lights', displayName: 'Sounds & Lights', icon: '🎤', sortOrder: 13 },
+        { id: 'CAT-014', name: 'Stationery Designer', displayName: 'Stationery Designer', icon: '✉️', sortOrder: 14 },
+        { id: 'CAT-015', name: 'Transportation Services', displayName: 'Transportation Services', icon: '🚗', sortOrder: 15 }
+      ];
+    }
     
     console.log(`✅ [VENDORS] Returning ${categories.length} categories`);
     
@@ -190,7 +258,8 @@ router.get('/featured', async (req, res) => {
   try {
     console.log('⭐ [VENDORS] GET /api/vendors/featured called');
     
-    const vendors = await sql`
+    // Try to get verified vendors first
+    let vendors = await sql`
       SELECT 
         id,
         business_name,
@@ -210,6 +279,30 @@ router.get('/featured', async (req, res) => {
       ORDER BY CAST(rating AS DECIMAL) DESC, review_count DESC
       LIMIT 5
     `;
+
+    // If no verified vendors, get all vendors (fallback)
+    if (vendors.length === 0) {
+      console.log('⚠️ [VENDORS] No verified vendors found, fetching all vendors as fallback');
+      vendors = await sql`
+        SELECT 
+          id,
+          business_name,
+          business_type,
+          rating,
+          review_count,
+          location,
+          description,
+          profile_image,
+          website_url,
+          years_experience,
+          portfolio_images,
+          verified,
+          starting_price
+        FROM vendors 
+        ORDER BY created_at DESC
+        LIMIT 5
+      `;
+    }
 
     console.log(`✅ [VENDORS] Found ${vendors.length} featured vendors`);
 
