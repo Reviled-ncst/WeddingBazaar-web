@@ -1097,6 +1097,48 @@ router.post('/request', async (req, res) => {
       console.error('❌ [EMAIL] Error stack:', emailError.stack);
     }
     
+    // 🔔 CREATE IN-APP NOTIFICATION FOR VENDOR
+    try {
+      console.log('🔔 Creating in-app notification for vendor:', vendorId);
+      
+      const notificationId = `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      await sql`
+        INSERT INTO notifications (
+          id, user_id, user_type, title, message, type, 
+          action_url, metadata, is_read, created_at, updated_at
+        ) VALUES (
+          ${notificationId}, 
+          ${vendorId}, 
+          'vendor', 
+          ${'New Booking Request! 🎉'}, 
+          ${`${coupleName || 'A couple'} has requested ${serviceName || serviceType || 'your services'} for ${eventDate}`}, 
+          'booking',
+          ${`/vendor/bookings?bookingId=${bookingId}`},
+          ${JSON.stringify({
+            bookingId: bookingId,
+            coupleId: coupleId,
+            coupleName: coupleName || 'A couple',
+            serviceName: serviceName || serviceType,
+            serviceType: serviceType,
+            eventDate: eventDate,
+            eventLocation: location,
+            guestCount: guestCount,
+            budgetRange: budgetRange
+          })},
+          false,
+          NOW(), 
+          NOW()
+        )
+      `;
+      
+      console.log('✅ In-app notification created for vendor:', notificationId);
+      
+    } catch (notifError) {
+      console.error('❌ Failed to create in-app notification:', notifError);
+      // Don't fail booking creation if notification fails
+    }
+    
     res.json({
       success: true,
       booking: booking[0],
