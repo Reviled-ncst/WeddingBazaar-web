@@ -478,7 +478,7 @@ router.get('/:vendorId/services', async (req, res) => {
 router.get('/:vendorId/details', async (req, res) => {
   try {
     const { vendorId } = req.params;
-    console.log(`📋 [VENDORS] GET /api/vendors/${vendorId}/details called - v3.1`);
+    console.log(`📋 [VENDORS] GET /api/vendors/${vendorId}/details called - v3.2-DEBUG`);
     
     // Get vendor basic info (join with users for contact)
     console.log(`🔍 [VENDORS] Querying vendor: ${vendorId}`);
@@ -493,6 +493,7 @@ router.get('/:vendorId/details', async (req, res) => {
       WHERE v.id = ${vendorId}
     `.catch(err => {
       console.error('❌ [VENDORS] SQL error fetching vendor:', err);
+      console.error('❌ [VENDORS] Error stack:', err.stack);
       throw err;
     });
     
@@ -622,27 +623,52 @@ router.get('/:vendorId/details', async (req, res) => {
         // Pricing Information (calculate from services price_range field)
         pricing: (() => {
           try {
-            const servicesWithPrice = (services || []).filter(s => s && s.price_range);
+            console.log(`💰 [VENDORS] Calculating pricing for vendor ${vendorId}`);
+            console.log(`💰 [VENDORS] Services count: ${(services || []).length}`);
+            
+            const servicesWithPrice = (services || []).filter(s => {
+              const hasPrice = s && s.price_range;
+              if (hasPrice) {
+                console.log(`💰 [VENDORS] Service with price: ${s.title}, price_range: ${s.price_range}`);
+              }
+              return hasPrice;
+            });
+            
+            console.log(`💰 [VENDORS] Services with pricing: ${servicesWithPrice.length}`);
+            
             if (servicesWithPrice.length > 0) {
               // Parse price_range strings like "₱10,000 - ₱50,000"
               const allPrices = [];
               servicesWithPrice.forEach(s => {
-                const priceStr = String(s.price_range);
-                // Extract all numbers from the price range string
-                const numbers = priceStr.match(/[\d,]+/g);
-                if (numbers) {
-                  numbers.forEach(num => {
-                    const price = parseFloat(num.replace(/,/g, ''));
-                    if (!isNaN(price) && price > 0) {
-                      allPrices.push(price);
-                    }
-                  });
+                try {
+                  const priceStr = String(s.price_range);
+                  // Extract all numbers from the price range string
+                  const numbers = priceStr.match(/[\d,]+/g);
+                  if (numbers && numbers.length > 0) {
+                    numbers.forEach(num => {
+                      try {
+                        const price = parseFloat(num.replace(/,/g, ''));
+                        if (!isNaN(price) && price > 0) {
+                          allPrices.push(price);
+                          console.log(`💰 [VENDORS] Parsed price: ${price}`);
+                        }
+                      } catch (parseErr) {
+                        console.error(`⚠️ [VENDORS] Error parsing price: ${num}`, parseErr);
+                      }
+                    });
+                  }
+                } catch (strErr) {
+                  console.error(`⚠️ [VENDORS] Error processing price_range:`, strErr);
                 }
               });
+              
+              console.log(`💰 [VENDORS] All parsed prices: ${allPrices.join(', ')}`);
               
               if (allPrices.length > 0) {
                 const min = Math.min(...allPrices);
                 const max = Math.max(...allPrices);
+                
+                console.log(`💰 [VENDORS] Price range: ${min} - ${max}`);
                 
                 return {
                   startingPrice: min.toString(),
@@ -655,6 +681,7 @@ router.get('/:vendorId/details', async (req, res) => {
             
             // Fallback to vendor starting_price if available
             if (vendor.starting_price) {
+              console.log(`💰 [VENDORS] Using vendor starting_price: ${vendor.starting_price}`);
               const price = parseFloat(String(vendor.starting_price).replace(/[^0-9.]/g, ''));
               if (!isNaN(price) && price > 0) {
                 return {
@@ -666,6 +693,7 @@ router.get('/:vendorId/details', async (req, res) => {
               }
             }
             
+            console.log(`💰 [VENDORS] No pricing found, using fallback`);
             return {
               startingPrice: null,
               priceRangeMin: null,
@@ -673,7 +701,8 @@ router.get('/:vendorId/details', async (req, res) => {
               priceRange: 'Contact for pricing'
             };
           } catch (pricingError) {
-            console.error('⚠️ [VENDORS] Pricing calculation error:', pricingError);
+            console.error('❌ [VENDORS] Pricing calculation error:', pricingError);
+            console.error('❌ [VENDORS] Pricing error stack:', pricingError.stack);
             return {
               startingPrice: null,
               priceRangeMin: null,
@@ -743,9 +772,14 @@ router.get('/:vendorId/details', async (req, res) => {
     
   } catch (error) {
     console.error('❌ [VENDORS] Vendor details error:', error);
+    console.error('❌ [VENDORS] Error stack:', error.stack);
+    console.error('❌ [VENDORS] Error name:', error.name);
+    console.error('❌ [VENDORS] Vendor ID:', req.params.vendorId);
     res.status(500).json({
       success: false,
       error: error.message,
+      errorType: error.name,
+      vendorId: req.params.vendorId,
       timestamp: new Date().toISOString()
     });
   }
