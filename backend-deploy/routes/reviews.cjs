@@ -352,4 +352,78 @@ router.get('/vendor/:vendorId', async (req, res) => {
   }
 });
 
+// GET - Featured reviews for homepage testimonials
+router.get('/featured', async (req, res) => {
+  console.log('⭐ [REVIEWS] GET /api/reviews/featured called');
+  
+  try {
+    const limit = parseInt(req.query.limit) || 6;
+    
+    console.log(`🔍 [REVIEWS] Fetching ${limit} featured reviews`);
+    
+    // Check if reviews table exists
+    const tableExists = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'reviews'
+      );
+    `;
+    
+    if (!tableExists[0].exists) {
+      console.log('⚠️ [REVIEWS] Reviews table does not exist, returning empty array');
+      return res.json([]);
+    }
+    
+    // Get featured reviews with high ratings (4-5 stars) and join with users and vendors
+    const reviews = await sql`
+      SELECT 
+        r.id,
+        r.rating,
+        r.comment,
+        r.created_at,
+        u.full_name as user_name,
+        u.profile_image as user_image,
+        v.business_name as vendor_name,
+        v.business_type as service_category,
+        s.title as service_title
+      FROM reviews r
+      LEFT JOIN users u ON r.user_id = u.id
+      LEFT JOIN services s ON r.service_id = s.id
+      LEFT JOIN vendors v ON s.vendor_id = v.id
+      WHERE r.rating >= 4
+      ORDER BY r.rating DESC, r.created_at DESC
+      LIMIT ${limit}
+    `;
+    
+    console.log(`✅ [REVIEWS] Found ${reviews.length} featured reviews`);
+    
+    // Format reviews for frontend
+    const formattedReviews = reviews.map(review => ({
+      id: review.id,
+      name: review.user_name || 'Anonymous User',
+      rating: review.rating,
+      review: review.comment,
+      image: review.user_image || '/default-avatar.png',
+      date: new Date(review.created_at).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }),
+      service: review.service_title || 'Wedding Service',
+      vendor: review.vendor_name || 'Wedding Vendor',
+      category: review.service_category || 'Wedding Services',
+      verified: true
+    }));
+    
+    res.json(formattedReviews);
+    
+  } catch (error) {
+    console.error('❌ [REVIEWS] Error fetching featured reviews:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;
