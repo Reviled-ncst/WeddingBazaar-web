@@ -35,29 +35,35 @@ router.get('/vendor/:vendorId', async (req, res) => {
       console.log(`📅 Date range filter: ${startDate || 'any'} to ${endDate || 'any'}`);
     }
     
-    // SECURITY FIX: Only search for exact vendor ID match, no legacy fallback
+    // SECURITY FIX: Join with users table to get client name
     let query = `
-      SELECT * FROM bookings 
-      WHERE vendor_id = $1
+      SELECT 
+        b.*,
+        u.first_name,
+        u.last_name,
+        u.email as user_email
+      FROM bookings b
+      LEFT JOIN users u ON b.couple_id = u.id
+      WHERE b.vendor_id = $1
     `;
     let params = [requestedVendorId];
     
     // Add date range filtering if provided
     if (startDate) {
-      query += ` AND event_date >= $${params.length + 1}`;
+      query += ` AND b.event_date >= $${params.length + 1}`;
       params.push(startDate);
     }
     if (endDate) {
-      query += ` AND event_date <= $${params.length + 1}`;
+      query += ` AND b.event_date <= $${params.length + 1}`;
       params.push(endDate);
     }
     
     if (status && status !== 'all') {
-      query += ` AND status = $${params.length + 1}`;
+      query += ` AND b.status = $${params.length + 1}`;
       params.push(status);
     }
     
-    query += ` ORDER BY ${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    query += ` ORDER BY b.${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(parseInt(limit), parseInt(offset));
     
     const rawBookings = await sql(query, params);
@@ -74,9 +80,40 @@ router.get('/vendor/:vendorId', async (req, res) => {
       });
     }
     
-    // Process bookings to interpret quote_sent status from notes
+    // Process bookings to add client name and interpret quote_sent status
     const bookings = rawBookings.map(booking => {
       const processedBooking = { ...booking };
+      
+      // Build client name from multiple sources in priority order
+      let clientName = '';
+      
+      // Priority 1: Use first_name + last_name from users table
+      if (booking.first_name || booking.last_name) {
+        clientName = `${booking.first_name || ''} ${booking.last_name || ''}`.trim();
+      }
+      
+      // Priority 2: Use couple_name from bookings table
+      if (!clientName && booking.couple_name) {
+        clientName = booking.couple_name;
+      }
+      
+      // Priority 3: Use contact_person from bookings table
+      if (!clientName && booking.contact_person) {
+        clientName = booking.contact_person;
+      }
+      
+      // Priority 4: Use contact_email
+      if (!clientName && booking.contact_email) {
+        clientName = booking.contact_email.split('@')[0];
+      }
+      
+      // Fallback
+      if (!clientName) {
+        clientName = 'Unknown Client';
+      }
+      
+      processedBooking.coupleName = clientName;
+      processedBooking.clientName = clientName; // Add both for compatibility
       
       // If notes start with "QUOTE_SENT:", interpret as quote_sent status
       if (booking.notes && booking.notes.startsWith('QUOTE_SENT:')) {
