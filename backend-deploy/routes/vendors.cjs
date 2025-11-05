@@ -518,13 +518,13 @@ router.get('/:vendorId/details', async (req, res) => {
         subcategory,
         description,
         price,
-        price_range_min,
-        price_range_max,
-        inclusions,
-        image_url,
+        price_range,
+        images,
+        location,
+        years_in_business,
+        contact_info,
         is_active,
-        service_duration,
-        capacity
+        created_at
       FROM services 
       WHERE vendor_id = ${vendorId}
         AND is_active = true
@@ -619,52 +619,63 @@ router.get('/:vendorId/details', async (req, res) => {
           businessHours: 'Monday-Sunday: 9AM-6PM'
         },
         
-        // Pricing Information (calculate from services if not on vendor)
+        // Pricing Information (calculate from services price_range field)
         pricing: (() => {
           try {
-            const servicesWithPrice = (services || []).filter(s => s && (s.price || s.price_range_min));
+            const servicesWithPrice = (services || []).filter(s => s && s.price_range);
             if (servicesWithPrice.length > 0) {
-              const pricesMin = servicesWithPrice
-                .map(s => {
-                  const price = s.price || s.price_range_min || 0;
-                  return parseFloat(String(price).replace(/[^0-9.]/g, ''));
-                })
-                .filter(p => !isNaN(p) && p > 0);
+              // Parse price_range strings like "₱10,000 - ₱50,000"
+              const allPrices = [];
+              servicesWithPrice.forEach(s => {
+                const priceStr = String(s.price_range);
+                // Extract all numbers from the price range string
+                const numbers = priceStr.match(/[\d,]+/g);
+                if (numbers) {
+                  numbers.forEach(num => {
+                    const price = parseFloat(num.replace(/,/g, ''));
+                    if (!isNaN(price) && price > 0) {
+                      allPrices.push(price);
+                    }
+                  });
+                }
+              });
               
-              const pricesMax = servicesWithPrice
-                .map(s => {
-                  const price = s.price_range_max || s.price || 0;
-                  return parseFloat(String(price).replace(/[^0-9.]/g, ''));
-                })
-                .filter(p => !isNaN(p) && p > 0);
-              
-              const min = pricesMin.length > 0 ? Math.min(...pricesMin) : null;
-              const max = pricesMax.length > 0 ? Math.max(...pricesMax) : null;
-              
-              return {
-                startingPrice: vendor.starting_price || (min ? min.toString() : null),
-                priceRangeMin: min,
-                priceRangeMax: max,
-                priceRange: min && max 
-                  ? `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`
-                  : (vendor.starting_price && !isNaN(parseFloat(String(vendor.starting_price).replace(/[^0-9.]/g, ''))))
-                  ? `Starting at ₱${parseFloat(String(vendor.starting_price).replace(/[^0-9.]/g, '')).toLocaleString()}`
-                  : 'Contact for pricing'
-              };
+              if (allPrices.length > 0) {
+                const min = Math.min(...allPrices);
+                const max = Math.max(...allPrices);
+                
+                return {
+                  startingPrice: min.toString(),
+                  priceRangeMin: min,
+                  priceRangeMax: max,
+                  priceRange: `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`
+                };
+              }
+            }
+            
+            // Fallback to vendor starting_price if available
+            if (vendor.starting_price) {
+              const price = parseFloat(String(vendor.starting_price).replace(/[^0-9.]/g, ''));
+              if (!isNaN(price) && price > 0) {
+                return {
+                  startingPrice: vendor.starting_price,
+                  priceRangeMin: price,
+                  priceRangeMax: null,
+                  priceRange: `Starting at ₱${price.toLocaleString()}`
+                };
+              }
             }
             
             return {
-              startingPrice: vendor.starting_price,
+              startingPrice: null,
               priceRangeMin: null,
               priceRangeMax: null,
-              priceRange: (vendor.starting_price && !isNaN(parseFloat(String(vendor.starting_price).replace(/[^0-9.]/g, ''))))
-                ? `Starting at ₱${parseFloat(String(vendor.starting_price).replace(/[^0-9.]/g, '')).toLocaleString()}`
-                : 'Contact for pricing'
+              priceRange: 'Contact for pricing'
             };
           } catch (pricingError) {
             console.error('⚠️ [VENDORS] Pricing calculation error:', pricingError);
             return {
-              startingPrice: vendor.starting_price || null,
+              startingPrice: null,
               priceRangeMin: null,
               priceRangeMax: null,
               priceRange: 'Contact for pricing'
@@ -688,20 +699,15 @@ router.get('/:vendorId/details', async (req, res) => {
         id: service.id,
         title: service.title,
         category: service.category,
-        subcategory: service.subcategory,
         description: service.description,
         price: service.price,
-        priceRangeMin: service.price_range_min,
-        priceRangeMax: service.price_range_max,
-        priceDisplay: service.price_range_min && service.price_range_max 
-          ? `₱${parseFloat(service.price_range_min).toLocaleString()} - ₱${parseFloat(service.price_range_max).toLocaleString()}`
-          : service.price 
-          ? `₱${parseFloat(service.price).toLocaleString()}`
-          : 'Contact for pricing',
-        inclusions: service.inclusions || [],
-        imageUrl: service.image_url,
-        duration: service.service_duration,
-        capacity: service.capacity
+        priceRange: service.price_range || 'Contact for pricing',
+        priceDisplay: service.price_range || 'Contact for pricing',
+        images: service.images || [],
+        location: service.location || vendor.location || 'Location not specified',
+        yearsInBusiness: service.years_in_business || 0,
+        contactInfo: service.contact_info || {},
+        createdAt: service.created_at
       })),
       
       // Reviews
