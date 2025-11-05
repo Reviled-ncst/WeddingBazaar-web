@@ -513,21 +513,9 @@ router.get('/:vendorId/details', async (req, res) => {
     console.log(`🔍 [VENDORS] Fetching services for vendor: ${vendorId}`);
     let services = [];
     try {
+      // Use SELECT * to avoid column name issues, then map to what we need
       services = await sql`
-        SELECT 
-          id,
-          title,
-          category,
-          subcategory,
-          description,
-          price,
-          price_range,
-          images,
-          location,
-          years_in_business,
-          contact_info,
-          is_active,
-          created_at
+        SELECT *
         FROM services 
         WHERE vendor_id = ${vendorId}
           AND is_active = true
@@ -540,6 +528,7 @@ router.get('/:vendorId/details', async (req, res) => {
     } catch (err) {
       console.error('❌ [VENDORS] Error fetching services:', err);
       console.error('❌ [VENDORS] Services error stack:', err.stack);
+      console.error('❌ [VENDORS] Services error message:', err.message);
       services = []; // Return empty array on error
     }
     
