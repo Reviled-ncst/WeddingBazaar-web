@@ -487,7 +487,7 @@ router.get('/:vendorId/details', async (req, res) => {
         v.*,
         u.email as user_email,
         u.phone as user_phone,
-        u.full_name as user_name
+        CONCAT(u.first_name, ' ', u.last_name) as user_name
       FROM vendors v
       LEFT JOIN users u ON v.user_id = u.id
       WHERE v.id = ${vendorId}
@@ -544,7 +544,7 @@ router.get('/:vendorId/details', async (req, res) => {
         r.comment,
         r.created_at,
         r.images,
-        u.full_name as reviewer_name,
+        CONCAT(u.first_name, ' ', u.last_name) as reviewer_name,
         u.profile_image_url as reviewer_image,
         b.service_type,
         b.event_date
