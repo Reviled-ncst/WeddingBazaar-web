@@ -195,35 +195,49 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   // Fetch vendor categories from API
   useEffect(() => {
     const fetchCategories = async () => {
-      // Only fetch if modal is open and user selected vendor or coordinator
-      if (!isOpen || (userType !== 'vendor' && userType !== 'coordinator')) {
+      // Only fetch if modal is open and user selected vendor (not coordinator)
+      if (!isOpen || userType !== 'vendor') {
+        console.log('⏭️ Skipping categories fetch - Modal open:', isOpen, 'User type:', userType);
         return;
       }
 
+      console.log('🔄 Fetching vendor categories from API...');
       setLoadingCategories(true);
       
       try {
         const apiBaseUrl = (import.meta as any).env?.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+        console.log('📡 API URL:', `${apiBaseUrl}/api/vendors/categories`);
         const response = await fetch(`${apiBaseUrl}/api/vendors/categories`);
         
         if (response.ok) {
           const result = await response.json();
+          console.log('📦 API Response:', result);
           
           if (result.success && Array.isArray(result.categories)) {
             // Transform API categories to dropdown format
-            const formattedCategories = result.categories.map((cat: any) => ({
+            // Use displayName for UI, name for backend value
+            interface CategoryResponse {
+              name: string;
+              displayName?: string;
+            }
+            
+            const formattedCategories = result.categories.map((cat: CategoryResponse) => ({
               value: cat.name,
-              label: cat.name
+              label: cat.displayName || cat.name  // Prefer displayName, fallback to name
             }));
             
             setVendorCategories(formattedCategories);
-            console.log('✅ Fetched vendor categories from API:', formattedCategories.length);
+            console.log('✅ Successfully loaded', formattedCategories.length, 'categories from database');
+            console.log('📋 Categories:', formattedCategories.map((c: { label: string }) => c.label).join(', '));
+          } else {
+            console.warn('⚠️ Invalid API response format:', result);
           }
         } else {
-          console.warn('⚠️ Failed to fetch categories, using defaults');
+          console.warn('⚠️ API returned error status:', response.status, response.statusText);
         }
       } catch (error) {
         console.error('❌ Error fetching categories:', error);
+        console.log('🔄 Keeping default hardcoded categories as fallback');
         // Keep default categories on error
       } finally {
         setLoadingCategories(false);

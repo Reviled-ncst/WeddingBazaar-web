@@ -14,16 +14,10 @@ export default defineConfig({
       output: {
         // Smart automatic chunking based on module paths
         manualChunks(id) {
-          // Separate React and core dependencies
-          if (id.includes('node_modules/react') || 
-              id.includes('node_modules/react-dom') || 
-              id.includes('node_modules/react-router-dom')) {
-            return 'react-vendor';
-          }
-          
-          // Separate Lucide icons
-          if (id.includes('node_modules/lucide-react')) {
-            return 'ui-vendor';
+          // CRITICAL: Keep React core together with all node_modules
+          // This prevents "Cannot read properties of undefined (reading 'createContext')" error
+          if (id.includes('node_modules')) {
+            return 'vendor-utils';
           }
           
           // Group individual user pages
@@ -49,11 +43,6 @@ export default defineConfig({
           // Group shared components (modals, headers, etc.)
           if (id.includes('/shared/components/')) {
             return 'shared-components';
-          }
-          
-          // Group all other node_modules together
-          if (id.includes('node_modules')) {
-            return 'vendor-utils';
           }
         },
         // Naming pattern for chunks

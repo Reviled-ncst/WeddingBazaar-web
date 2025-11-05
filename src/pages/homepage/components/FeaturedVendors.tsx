@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Star, Heart, MapPin, Calendar, Filter, SortAsc, RefreshCcw, Search, Zap, TrendingUp, Shield, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { VendorDetailsModal } from './VendorDetailsModal';
 
 interface FeaturedVendor {
   id: string;
@@ -515,11 +516,20 @@ export const FeaturedVendors: React.FC = () => {
   }, [vendors]);
 
   const priceRanges = ['all', '$', '$$', '$$$', '$$$$'];
+  
+  // Modal state for vendor details
+  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleViewDetails = (vendor: FeaturedVendor) => {
-    console.log('Viewing details for:', vendor.name);
-    sessionStorage.setItem('selectedVendor', JSON.stringify(vendor));
-    navigate('/individual/services');
+    console.log('Opening vendor details modal for:', vendor.name, vendor.id);
+    setSelectedVendorId(vendor.id);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedVendorId(null);
   };
 
   const handleRetry = () => {
@@ -747,6 +757,15 @@ export const FeaturedVendors: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Vendor Details Modal */}
+      {isModalOpen && selectedVendorId && (
+        <VendorDetailsModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          vendorId={selectedVendorId}
+        />
+      )}
     </section>
   );
 };
