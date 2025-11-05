@@ -473,10 +473,11 @@ router.get('/:vendorId/services', async (req, res) => {
 });
 
 // Get vendor by ID with comprehensive details (contact, services, reviews, pricing)
+// Updated: 2025-11-05 - Added robust error handling and defensive pricing calculation
 router.get('/:vendorId/details', async (req, res) => {
   try {
     const { vendorId } = req.params;
-    console.log(`📋 [VENDORS] GET /api/vendors/${vendorId}/details called - v3`);
+    console.log(`📋 [VENDORS] GET /api/vendors/${vendorId}/details called - v3.1`);
     
     // Get vendor basic info (join with users for contact)
     console.log(`🔍 [VENDORS] Querying vendor: ${vendorId}`);
