@@ -476,9 +476,10 @@ router.get('/:vendorId/services', async (req, res) => {
 router.get('/:vendorId/details', async (req, res) => {
   try {
     const { vendorId } = req.params;
-    console.log(`📋 [VENDORS] GET /api/vendors/${vendorId}/details called`);
+    console.log(`📋 [VENDORS] GET /api/vendors/${vendorId}/details called - v3`);
     
     // Get vendor basic info (join with users for contact)
+    console.log(`🔍 [VENDORS] Querying vendor: ${vendorId}`);
     const vendors = await sql`
       SELECT 
         v.*,
@@ -488,9 +489,12 @@ router.get('/:vendorId/details', async (req, res) => {
       FROM vendors v
       LEFT JOIN users u ON v.user_id = u.id
       WHERE v.id = ${vendorId}
-    `;
+    `.catch(err => {
+      console.error('❌ [VENDORS] SQL error fetching vendor:', err);
+      throw err;
+    });
     
-    if (vendors.length === 0) {
+    if (!vendors || vendors.length === 0) {
       console.log(`❌ [VENDORS] Vendor ${vendorId} not found`);
       return res.status(404).json({
         success: false,
@@ -500,8 +504,10 @@ router.get('/:vendorId/details', async (req, res) => {
     }
     
     const vendor = vendors[0];
+    console.log(`✅ [VENDORS] Found vendor: ${vendor.business_name}`);
     
     // Get vendor's services with their pricing
+    console.log(`🔍 [VENDORS] Fetching services for vendor: ${vendorId}`);
     const services = await sql`
       SELECT 
         id,
@@ -521,9 +527,13 @@ router.get('/:vendorId/details', async (req, res) => {
       WHERE vendor_id = ${vendorId}
         AND is_active = true
       ORDER BY created_at DESC
-    `;
+    `.catch(err => {
+      console.error('⚠️ [VENDORS] Error fetching services:', err);
+      return []; // Return empty array on error
+    });
     
     // Get vendor's reviews
+    console.log(`🔍 [VENDORS] Fetching reviews for vendor: ${vendorId}`);
     const reviews = await sql`
       SELECT 
         r.id,
@@ -541,9 +551,13 @@ router.get('/:vendorId/details', async (req, res) => {
       WHERE r.vendor_id = ${vendorId}
       ORDER BY r.created_at DESC
       LIMIT 10
-    `;
+    `.catch(err => {
+      console.error('⚠️ [VENDORS] Error fetching reviews:', err);
+      return []; // Return empty array on error
+    });
     
     // Calculate rating breakdown
+    console.log(`🔍 [VENDORS] Calculating rating breakdown for vendor: ${vendorId}`);
     const ratingBreakdown = await sql`
       SELECT 
         COUNT(*) as total_reviews,
@@ -555,16 +569,23 @@ router.get('/:vendorId/details', async (req, res) => {
         COUNT(CASE WHEN rating = 1 THEN 1 END) as one_star
       FROM reviews
       WHERE vendor_id = ${vendorId}
-    `;
+    `.catch(err => {
+      console.error('⚠️ [VENDORS] Error calculating rating breakdown:', err);
+      return [{ total_reviews: 0, average_rating: 0, five_star: 0, four_star: 0, three_star: 0, two_star: 0, one_star: 0 }];
+    });
     
     // Get completed bookings count
+    console.log(`🔍 [VENDORS] Fetching booking stats for vendor: ${vendorId}`);
     const bookingStats = await sql`
       SELECT 
         COUNT(*) as total_bookings,
         COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_bookings
       FROM bookings
       WHERE vendor_id = ${vendorId}
-    `;
+    `.catch(err => {
+      console.error('⚠️ [VENDORS] Error fetching booking stats:', err);
+      return [{ total_bookings: 0, completed_bookings: 0 }];
+    });
     
     console.log(`✅ [VENDORS] Vendor details fetched: ${services.length} services, ${reviews.length} reviews`);
     
@@ -598,34 +619,55 @@ router.get('/:vendorId/details', async (req, res) => {
         
         // Pricing Information (calculate from services if not on vendor)
         pricing: (() => {
-          const servicesWithPrice = services.filter(s => s.price || s.price_range_min);
-          if (servicesWithPrice.length > 0) {
-            const pricesMin = servicesWithPrice.map(s => parseFloat(s.price || s.price_range_min || 0)).filter(p => p > 0);
-            const pricesMax = servicesWithPrice.map(s => parseFloat(s.price_range_max || s.price || 0)).filter(p => p > 0);
-            
-            const min = pricesMin.length > 0 ? Math.min(...pricesMin) : null;
-            const max = pricesMax.length > 0 ? Math.max(...pricesMax) : null;
+          try {
+            const servicesWithPrice = (services || []).filter(s => s && (s.price || s.price_range_min));
+            if (servicesWithPrice.length > 0) {
+              const pricesMin = servicesWithPrice
+                .map(s => {
+                  const price = s.price || s.price_range_min || 0;
+                  return parseFloat(String(price).replace(/[^0-9.]/g, ''));
+                })
+                .filter(p => !isNaN(p) && p > 0);
+              
+              const pricesMax = servicesWithPrice
+                .map(s => {
+                  const price = s.price_range_max || s.price || 0;
+                  return parseFloat(String(price).replace(/[^0-9.]/g, ''));
+                })
+                .filter(p => !isNaN(p) && p > 0);
+              
+              const min = pricesMin.length > 0 ? Math.min(...pricesMin) : null;
+              const max = pricesMax.length > 0 ? Math.max(...pricesMax) : null;
+              
+              return {
+                startingPrice: vendor.starting_price || (min ? min.toString() : null),
+                priceRangeMin: min,
+                priceRangeMax: max,
+                priceRange: min && max 
+                  ? `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`
+                  : (vendor.starting_price && !isNaN(parseFloat(String(vendor.starting_price).replace(/[^0-9.]/g, ''))))
+                  ? `Starting at ₱${parseFloat(String(vendor.starting_price).replace(/[^0-9.]/g, '')).toLocaleString()}`
+                  : 'Contact for pricing'
+              };
+            }
             
             return {
-              startingPrice: vendor.starting_price || (min ? min.toString() : null),
-              priceRangeMin: min,
-              priceRangeMax: max,
-              priceRange: min && max 
-                ? `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`
-                : (vendor.starting_price && !isNaN(parseFloat(vendor.starting_price)))
-                ? `Starting at ₱${parseFloat(vendor.starting_price).toLocaleString()}`
+              startingPrice: vendor.starting_price,
+              priceRangeMin: null,
+              priceRangeMax: null,
+              priceRange: (vendor.starting_price && !isNaN(parseFloat(String(vendor.starting_price).replace(/[^0-9.]/g, ''))))
+                ? `Starting at ₱${parseFloat(String(vendor.starting_price).replace(/[^0-9.]/g, '')).toLocaleString()}`
                 : 'Contact for pricing'
             };
+          } catch (pricingError) {
+            console.error('⚠️ [VENDORS] Pricing calculation error:', pricingError);
+            return {
+              startingPrice: vendor.starting_price || null,
+              priceRangeMin: null,
+              priceRangeMax: null,
+              priceRange: 'Contact for pricing'
+            };
           }
-          
-          return {
-            startingPrice: vendor.starting_price,
-            priceRangeMin: null,
-            priceRangeMax: null,
-            priceRange: (vendor.starting_price && !isNaN(parseFloat(vendor.starting_price)))
-              ? `Starting at ₱${parseFloat(vendor.starting_price).toLocaleString()}`
-              : 'Contact for pricing'
-          };
         })(),
         
         // Statistics
