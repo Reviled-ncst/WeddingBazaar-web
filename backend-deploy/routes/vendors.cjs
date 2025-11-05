@@ -597,26 +597,36 @@ router.get('/:vendorId/details', async (req, res) => {
         },
         
         // Pricing Information (calculate from services if not on vendor)
-        pricing: {
-          startingPrice: vendor.starting_price,
-          priceRangeMin: services.length > 0 
-            ? Math.min(...services.filter(s => s.price || s.price_range_min).map(s => parseFloat(s.price || s.price_range_min || 0)))
-            : null,
-          priceRangeMax: services.length > 0
-            ? Math.max(...services.filter(s => s.price || s.price_range_max).map(s => parseFloat(s.price_range_max || s.price || 0)))
-            : null,
-          priceRange: (() => {
-            const prices = services.filter(s => s.price || s.price_range_min);
-            if (prices.length > 0) {
-              const min = Math.min(...prices.map(s => parseFloat(s.price || s.price_range_min || 0)));
-              const max = Math.max(...prices.map(s => parseFloat(s.price_range_max || s.price || 0)));
-              return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
-            }
-            return vendor.starting_price 
+        pricing: (() => {
+          const servicesWithPrice = services.filter(s => s.price || s.price_range_min);
+          if (servicesWithPrice.length > 0) {
+            const pricesMin = servicesWithPrice.map(s => parseFloat(s.price || s.price_range_min || 0)).filter(p => p > 0);
+            const pricesMax = servicesWithPrice.map(s => parseFloat(s.price_range_max || s.price || 0)).filter(p => p > 0);
+            
+            const min = pricesMin.length > 0 ? Math.min(...pricesMin) : null;
+            const max = pricesMax.length > 0 ? Math.max(...pricesMax) : null;
+            
+            return {
+              startingPrice: vendor.starting_price || (min ? min.toString() : null),
+              priceRangeMin: min,
+              priceRangeMax: max,
+              priceRange: min && max 
+                ? `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`
+                : vendor.starting_price 
+                ? `Starting at ₱${parseFloat(vendor.starting_price).toLocaleString()}`
+                : 'Contact for pricing'
+            };
+          }
+          
+          return {
+            startingPrice: vendor.starting_price,
+            priceRangeMin: null,
+            priceRangeMax: null,
+            priceRange: vendor.starting_price 
               ? `Starting at ₱${parseFloat(vendor.starting_price).toLocaleString()}`
-              : 'Contact for pricing';
-          })()
-        },
+              : 'Contact for pricing'
+          };
+        })(),
         
         // Statistics
         stats: {
