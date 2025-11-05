@@ -843,4 +843,48 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// GET CATEGORIES - GET /api/services/categories
+router.get('/categories', async (req, res) => {
+  console.log('📋 [GET /api/services/categories] Fetching service categories');
+  
+  try {
+    const categories = await sql`
+      SELECT 
+        id,
+        name,
+        display_name,
+        description,
+        icon,
+        sort_order,
+        is_active
+      FROM service_categories
+      WHERE is_active = true
+      ORDER BY sort_order ASC
+    `;
+
+    console.log(`✅ [GET /api/services/categories] Found ${categories.length} categories`);
+
+    res.json({
+      success: true,
+      categories: categories.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        displayName: cat.display_name,
+        description: cat.description,
+        icon: cat.icon,
+        sortOrder: cat.sort_order
+      })),
+      count: categories.length
+    });
+
+  } catch (error) {
+    console.error('❌ [GET /api/services/categories] Error fetching categories:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch categories',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 module.exports = router;
