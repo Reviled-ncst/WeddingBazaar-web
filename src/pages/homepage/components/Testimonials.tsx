@@ -3,7 +3,8 @@ import { Star, Quote, ChevronLeft, ChevronRight, Heart, Calendar, MapPin, Play, 
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../../utils/cn';
 
-const testimonials = [
+// Fallback testimonials (used when no real reviews exist)
+const fallbackTestimonials = [
   {
     name: 'Sarah & Michael',
     wedding: 'June 2024',
@@ -78,8 +79,24 @@ const testimonials = [
   }
 ];
 
+interface Testimonial {
+  id?: string;
+  name: string;
+  wedding: string;
+  location: string;
+  rating: number;
+  image: string;
+  quote: string;
+  vendor: string;
+  category: string;
+  likes: number;
+  verified: boolean;
+  images?: string[];
+}
+
 export const Testimonials: React.FC = () => {
   const navigate = useNavigate();
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(fallbackTestimonials);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [likedTestimonials, setLikedTestimonials] = useState<Set<number>>(new Set());
   const [autoPlay, setAutoPlay] = useState(true);
@@ -92,10 +109,65 @@ export const Testimonials: React.FC = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
 
-  // Simulate loading state
+  // Fetch real reviews from database
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1500);
-    return () => clearTimeout(timer);
+    const fetchRealReviews = async () => {
+      try {
+        const apiBaseUrl = (import.meta as any).env?.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+        
+        // Fetch reviews from vendors (via details endpoint which includes reviews)
+        const response = await fetch(`${apiBaseUrl}/api/vendors/featured`);
+        const data = await response.json();
+        
+        if (data.success && data.vendors) {
+          const realTestimonials: Testimonial[] = [];
+          
+          // For each vendor, fetch their reviews
+          for (const vendor of data.vendors.slice(0, 3)) { // Get reviews from first 3 vendors
+            try {
+              const vendorDetailsResponse = await fetch(`${apiBaseUrl}/api/vendors/${vendor.id}/details`);
+              const vendorData = await vendorDetailsResponse.json();
+              
+              if (vendorData.success && vendorData.reviews && vendorData.reviews.length > 0) {
+                // Transform reviews into testimonials format
+                vendorData.reviews.slice(0, 2).forEach((review: any) => {
+                  realTestimonials.push({
+                    id: review.id,
+                    name: review.reviewer?.name || 'Happy Couple',
+                    wedding: new Date(review.date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+                    location: vendor.location || 'Philippines',
+                    rating: review.rating,
+                    image: review.reviewer?.image || review.images?.[0] || 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=200&h=200&fit=crop&crop=faces',
+                    quote: review.comment,
+                    vendor: vendor.name,
+                    category: review.serviceType || vendor.category,
+                    likes: Math.floor(Math.random() * 500) + 100,
+                    verified: true,
+                    images: review.images || []
+                  });
+                });
+              }
+            } catch (err) {
+              console.warn('Could not fetch reviews for vendor:', vendor.id);
+            }
+          }
+          
+          // Use real testimonials if we got any, otherwise use fallback
+          if (realTestimonials.length > 0) {
+            console.log(`✅ [Testimonials] Loaded ${realTestimonials.length} real reviews from database`);
+            setTestimonials(realTestimonials);
+          } else {
+            console.log('ℹ️ [Testimonials] No real reviews found, using fallback testimonials');
+          }
+        }
+      } catch (error) {
+        console.warn('Could not fetch real reviews, using fallback testimonials:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchRealReviews();
   }, []);
 
   // Auto-slide functionality with smoother transitions and progress
