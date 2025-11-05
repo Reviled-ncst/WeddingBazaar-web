@@ -41,50 +41,63 @@ const formatServiceType = (serviceType: string, serviceName?: string): string =>
 };
 
 // Simple mapper functions
-const mapVendorBookingToUI = (booking: any, vendorId: string): UIBooking => ({
-  id: booking.id || 'unknown',
-  vendorId: vendorId,
-  vendorName: booking.vendor_name || 'Unknown Vendor',
-  coupleId: booking.couple_id || booking.user_id || 'unknown',
-  coupleName: booking.couple_name || booking.client_name || 'Unknown Client',
-  contactEmail: booking.contact_email || booking.email || '',
-  contactPhone: booking.contact_phone || booking.phone || '',
-  serviceType: formatServiceType(
-    booking.service_type || booking.category || 'General Service',
-    booking.service_name
-  ),
-  eventDate: booking.event_date || booking.date || new Date().toISOString(),
-  eventLocation: booking.event_location || booking.location || 'Not specified',
-  guestCount: booking.guest_count || booking.guests || 0,
-  totalAmount: parseFloat(booking.amount || booking.quoted_price || booking.total_amount || 0) || 0,
-  status: booking.status || 'pending_review',
-  createdAt: booking.created_at || booking.createdAt || new Date().toISOString(),
-  updatedAt: booking.updated_at || booking.updatedAt || new Date().toISOString(),
-  vendorNotes: booking.vendor_notes || booking.notes || '',
-  quoteSentDate: booking.quote_sent_date,
-  paymentStatus: booking.payment_status,
-  budgetRange: booking.budget_range || '',
-  specialRequests: booking.special_requests || '',
-  estimatedCostMin: booking.estimated_cost_min || 0,
-  estimatedCostMax: booking.estimated_cost_max || 0,
-  depositAmount: booking.deposit_amount || 0,
-  responseMessage: booking.response_message || '',
-  preferredContactMethod: booking.preferred_contact_method || 'email',
-  contactPerson: booking.contact_person || '',
-  venueDetails: booking.venue_details || '',
-  eventTime: booking.event_time || '',
-  eventEndTime: booking.event_end_time || '',
-  // Additional fields for SendQuoteModal
-  downpaymentAmount: booking.downpayment_amount || booking.deposit_amount || 0,
-  totalPaid: booking.total_paid || 0,
-  remainingBalance: (parseFloat(booking.amount || booking.quoted_price || 0) || 0) - (parseFloat(booking.total_paid || 0) || 0),
-  formatted: {
-    totalAmount: `₱${(parseFloat(booking.amount || booking.quoted_price || 0) || 0).toLocaleString()}`,
-    totalPaid: `₱${(parseFloat(booking.total_paid || 0) || 0).toLocaleString()}`,
-    remainingBalance: `₱${((parseFloat(booking.amount || booking.quoted_price || 0) || 0) - (parseFloat(booking.total_paid || 0) || 0)).toLocaleString()}`,
-    downpaymentAmount: `₱${(booking.downpayment_amount || booking.deposit_amount || 0).toLocaleString()}`
-  }
-});
+const mapVendorBookingToUI = (booking: any, vendorId: string): UIBooking => {
+  // Build couple name from multiple possible sources
+  // Backend now sends coupleName and clientName fields with the name already built
+  const coupleName = booking.coupleName ||      // Backend-provided name (NEW!)
+                     booking.clientName ||       // Backend-provided name (NEW!)
+                     booking.couple_name ||      // Legacy field
+                     booking.client_name ||      // Legacy field
+                     (booking.first_name && booking.last_name 
+                       ? `${booking.first_name} ${booking.last_name}`.trim() 
+                       : booking.first_name || booking.last_name || 
+                         booking.contact_person || 'Unknown Client');
+  
+  return {
+    id: booking.id || 'unknown',
+    vendorId: vendorId,
+    vendorName: booking.vendor_name || 'Unknown Vendor',
+    coupleId: booking.couple_id || booking.user_id || 'unknown',
+    coupleName: coupleName,
+    contactEmail: booking.contact_email || booking.email || '',
+    contactPhone: booking.contact_phone || booking.phone || '',
+    serviceType: formatServiceType(
+      booking.service_type || booking.category || 'General Service',
+      booking.service_name
+    ),
+    eventDate: booking.event_date || booking.date || new Date().toISOString(),
+    eventLocation: booking.event_location || booking.location || 'Not specified',
+    guestCount: booking.guest_count || booking.guests || 0,
+    totalAmount: parseFloat(booking.amount || booking.quoted_price || booking.total_amount || 0) || 0,
+    status: booking.status || 'pending_review',
+    createdAt: booking.created_at || booking.createdAt || new Date().toISOString(),
+    updatedAt: booking.updated_at || booking.updatedAt || new Date().toISOString(),
+    vendorNotes: booking.vendor_notes || booking.notes || '',
+    quoteSentDate: booking.quote_sent_date,
+    paymentStatus: booking.payment_status,
+    budgetRange: booking.budget_range || '',
+    specialRequests: booking.special_requests || '',
+    estimatedCostMin: booking.estimated_cost_min || 0,
+    estimatedCostMax: booking.estimated_cost_max || 0,
+    depositAmount: booking.deposit_amount || 0,
+    responseMessage: booking.response_message || '',
+    preferredContactMethod: booking.preferred_contact_method || 'email',
+    contactPerson: booking.contact_person || '',
+    venueDetails: booking.venue_details || '',
+    eventTime: booking.event_time || '',
+    eventEndTime: booking.event_end_time || '',
+    // Additional fields for SendQuoteModal
+    downpaymentAmount: booking.downpayment_amount || booking.deposit_amount || 0,
+    totalPaid: booking.total_paid || 0,
+    remainingBalance: (parseFloat(booking.amount || booking.quoted_price || 0) || 0) - (parseFloat(booking.total_paid || 0) || 0),
+    formatted: {
+      totalAmount: `₱${(parseFloat(booking.amount || booking.quoted_price || 0) || 0).toLocaleString()}`,
+      totalPaid: `₱${(parseFloat(booking.total_paid || 0) || 0).toLocaleString()}`,
+      remainingBalance: `₱${((parseFloat(booking.amount || booking.quoted_price || 0) || 0) - (parseFloat(booking.total_paid || 0) || 0)).toLocaleString()}`,
+      downpaymentAmount: `₱${(booking.downpayment_amount || booking.deposit_amount || 0).toLocaleString()}`
+    }
+  };
+};
 
 const mapToUIBookingStats = (data: any): UIBookingStats => ({
   totalBookings: data.total_bookings || data.totalBookings || 0,
