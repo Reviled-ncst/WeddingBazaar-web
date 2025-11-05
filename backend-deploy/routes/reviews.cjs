@@ -388,8 +388,9 @@ router.get('/featured', async (req, res) => {
         s.title as service_title
       FROM reviews r
       LEFT JOIN users u ON r.user_id = u.id
-      LEFT JOIN services s ON r.service_id = s.id
-      LEFT JOIN vendors v ON s.vendor_id = v.id
+      LEFT JOIN bookings b ON r.booking_id = b.id
+      LEFT JOIN services s ON b.service_id = s.id
+      LEFT JOIN vendors v ON r.vendor_id = v.id
       WHERE r.rating >= 4
       ORDER BY r.rating DESC, r.created_at DESC
       LIMIT ${limit}
