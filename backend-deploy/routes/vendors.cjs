@@ -542,7 +542,7 @@ router.get('/:vendorId/details', async (req, res) => {
         r.created_at,
         r.images,
         CONCAT(u.first_name, ' ', u.last_name) as reviewer_name,
-        u.profile_image_url as reviewer_image,
+        u.profile_image as reviewer_image,
         b.service_type,
         b.event_date
       FROM reviews r
