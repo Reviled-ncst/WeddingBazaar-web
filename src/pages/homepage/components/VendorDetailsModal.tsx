@@ -44,13 +44,22 @@ interface Service {
   subcategory?: string;
   description: string;
   price?: number;
+  priceRange?: string;
   priceRangeMin?: number;
   priceRangeMax?: number;
   priceDisplay: string;
-  inclusions: string[];
+  inclusions?: string[];
+  images?: string[];
   imageUrl?: string;
+  location?: string;
+  yearsInBusiness?: number;
   duration?: string;
   capacity?: number;
+  contactInfo?: {
+    email?: string;
+    phone?: string;
+    website?: string;
+  };
 }
 
 interface Review {
@@ -368,48 +377,138 @@ export const VendorDetailsModal: React.FC<Props> = ({ isOpen, onClose, vendorId 
                         No services listed yet.
                       </div>
                     ) : (
-                      services.map((service) => (
-                        <div key={service.id} className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-2xl">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex-1">
-                              <h4 className="text-xl font-bold text-gray-900 mb-2">{service.title}</h4>
-                              <p className="text-gray-600 mb-4">{service.description}</p>
-                              
-                              {service.inclusions && service.inclusions.length > 0 && (
-                                <div className="space-y-2">
-                                  <div className="text-sm font-semibold text-gray-700">Inclusions:</div>
-                                  <ul className="space-y-1">
-                                    {service.inclusions.map((inclusion, i) => (
-                                      <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                                        <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                                        <span>{inclusion}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
+                      <div className="grid grid-cols-1 gap-6">
+                        {services.map((service) => (
+                          <div 
+                            key={service.id} 
+                            className="group bg-white border-2 border-gray-100 hover:border-rose-200 rounded-3xl overflow-hidden transition-all hover:shadow-2xl"
+                          >
+                            <div className="flex flex-col md:flex-row">
+                              {/* Service Image Gallery */}
+                              {service.images && service.images.length > 0 ? (
+                                <div className="md:w-1/3 relative overflow-hidden bg-gray-100">
+                                  <div className="aspect-square relative">
+                                    <img
+                                      src={service.images[0]}
+                                      alt={service.title}
+                                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                    />
+                                    {service.images.length > 1 && (
+                                      <div className="absolute bottom-3 right-3 px-3 py-1 bg-black/70 backdrop-blur-sm text-white text-sm rounded-full font-medium">
+                                        +{service.images.length - 1} more
+                                      </div>
+                                    )}
+                                  </div>
+                                  {/* Category Badge */}
+                                  <div className="absolute top-3 left-3 px-3 py-1 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-sm rounded-full font-semibold shadow-lg">
+                                    {service.category}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="md:w-1/3 aspect-square bg-gradient-to-br from-rose-100 to-pink-100 flex items-center justify-center">
+                                  <DollarSign className="w-16 h-16 text-rose-300" />
                                 </div>
                               )}
-                            </div>
-                            
-                            <div className="ml-6 text-right">
-                              <div className="text-3xl font-bold text-rose-600 mb-1">
-                                {service.priceDisplay}
+
+                              {/* Service Details */}
+                              <div className="md:w-2/3 p-6 flex flex-col">
+                                {/* Header */}
+                                <div className="flex-1">
+                                  <div className="flex items-start justify-between mb-3">
+                                    <div className="flex-1">
+                                      <h4 className="text-2xl font-bold text-gray-900 mb-2 group-hover:text-rose-600 transition-colors">
+                                        {service.title}
+                                      </h4>
+                                      {service.subcategory && (
+                                        <span className="inline-block px-3 py-1 bg-gray-100 text-gray-600 text-sm rounded-full mb-3">
+                                          {service.subcategory}
+                                        </span>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="text-right ml-4">
+                                      <div className="text-3xl font-bold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent mb-1">
+                                        {service.priceDisplay}
+                                      </div>
+                                      <div className="text-xs text-gray-500 font-medium">Starting price</div>
+                                    </div>
+                                  </div>
+
+                                  <p className="text-gray-600 leading-relaxed mb-4">
+                                    {service.description}
+                                  </p>
+
+                                  {/* Service Details Grid */}
+                                  <div className="grid grid-cols-2 gap-4 mb-4">
+                                    {service.location && (
+                                      <div className="flex items-start gap-2">
+                                        <MapPin className="w-5 h-5 text-rose-500 mt-0.5 flex-shrink-0" />
+                                        <div>
+                                          <div className="text-xs text-gray-500 font-medium">Location</div>
+                                          <div className="text-sm text-gray-700">{service.location}</div>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {service.yearsInBusiness && service.yearsInBusiness > 0 && (
+                                      <div className="flex items-start gap-2">
+                                        <Award className="w-5 h-5 text-rose-500 mt-0.5 flex-shrink-0" />
+                                        <div>
+                                          <div className="text-xs text-gray-500 font-medium">Experience</div>
+                                          <div className="text-sm text-gray-700">{service.yearsInBusiness} years</div>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {service.duration && (
+                                      <div className="flex items-start gap-2">
+                                        <Clock className="w-5 h-5 text-rose-500 mt-0.5 flex-shrink-0" />
+                                        <div>
+                                          <div className="text-xs text-gray-500 font-medium">Duration</div>
+                                          <div className="text-sm text-gray-700">{service.duration}</div>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {service.capacity && (
+                                      <div className="flex items-start gap-2">
+                                        <Users className="w-5 h-5 text-rose-500 mt-0.5 flex-shrink-0" />
+                                        <div>
+                                          <div className="text-xs text-gray-500 font-medium">Capacity</div>
+                                          <div className="text-sm text-gray-700">Up to {service.capacity} guests</div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Features/Inclusions */}
+                                  {service.inclusions && service.inclusions.length > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-gray-200">
+                                      <div className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                        <Check className="w-5 h-5 text-green-500" />
+                                        What's Included:
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                        {service.inclusions.map((inclusion, i) => (
+                                          <div key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-2 flex-shrink-0" />
+                                            <span>{inclusion}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Action Button */}
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                  <button className="w-full px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold rounded-xl hover:from-rose-600 hover:to-pink-600 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                                    <MessageCircle className="w-5 h-5" />
+                                    Inquire About This Service
+                                  </button>
+                                </div>
                               </div>
-                              {service.duration && (
-                                <div className="flex items-center gap-1 text-sm text-gray-500">
-                                  <Clock className="w-4 h-4" />
-                                  {service.duration}
-                                </div>
-                              )}
-                              {service.capacity && (
-                                <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
-                                  <Users className="w-4 h-4" />
-                                  Up to {service.capacity} guests
-                                </div>
-                              )}
                             </div>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </div>
                 )}
