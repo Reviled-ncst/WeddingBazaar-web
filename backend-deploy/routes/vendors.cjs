@@ -511,29 +511,37 @@ router.get('/:vendorId/details', async (req, res) => {
     
     // Get vendor's services with their pricing
     console.log(`🔍 [VENDORS] Fetching services for vendor: ${vendorId}`);
-    const services = await sql`
-      SELECT 
-        id,
-        title,
-        category,
-        subcategory,
-        description,
-        price,
-        price_range,
-        images,
-        location,
-        years_in_business,
-        contact_info,
-        is_active,
-        created_at
-      FROM services 
-      WHERE vendor_id = ${vendorId}
-        AND is_active = true
-      ORDER BY created_at DESC
-    `.catch(err => {
-      console.error('⚠️ [VENDORS] Error fetching services:', err);
-      return []; // Return empty array on error
-    });
+    let services = [];
+    try {
+      services = await sql`
+        SELECT 
+          id,
+          title,
+          category,
+          subcategory,
+          description,
+          price,
+          price_range,
+          images,
+          location,
+          years_in_business,
+          contact_info,
+          is_active,
+          created_at
+        FROM services 
+        WHERE vendor_id = ${vendorId}
+          AND is_active = true
+        ORDER BY created_at DESC
+      `;
+      console.log(`✅ [VENDORS] Services query succeeded: ${services.length} services found`);
+      if (services.length > 0) {
+        console.log(`📋 [VENDORS] First service:`, JSON.stringify(services[0]).substring(0, 200));
+      }
+    } catch (err) {
+      console.error('❌ [VENDORS] Error fetching services:', err);
+      console.error('❌ [VENDORS] Services error stack:', err.stack);
+      services = []; // Return empty array on error
+    }
     
     // Get vendor's reviews
     console.log(`🔍 [VENDORS] Fetching reviews for vendor: ${vendorId}`);
