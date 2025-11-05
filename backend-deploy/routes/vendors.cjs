@@ -478,33 +478,13 @@ router.get('/:vendorId/details', async (req, res) => {
     const { vendorId } = req.params;
     console.log(`📋 [VENDORS] GET /api/vendors/${vendorId}/details called`);
     
-    // Get vendor basic info
+    // Get vendor basic info (join with users for contact)
     const vendors = await sql`
       SELECT 
-        v.id,
-        v.business_name,
-        v.business_type,
-        v.category,
-        v.rating,
-        v.review_count,
-        v.location,
-        v.description,
-        v.profile_image,
-        v.website_url,
-        v.years_experience,
-        v.portfolio_images,
-        v.verified,
-        v.starting_price,
-        v.price_range_min,
-        v.price_range_max,
-        v.email,
-        v.phone,
-        v.social_media_links,
-        v.business_hours,
-        v.specialties,
-        v.created_at,
+        v.*,
         u.email as user_email,
-        u.phone as user_phone
+        u.phone as user_phone,
+        u.full_name as user_name
       FROM vendors v
       LEFT JOIN users u ON v.user_id = u.id
       WHERE v.id = ${vendorId}
@@ -608,23 +588,34 @@ router.get('/:vendorId/details', async (req, res) => {
         
         // Contact Information
         contact: {
-          email: vendor.email || vendor.user_email,
-          phone: vendor.phone || vendor.user_phone,
-          website: vendor.website_url,
-          socialMedia: vendor.social_media_links || {},
-          businessHours: vendor.business_hours || {}
+          email: vendor.user_email || 'Contact via platform',
+          phone: vendor.user_phone || 'Contact via platform',
+          website: vendor.website_url || null,
+          instagram: vendor.instagram_url || null,
+          facebook: vendor.facebook_url || null,
+          businessHours: 'Monday-Sunday: 9AM-6PM'
         },
         
-        // Pricing Information
+        // Pricing Information (calculate from services if not on vendor)
         pricing: {
           startingPrice: vendor.starting_price,
-          priceRangeMin: vendor.price_range_min,
-          priceRangeMax: vendor.price_range_max,
-          priceRange: vendor.price_range_min && vendor.price_range_max 
-            ? `₱${parseFloat(vendor.price_range_min).toLocaleString()} - ₱${parseFloat(vendor.price_range_max).toLocaleString()}`
-            : vendor.starting_price 
-            ? `Starting at ₱${parseFloat(vendor.starting_price).toLocaleString()}`
-            : 'Contact for pricing'
+          priceRangeMin: services.length > 0 
+            ? Math.min(...services.filter(s => s.price || s.price_range_min).map(s => parseFloat(s.price || s.price_range_min || 0)))
+            : null,
+          priceRangeMax: services.length > 0
+            ? Math.max(...services.filter(s => s.price || s.price_range_max).map(s => parseFloat(s.price_range_max || s.price || 0)))
+            : null,
+          priceRange: (() => {
+            const prices = services.filter(s => s.price || s.price_range_min);
+            if (prices.length > 0) {
+              const min = Math.min(...prices.map(s => parseFloat(s.price || s.price_range_min || 0)));
+              const max = Math.max(...prices.map(s => parseFloat(s.price_range_max || s.price || 0)));
+              return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
+            }
+            return vendor.starting_price 
+              ? `Starting at ₱${parseFloat(vendor.starting_price).toLocaleString()}`
+              : 'Contact for pricing';
+          })()
         },
         
         // Statistics
