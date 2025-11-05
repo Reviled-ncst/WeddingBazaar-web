@@ -381,7 +381,7 @@ router.get('/featured', async (req, res) => {
         r.rating,
         r.comment,
         r.created_at,
-        u.full_name as user_name,
+        CONCAT(u.first_name, ' ', u.last_name) as user_name,
         u.profile_image as user_image,
         v.business_name as vendor_name,
         v.business_type as service_category,
