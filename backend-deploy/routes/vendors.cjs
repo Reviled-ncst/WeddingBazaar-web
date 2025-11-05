@@ -612,7 +612,7 @@ router.get('/:vendorId/details', async (req, res) => {
               priceRangeMax: max,
               priceRange: min && max 
                 ? `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`
-                : vendor.starting_price 
+                : (vendor.starting_price && !isNaN(parseFloat(vendor.starting_price)))
                 ? `Starting at ₱${parseFloat(vendor.starting_price).toLocaleString()}`
                 : 'Contact for pricing'
             };
@@ -622,7 +622,7 @@ router.get('/:vendorId/details', async (req, res) => {
             startingPrice: vendor.starting_price,
             priceRangeMin: null,
             priceRangeMax: null,
-            priceRange: vendor.starting_price 
+            priceRange: (vendor.starting_price && !isNaN(parseFloat(vendor.starting_price)))
               ? `Starting at ₱${parseFloat(vendor.starting_price).toLocaleString()}`
               : 'Contact for pricing'
           };
