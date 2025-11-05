@@ -51,28 +51,85 @@ class VendorNotificationService {
    */
   async getVendorNotifications(vendorId: string): Promise<NotificationResponse> {
     try {
+      console.log('🔔 [NotificationService] Fetching notifications for vendor:', vendorId);
+      
       const response = await fetch(`${this.apiUrl}/api/notifications/vendor/${vendorId}`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
+      
       if (!response.ok) {
+        console.error('❌ [NotificationService] API error:', response.status, response.statusText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('✅ [NotificationService] Received notifications:', data);
+      
+      // Map notifications to match frontend interface
+      const mappedNotifications: VendorNotification[] = (data.notifications || []).map((n: Record<string, unknown>) => ({
+        id: n.id as string,
+        type: this.mapNotificationType(n.type as string),
+        title: n.title as string,
+        message: n.message as string,
+        timestamp: (n.created_at || n.timestamp) as string,
+        priority: this.determinePriority(n.type as string),
+        bookingId: (n.booking_id || (n.metadata as Record<string, unknown>)?.bookingId) as string | undefined,
+        coupleId: (n.couple_id || (n.metadata as Record<string, unknown>)?.coupleId) as string | undefined,
+        read: (n.is_read || n.read || false) as boolean,
+        actionRequired: (n.type === 'booking' || (n.action_url as string)?.includes('bookings')) as boolean,
+        metadata: (n.metadata || {}) as Record<string, unknown>
+      }));
+      
       return {
         success: data.success || true,
-        notifications: data.notifications || [],
-        count: data.count || data.notifications?.length || 0,
-        unreadCount: data.unreadCount || data.notifications?.filter((n: any) => !n.read).length || 0,
+        notifications: mappedNotifications,
+        count: mappedNotifications.length,
+        unreadCount: mappedNotifications.filter(n => !n.read).length,
         timestamp: data.timestamp || new Date().toISOString()
       };
     } catch (error) {
       console.error('💥 [NotificationService] Error fetching notifications:', error);
       
-      // Return mock data as fallback
-      return this.getMockNotifications(vendorId);
+      // Return empty notifications instead of mock data
+      return {
+        success: false,
+        notifications: [],
+        count: 0,
+        unreadCount: 0,
+        timestamp: new Date().toISOString()
+      };
     }
+  }
+  
+  /**
+   * Map database notification type to frontend type
+   */
+  private mapNotificationType(dbType: string): VendorNotification['type'] {
+    const typeMap: Record<string, VendorNotification['type']> = {
+      'booking': 'booking_inquiry',
+      'message': 'message_received',
+      'payment': 'payment_received',
+      'confirmed': 'booking_confirmed',
+      'quote_accept': 'quote_accepted',
+      'quote_reject': 'quote_rejected',
+      'cancelled': 'booking_cancelled',
+      'review': 'review_received'
+    };
+    
+    return typeMap[dbType] || 'booking_inquiry';
+  }
+  
+  /**
+   * Determine notification priority based on type
+   */
+  private determinePriority(type: string): 'high' | 'medium' | 'low' {
+    const highPriority = ['booking', 'payment', 'quote_accept'];
+    const lowPriority = ['review', 'profile'];
+    
+    if (highPriority.includes(type)) return 'high';
+    if (lowPriority.includes(type)) return 'low';
+    return 'medium';
   }
 
   /**
@@ -149,85 +206,7 @@ class VendorNotificationService {
     }
   }
 
-  /**
-   * Get mock notifications as fallback when API is unavailable
-   */
-  private getMockNotifications(vendorId: string): NotificationResponse {
-    const now = new Date();
-    const mockNotifications: VendorNotification[] = [
-      {
-        id: 'real-1',
-        type: 'booking_inquiry',
-        title: 'New Wedding Inquiry',
-        message: 'Sarah & Michael inquired about photography services for their June 2025 wedding',
-        timestamp: new Date(now.getTime() - 10 * 60 * 1000).toISOString(),
-        priority: 'high',
-        bookingId: 'booking-001',
-        read: false,
-        actionRequired: true,
-        metadata: {
-          coupleName: 'Sarah & Michael',
-          eventDate: '2025-06-15',
-          serviceType: 'Photography',
-          estimatedBudget: 125000
-        }
-      },
-      {
-        id: 'real-2',
-        type: 'quote_accepted',
-        title: 'Quote Accepted!',
-        message: 'Jennifer & David accepted your ₱125,000 photography package quote',
-        timestamp: new Date(now.getTime() - 30 * 60 * 1000).toISOString(),
-        priority: 'high',
-        bookingId: 'booking-002',
-        read: false,
-        actionRequired: true,
-        metadata: {
-          coupleName: 'Jennifer & David',
-          amount: 125000,
-          serviceType: 'Photography Package'
-        }
-      },
-      {
-        id: 'real-3',
-        type: 'payment_received',
-        title: 'Payment Received',
-        message: 'Downpayment of ₱37,500 received for Rodriguez wedding',
-        timestamp: new Date(now.getTime() - 60 * 60 * 1000).toISOString(),
-        priority: 'medium',
-        bookingId: 'booking-003',
-        read: false,
-        actionRequired: false,
-        metadata: {
-          coupleName: 'Mr. & Mrs. Rodriguez',
-          amount: 37500,
-          paymentType: 'downpayment'
-        }
-      },
-      {
-        id: 'real-4',
-        type: 'review_received',
-        title: '5-Star Review!',
-        message: 'Amazing work! The photos captured every magical moment perfectly. Highly recommended!',
-        timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
-        priority: 'low',
-        read: true,
-        actionRequired: false,
-        metadata: {
-          rating: 5,
-          reviewText: 'Amazing work! The photos captured every magical moment perfectly. Highly recommended!'
-        }
-      }
-    ];
 
-    return {
-      success: true,
-      notifications: mockNotifications,
-      count: mockNotifications.length,
-      unreadCount: mockNotifications.filter(n => !n.read).length,
-      timestamp: new Date().toISOString()
-    };
-  }
 
   /**
    * Subscribe to real-time notification updates (WebSocket)

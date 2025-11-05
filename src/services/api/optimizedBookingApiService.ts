@@ -297,12 +297,20 @@ export class OptimizedBookingApiService {
 
     } catch (error) {
       console.error('❌ [OptimizedBooking] API call failed:', error);
+      console.error('🔍 Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        endpoint: '/api/bookings/request',
+        expectedUrl: 'https://weddingbazaar-web.onrender.com/api/bookings/request'
+      });
       
-      // Smart fallback based on error type
-      if (error instanceof Error && error.message.includes('timeout')) {
-      }
-      
-      return this.createFallbackBooking(bookingData, userId);
+      // 🚨 DON'T CREATE FALLBACK - THROW THE REAL ERROR
+      // Fallback bookings hide the actual problem and prevent debugging
+      throw new Error(
+        `Booking API call failed: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
+        `Please check network connection and try again.`
+      );
     }
   }
 

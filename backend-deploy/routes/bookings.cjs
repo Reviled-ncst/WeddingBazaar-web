@@ -801,7 +801,57 @@ router.post('/', async (req, res) => {
     
     console.log(`✅ Booking created: ${bookingId}`);
     
-    // 📧 SEND EMAIL NOTIFICATION TO VENDOR
+    // � CREATE IN-APP NOTIFICATION FOR VENDOR
+    try {
+      console.log('🔔 Creating notification for vendor...');
+      
+      // Get couple name and vendor info
+      const [coupleInfo, vendorInfo] = await Promise.all([
+        sql`SELECT full_name FROM users WHERE id = ${finalCoupleId}`,
+        sql`SELECT business_name FROM vendors WHERE id = ${finalVendorId}`
+      ]);
+      
+      const coupleName = coupleInfo[0]?.full_name || 'A couple';
+      const vendorName = vendorInfo[0]?.business_name || 'Vendor';
+      
+      // Create notification record
+      const notificationId = `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      await sql`
+        INSERT INTO notifications (
+          id, user_id, user_type, title, message, type, 
+          action_url, metadata, is_read, created_at, updated_at
+        ) VALUES (
+          ${notificationId}, 
+          ${finalVendorId}, 
+          'vendor', 
+          ${'New Booking Inquiry! 🎉'}, 
+          ${`${coupleName} has submitted a booking request for ${finalServiceName || finalServiceType || 'your services'}`}, 
+          'booking',
+          ${`/vendor/bookings?bookingId=${bookingId}`},
+          ${JSON.stringify({
+            bookingId: bookingId,
+            coupleId: finalCoupleId,
+            coupleName: coupleName,
+            serviceName: finalServiceName,
+            serviceType: finalServiceType,
+            eventDate: finalEventDate,
+            totalAmount: finalTotalAmount
+          })},
+          false,
+          NOW(), 
+          NOW()
+        )
+      `;
+      
+      console.log('✅ In-app notification created:', notificationId);
+      
+    } catch (notifError) {
+      console.error('❌ Failed to create in-app notification:', notifError);
+      // Don't fail the booking creation if notification fails
+    }
+    
+    // �📧 SEND EMAIL NOTIFICATION TO VENDOR (OPTIONAL - currently disabled in production)
     try {
       console.log('📧 Attempting to send email notification to vendor...');
       
