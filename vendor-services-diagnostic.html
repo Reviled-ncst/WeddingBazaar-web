@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Services Diagnostic Tool</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #fce7f3 0%, #fff 50%, #e0e7ff 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 30px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 { font-size: 2.5em; color: #ec4899; margin-bottom: 10px; }
+        .header p { color: #6b7280; font-size: 1.1em; }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 10px 10px 0;
+            background: linear-gradient(135deg, #ec4899 0%, #d946ef 100%);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(236, 72, 153, 0.3);
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f9fafb;
+            border-left: 4px solid #ec4899;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .status { display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 0.9em; }
+        .status.success { background: #d1fae5; color: #065f46; }
+        .status.error { background: #fee2e2; color: #991b1b; }
+        .status.warning { background: #fef3c7; color: #92400e; }
+        .fix-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Vendor Services Diagnostic</h1>
+            <p>Find out why your services aren't showing up</p>
+        </div>
+
+        <div class="card">
+            <h2>🎯 Quick Diagnostic</h2>
+            <button class="btn" onclick="runDiagnostic()">🔍 Run Diagnostic</button>
+            <button class="btn" onclick="fixVendorId()">🔧 Fix Vendor ID</button>
+            <button class="btn" onclick="testAPI()">🌐 Test API</button>
+            <div id="results" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const colors = { success: '#065f46', error: '#991b1b', warning: '#92400e', info: '#1e40af' };
+            const symbols = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+            return `<span style="color: ${colors[type]}">${symbols[type]} ${message}</span>\n`;
+        }
+
+        function showResults() {
+            document.getElementById('results').style.display = 'block';
+        }
+
+        async function runDiagnostic() {
+            showResults();
+            const output = document.getElementById('results');
+            output.innerHTML = '🔍 Running diagnostic...\n\n';
+
+            let result = '';
+            result += '═════════════════════════════════════════\n';
+            result += '🔍 VENDOR SERVICES DIAGNOSTIC\n';
+            result += '═════════════════════════════════════════\n\n';
+
+            // Step 1: Check session
+            result += '📋 STEP 1: Session Check\n';
+            result += '─────────────────────────────────────────\n';
+            try {
+                const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || '{}');
+                if (user.id) {
+                    result += log(`User ID: ${user.id}`, 'success');
+                    result += log(`Vendor ID: ${user.vendorId || '❌ NOT SET'}`, user.vendorId ? 'success' : 'error');
+                    result += log(`Role: ${user.role || '❌ NOT SET'}`, user.role ? 'success' : 'error');
+                    
+                    if (!user.vendorId) {
+                        result += '\n';
+                        result += log('PROBLEM FOUND: No vendor ID in session!', 'error');
+                        result += log('This is why services are not loading', 'warning');
+                        result += '\n';
+                        result += log('SOLUTION: Click "Fix Vendor ID" button below', 'info');
+                    }
+                } else {
+                    result += log('No user session found', 'error');
+                    result += log('Please login to a vendor account first', 'warning');
+                }
+            } catch (e) {
+                result += log(`Session error: ${e.message}`, 'error');
+            }
+            result += '\n';
+
+            // Step 2: Test API
+            const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || '{}');
+            const vendorId = user.vendorId || user.id;
+            
+            if (vendorId) {
+                result += '📋 STEP 2: API Test\n';
+                result += '─────────────────────────────────────────\n';
+                result += log(`Testing with vendor ID: ${vendorId}`, 'info');
+                
+                try {
+                    const apiUrl = 'https://weddingbazaar-web.onrender.com';
+                    const response = await fetch(`${apiUrl}/api/services/vendor/${vendorId}`);
+                    const data = await response.json();
+                    
+                    result += log(`API Status: ${response.status}`, response.ok ? 'success' : 'error');
+                    result += log(`Success: ${data.success}`, data.success ? 'success' : 'error');
+                    
+                    if (data.success) {
+                        const count = data.services?.length || 0;
+                        result += log(`Services Found: ${count}`, count > 0 ? 'success' : 'warning');
+                        
+                        if (count === 0) {
+                            result += '\n';
+                            result += log('NO SERVICES IN DATABASE', 'warning');
+                            result += '\n';
+                            result += '💡 Possible Reasons:\n';
+                            result += '   1. You haven\'t created any services yet\n';
+                            result += '   2. Services have different vendor_id in database\n';
+                            result += '   3. Services were deleted\n';
+                            result += '\n';
+                            result += '🎯 Next Steps:\n';
+                            result += '   1. Try creating a new service\n';
+                            result += '   2. Check database with SQL query:\n';
+                            result += `      SELECT * FROM services WHERE vendor_id = '${vendorId}';\n`;
+                        } else {
+                            result += '\n';
+                            result += log('SERVICES EXIST IN DATABASE!', 'success');
+                            result += log('If page shows empty, clear cache and refresh', 'info');
+                        }
+                    } else {
+                        result += log(`API Error: ${data.error || 'Unknown error'}`, 'error');
+                    }
+                } catch (err) {
+                    result += log(`API call failed: ${err.message}`, 'error');
+                    result += log('Backend might be down or unreachable', 'error');
+                }
+            }
+            result += '\n';
+
+            // Step 3: Summary
+            result += '═════════════════════════════════════════\n';
+            result += '📊 DIAGNOSTIC SUMMARY\n';
+            result += '═════════════════════════════════════════\n';
+            
+            if (!user.vendorId) {
+                result += log('PROBLEM: Vendor ID not set in session', 'error');
+                result += log('SOLUTION: Click "Fix Vendor ID" button', 'success');
+            } else if (!vendorId) {
+                result += log('PROBLEM: No vendor ID available at all', 'error');
+                result += log('SOLUTION: Re-login to your vendor account', 'warning');
+            } else {
+                result += log('Session looks good', 'success');
+                result += log('Check API results above for service count', 'info');
+            }
+            result += '\n';
+
+            output.innerHTML = result;
+        }
+
+        function fixVendorId() {
+            showResults();
+            const output = document.getElementById('results');
+            
+            try {
+                const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || '{}');
+                
+                if (!user.id) {
+                    output.innerHTML = log('ERROR: No user ID found. Please login first.', 'error');
+                    return;
+                }
+                
+                // Fix: Set vendorId to user.id
+                user.vendorId = user.id;
+                localStorage.setItem('weddingbazaar_user', JSON.stringify(user));
+                
+                let result = '';
+                result += '═════════════════════════════════════════\n';
+                result += '🔧 VENDOR ID FIX APPLIED\n';
+                result += '═════════════════════════════════════════\n\n';
+                result += log('Vendor ID has been set to: ' + user.id, 'success');
+                result += '\n';
+                result += log('Session updated successfully!', 'success');
+                result += '\n\n';
+                result += '🎯 Next Steps:\n';
+                result += '   1. Page will reload in 3 seconds...\n';
+                result += '   2. After reload, go to /vendor/services\n';
+                result += '   3. Services should now appear!\n';
+                
+                output.innerHTML = result;
+                
+                // Auto-reload after 3 seconds
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+                
+            } catch (e) {
+                output.innerHTML = log('ERROR: ' + e.message, 'error');
+            }
+        }
+
+        async function testAPI() {
+            showResults();
+            const output = document.getElementById('results');
+            output.innerHTML = '🌐 Testing API...\n\n';
+
+            try {
+                const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || '{}');
+                const vendorId = user.vendorId || user.id;
+                
+                if (!vendorId) {
+                    output.innerHTML = log('ERROR: No vendor ID available', 'error');
+                    return;
+                }
+                
+                const apiUrl = 'https://weddingbazaar-web.onrender.com';
+                const url = `${apiUrl}/api/services/vendor/${vendorId}`;
+                
+                let result = '';
+                result += '═════════════════════════════════════════\n';
+                result += '🌐 API TEST\n';
+                result += '═════════════════════════════════════════\n\n';
+                result += `URL: ${url}\n\n`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                result += log(`Status: ${response.status}`, response.ok ? 'success' : 'error');
+                result += log(`Success: ${data.success}`, data.success ? 'success' : 'error');
+                result += '\n';
+                result += 'Response:\n';
+                result += JSON.stringify(data, null, 2);
+                
+                output.innerHTML = result;
+            } catch (err) {
+                output.innerHTML = log('API Error: ' + err.message, 'error');
+            }
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            console.log('🔍 Vendor Services Diagnostic Tool loaded');
+            console.log('Click "Run Diagnostic" to start');
+        });
+    </script>
+</body>
+</html>

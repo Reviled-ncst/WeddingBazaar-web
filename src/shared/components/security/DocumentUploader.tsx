@@ -357,7 +357,7 @@ export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                 Processing Your Document
               </h3>
               <p className="text-gray-600 mb-6">
-                Extracting information using AI...
+                Extracting information intelligently...
               </p>
               <div className="max-w-md mx-auto">
                 <div className="bg-gray-200 rounded-full h-3 overflow-hidden">

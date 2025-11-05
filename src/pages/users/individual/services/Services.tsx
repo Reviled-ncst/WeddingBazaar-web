@@ -914,7 +914,7 @@ export const Services: React.FC = () => {
 
               {/* DSS Options - Choose Your Planning Style */}
               <div className="flex flex-col items-center mb-8 space-y-4">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">🤖 AI Wedding Planning</h3>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">� Smart Wedding Planning</h3>
                 <p className="text-gray-600 text-center max-w-2xl mb-6">
                   Choose your preferred planning experience to get personalized recommendations
                 </p>
@@ -925,7 +925,7 @@ export const Services: React.FC = () => {
                     onClick={handleOpenDSS}
                     className="group flex-1 flex items-center space-x-4 px-8 py-6 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white rounded-2xl hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 transition-all duration-500 shadow-xl hover:shadow-2xl transform hover:scale-105 hover:-translate-y-1 font-semibold text-lg border-2 border-white/30 backdrop-blur-sm relative overflow-hidden"
                     title="NEW: Step-by-Step Planning - Guided workflow with date availability checking"
-                    aria-label="Open Step-by-Step AI Planning with availability checking"
+                    aria-label="Open Step-by-Step Smart Planning with availability checking"
                   >
                     {/* Background glow effect */}
                     <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-cyan-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
@@ -945,8 +945,8 @@ export const Services: React.FC = () => {
                   <button
                     onClick={handleOpenDSS}
                     className="group flex-1 flex items-center space-x-4 px-8 py-6 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white rounded-2xl hover:from-purple-600 hover:via-indigo-600 hover:to-blue-600 transition-all duration-500 shadow-xl hover:shadow-2xl transform hover:scale-105 hover:-translate-y-1 font-semibold text-lg border-2 border-white/30 backdrop-blur-sm relative overflow-hidden"
-                    title="Quick AI Recommendations - All options at once"
-                    aria-label="Open Quick AI Recommendations"
+                    title="Quick Smart Recommendations - All options at once"
+                    aria-label="Open Quick Smart Recommendations"
                   >
                     {/* Background glow effect */}
                     <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-blue-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
@@ -1018,14 +1018,14 @@ export const Services: React.FC = () => {
                   <button
                     onClick={handleOpenDSS}
                     className="group flex items-center space-x-4 px-8 py-4 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white rounded-2xl hover:from-purple-600 hover:via-indigo-600 hover:to-blue-600 transition-all duration-500 shadow-xl hover:shadow-2xl transform hover:scale-110 hover:-translate-y-1 font-semibold border border-white/20 backdrop-blur-sm"
-                    title="AI Decision Support System"
-                    aria-label="Open AI Decision Support System"
+                    title="Smart Decision Support System"
+                    aria-label="Open Smart Decision Support System"
                   >
                     <Brain className="h-6 w-6 group-hover:animate-pulse group-hover:scale-125 transition-all duration-300" />
-                    <span className="hidden sm:inline text-lg">🤖 AI Assist</span>
+                    <span className="hidden sm:inline text-lg">� Smart Assist</span>
                     <div className="hidden sm:flex w-3 h-3 bg-white/80 rounded-full animate-bounce shadow-lg"></div>
                     
-                    {/* AI glow effect */}
+                    {/* Smart glow effect */}
                     <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-400/20 to-blue-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
                   </button>
                   
@@ -1219,7 +1219,7 @@ export const Services: React.FC = () => {
                       className="group px-10 py-5 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white rounded-2xl hover:from-purple-600 hover:via-indigo-600 hover:to-blue-600 transition-all duration-500 hover:scale-110 hover:-translate-y-1 shadow-xl hover:shadow-2xl font-semibold text-xl flex items-center space-x-3 border border-white/20 backdrop-blur-sm"
                     >
                       <Brain className="h-6 w-6 group-hover:animate-pulse" />
-                      <span>🤖 Get AI Recommendations</span>
+                      <span>� Get Smart Recommendations</span>
                     </button>
                   </div>
                   

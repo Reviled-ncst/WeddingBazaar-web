@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   TrendingUp,
-  Plus,
   List,
   BarChart3,
   Target
@@ -124,7 +123,7 @@ export const WeddingTimeline: React.FC<WeddingTimelineProps> = ({
                 Wedding Timeline
               </h1>
               <p className="text-gray-600 mt-2">
-                AI-powered planning with personalized insights and recommendations
+                Smart planning with personalized insights and recommendations
               </p>
             </div>
           </div>
@@ -292,17 +291,6 @@ export const WeddingTimeline: React.FC<WeddingTimelineProps> = ({
             </div>
           </motion.div>
         </div>
-
-        {/* Floating Action Button */}
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.5 }}
-          onClick={() => handleAddEvent({ title: 'New Event', date: new Date() })}
-          className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center group"
-        >
-          <Plus className="w-8 h-8 text-white group-hover:rotate-90 transition-transform duration-200" />
-        </motion.button>
       </div>
     </div>
   );

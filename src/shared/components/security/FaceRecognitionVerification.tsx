@@ -33,7 +33,7 @@ export const FaceRecognitionVerification: React.FC<FaceRecognitionVerificationPr
   useEffect(() => {
     const loadModels = async () => {
       try {
-        setInstructions('Loading AI models for face recognition...');
+        setInstructions('Loading face recognition models...');
         
         // Load required models from public directory
         await Promise.all([

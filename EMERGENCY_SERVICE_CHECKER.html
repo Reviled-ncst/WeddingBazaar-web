@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🔥 EMERGENCY SERVICE CHECKER</title>
+  <style>
+    body { font-family: Arial; padding: 40px; background: #1a1a1a; color: #fff; }
+    .box { background: #2d2d2d; padding: 20px; margin: 20px 0; border-radius: 10px; border-left: 5px solid #00ff00; }
+    .error { border-left-color: #ff0000; }
+    .warning { border-left-color: #ffaa00; }
+    button { background: #00ff00; color: #000; border: none; padding: 15px 30px; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin: 10px 5px; }
+    button:hover { background: #00cc00; }
+    pre { background: #000; color: #00ff00; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    input { padding: 10px; font-size: 16px; width: 300px; border-radius: 5px; border: 2px solid #00ff00; }
+  </style>
+</head>
+<body>
+  <h1>🔥 EMERGENCY SERVICE CHECKER</h1>
+  <div class="box">
+    <h2>Step 1: What's Your Vendor ID?</h2>
+    <button onclick="checkSession()">📦 Check My Session</button>
+    <div id="session-output"></div>
+  </div>
+
+  <div class="box">
+    <h2>Step 2: Test API Directly</h2>
+    <input type="text" id="vendor-id-input" placeholder="Enter vendor ID (e.g., 2-2025-003)">
+    <button onclick="testAPI()">🧪 TEST API</button>
+    <div id="api-output"></div>
+  </div>
+
+  <div class="box">
+    <h2>Step 3: Apply Fix</h2>
+    <button onclick="applyFix()">✅ FIX NOW</button>
+    <div id="fix-output"></div>
+  </div>
+
+  <script>
+    const API = 'https://weddingbazaar-web.onrender.com';
+    
+    function checkSession() {
+      const output = document.getElementById('session-output');
+      const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || 'null');
+      
+      if (!user) {
+        output.innerHTML = '<div class="box error"><h3>❌ NOT LOGGED IN!</h3><p>Please login first at: <a href="https://weddingbazaarph.web.app/login" style="color: #00ff00;">Login Page</a></p></div>';
+        return;
+      }
+      
+      output.innerHTML = `
+        <pre>
+USER SESSION DATA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+User ID:     ${user.id || '❌ NOT SET'}
+Vendor ID:   ${user.vendorId || '❌ NOT SET'}
+Email:       ${user.email || 'N/A'}
+Role:        ${user.role || 'N/A'}
+Name:        ${user.name || user.businessName || 'N/A'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${!user.vendorId ? '⚠️ WARNING: vendorId is NOT SET!' : ''}
+${user.vendorId && user.vendorId !== user.id ? '⚠️ WARNING: vendorId MISMATCH!' : ''}
+${user.vendorId === user.id ? '✅ Vendor ID looks correct!' : ''}
+        </pre>
+      `;
+      
+      // Auto-fill the input
+      document.getElementById('vendor-id-input').value = user.vendorId || user.id || '';
+    }
+    
+    async function testAPI() {
+      const output = document.getElementById('api-output');
+      const vendorId = document.getElementById('vendor-id-input').value;
+      
+      if (!vendorId) {
+        output.innerHTML = '<div class="box error">❌ Please enter a vendor ID or click "Check My Session" first!</div>';
+        return;
+      }
+      
+      output.innerHTML = '<div class="box">🔄 Testing API... Please wait...</div>';
+      
+      const endpoint = `${API}/api/services/vendor/${vendorId}`;
+      
+      try {
+        console.log('Calling:', endpoint);
+        const response = await fetch(endpoint);
+        const data = await response.json();
+        
+        console.log('Response:', data);
+        
+        if (!response.ok) {
+          output.innerHTML = `
+            <div class="box error">
+              <h3>❌ API ERROR</h3>
+              <p>Status: ${response.status}</p>
+              <p>Error: ${data.error || data.message || 'Unknown error'}</p>
+              <pre>${JSON.stringify(data, null, 2)}</pre>
+            </div>
+          `;
+          return;
+        }
+        
+        const serviceCount = data.services?.length || 0;
+        
+        if (serviceCount === 0) {
+          output.innerHTML = `
+            <div class="box warning">
+              <h3>⚠️ NO SERVICES FOUND</h3>
+              <p><strong>API returned 0 services for vendor ID: ${vendorId}</strong></p>
+              <p>This means either:</p>
+              <ul>
+                <li>✅ You haven't created any services yet (normal)</li>
+                <li>⚠️ Services exist but with a different vendor_id</li>
+                <li>⚠️ Vendor ID doesn't exist in database</li>
+              </ul>
+              <h4>🔍 Check Database:</h4>
+              <p>Run this SQL in Neon Console:</p>
+              <pre>
+-- Check if services exist for this vendor
+SELECT * FROM services WHERE vendor_id = '${vendorId}';
+
+-- Check what vendor_ids DO exist
+SELECT vendor_id, COUNT(*) as count 
+FROM services 
+GROUP BY vendor_id;
+
+-- Check if vendor exists
+SELECT * FROM vendors WHERE id = '${vendorId}';
+              </pre>
+            </div>
+          `;
+        } else {
+          let serviceList = data.services.map((s, i) => `
+            <div style="background: #1a1a1a; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 3px solid #00ff00;">
+              <strong>${i + 1}. ${s.service_name || s.name}</strong><br>
+              Category: ${s.service_category || s.category}<br>
+              Price: ₱${s.base_price || 'N/A'}<br>
+              Active: ${s.is_active ? '✅ Yes' : '❌ No'}<br>
+              Vendor ID: <code>${s.vendor_id}</code>
+            </div>
+          `).join('');
+          
+          output.innerHTML = `
+            <div class="box" style="border-left-color: #00ff00;">
+              <h3>🎉 SUCCESS! SERVICES FOUND!</h3>
+              <p><strong>Found ${serviceCount} service(s) for vendor ID: ${vendorId}</strong></p>
+              ${serviceList}
+              <hr style="margin: 20px 0; border-color: #444;">
+              <h4>✅ DIAGNOSIS:</h4>
+              <p><strong style="color: #00ff00;">Your services ARE in the database and the API is returning them!</strong></p>
+              <p>If they're not showing on the vendor services page, the problem is:</p>
+              <ul>
+                <li>🔄 Browser cache (clear it!)</li>
+                <li>📦 Old code loaded (hard refresh!)</li>
+                <li>⚛️ React state not updating</li>
+                <li>🔧 vendorId not set in session (apply fix!)</li>
+              </ul>
+              <p><strong>Click "FIX NOW" button above to apply the session fix!</strong></p>
+            </div>
+          `;
+        }
+        
+      } catch (error) {
+        output.innerHTML = `
+          <div class="box error">
+            <h3>❌ NETWORK ERROR</h3>
+            <p>Could not connect to API: ${error.message}</p>
+            <p>Backend URL: ${API}</p>
+            <p>Check if backend is running!</p>
+          </div>
+        `;
+      }
+    }
+    
+    function applyFix() {
+      const output = document.getElementById('fix-output');
+      const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || 'null');
+      
+      if (!user) {
+        output.innerHTML = '<div class="box error">❌ Not logged in! Please login first.</div>';
+        return;
+      }
+      
+      const oldVendorId = user.vendorId;
+      user.vendorId = user.id;
+      localStorage.setItem('weddingbazaar_user', JSON.stringify(user));
+      
+      output.innerHTML = `
+        <div class="box" style="border-left-color: #00ff00;">
+          <h3>✅ FIX APPLIED!</h3>
+          <pre>
+BEFORE:
+  User ID:    ${user.id}
+  Vendor ID:  ${oldVendorId || '❌ NOT SET'}
+
+AFTER:
+  User ID:    ${user.id}
+  Vendor ID:  ${user.vendorId}  ✅ FIXED!
+          </pre>
+          <p><strong>NOW:</strong></p>
+          <ol>
+            <li>Close ALL browser tabs</li>
+            <li>Reopen browser</li>
+            <li>Go to: <a href="https://weddingbazaarph.web.app/vendor/services" style="color: #00ff00;">Vendor Services</a></li>
+            <li>Hard refresh: Ctrl+Shift+R</li>
+          </ol>
+          <button onclick="location.reload()">🔄 RELOAD THIS PAGE NOW</button>
+        </div>
+      `;
+    }
+    
+    // Auto-run on load
+    window.onload = () => {
+      console.log('🔥 Emergency Service Checker loaded');
+      setTimeout(checkSession, 500);
+    };
+  </script>
+</body>
+</html>

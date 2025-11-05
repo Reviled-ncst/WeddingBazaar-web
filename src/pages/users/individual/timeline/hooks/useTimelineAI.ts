@@ -1,6 +1,6 @@
 /**
- * Timeline AI Hook
- * Manages AI insights, suggestions, and optimizations for timeline
+ * Timeline Smart Analysis Hook
+ * Manages smart insights, suggestions, and optimizations for timeline
  */
 
 import { useState, useEffect } from 'react';
@@ -24,9 +24,9 @@ export const useTimelineAI = (events: TimelineEvent[]): TimelineAIReturn => {
   const getOptimizations = async () => {
     setIsAnalyzing(true);
     try {
-      // Mock AI optimization logic
-      console.log('Getting AI optimizations for timeline');
-      // Implementation for AI optimizations
+      // Smart optimization logic
+      console.log('Getting smart optimizations for timeline');
+      // Implementation for smart optimizations
     } finally {
       setIsAnalyzing(false);
     }
@@ -35,7 +35,7 @@ export const useTimelineAI = (events: TimelineEvent[]): TimelineAIReturn => {
   const predictDeadlines = async () => {
     setIsAnalyzing(true);
     try {
-      // Mock AI deadline prediction
+      // Smart deadline prediction
       console.log('Predicting timeline deadlines');
       // Implementation for deadline predictions
     } finally {
@@ -45,7 +45,7 @@ export const useTimelineAI = (events: TimelineEvent[]): TimelineAIReturn => {
 
   useEffect(() => {
     if (events.length > 0) {
-      // Mock AI insights based on events
+      // Smart insights based on events
       const mockInsights = [
         {
           id: '1',

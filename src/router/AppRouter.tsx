@@ -102,7 +102,6 @@ import { SubscriptionProvider } from '../shared/contexts/SubscriptionContext';
 
 // Universal Messaging System
 import { UnifiedMessagingProvider } from '../shared/contexts/UnifiedMessagingContext';
-import { GlobalFloatingChatButton } from '../shared/components/messaging/GlobalFloatingChatButton';
 import { MessagingModalConnector } from '../shared/components/messaging';
 
 // Notification System
@@ -508,9 +507,6 @@ export const AppRouter: React.FC = () => {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </Suspense>
-          
-          {/* Unified Floating Chat Components - Single Source of Truth */}
-          <GlobalFloatingChatButton />
         </div>
       </Router>
             </MessagingModalConnector>

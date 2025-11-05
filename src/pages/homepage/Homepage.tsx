@@ -54,30 +54,6 @@ const SectionLoader: React.FC = () => (
   </div>
 );
 
-// Floating action buttons for quick access
-const FloatingActions: React.FC = () => (
-  <div className="fixed bottom-6 right-6 z-50 flex flex-col space-y-3">
-    <button
-      className="bg-gradient-to-r from-rose-500 to-pink-500 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 group"
-      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-      title="Back to top"
-    >
-      <svg className="h-5 w-5 group-hover:animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-      </svg>
-    </button>
-    <button
-      className="bg-white text-gray-700 p-4 rounded-full shadow-lg hover:shadow-xl border border-gray-200 transition-all duration-300 hover:scale-110 group"
-      onClick={() => document.getElementById('couples')?.scrollIntoView({ behavior: 'smooth' })}
-      title="Get started"
-    >
-      <svg className="h-5 w-5 group-hover:animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12l4 4 4-4m0-6l-4-4-4 4" />
-      </svg>
-    </button>
-  </div>
-);
-
 export const Homepage: React.FC = () => {
   // 🔍 DEBUG: Track re-renders
   console.log('🏠 Homepage rendering/re-rendering');
@@ -250,9 +226,6 @@ export const Homepage: React.FC = () => {
           </div>
         </section>
       </main>
-      
-      {/* Floating Action Buttons */}
-      <FloatingActions />
     </>
   );
 };

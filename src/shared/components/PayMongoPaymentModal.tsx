@@ -469,14 +469,6 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
 
   const paymentMethods: PaymentMethod[] = [
     {
-      id: 'demo_payment',
-      type: 'demo',
-      name: 'Demo Payment (Test)',
-      icon: <Zap className="h-6 w-6" />,
-      description: 'Instant payment simulation for testing',
-      available: true,
-    },
-    {
       id: 'card',
       type: 'card',
       name: 'Credit/Debit Card',
@@ -488,33 +480,33 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
       id: 'gcash',
       type: 'gcash',
       name: 'GCash',
-      icon: <Smartphone className="h-6 w-6 text-blue-600" />,
-      description: 'Pay instantly with your GCash wallet',
-      available: true,
+      icon: <Smartphone className="h-6 w-6 text-gray-400" />,
+      description: 'Coming Soon - E-wallet payment activation pending',
+      available: false,
     },
     {
       id: 'paymaya',
       type: 'paymaya',
       name: 'Maya',
-      icon: <CreditCard className="h-6 w-6 text-green-600" />,
-      description: 'Pay securely with your Maya account',
-      available: true,
+      icon: <CreditCard className="h-6 w-6 text-gray-400" />,
+      description: 'Coming Soon - E-wallet payment activation pending',
+      available: false,
     },
     {
       id: 'grab_pay',
       type: 'grab_pay',
       name: 'GrabPay',
-      icon: <Zap className="h-6 w-6 text-green-500" />,
-      description: 'Quick payment with your GrabPay wallet',
-      available: true,
+      icon: <Zap className="h-6 w-6 text-gray-400" />,
+      description: 'Coming Soon - E-wallet payment activation pending',
+      available: false,
     },
     {
       id: 'bank_transfer',
       type: 'bank_transfer',
       name: 'Bank Transfer',
-      icon: <Building className="h-6 w-6 text-blue-500" />,
-      description: 'Direct bank transfer for larger payments',
-      available: true,
+      icon: <Building className="h-6 w-6 text-gray-400" />,
+      description: 'Coming Soon - Bank transfer option in development',
+      available: false,
     },
   ];
 
@@ -546,25 +538,8 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
         const baseUrl = window.location.origin;
         const successUrl = `${baseUrl}/individual/bookings?payment=success&booking=${booking.id}`;
         const failedUrl = `${baseUrl}/individual/bookings?payment=failed&booking=${booking.id}`;
-      if (selectedMethod === 'demo_payment') {
-        // Demo payment simulation
-        setPaymentStep('processing');
-        
-        // Simulate payment processing delay
-        setTimeout(() => {
-          // Store demo payment data
-          setSource({
-            id: `demo_${booking.id}_${Date.now()}`,
-            status: 'succeeded'
-          } as PayMongoSource);
-          
-          // Set success state (callback will be called when user clicks Continue)
-          setPaymentStep('success');
-        }, 2000); // 2 second delay to simulate processing
-        
-        return;
 
-      } else if (selectedMethod === 'card') {
+      if (selectedMethod === 'card') {
         // For card payments, show card form first
         setPaymentStep('card_form');
         setLoading(false);

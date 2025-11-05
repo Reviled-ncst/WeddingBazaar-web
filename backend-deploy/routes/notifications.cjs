@@ -51,54 +51,7 @@ router.get('/vendor/:vendorId', async (req, res) => {
     
     const notifications = await sql(query, [vendorId, parseInt(limit)]);
     
-    // If no notifications exist, create some sample ones
-    if (notifications.length === 0) {
-      console.log('📋 Creating sample notifications for vendor...');
-      
-      const sampleNotifications = [
-        {
-          id: `notif-${Date.now()}-1`,
-          title: 'New Booking Request',
-          message: 'You have a new booking request for your DJ services',
-          type: 'booking',
-          action_url: '/vendor/bookings'
-        },
-        {
-          id: `notif-${Date.now()}-2`,
-          title: 'Profile Update Needed',
-          message: 'Please update your business hours and availability',
-          type: 'profile',
-          action_url: '/vendor/profile'
-        },
-        {
-          id: `notif-${Date.now()}-3`,
-          title: 'New Message',
-          message: 'You have received a new message from a potential client',
-          type: 'message',
-          action_url: '/vendor/messages'
-        }
-      ];
-      
-      for (const notif of sampleNotifications) {
-        await sql`
-          INSERT INTO notifications (id, user_id, user_type, title, message, type, action_url, created_at, updated_at)
-          VALUES (${notif.id}, ${vendorId}, 'vendor', ${notif.title}, ${notif.message}, ${notif.type}, ${notif.action_url}, NOW(), NOW())
-        `;
-      }
-      
-      // Re-fetch notifications
-      const newNotifications = await sql(query, [vendorId, parseInt(limit)]);
-      
-      console.log(`✅ Created ${sampleNotifications.length} sample notifications`);
-      
-      return res.json({
-        success: true,
-        notifications: newNotifications,
-        count: newNotifications.length,
-        unreadCount: newNotifications.filter(n => !n.is_read).length,
-        timestamp: new Date().toISOString()
-      });
-    }
+    console.log(`✅ Found ${notifications.length} real notifications for vendor ${vendorId}`);
     
     console.log(`✅ Found ${notifications.length} notifications for vendor ${vendorId}`);
     

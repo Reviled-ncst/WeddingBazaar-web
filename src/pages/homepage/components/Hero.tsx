@@ -1,39 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, Calendar, Users, Sparkles, Play, ArrowRight, Search, X } from 'lucide-react';
+import { Heart, Calendar, Users, Sparkles, ArrowRight, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../../utils/cn';
-
-// Video Modal Component
-const VideoModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
-  
-  return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-      <div className="relative max-w-4xl w-full">
-        <button 
-          onClick={onClose}
-          className="absolute -top-12 right-0 text-white hover:text-rose-300 transition-colors"
-          aria-label="Close video modal"
-          title="Close video"
-        >
-          <X className="h-8 w-8" />
-        </button>
-        <div className="aspect-video bg-black rounded-lg overflow-hidden">
-          <iframe
-            width="100%"
-            height="100%"
-            src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"
-            title="Wedding Bazaar - Your Dream Wedding Awaits"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            className="w-full h-full"
-          ></iframe>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // Quick Search Component
 const QuickSearch: React.FC = () => {
@@ -89,7 +57,6 @@ const QuickSearch: React.FC = () => {
 export const Hero: React.FC = () => {
   const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [showQuickSearch, setShowQuickSearch] = useState(false);
   
   // Hero background images for slideshow
@@ -115,10 +82,6 @@ export const Hero: React.FC = () => {
   const handleBrowseVendors = useCallback(() => {
     navigate('/services');
   }, [navigate]);
-  
-  const handlePlayVideo = useCallback(() => {
-    setIsVideoModalOpen(true);
-  }, []);
 
   return (
     <>
@@ -222,13 +185,6 @@ export const Hero: React.FC = () => {
                   <Search className="h-5 w-5 group-hover:scale-110 transition-transform" />
                   <div className="absolute inset-0 bg-gradient-to-r from-rose-50 to-pink-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </button>
-                <button 
-                  onClick={handlePlayVideo}
-                  className="px-6 py-4 bg-black/70 backdrop-blur-sm text-white font-semibold rounded-full hover:bg-black/80 transition-all duration-300 hover:scale-105 flex items-center gap-2"
-                >
-                  <Play className="h-5 w-5" />
-                  Watch Demo
-                </button>
               </div>
 
               {/* Quick Search Toggle */}
@@ -301,9 +257,6 @@ export const Hero: React.FC = () => {
           ))}
         </div>
       </section>
-
-      {/* Video Modal */}
-      <VideoModal isOpen={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} />
     </>
   );
 };

@@ -313,8 +313,16 @@ class VendorApiService {
     } catch (error) {
       console.error('Error fetching bookings:', error);
       
-      // Fallback to mock data if API fails
-      return this.getMockBookings();
+      // Return empty bookings list instead of mock data
+      return {
+        bookings: [],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 0,
+          pages: 0
+        }
+      };
     }
   }
 
@@ -361,8 +369,13 @@ class VendorApiService {
     } catch (error) {
       console.error('Error fetching analytics:', error);
       
-      // Fallback to mock data if API fails
-      return this.getMockAnalytics();
+      // Return empty analytics instead of mock data
+      return {
+        revenue: [],
+        bookingStatus: [],
+        ratings: [],
+        period
+      };
     }
   }
 
@@ -636,78 +649,6 @@ class VendorApiService {
       firstName: 'Sarah',
       lastName: 'Johnson',
       profileImage: 'https://picsum.photos/400/300?random=100' // Backwards compatibility
-    };
-  }
-
-  private getMockBookings(): BookingsResponse {
-    return {
-      bookings: [
-        {
-          id: '1',
-          couple_id: '1',
-          vendor_id: '1',
-          service_type: 'Wedding Photography',
-          event_date: '2024-06-15',
-          status: 'confirmed',
-          total_amount: 2500,
-          notes: 'Outdoor ceremony at Central Park',
-          contract_details: 'Full day coverage with engagement session',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-16T10:00:00Z',
-          first_name: 'Sarah',
-          last_name: 'Johnson',
-          email: 'sarah@example.com',
-          profile_image: 'https://picsum.photos/400/300?random=200'
-        },
-        {
-          id: '2',
-          couple_id: '2',
-          vendor_id: '1',
-          service_type: 'Engagement Session',
-          event_date: '2024-03-20',
-          status: 'pending',
-          total_amount: 800,
-          notes: 'Brooklyn Bridge location preferred',
-          contract_details: '2-hour session with digital gallery',
-          created_at: '2024-01-20T14:00:00Z',
-          updated_at: '2024-01-20T14:00:00Z',
-          first_name: 'Michael',
-          last_name: 'Chen',
-          email: 'michael@example.com'
-        }
-      ],
-      pagination: {
-        page: 1,
-        limit: 10,
-        total: 2,
-        pages: 1
-      }
-    };
-  }
-
-  private getMockAnalytics(): AnalyticsData {
-    return {
-      revenue: [
-        { date: '2024-01-01', revenue: 2500, bookings: 2 },
-        { date: '2024-01-02', revenue: 1800, bookings: 1 },
-        { date: '2024-01-03', revenue: 3200, bookings: 3 },
-        { date: '2024-01-04', revenue: 0, bookings: 0 },
-        { date: '2024-01-05', revenue: 4500, bookings: 2 }
-      ],
-      bookingStatus: [
-        { status: 'pending', count: 6 },
-        { status: 'confirmed', count: 12 },
-        { status: 'completed', count: 18 },
-        { status: 'cancelled', count: 2 }
-      ],
-      ratings: [
-        { rating: 5, count: 28 },
-        { rating: 4, count: 12 },
-        { rating: 3, count: 3 },
-        { rating: 2, count: 1 },
-        { rating: 1, count: 1 }
-      ],
-      period: 'month'
     };
   }
 }

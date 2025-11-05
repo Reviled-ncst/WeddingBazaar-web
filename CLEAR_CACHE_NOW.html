@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧹 Clear Wedding Bazaar Cache</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        .status {
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+        .pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 1.2em;
+            border-radius: 12px;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 600;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        .steps {
+            text-align: left;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        .step {
+            padding: 12px;
+            margin: 10px 0;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .cleared {
+            color: #28a745;
+            font-weight: bold;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Clear Wedding Bazaar Cache</h1>
+        
+        <div id="status" class="status pending">
+            ⏳ Ready to clear cache...
+        </div>
+
+        <div class="warning">
+            <h3>⚠️ You're seeing mock notifications because:</h3>
+            <p><strong>Your browser cached old data from a previous deployment.</strong></p>
+            <p>Click the buttons below to completely clear this cache.</p>
+        </div>
+
+        <div class="steps">
+            <h3>What will be cleared:</h3>
+            <div class="step">✅ localStorage (vendor notifications cache)</div>
+            <div class="step">✅ sessionStorage (temporary session data)</div>
+            <div class="step">✅ Service Workers (background scripts)</div>
+            <div class="step">✅ Cache Storage (API response cache)</div>
+            <div class="step">✅ IndexedDB (offline database)</div>
+        </div>
+
+        <button onclick="clearEverything()" class="btn-danger">
+            🗑️ CLEAR EVERYTHING NOW
+        </button>
+
+        <button onclick="clearBrowserCache()" class="btn-secondary">
+            🧹 Open Browser Cache Settings
+        </button>
+
+        <button onclick="goToSite()">
+            🚀 Go to Wedding Bazaar (After Clearing)
+        </button>
+
+        <div id="cleared-list" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        let clearedItems = [];
+
+        async function clearEverything() {
+            const statusEl = document.getElementById('status');
+            const clearedListEl = document.getElementById('cleared-list');
+            clearedItems = [];
+            
+            statusEl.className = 'status pending';
+            statusEl.textContent = '⏳ Clearing cache...';
+
+            // 1. Clear localStorage
+            try {
+                const localStorageKeys = Object.keys(localStorage);
+                console.log('📦 localStorage keys before clear:', localStorageKeys);
+                localStorage.clear();
+                clearedItems.push('✅ localStorage cleared (' + localStorageKeys.length + ' items removed)');
+                console.log('✅ localStorage cleared');
+            } catch (e) {
+                clearedItems.push('❌ localStorage: ' + e.message);
+                console.error('❌ localStorage error:', e);
+            }
+
+            // 2. Clear sessionStorage
+            try {
+                const sessionStorageKeys = Object.keys(sessionStorage);
+                console.log('📦 sessionStorage keys before clear:', sessionStorageKeys);
+                sessionStorage.clear();
+                clearedItems.push('✅ sessionStorage cleared (' + sessionStorageKeys.length + ' items removed)');
+                console.log('✅ sessionStorage cleared');
+            } catch (e) {
+                clearedItems.push('❌ sessionStorage: ' + e.message);
+                console.error('❌ sessionStorage error:', e);
+            }
+
+            // 3. Clear Service Workers
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    console.log('🔧 Service Workers found:', registrations.length);
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        console.log('✅ Service Worker unregistered:', registration);
+                    }
+                    clearedItems.push('✅ Service Workers cleared (' + registrations.length + ' unregistered)');
+                } catch (e) {
+                    clearedItems.push('⚠️ Service Workers: ' + e.message);
+                    console.error('❌ Service Worker error:', e);
+                }
+            }
+
+            // 4. Clear Cache Storage
+            if ('caches' in window) {
+                try {
+                    const cacheNames = await caches.keys();
+                    console.log('💾 Cache Storage found:', cacheNames);
+                    for (let cacheName of cacheNames) {
+                        await caches.delete(cacheName);
+                        console.log('✅ Cache deleted:', cacheName);
+                    }
+                    clearedItems.push('✅ Cache Storage cleared (' + cacheNames.length + ' caches removed)');
+                } catch (e) {
+                    clearedItems.push('⚠️ Cache Storage: ' + e.message);
+                    console.error('❌ Cache Storage error:', e);
+                }
+            }
+
+            // 5. Clear IndexedDB
+            if ('indexedDB' in window) {
+                try {
+                    const dbs = await indexedDB.databases();
+                    console.log('🗄️ IndexedDB databases found:', dbs);
+                    for (let db of dbs) {
+                        if (db.name) {
+                            indexedDB.deleteDatabase(db.name);
+                            console.log('✅ IndexedDB deleted:', db.name);
+                        }
+                    }
+                    clearedItems.push('✅ IndexedDB cleared (' + dbs.length + ' databases removed)');
+                } catch (e) {
+                    clearedItems.push('⚠️ IndexedDB: ' + e.message);
+                    console.error('❌ IndexedDB error:', e);
+                }
+            }
+
+            // Show results
+            clearedListEl.innerHTML = '<div class="steps"><h3>Cleared Items:</h3>' + 
+                clearedItems.map(item => '<div class="step cleared">' + item + '</div>').join('') +
+                '</div>';
+
+            statusEl.className = 'status success';
+            statusEl.innerHTML = '✅ CACHE CLEARED!<br><small>Now close this tab and hard refresh the vendor page (Ctrl+F5)</small>';
+
+            console.log('🎉 CACHE CLEAR COMPLETE!');
+            console.log('📋 Summary:', clearedItems);
+        }
+
+        function clearBrowserCache() {
+            alert('📌 MANUAL CACHE CLEAR:\n\n1. Press Ctrl+Shift+Delete (Windows) or Cmd+Shift+Delete (Mac)\n2. Check "Cached images and files"\n3. Check "Cookies and other site data"\n4. Select "All time"\n5. Click "Clear data"\n\nThen press Ctrl+F5 to hard refresh!');
+        }
+
+        function goToSite() {
+            if (clearedItems.length === 0) {
+                alert('⚠️ Please clear cache first by clicking "CLEAR EVERYTHING NOW"');
+                return;
+            }
+            window.open('https://weddingbazaarph.web.app/vendor/landing', '_blank');
+        }
+
+        // Auto-check on page load
+        window.addEventListener('load', () => {
+            console.log('🔍 Checking current cache status...');
+            console.log('localStorage keys:', Object.keys(localStorage));
+            console.log('sessionStorage keys:', Object.keys(sessionStorage));
+            
+            // Check for Wedding Bazaar specific data
+            const hasWeddingData = Object.keys(localStorage).some(key => 
+                key.includes('wedding') || 
+                key.includes('vendor') || 
+                key.includes('notification') ||
+                key.includes('auth')
+            );
+            
+            if (hasWeddingData) {
+                document.getElementById('status').innerHTML = 
+                    '⚠️ OLD DATA DETECTED!<br><small>Click "CLEAR EVERYTHING NOW" to remove it</small>';
+                document.getElementById('status').className = 'status error';
+            }
+        });
+    </script>
+</body>
+</html>

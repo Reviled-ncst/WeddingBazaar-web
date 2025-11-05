@@ -187,11 +187,13 @@ export const VendorServices: React.FC = () => {
     fetchVendorId();
   }, [user, apiUrl]);
 
-  // Use actual vendor ID (VEN-XXXXX) instead of user ID
-  const vendorId = actualVendorId || (user?.role === 'vendor' ? (user?.vendorId || user?.id || getVendorIdForUser(user as any)) : null);
+  // ✅ CRITICAL FIX: Services use user.id format ('2-2025-003'), NOT vendor_profile UUID
+  // This is because services.vendor_id references vendors.id, not vendor_profiles.id
+  const vendorId = user?.id || user?.vendorId || null;
   
-  // Use the same vendor profile hook as VendorProfile component
-  const { profile, refetch: refetchProfile } = useVendorProfile(vendorId || '');
+  // Use vendor_profile UUID for profile data (different ID system!)
+  const vendorProfileId = actualVendorId || vendorId;
+  const { profile, refetch: refetchProfile } = useVendorProfile(vendorProfileId || '');
 
   // Get subscription data for service limits
   const {
@@ -330,6 +332,10 @@ export const VendorServices: React.FC = () => {
         setServices([]);
         return;
       }
+      
+      console.log('🔍 [VendorServices] Fetching services for vendor ID:', vendorId);
+      console.log('🔍 [VendorServices] API URL:', `${apiUrl}/api/services/vendor/${vendorId}`);
+      
       const response = await fetch(`${apiUrl}/api/services/vendor/${vendorId}`, {
         method: 'GET',
         headers: {
@@ -339,12 +345,18 @@ export const VendorServices: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
+        console.log('✅ [VendorServices] API response:', result);
+        console.log('✅ [VendorServices] Services found:', result.services?.length || 0);
+        
         if (result.success && Array.isArray(result.services)) {
           setServices(result.services);
+          console.log('✅ [VendorServices] Services loaded successfully:', result.services.length);
         } else {
+          console.warn('⚠️ [VendorServices] No services in response');
           setServices([]);
         }
       } else {
+        console.error('❌ [VendorServices] API error:', response.status);
         setServices([]);
       }
       
@@ -2138,35 +2150,6 @@ export const VendorServices: React.FC = () => {
           </motion.div>
         </div>
       )}
-
-      {/* Floating Add Service Button */}
-      <motion.div
-        className="fixed bottom-8 right-8 z-50"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.5 }}
-      >
-        <div className="relative">
-          <button
-            onClick={handleQuickCreateService}
-            className={`w-16 h-16 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-110 flex items-center justify-center group ${
-              canAddServices()
-                ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-            title={canAddServices() ? "Add New Service" : "Email verification and document approval required"}
-          >
-            <Plus size={24} className={canAddServices() ? "group-hover:rotate-90 transition-transform duration-300" : ""} />
-          </button>
-          
-          {/* Verification indicator badge */}
-          {!canAddServices() && (
-            <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs">
-              !
-            </div>
-          )}
-        </div>
-      </motion.div>
 
       {/* Upgrade Prompt Modal */}
       {/* ✅ Centralized Upgrade Prompt with Payment Integration */}

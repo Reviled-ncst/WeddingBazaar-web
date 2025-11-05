@@ -38,6 +38,8 @@ export class ReviewApiService {
    */
   static async getServiceReviewStats(serviceId: string): Promise<ServiceReviewStats | null> {
     try {
+      console.log('📊 [ReviewAPI] Fetching review stats for service:', serviceId);
+      
       const response = await fetch(`${API_BASE_URL}/api/reviews/service/${serviceId}/stats`, {
         method: 'GET',
         headers: {
@@ -47,10 +49,13 @@ export class ReviewApiService {
       });
       
       if (!response.ok) {
+        console.warn('⚠️ [ReviewAPI] Service review stats not found:', response.status);
         return null;
       }
       
       const stats = await response.json();
+      console.log('✅ [ReviewAPI] Retrieved review stats:', { serviceId, stats });
+      
       return stats;
     } catch (error) {
       console.error('❌ [ReviewAPI] Error fetching service review stats:', error);
@@ -63,6 +68,8 @@ export class ReviewApiService {
    */
   static async getServiceReviews(serviceId: string, limit = 10, offset = 0): Promise<Review[]> {
     try {
+      console.log('📋 [ReviewAPI] Fetching reviews for service:', serviceId);
+      
       const response = await fetch(`${API_BASE_URL}/api/reviews/service/${serviceId}?limit=${limit}&offset=${offset}`, {
         method: 'GET',
         headers: {
@@ -71,10 +78,13 @@ export class ReviewApiService {
       });
       
       if (!response.ok) {
+        console.warn('⚠️ [ReviewAPI] Service reviews not found:', response.status);
         return [];
       }
       
       const reviews = await response.json();
+      console.log('✅ [ReviewAPI] Retrieved reviews:', { serviceId, count: reviews.length });
+      
       return Array.isArray(reviews) ? reviews : [];
     } catch (error) {
       console.error('❌ [ReviewAPI] Error fetching service reviews:', error);
@@ -87,6 +97,8 @@ export class ReviewApiService {
    */
   static async getBulkServiceReviewStats(serviceIds: string[]): Promise<Map<string, ServiceReviewStats>> {
     try {
+      console.log('📊 [ReviewAPI] Fetching bulk review stats for services:', serviceIds.length);
+      
       const response = await fetch(`${API_BASE_URL}/api/reviews/bulk-stats`, {
         method: 'POST',
         headers: {
@@ -97,10 +109,13 @@ export class ReviewApiService {
       });
       
       if (!response.ok) {
+        console.warn('⚠️ [ReviewAPI] Bulk review stats failed:', response.status);
         return new Map();
       }
       
       const bulkStats = await response.json();
+      console.log('✅ [ReviewAPI] Retrieved bulk review stats:', Object.keys(bulkStats).length);
+      
       // Convert to Map for easy lookup
       const statsMap = new Map<string, ServiceReviewStats>();
       Object.entries(bulkStats).forEach(([serviceId, stats]) => {
@@ -115,40 +130,41 @@ export class ReviewApiService {
   }
   
   /**
-   * Create a new review for a booking/service
+   * Create a new review for a service
    */
-  static async createReview(reviewData: {
-    booking_id: string;
-    service_id: string;
-    vendor_id: string;
+  static async createReview(serviceId: string, userId: string, reviewData: {
     rating: number;
     title: string;
     comment: string;
-    user_name?: string;
-    user_email?: string;
-  }): Promise<{ success: boolean; review?: any; message?: string }> {
+  }): Promise<Review | null> {
     try {
-      const token = localStorage.getItem('jwt_token');
+      console.log('📝 [ReviewAPI] Creating review for service:', serviceId);
+      
       const response = await fetch(`${API_BASE_URL}/api/reviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` })
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
-        body: JSON.stringify(reviewData)
+        body: JSON.stringify({
+          service_id: serviceId,
+          user_id: userId,
+          ...reviewData
+        })
       });
-
-      const data = await response.json();
       
       if (!response.ok) {
-        console.error('❌ [ReviewAPI] Create review failed:', data);
-        return { success: false, message: data.message || 'Failed to create review' };
+        console.error('❌ [ReviewAPI] Failed to create review:', response.status);
+        return null;
       }
-      return { success: true, review: data.review, message: 'Review submitted successfully!' };
+      
+      const review = await response.json();
+      console.log('✅ [ReviewAPI] Review created successfully:', review.id);
+      
+      return review;
     } catch (error) {
       console.error('❌ [ReviewAPI] Error creating review:', error);
-      return { success: false, message: 'Network error. Please try again.' };
+      return null;
     }
   }
   
@@ -157,6 +173,8 @@ export class ReviewApiService {
    */
   static async getTrendingServices(limit = 10): Promise<string[]> {
     try {
+      console.log('🔥 [ReviewAPI] Fetching trending services based on reviews');
+      
       const response = await fetch(`${API_BASE_URL}/api/reviews/trending?limit=${limit}`, {
         method: 'GET',
         headers: {
@@ -165,10 +183,13 @@ export class ReviewApiService {
       });
       
       if (!response.ok) {
+        console.warn('⚠️ [ReviewAPI] Trending services not available:', response.status);
         return [];
       }
       
       const trending = await response.json();
+      console.log('✅ [ReviewAPI] Retrieved trending services:', trending.length);
+      
       return Array.isArray(trending) ? trending : [];
     } catch (error) {
       console.error('❌ [ReviewAPI] Error fetching trending services:', error);
@@ -188,27 +209,6 @@ export class ReviewApiService {
       rating: Math.round(rating * 10) / 10, // Round to 1 decimal
       reviewCount
     };
-  }
-
-  /**
-   * Check if user has already reviewed a booking
-   */
-  static async checkUserReview(bookingId: string): Promise<{ hasReviewed: boolean; review?: any }> {
-    try {
-      const token = localStorage.getItem('jwt_token');
-      const response = await fetch(`${API_BASE_URL}/api/reviews/check/${bookingId}`, {
-        headers: {
-          'Accept': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` })
-        }
-      });
-      
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('❌ [ReviewAPI] Error checking review:', error);
-      return { hasReviewed: false };
-    }
   }
 }
 

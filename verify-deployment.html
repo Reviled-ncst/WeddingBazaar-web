@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock Data Removal - Verification Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .status-box {
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid;
+        }
+        
+        .status-box.success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        
+        .status-box.error {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .status-box.info {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+        
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 10px 10px 0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        .button.secondary {
+            background: #6c757d;
+        }
+        
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 13px;
+            margin: 10px 0;
+        }
+        
+        .test-result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .check-item {
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .check-item.pass {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .check-item.fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .icon {
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Mock Data Removal Verification</h1>
+        <p class="subtitle">Clear cache and verify real notification system is working</p>
+        
+        <div id="statusBox" class="status-box info">
+            <strong>ℹ️ Status:</strong> Ready to test. Click buttons below to verify deployment.
+        </div>
+        
+        <div style="margin-bottom: 30px;">
+            <button class="button" onclick="clearCache()">🗑️ Clear Browser Cache</button>
+            <button class="button" onclick="testAPI()">🔍 Test API Connection</button>
+            <button class="button secondary" onclick="location.reload(true)">🔄 Hard Refresh</button>
+        </div>
+        
+        <div id="testResults"></div>
+        
+        <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid #eee;">
+            <h2 style="color: #667eea; margin-bottom: 15px;">📋 Manual Steps</h2>
+            <div class="status-box info">
+                <strong>Step 1: Hard Refresh</strong><br>
+                Windows/Linux: <code>Ctrl + Shift + R</code><br>
+                Mac: <code>Cmd + Shift + R</code>
+            </div>
+            <div class="status-box info">
+                <strong>Step 2: Verify Bell Icon</strong><br>
+                Go to vendor dashboard → Check bell icon<br>
+                Should show: <strong>🔔 0</strong> (not 🔔 3)
+            </div>
+            <div class="status-box info">
+                <strong>Step 3: Test Real Notification</strong><br>
+                Submit a booking as couple → Bell should update to <strong>🔔 1</strong>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function clearCache() {
+            const statusBox = document.getElementById('statusBox');
+            const resultsDiv = document.getElementById('testResults');
+            
+            try {
+                // Clear localStorage
+                const clearedItems = [];
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key && (
+                        key.includes('notification') || 
+                        key.includes('Notification') ||
+                        key.includes('lastNotificationCheck')
+                    )) {
+                        clearedItems.push(key);
+                        localStorage.removeItem(key);
+                    }
+                }
+                
+                // Clear sessionStorage
+                for (let i = sessionStorage.length - 1; i >= 0; i--) {
+                    const key = sessionStorage.key(i);
+                    if (key && (key.includes('notification') || key.includes('Notification'))) {
+                        clearedItems.push(key);
+                        sessionStorage.removeItem(key);
+                    }
+                }
+                
+                statusBox.className = 'status-box success';
+                statusBox.innerHTML = `
+                    <strong>✅ Success!</strong><br>
+                    Cleared ${clearedItems.length} cached items.<br>
+                    Now do a hard refresh: <strong>Ctrl + Shift + R</strong>
+                `;
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-result">
+                        <strong>Cleared Items:</strong>
+                        <pre>${clearedItems.length > 0 ? clearedItems.join('\n') : 'No notification cache found'}</pre>
+                        <p style="margin-top: 10px;">✅ Cache cleared successfully!</p>
+                        <p>⚠️ <strong>Important:</strong> Hard refresh the page now (Ctrl+Shift+R)</p>
+                    </div>
+                `;
+                
+                // Auto hard refresh after 3 seconds
+                setTimeout(() => {
+                    if (confirm('Cache cleared! Click OK to hard refresh now.')) {
+                        location.reload(true);
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                statusBox.className = 'status-box error';
+                statusBox.innerHTML = `<strong>❌ Error:</strong> ${error.message}`;
+            }
+        }
+        
+        async function testAPI() {
+            const statusBox = document.getElementById('statusBox');
+            const resultsDiv = document.getElementById('testResults');
+            
+            statusBox.className = 'status-box info';
+            statusBox.innerHTML = '<strong>⏳ Testing...</strong> Checking backend API and frontend deployment...';
+            
+            const results = [];
+            
+            // Test 1: Backend Health
+            try {
+                const healthResponse = await fetch('https://weddingbazaar-web.onrender.com/api/health');
+                if (healthResponse.ok) {
+                    results.push({
+                        name: 'Backend API Health',
+                        pass: true,
+                        message: 'Backend is operational'
+                    });
+                } else {
+                    results.push({
+                        name: 'Backend API Health',
+                        pass: false,
+                        message: `HTTP ${healthResponse.status}`
+                    });
+                }
+            } catch (error) {
+                results.push({
+                    name: 'Backend API Health',
+                    pass: false,
+                    message: error.message
+                });
+            }
+            
+            // Test 2: Frontend Deployment
+            try {
+                const frontendResponse = await fetch('https://weddingbazaarph.web.app');
+                if (frontendResponse.ok) {
+                    results.push({
+                        name: 'Frontend Deployment',
+                        pass: true,
+                        message: 'Frontend is accessible'
+                    });
+                } else {
+                    results.push({
+                        name: 'Frontend Deployment',
+                        pass: false,
+                        message: `HTTP ${frontendResponse.status}`
+                    });
+                }
+            } catch (error) {
+                results.push({
+                    name: 'Frontend Deployment',
+                    pass: false,
+                    message: error.message
+                });
+            }
+            
+            // Test 3: Check for mock data in localStorage
+            const hasMockCache = Array.from({length: localStorage.length}, (_, i) => localStorage.key(i))
+                .some(key => key && (key.includes('notification') || key.includes('Notification')));
+            
+            results.push({
+                name: 'Browser Cache Check',
+                pass: !hasMockCache,
+                message: hasMockCache ? 'Mock data cache found - needs clearing' : 'No mock data cache found'
+            });
+            
+            // Display results
+            const allPassed = results.every(r => r.pass);
+            
+            statusBox.className = `status-box ${allPassed ? 'success' : 'error'}`;
+            statusBox.innerHTML = `
+                <strong>${allPassed ? '✅ All Tests Passed!' : '⚠️ Some Tests Failed'}</strong><br>
+                ${allPassed ? 'System is ready. Hard refresh to load new code.' : 'Please review test results below.'}
+            `;
+            
+            resultsDiv.innerHTML = `
+                <div class="test-result">
+                    <strong>Test Results:</strong><br><br>
+                    ${results.map(r => `
+                        <div class="check-item ${r.pass ? 'pass' : 'fail'}">
+                            <span class="icon">${r.pass ? '✅' : '❌'}</span>
+                            <div>
+                                <strong>${r.name}:</strong> ${r.message}
+                            </div>
+                        </div>
+                    `).join('')}
+                    
+                    ${!allPassed ? `
+                        <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; color: #856404;">
+                            <strong>⚠️ Action Required:</strong><br>
+                            1. Click "Clear Browser Cache" button above<br>
+                            2. Hard refresh the page (Ctrl+Shift+R)<br>
+                            3. Go to vendor dashboard and check bell icon
+                        </div>
+                    ` : `
+                        <div style="margin-top: 20px; padding: 15px; background: #d4edda; border-radius: 8px; color: #155724;">
+                            <strong>✅ System Ready!</strong><br>
+                            Go to <a href="https://weddingbazaarph.web.app/vendor/landing" target="_blank">vendor dashboard</a> and check bell icon.
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+        
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(testAPI, 500);
+        });
+    </script>
+</body>
+</html>

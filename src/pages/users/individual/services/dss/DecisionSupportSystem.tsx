@@ -740,24 +740,187 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
   }), []);
 
   // Generate package recommendations
+  // Smart Package Quantity Restrictions based on Vendor Availability
+  const analyzeVendorAvailability = React.useCallback(() => {
+    // Get unique vendors per category
+    const vendorsByCategory: Record<string, Set<string>> = {};
+    
+    services.forEach(service => {
+      if (!vendorsByCategory[service.category]) {
+        vendorsByCategory[service.category] = new Set();
+      }
+      vendorsByCategory[service.category].add(service.vendorId || service.id);
+    });
+
+    // Essential categories for any wedding package
+    const essentialCategories = ['Photography', 'Venue', 'Catering'];
+    const standardCategories = ['Photography', 'Venue', 'Catering', 'Flowers', 'Music'];
+    const premiumCategories = [...standardCategories, 'Videography', 'Planning'];
+    const luxuryCategories = [...premiumCategories, 'Makeup', 'Lighting', 'Decor'];
+
+    // Calculate vendor availability scores
+    const availability = {
+      essential: Math.min(...essentialCategories.map(cat => vendorsByCategory[cat]?.size || 0)),
+      standard: Math.min(...standardCategories.map(cat => vendorsByCategory[cat]?.size || 0)),
+      premium: Math.min(...premiumCategories.map(cat => vendorsByCategory[cat]?.size || 0)),
+      luxury: Math.min(...luxuryCategories.map(cat => vendorsByCategory[cat]?.size || 0))
+    };
+
+    // Calculate average vendor count using weighted average (essential categories are most important)
+    // Use only essential and standard for more accurate assessment
+    const avgVendorCount = (availability.essential * 0.5 + availability.standard * 0.5);
+
+    return {
+      vendorsByCategory,
+      availability,
+      avgVendorCount,
+      // Smart package quantity logic (adjusted thresholds for better balance)
+      suggestedPackageCount: 
+        avgVendorCount >= 5 ? 3 : // Many vendors: suggest 3 packages
+        avgVendorCount >= 3 ? 2 : // Enough vendors: suggest 2 packages
+        avgVendorCount >= 1.5 ? 1 : // Just enough: suggest 1 package
+        0, // Not enough: suggest 0 packages
+      fallbackMessage: avgVendorCount < 1.5 
+        ? `Insufficient vendors available. We found only ${Math.floor(avgVendorCount)} vendor(s) per category on average. We need at least 2 vendors per essential category (Photography, Venue, Catering) to create meaningful packages.`
+        : null
+    };
+  }, [services]);
+
   const packageRecommendations = React.useMemo((): PackageRecommendation[] => {
     if (!services.length || !recommendations.length) return [];
 
-    const packages: PackageRecommendation[] = [];
-
-    // Essential Package - Core wedding needs
-    const essentialServices = recommendations
-      .filter(r => ['Photography', 'Venue', 'Catering'].includes(r.category))
-      .slice(0, 3);
+    // Analyze vendor availability first
+    const vendorAnalysis = analyzeVendorAvailability();
     
-    if (essentialServices.length >= 3) {
+    // If not enough vendors, return empty with fallback message
+    if (vendorAnalysis.suggestedPackageCount === 0) {
+      console.warn('⚠️ [DSS] Insufficient vendor availability:', vendorAnalysis.fallbackMessage);
+      return [];
+    }
+
+    const packages: PackageRecommendation[] = [];
+    const usedVendors = new Set<string>(); // Track used vendors to prevent duplicates
+
+    // Helper: Get unique vendor services with multiple choices per category
+    // Returns both common/popular choices AND highest-rated options
+    const getUniqueVendorServices = (
+      categoryList: string[], 
+      maxServicesPerCategory: number = 2 // Default: 2 choices per category
+    ): DSSRecommendation[] => {
+      const servicesByCategory: Record<string, DSSRecommendation[]> = {};
+      
+      // Group recommendations by category
+      for (const rec of recommendations) {
+        if (categoryList.includes(rec.category)) {
+          const service = services.find(s => s.id === rec.serviceId);
+          const vendorId = service?.vendorId || service?.id;
+          
+          // Only add if vendor not already used in another package
+          if (vendorId && !usedVendors.has(vendorId)) {
+            if (!servicesByCategory[rec.category]) {
+              servicesByCategory[rec.category] = [];
+            }
+            servicesByCategory[rec.category].push(rec);
+          }
+        }
+      }
+      
+      // For each category, get multiple choices (highest-rated + most popular)
+      const selectedServices: DSSRecommendation[] = [];
+      
+      for (const category of categoryList) {
+        const categoryServices = servicesByCategory[category] || [];
+        if (categoryServices.length === 0) continue;
+        
+        // Sort by different criteria to get diverse options
+        const byScore = [...categoryServices].sort((a, b) => b.score - a.score);
+        const byRating = [...categoryServices].sort((a, b) => {
+          const serviceA = services.find(s => s.id === a.serviceId);
+          const serviceB = services.find(s => s.id === b.serviceId);
+          return (serviceB?.rating || 0) - (serviceA?.rating || 0);
+        });
+        const byPopularity = [...categoryServices].sort((a, b) => {
+          const serviceA = services.find(s => s.id === a.serviceId);
+          const serviceB = services.find(s => s.id === b.serviceId);
+          return (serviceB?.reviewCount || 0) - (serviceA?.reviewCount || 0);
+        });
+        
+        // Add top choices (avoid duplicates)
+        const addedIds = new Set<string>();
+        let addCount = 0;
+        
+        // First: Highest score (best overall match)
+        if (byScore[0] && !addedIds.has(byScore[0].serviceId)) {
+          const service = services.find(s => s.id === byScore[0].serviceId);
+          const vendorId = service?.vendorId || service?.id;
+          if (vendorId) {
+            selectedServices.push(byScore[0]);
+            usedVendors.add(vendorId);
+            addedIds.add(byScore[0].serviceId);
+            addCount++;
+          }
+        }
+        
+        // Second: Highest rating (quality pick)
+        if (addCount < maxServicesPerCategory && byRating[0] && !addedIds.has(byRating[0].serviceId)) {
+          const service = services.find(s => s.id === byRating[0].serviceId);
+          const vendorId = service?.vendorId || service?.id;
+          if (vendorId) {
+            selectedServices.push(byRating[0]);
+            usedVendors.add(vendorId);
+            addedIds.add(byRating[0].serviceId);
+            addCount++;
+          }
+        }
+        
+        // Third: Most popular (common choice)
+        if (addCount < maxServicesPerCategory && byPopularity[0] && !addedIds.has(byPopularity[0].serviceId)) {
+          const service = services.find(s => s.id === byPopularity[0].serviceId);
+          const vendorId = service?.vendorId || service?.id;
+          if (vendorId) {
+            selectedServices.push(byPopularity[0]);
+            usedVendors.add(vendorId);
+            addedIds.add(byPopularity[0].serviceId);
+            addCount++;
+          }
+        }
+        
+        // Fill remaining slots with next best options
+        let index = 1;
+        while (addCount < maxServicesPerCategory && index < categoryServices.length) {
+          const candidate = byScore[index];
+          if (candidate && !addedIds.has(candidate.serviceId)) {
+            const service = services.find(s => s.id === candidate.serviceId);
+            const vendorId = service?.vendorId || service?.id;
+            if (vendorId) {
+              selectedServices.push(candidate);
+              usedVendors.add(vendorId);
+              addedIds.add(candidate.serviceId);
+              addCount++;
+            }
+          }
+          index++;
+        }
+      }
+      
+      return selectedServices;
+    };
+
+    // Essential Package - Core wedding needs with 2 choices per category
+    // User gets: 2 photographers, 2 venues, 2 caterers (6 services total)
+    const essentialServices = getUniqueVendorServices(
+      ['Photography', 'Venue', 'Catering'],
+      2 // 2 choices per category
+    );
+    
+    if (essentialServices.length >= 3) { // At least 1 per category
       const totalCost = essentialServices.reduce((sum, s) => sum + s.estimatedCost, 0);
       const originalCost = totalCost * 1.15; // Assume 15% bundle discount
       
       packages.push({
         id: 'essential',
         name: 'Essential Wedding Package',
-        description: 'Core services for a beautiful, budget-conscious wedding',
+        description: 'Core services with 2 vendor choices per category - compare highest-rated vs. most popular options side-by-side',
         services: essentialServices.map(s => s.serviceId),
         totalCost,
         originalCost,
@@ -766,10 +929,10 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
         category: 'essential',
         suitability: 85,
         reasons: [
-          'Covers the absolute essentials',
-          'Budget-friendly approach',
-          'High-quality core services',
-          'Room for DIY elements'
+          '🎯 2 photographer choices - best overall match + highest rated',
+          '🏰 2 venue options - top quality + most popular',
+          '🍽️ 2 catering services - value leader + crowd favorite',
+          '✨ Freedom to pick your perfect match per category'
         ],
         timeline: '6-12 months planning',
         flexibility: 'high',
@@ -777,19 +940,21 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
       });
     }
 
-    // Standard Package - Most popular choice
-    const standardServices = recommendations
-      .filter(r => ['Photography', 'Venue', 'Catering', 'Flowers', 'Music'].includes(r.category))
-      .slice(0, 5);
-    
-    if (standardServices.length >= 4) {
+    // Standard Package - 2 choices per category (10 services total)
+    if (vendorAnalysis.suggestedPackageCount >= 2) {
+      const standardServices = getUniqueVendorServices(
+        ['Photography', 'Venue', 'Catering', 'Flowers', 'Music'],
+        2 // 2 choices per category (highest-rated + most popular)
+      );
+      
+      if (standardServices.length >= 5) { // At least 1 per category
       const totalCost = standardServices.reduce((sum, s) => sum + s.estimatedCost, 0);
       const originalCost = totalCost * 1.12; // Assume 12% bundle discount
       
       packages.push({
         id: 'standard',
         name: 'Complete Wedding Package',
-        description: 'Everything you need for a memorable celebration',
+        description: 'Everything you need with 2 vendor choices per category - compare top-rated vs. popular options for each service',
         services: standardServices.map(s => s.serviceId),
         totalCost,
         originalCost,
@@ -798,30 +963,33 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
         category: 'standard',
         suitability: 92,
         reasons: [
-          'Complete wedding solution',
-          'Popular vendor combinations',
-          'Balanced budget allocation',
-          'Stress-free planning'
+          '📸 2 photographers + 🏰 2 venues + 🍽️ 2 caterers',
+          '💐 2 florists + 🎵 2 musicians (10 choices total)',
+          '⭐ Each pair: highest-rated + most popular vendor',
+          '🎯 Pick your favorite from quality + popularity options'
         ],
         timeline: '8-15 months planning',
         flexibility: 'medium',
         riskLevel: 'low'
       });
-    }
+      }
+    } // Close the "if vendorAnalysis.suggestedPackageCount >= 2" block
 
-    // Premium Package - High-end options
-    const premiumServices = recommendations
-      .filter(r => r.priority === 'high' && r.valueRating >= 7)
-      .slice(0, 6);
-    
-    if (premiumServices.length >= 5) {
+    // Premium Package - 2 choices per category (14 services total)
+    if (vendorAnalysis.suggestedPackageCount >= 3) {
+      const premiumServices = getUniqueVendorServices(
+        ['Photography', 'Venue', 'Catering', 'Flowers', 'Music', 'Videography', 'Planning'],
+        2 // 2 choices per category
+      ).filter(r => r.priority === 'high' && r.valueRating >= 7);
+      
+      if (premiumServices.length >= 7) { // At least 1 per category
       const totalCost = premiumServices.reduce((sum, s) => sum + s.estimatedCost, 0);
       const originalCost = totalCost * 1.10; // Assume 10% bundle discount
       
       packages.push({
         id: 'premium',
         name: 'Premium Wedding Experience',
-        description: 'Top-tier services for an exceptional celebration',
+        description: 'Top-tier services with 2 premium choices per category - compare elite vendors side-by-side for the perfect match',
         services: premiumServices.map(s => s.serviceId),
         totalCost,
         originalCost,
@@ -830,51 +998,61 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
         category: 'premium',
         suitability: 88,
         reasons: [
-          'Top-rated vendors only',
-          'Premium service quality',
-          'Comprehensive coverage',
-          'Expert coordination'
+          '🌟 14 premium choices across 7 essential categories',
+          '👰 2 options each: Photo, Video, Venue, Catering, Flowers, Music, Planning',
+          '⭐ Only top-rated (4.5+) and most popular vendors',
+          '🎯 Choose between quality champions and crowd favorites'
         ],
         timeline: '12-18 months planning',
         flexibility: 'medium',
         riskLevel: 'low'
       });
+      }
+    } // Close the "if vendorAnalysis.suggestedPackageCount >= 3" block
+
+    // Luxury Package - 2 choices per category (18 services total)
+    if (vendorAnalysis.suggestedPackageCount >= 3) {
+      const luxuryServices = getUniqueVendorServices(
+        ['Photography', 'Venue', 'Catering', 'Flowers', 'Music', 'Videography', 'Planning', 'Makeup', 'Lighting'],
+        2 // 2 premium choices per category
+      ).filter(r => r.priority === 'high' && r.valueRating >= 8);
+      
+      if (luxuryServices.length >= 9) { // At least 1 per category
+        const totalCost = luxuryServices.reduce((sum, s) => sum + s.estimatedCost, 0);
+        const originalCost = totalCost * 1.08; // Assume 8% bundle discount
+        
+        packages.push({
+          id: 'luxury',
+          name: 'Luxury Dream Wedding',
+          description: 'The ultimate wedding experience with 2 luxury choices per category - compare the absolute best vendors for your dream day',
+          services: luxuryServices.map(s => s.serviceId),
+          totalCost,
+          originalCost,
+          savings: originalCost - totalCost,
+          savingsPercentage: 8,
+          category: 'luxury',
+          suitability: 95,
+          reasons: [
+            '💎 18 elite choices across 9 luxury categories',
+            '🎬 2 options each: Photo, Video, Venue, Catering, Flowers, Music, Planning, Makeup, Lighting',
+            '🏆 Exclusive access to highest-rated (4.8+) luxury vendors',
+            '✨ Pick between prestige leaders and legendary favorites'
+          ],
+          timeline: '15-24 months planning',
+          flexibility: 'low',
+          riskLevel: 'medium'
+        });
+      }
     }
 
-    // Luxury Package - Best of everything
-    const luxuryServices = recommendations
-      .filter(r => r.priority === 'high' && r.valueRating >= 8)
-      .slice(0, 8);
-    
-    if (luxuryServices.length >= 6) {
-      const totalCost = luxuryServices.reduce((sum, s) => sum + s.estimatedCost, 0);
-      const originalCost = totalCost * 1.08; // Assume 8% bundle discount
-      
-      packages.push({
-        id: 'luxury',
-        name: 'Luxury Dream Wedding',
-        description: 'The ultimate wedding experience with no compromises',
-        services: luxuryServices.map(s => s.serviceId),
-        totalCost,
-        originalCost,
-        savings: originalCost - totalCost,
-        savingsPercentage: 8,
-        category: 'luxury',
-        suitability: 95,
-        reasons: [
-          'Luxury service providers',
-          'Exclusive vendor access',
-          'White-glove treatment',
-          'Unforgettable experience'
-        ],
-        timeline: '15-24 months planning',
-        flexibility: 'low',
-        riskLevel: 'medium'
-      });
+    // Log package creation results
+    console.log(`🎁 [DSS] Generated ${packages.length} package(s) (suggested: ${vendorAnalysis.suggestedPackageCount})`);
+    if (vendorAnalysis.fallbackMessage) {
+      console.warn(`⚠️ [DSS] ${vendorAnalysis.fallbackMessage}`);
     }
 
     return packages.sort((a, b) => b.suitability - a.suitability);
-  }, [services, recommendations]);
+  }, [services, recommendations, analyzeVendorAvailability]);
 
   // Enhanced insights generation with comprehensive analysis
   const insights = useMemo((): DSSInsight[] => {
@@ -1096,7 +1274,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
           <p className="text-gray-600">Analyzing {realVendors.length + realServices.length} real vendors and services...</p>
           <div className="mt-4 flex items-center justify-center gap-2 text-sm text-blue-600">
             <Brain className="w-4 h-4 animate-pulse" />
-            <span>AI-powered recommendations incoming</span>
+            <span>Smart recommendations incoming</span>
           </div>
         </div>
       </motion.div>
@@ -1195,20 +1373,19 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                   <option value="rating">⭐ Highest Rated</option>
                 </select>
                 <div className="flex-1"></div>
-                <span className="text-sm text-gray-600">{filteredRecommendations.length} recommendations</span>
+                <span className="text-sm text-gray-600">{recommendations.length} recommendations</span>
               </div>
             </div>
 
             {/* Recommendations List */}
             <div className="space-y-4">
-              {(
-                <motion.div
-                  key="recommendations"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="space-y-4 sm:space-y-6"
-                >
+              <motion.div
+                key="recommendations"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-4 sm:space-y-6"
+              >
                   {/* Enhanced Filters */}
                   <div className="bg-gradient-to-r from-gray-50 to-white rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-gray-200 shadow-sm">
                     <div className="space-y-3 sm:space-y-4">
@@ -1282,7 +1459,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                     <div className="flex items-center justify-center py-12 sm:py-16">
                       <div className="text-center">
                         <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-gray-600 text-sm sm:text-base">Analyzing services with AI...</p>
+                        <p className="text-gray-600 text-sm sm:text-base">Analyzing services intelligently...</p>
                         <p className="text-gray-500 text-xs sm:text-sm mt-1">Finding your perfect matches</p>
                       </div>
                     </div>
@@ -1383,7 +1560,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                                     loading="lazy"
                                   />
                                   <div className={cn(
-                                    "absolute -top-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full text-white text-xs font-bold flex items-center justify-center",
+                                    "absolute -top-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full text-white text-xs font-bold flex items-center justify-center shadow-md",
                                     rec.priority === 'high' ? "bg-green-500" :
                                     rec.priority === 'medium' ? "bg-yellow-500" :
                                     "bg-gray-400"
@@ -1398,14 +1575,6 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                                       <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{service.name}</h3>
                                       <p className="text-xs sm:text-sm text-gray-600">{service.category}</p>
                                     </div>
-                                    <div className={cn(
-                                      "px-2 py-1 rounded-full text-xs font-medium ml-2 flex-shrink-0",
-                                      rec.priority === 'high' ? "bg-green-100 text-green-700" :
-                                      rec.priority === 'medium' ? "bg-yellow-100 text-yellow-700" :
-                                      "bg-gray-100 text-gray-700"
-                                    )}>
-                                      {rec.priority}
-                                    </div>
                                   </div>
 
                                   {/* Service Metrics */}
@@ -1416,7 +1585,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
-                                      <span className="font-medium">${rec.estimatedCost.toLocaleString()}</span>
+                                      <span className="font-medium">₱{rec.estimatedCost.toLocaleString()}</span>
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
@@ -1426,19 +1595,75 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                                 </div>
                               </div>
 
-                              {/* Enhanced Reasons */}
-                              <div className="space-y-1 sm:space-y-2">
-                                {rec.reasons.slice(0, 3).map((reason, reasonIndex) => (
-                                  <div key={reasonIndex} className="flex items-start gap-2 text-xs sm:text-sm text-gray-600">
-                                    <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                                    <span className="leading-tight">{reason}</span>
+                              {/* Suggestion Level Badge - More Prominent */}
+                              <div className={cn(
+                                "flex items-center gap-2 px-3 py-2 rounded-lg border-2",
+                                rec.priority === 'high' ? "bg-green-50 border-green-200" :
+                                rec.priority === 'medium' ? "bg-yellow-50 border-yellow-200" :
+                                "bg-gray-50 border-gray-200"
+                              )}>
+                                <div className="flex items-center gap-2 flex-1">
+                                  <Zap className={cn(
+                                    "h-4 w-4",
+                                    rec.priority === 'high' ? "text-green-600" :
+                                    rec.priority === 'medium' ? "text-yellow-600" :
+                                    "text-gray-600"
+                                  )} />
+                                  <div>
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                      Suggestion Level
+                                    </div>
+                                    <div className={cn(
+                                      "text-sm font-bold capitalize",
+                                      rec.priority === 'high' ? "text-green-700" :
+                                      rec.priority === 'medium' ? "text-yellow-700" :
+                                      "text-gray-700"
+                                    )}>
+                                      {rec.priority === 'high' ? '🌟 Highly Recommended' :
+                                       rec.priority === 'medium' ? '✨ Recommended' :
+                                       '💡 Consider'}
+                                    </div>
                                   </div>
-                                ))}
-                                {rec.reasons.length > 3 && (
-                                  <div className="text-xs text-gray-500 ml-5">
-                                    +{rec.reasons.length - 3} more reasons
-                                  </div>
-                                )}
+                                </div>
+                                <div className={cn(
+                                  "px-2 py-1 rounded-md text-xs font-bold",
+                                  rec.priority === 'high' ? "bg-green-200 text-green-800" :
+                                  rec.priority === 'medium' ? "bg-yellow-200 text-yellow-800" :
+                                  "bg-gray-200 text-gray-800"
+                                )}>
+                                  {rec.score}/100
+                                </div>
+                              </div>
+
+                              {/* Smart Recommendation Insights - Enhanced */}
+                              <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-100 rounded-lg p-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Lightbulb className="h-4 w-4 text-purple-600" />
+                                  <span className="text-xs font-semibold text-purple-900 uppercase tracking-wide">
+                                    Why We Recommend This
+                                  </span>
+                                </div>
+                                <div className="space-y-1.5">
+                                  {rec.reasons.slice(0, 3).map((reason, reasonIndex) => (
+                                    <div key={reasonIndex} className="flex items-start gap-2 text-xs text-gray-700">
+                                      <Sparkles className="h-3.5 w-3.5 text-purple-500 flex-shrink-0 mt-0.5" />
+                                      <span className="leading-tight font-medium">{reason}</span>
+                                    </div>
+                                  ))}
+                                  {rec.reasons.length > 3 && (
+                                    <button 
+                                      className="text-xs text-purple-600 hover:text-purple-700 font-medium ml-5 flex items-center gap-1 mt-1"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Show all reasons in a tooltip or expand
+                                        alert(rec.reasons.join('\n\n'));
+                                      }}
+                                    >
+                                      <Lightbulb className="h-3 w-3" />
+                                      +{rec.reasons.length - 3} more insights
+                                    </button>
+                                  )}
+                                </div>
                               </div>
 
                               {/* Action Buttons */}
@@ -1487,7 +1712,6 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                     </div>
                   )}
                 </motion.div>
-              )}
 
             {/* Packages Tab */}
             {activeTab === 'packages' && (
@@ -1557,10 +1781,53 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                 </div>
 
                 {/* Package Recommendations */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {packageRecommendations
-                    .filter(pkg => packageFilter === 'all' || pkg.category === packageFilter)
-                    .map((pkg) => (
+                {packageRecommendations.length === 0 ? (
+                  /* Fallback Message: Insufficient Vendors */
+                  <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-2xl p-8 text-center">
+                    <div className="w-20 h-20 bg-yellow-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <AlertCircle className="w-10 h-10 text-yellow-700" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                      📦 Package Creation Unavailable
+                    </h3>
+                    <p className="text-gray-700 mb-4 max-w-2xl mx-auto">
+                      {analyzeVendorAvailability().fallbackMessage}
+                    </p>
+                    <div className="bg-white/70 rounded-xl p-4 mb-6 max-w-lg mx-auto">
+                      <h4 className="font-semibold text-gray-900 mb-2">💡 What you can do:</h4>
+                      <ul className="text-sm text-gray-700 space-y-2 text-left">
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                          <span>Browse individual vendor recommendations above</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                          <span>Book vendors one by one as you find them</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                          <span>Check back later as more vendors join our platform</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                          <span>Expand your search criteria or budget range</span>
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="flex items-center justify-center gap-3">
+                      <button 
+                        onClick={() => setActiveTab('recommendations')}
+                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+                      >
+                        View Individual Recommendations
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {packageRecommendations
+                      .filter(pkg => packageFilter === 'all' || pkg.category === packageFilter)
+                      .map((pkg) => (
                     <motion.div
                       key={pkg.id}
                       initial={{ opacity: 0, scale: 0.95 }}
@@ -1660,6 +1927,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                     </motion.div>
                   ))}
                 </div>
+                )}
 
                 {/* Package Comparison */}
                 {packageRecommendations.length > 1 && (
@@ -1909,7 +2177,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                 </div>
               </motion.div>
             )}
-            </AnimatePresence>
+            </div>
           </div>
         </div>
       </motion.div>

@@ -104,8 +104,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   const { register, registerWithGoogle } = useAuth();
   const navigate = useNavigate();
 
-  // Essential vendor categories
-  const vendorCategories = [
+  // State for fetched categories
+  const [vendorCategories, setVendorCategories] = useState([
     { value: 'Photography', label: 'Photography' },
     { value: 'Videography', label: 'Videography' },
     { value: 'Wedding Planning', label: 'Wedding Planning' },
@@ -116,7 +116,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     { value: 'Transportation', label: 'Transportation' },
     { value: 'Beauty', label: 'Beauty & Makeup' },
     { value: 'Other', label: 'Other Services' }
-  ];
+  ]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
 
   // Coordinator-specific categories
   const coordinatorCategories = [
@@ -191,6 +192,47 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     }
   }, [isOpen, showEmailVerification]);
 
+  // Fetch vendor categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      // Only fetch if modal is open and user selected vendor or coordinator
+      if (!isOpen || (userType !== 'vendor' && userType !== 'coordinator')) {
+        return;
+      }
+
+      setLoadingCategories(true);
+      
+      try {
+        const apiBaseUrl = (import.meta as any).env?.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+        const response = await fetch(`${apiBaseUrl}/api/vendors/categories`);
+        
+        if (response.ok) {
+          const result = await response.json();
+          
+          if (result.success && Array.isArray(result.categories)) {
+            // Transform API categories to dropdown format
+            const formattedCategories = result.categories.map((cat: any) => ({
+              value: cat.name,
+              label: cat.name
+            }));
+            
+            setVendorCategories(formattedCategories);
+            console.log('✅ Fetched vendor categories from API:', formattedCategories.length);
+          }
+        } else {
+          console.warn('⚠️ Failed to fetch categories, using defaults');
+        }
+      } catch (error) {
+        console.error('❌ Error fetching categories:', error);
+        // Keep default categories on error
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, [isOpen, userType]);
+  
   // Validation function
   const validateForm = () => {
     const errors: {[key: string]: string} = {};
@@ -1099,9 +1141,11 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                         value={formData.business_type}
                         onChange={(e) => updateFormData('business_type', e.target.value)}
                         title="Select your business category"
+                        disabled={loadingCategories}
                         className={cn(
                           "w-full px-4 py-4 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg cursor-pointer",
                           "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
+                          loadingCategories && "opacity-50 cursor-wait",
                           validationErrors.business_type
                             ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
                             : userType === 'coordinator'
@@ -1109,7 +1153,9 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                             : "border-gray-200 focus:border-purple-400 focus:shadow-2xl focus:shadow-purple-500/20 focus:ring-4 focus:ring-purple-100"
                         )}
                       >
-                        <option value="">Choose your specialty...</option>
+                        <option value="">
+                          {loadingCategories ? 'Loading categories...' : 'Choose your specialty...'}
+                        </option>
                         {(userType === 'coordinator' ? coordinatorCategories : vendorCategories).map((category) => (
                           <option key={category.value} value={category.value}>
                             {category.label}

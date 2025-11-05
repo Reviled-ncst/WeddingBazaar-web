@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Bazaar - Notification System Diagnostic</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #fce7f3 0%, #fff 50%, #e0e7ff 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 30px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            color: #ec4899;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 1.1em;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .card h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px 10px 10px 0;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ec4899 0%, #d946ef 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(236, 72, 153, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f9fafb;
+            border-left: 4px solid #ec4899;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f4f6;
+            border-top-color: #ec4899;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .metric {
+            padding: 20px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #fce7f3 0%, #fff 100%);
+            border: 2px solid #fbcfe8;
+        }
+
+        .metric h3 {
+            color: #9333ea;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+
+        .metric .value {
+            font-size: 2em;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .icon {
+            font-size: 1.5em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Notification System Diagnostic</h1>
+            <p>Check if mock data has been removed and real notifications are working</p>
+        </div>
+
+        <div class="card">
+            <h2><span class="icon">🎯</span> Quick Actions</h2>
+            <button class="btn btn-primary" onclick="runFullDiagnostic()">
+                🔍 Run Full Diagnostic
+            </button>
+            <button class="btn btn-secondary" onclick="checkBackendHealth()">
+                ⚕️ Check Backend Health
+            </button>
+            <button class="btn btn-secondary" onclick="checkSession()">
+                👤 Check User Session
+            </button>
+            <button class="btn btn-secondary" onclick="testAPI()">
+                🔌 Test API Endpoint
+            </button>
+            <button class="btn btn-secondary" onclick="clearCacheGuide()">
+                🗑️ Clear Cache Guide
+            </button>
+        </div>
+
+        <div id="results" class="card" style="display: none;">
+            <h2><span class="icon">📊</span> Diagnostic Results</h2>
+            <div id="status-summary" class="grid"></div>
+            <div id="detailed-results" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        let diagnosticResults = {
+            sessionCheck: null,
+            backendHealth: null,
+            apiTest: null,
+            mockDataDetected: false
+        };
+
+        function log(message, type = 'info') {
+            const colors = {
+                success: '#065f46',
+                error: '#991b1b',
+                warning: '#92400e',
+                info: '#1e40af'
+            };
+            const symbols = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+            return `<span style="color: ${colors[type]}">${symbols[type]} ${message}</span>\n`;
+        }
+
+        function showResults() {
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function updateMetrics() {
+            const summary = document.getElementById('status-summary');
+            summary.innerHTML = `
+                <div class="metric">
+                    <h3>Session Status</h3>
+                    <div class="value">${diagnosticResults.sessionCheck ? '✅' : '❌'}</div>
+                </div>
+                <div class="metric">
+                    <h3>Backend Status</h3>
+                    <div class="value">${diagnosticResults.backendHealth ? '✅' : '❌'}</div>
+                </div>
+                <div class="metric">
+                    <h3>API Working</h3>
+                    <div class="value">${diagnosticResults.apiTest ? '✅' : '❌'}</div>
+                </div>
+                <div class="metric">
+                    <h3>Mock Data</h3>
+                    <div class="value">${diagnosticResults.mockDataDetected ? '❌ Found' : '✅ None'}</div>
+                </div>
+            `;
+        }
+
+        async function runFullDiagnostic() {
+            showResults();
+            const output = document.getElementById('detailed-results');
+            output.innerHTML = '<div class="loading"></div> Running diagnostic...\n\n';
+
+            let result = '';
+            result += '═════════════════════════════════════════\n';
+            result += '🔍 WEDDING BAZAAR NOTIFICATION DIAGNOSTIC\n';
+            result += '═════════════════════════════════════════\n\n';
+
+            // Step 1: Check session
+            result += '📋 STEP 1: User Session Check\n';
+            result += '─────────────────────────────────────────\n';
+            try {
+                const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || '{}');
+                if (user.userId) {
+                    result += log(`User ID: ${user.userId}`, 'success');
+                    result += log(`Vendor ID: ${user.vendorId || 'NOT FOUND'}`, user.vendorId ? 'success' : 'error');
+                    result += log(`Role: ${user.role || 'NOT FOUND'}`, user.role ? 'success' : 'error');
+                    diagnosticResults.sessionCheck = !!user.vendorId;
+                } else {
+                    result += log('No user session found', 'error');
+                    result += log('Please login to a vendor account', 'warning');
+                    diagnosticResults.sessionCheck = false;
+                }
+            } catch (e) {
+                result += log(`Session error: ${e.message}`, 'error');
+                diagnosticResults.sessionCheck = false;
+            }
+            result += '\n';
+
+            // Step 2: Check backend health
+            result += '📋 STEP 2: Backend Health Check\n';
+            result += '─────────────────────────────────────────\n';
+            try {
+                const healthResponse = await fetch('https://weddingbazaar-web.onrender.com/api/health');
+                const healthData = await healthResponse.json();
+                result += log('Backend is online', 'success');
+                result += log(`Status: ${healthData.status}`, 'success');
+                if (healthData.uptime) {
+                    const uptimeMinutes = Math.floor(healthData.uptime / 60000);
+                    result += log(`Uptime: ${uptimeMinutes} minutes`, uptimeMinutes < 30 ? 'success' : 'info');
+                    if (uptimeMinutes > 120) {
+                        result += log('Uptime > 2 hours - might need redeployment', 'warning');
+                    }
+                }
+                diagnosticResults.backendHealth = true;
+            } catch (e) {
+                result += log(`Backend error: ${e.message}`, 'error');
+                result += log('Backend might be down or unreachable', 'error');
+                diagnosticResults.backendHealth = false;
+            }
+            result += '\n';
+
+            // Step 3: Test API
+            result += '📋 STEP 3: Notification API Test\n';
+            result += '─────────────────────────────────────────\n';
+            try {
+                const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || '{}');
+                if (user.vendorId) {
+                    const apiUrl = `https://weddingbazaar-web.onrender.com/api/notifications/vendor/${user.vendorId}`;
+                    result += log(`Testing: ${apiUrl}`, 'info');
+                    
+                    const apiResponse = await fetch(apiUrl, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('weddingbazaar_token')}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    const apiData = await apiResponse.json();
+                    
+                    result += log(`API Status: ${apiResponse.status}`, 'success');
+                    result += log(`Success: ${apiData.success}`, 'success');
+                    result += log(`Total Notifications: ${apiData.count || 0}`, 'info');
+                    result += log(`Unread Count: ${apiData.unreadCount || 0}`, 'info');
+                    
+                    diagnosticResults.apiTest = true;
+                    
+                    // Check for mock data
+                    result += '\n';
+                    result += '📋 STEP 4: Mock Data Detection\n';
+                    result += '─────────────────────────────────────────\n';
+                    
+                    if (apiData.notifications && apiData.notifications.length > 0) {
+                        const mockPatterns = [
+                            { field: 'id', pattern: /^mock-/, name: 'Mock ID' },
+                            { field: 'booking_id', pattern: /^booking-00\d$/, name: 'Mock Booking ID' },
+                            { field: 'message', pattern: /Sarah & Michael|Jennifer & David|Emily & James/, name: 'Mock Names' }
+                        ];
+                        
+                        let foundMock = false;
+                        apiData.notifications.forEach((notif, idx) => {
+                            mockPatterns.forEach(({ field, pattern, name }) => {
+                                if (notif[field] && pattern.test(notif[field])) {
+                                    result += log(`Mock data in notification ${idx + 1}: ${name}`, 'error');
+                                    result += log(`  ${field}: ${notif[field]}`, 'error');
+                                    foundMock = true;
+                                }
+                            });
+                        });
+                        
+                        if (!foundMock) {
+                            result += log('NO MOCK DATA DETECTED!', 'success');
+                            result += log('All notifications appear to be real!', 'success');
+                        } else {
+                            result += '\n';
+                            result += log('MOCK DATA FOUND!', 'error');
+                            result += log('Possible causes:', 'warning');
+                            result += log('  1. Browser cache not cleared', 'warning');
+                            result += log('  2. Backend not deployed', 'warning');
+                            result += log('  3. Frontend code not updated', 'warning');
+                        }
+                        diagnosticResults.mockDataDetected = foundMock;
+                    } else {
+                        result += log('No notifications found', 'info');
+                        result += log('This is normal if no bookings submitted yet', 'info');
+                        diagnosticResults.mockDataDetected = false;
+                    }
+                } else {
+                    result += log('Cannot test API without vendor ID', 'error');
+                    diagnosticResults.apiTest = false;
+                }
+            } catch (e) {
+                result += log(`API error: ${e.message}`, 'error');
+                diagnosticResults.apiTest = false;
+            }
+            result += '\n';
+
+            // Final summary
+            result += '═════════════════════════════════════════\n';
+            result += '📊 DIAGNOSTIC SUMMARY\n';
+            result += '═════════════════════════════════════════\n';
+            
+            const allPassed = diagnosticResults.sessionCheck && 
+                             diagnosticResults.backendHealth && 
+                             diagnosticResults.apiTest && 
+                             !diagnosticResults.mockDataDetected;
+            
+            if (allPassed) {
+                result += log('✅ ALL CHECKS PASSED!', 'success');
+                result += log('System is working correctly with real data!', 'success');
+            } else {
+                result += log('⚠️ Some issues detected', 'warning');
+                if (!diagnosticResults.sessionCheck) {
+                    result += log('❌ Vendor ID missing - See FIX_VENDOR_SESSION_NO_DATABASE.md', 'error');
+                }
+                if (!diagnosticResults.backendHealth) {
+                    result += log('❌ Backend is down - Check Render dashboard', 'error');
+                }
+                if (!diagnosticResults.apiTest) {
+                    result += log('❌ API not working - Check backend deployment', 'error');
+                }
+                if (diagnosticResults.mockDataDetected) {
+                    result += log('❌ Mock data detected - Clear cache and hard refresh', 'error');
+                }
+            }
+            result += '\n';
+            result += '📄 For detailed guide, see: NOTIFICATION_SYSTEM_FINAL_VERIFICATION.md\n';
+            result += '═════════════════════════════════════════\n';
+
+            output.innerHTML = result;
+            updateMetrics();
+        }
+
+        async function checkBackendHealth() {
+            showResults();
+            const output = document.getElementById('detailed-results');
+            output.innerHTML = '<div class="loading"></div> Checking backend health...\n\n';
+
+            let result = '';
+            try {
+                const response = await fetch('https://weddingbazaar-web.onrender.com/api/health');
+                const data = await response.json();
+                result += log('Backend is online!', 'success');
+                result += `\nStatus: ${data.status}\n`;
+                result += `Timestamp: ${data.timestamp}\n`;
+                if (data.uptime) {
+                    result += `Uptime: ${Math.floor(data.uptime / 60000)} minutes\n`;
+                }
+                diagnosticResults.backendHealth = true;
+            } catch (e) {
+                result += log('Backend is down or unreachable', 'error');
+                result += `\nError: ${e.message}\n`;
+                diagnosticResults.backendHealth = false;
+            }
+            output.innerHTML = result;
+            updateMetrics();
+        }
+
+        function checkSession() {
+            showResults();
+            const output = document.getElementById('detailed-results');
+            let result = '';
+            try {
+                const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || '{}');
+                result += log('Session Data:', 'info');
+                result += `\n${JSON.stringify(user, null, 2)}\n`;
+                diagnosticResults.sessionCheck = !!user.vendorId;
+            } catch (e) {
+                result += log('Session error', 'error');
+                result += `\nError: ${e.message}\n`;
+                diagnosticResults.sessionCheck = false;
+            }
+            output.innerHTML = result;
+            updateMetrics();
+        }
+
+        async function testAPI() {
+            showResults();
+            const output = document.getElementById('detailed-results');
+            output.innerHTML = '<div class="loading"></div> Testing API endpoint...\n\n';
+
+            let result = '';
+            try {
+                const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || '{}');
+                if (!user.vendorId) {
+                    result += log('No vendor ID found in session', 'error');
+                    output.innerHTML = result;
+                    return;
+                }
+
+                const apiUrl = `https://weddingbazaar-web.onrender.com/api/notifications/vendor/${user.vendorId}`;
+                const response = await fetch(apiUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('weddingbazaar_token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                
+                result += log(`API Response (Status ${response.status}):`, 'info');
+                result += `\n${JSON.stringify(data, null, 2)}\n`;
+                diagnosticResults.apiTest = response.ok;
+            } catch (e) {
+                result += log('API call failed', 'error');
+                result += `\nError: ${e.message}\n`;
+                diagnosticResults.apiTest = false;
+            }
+            output.innerHTML = result;
+            updateMetrics();
+        }
+
+        function clearCacheGuide() {
+            showResults();
+            const output = document.getElementById('detailed-results');
+            output.innerHTML = `
+${log('📚 How to Clear Browser Cache', 'info')}
+
+Windows / Linux:
+1. Press Ctrl + Shift + Delete
+2. Select "All time" as time range
+3. Check these boxes:
+   ✅ Browsing history
+   ✅ Cookies and other site data
+   ✅ Cached images and files
+4. Click "Clear data"
+5. Close browser completely
+6. Reopen and test again
+
+Mac:
+1. Press Cmd + Shift + Delete
+2. Follow same steps as above
+
+Hard Refresh:
+- Windows: Ctrl + Shift + R
+- Mac: Cmd + Shift + R
+
+Incognito Mode Test:
+- Windows: Ctrl + Shift + N
+- Mac: Cmd + Shift + N
+
+${log('If cache clearing works in incognito, it confirms the cache was the issue!', 'success')}
+            `;
+        }
+
+        // Auto-run on page load
+        window.addEventListener('load', () => {
+            console.log('🔍 Diagnostic tool loaded. Click "Run Full Diagnostic" to start.');
+        });
+    </script>
+</body>
+</html>

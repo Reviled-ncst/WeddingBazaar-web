@@ -34,72 +34,90 @@ interface ServiceDetails {
   awards?: string[];
 }
 
-// Optimized icon mapping for wedding services (removed inappropriate icons)
+// Optimized icon mapping for wedding services (supports database categories)
 const getServiceIcon = (businessType: string) => {
-  const iconMap: { [key: string]: any } = {
-    'Photographer & Videographer': Camera,
-    'Photography': Camera,
-    'DJ/Band': Music,
-    'Music': Music,
-    'Entertainment': Music,
-    'Caterer': Utensils,
-    'Catering': Utensils,
-    'Transportation Services': Car,
-    'Transportation': Car,
-    'Florist': Heart, // Changed from Flower to Heart
-    'Florals': Heart, // Changed from Flower to Heart
-    'Wedding Planner': Users, // Changed from Palette to Users
-    'Wedding Planning': Users, // Changed from Palette to Users
-    'Venue Coordinator': Building,
-    'Venue': Building,
-    'Hair & Makeup Artists': Heart,
-    'Beauty': Heart,
-    'Coordination': Users,
-    'Planning': Users, // Changed from Calendar to Users
-    'Stationery Designer': Users, // Changed from Calendar to Users
-    'Cake Designer': Utensils,
-    'Sounds & Lights': Music,
-    'Officiant': Users,
-    'Event Rentals': Building,
-    'Security & Guest Management': Users,
-    'Dress Designer/Tailor': Heart,
-    'other': Heart // Changed from Palette to Heart
-  };
-  return iconMap[businessType] || Heart; // Changed default from Palette to Heart
+  // Normalize category name for matching
+  const normalized = businessType.toLowerCase();
+  
+  // Dynamic icon mapping based on keywords
+  if (normalized.includes('photo')) return Camera;
+  if (normalized.includes('video')) return Camera;
+  if (normalized.includes('music') || normalized.includes('dj') || normalized.includes('band')) return Music;
+  if (normalized.includes('entertainment')) return Music;
+  if (normalized.includes('cater')) return Utensils;
+  if (normalized.includes('food')) return Utensils;
+  if (normalized.includes('transport') || normalized.includes('car')) return Car;
+  if (normalized.includes('florist') || normalized.includes('flower')) return Heart;
+  if (normalized.includes('plan') || normalized.includes('coordinat')) return Users;
+  if (normalized.includes('venue') || normalized.includes('location')) return Building;
+  if (normalized.includes('makeup') || normalized.includes('beauty') || normalized.includes('hair')) return Heart;
+  if (normalized.includes('cake') || normalized.includes('dessert')) return Utensils;
+  if (normalized.includes('invitation') || normalized.includes('stationery')) return Users;
+  if (normalized.includes('officiant')) return Users;
+  if (normalized.includes('rental')) return Building;
+  if (normalized.includes('security')) return Users;
+  if (normalized.includes('dress') || normalized.includes('tailor')) return Heart;
+  if (normalized.includes('decoration')) return Heart;
+  if (normalized.includes('booth')) return Camera;
+  
+  // Default fallback
+  return Heart;
 };
 
-// Color mapping for different business types
+// Color mapping for different business types (supports database categories dynamically)
 const getServiceColors = (businessType: string) => {
-  const colorMap: { [key: string]: { gradient: string; bg: string } } = {
-    'Photographer & Videographer': { gradient: 'from-blue-500 to-purple-500', bg: 'bg-blue-50' },
-    'Photography': { gradient: 'from-blue-500 to-purple-500', bg: 'bg-blue-50' },
-    'DJ/Band': { gradient: 'from-green-500 to-teal-500', bg: 'bg-green-50' },
-    'Music': { gradient: 'from-green-500 to-teal-500', bg: 'bg-green-50' },
-    'Entertainment': { gradient: 'from-green-500 to-teal-500', bg: 'bg-green-50' },
-    'Caterer': { gradient: 'from-orange-500 to-red-500', bg: 'bg-orange-50' },
-    'Catering': { gradient: 'from-orange-500 to-red-500', bg: 'bg-orange-50' },
-    'Transportation Services': { gradient: 'from-gray-500 to-gray-700', bg: 'bg-gray-50' },
-    'Transportation': { gradient: 'from-gray-500 to-gray-700', bg: 'bg-gray-50' },
-    'Florist': { gradient: 'from-pink-500 to-rose-500', bg: 'bg-pink-50' },
-    'Florals': { gradient: 'from-pink-500 to-rose-500', bg: 'bg-pink-50' },
-    'Wedding Planner': { gradient: 'from-purple-500 to-indigo-500', bg: 'bg-purple-50' },
-    'Wedding Planning': { gradient: 'from-purple-500 to-indigo-500', bg: 'bg-purple-50' },
-    'Venue Coordinator': { gradient: 'from-amber-500 to-yellow-500', bg: 'bg-amber-50' },
-    'Venue': { gradient: 'from-amber-500 to-yellow-500', bg: 'bg-amber-50' },
-    'Hair & Makeup Artists': { gradient: 'from-pink-400 to-rose-400', bg: 'bg-pink-50' },
-    'Beauty': { gradient: 'from-pink-400 to-rose-400', bg: 'bg-pink-50' },
-    'Coordination': { gradient: 'from-indigo-500 to-blue-500', bg: 'bg-indigo-50' },
-    'Planning': { gradient: 'from-purple-500 to-indigo-500', bg: 'bg-purple-50' },
-    'Stationery Designer': { gradient: 'from-violet-500 to-purple-500', bg: 'bg-violet-50' },
-    'Cake Designer': { gradient: 'from-yellow-500 to-orange-500', bg: 'bg-yellow-50' },
-    'Sounds & Lights': { gradient: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-50' },
-    'Officiant': { gradient: 'from-slate-500 to-gray-500', bg: 'bg-slate-50' },
-    'Event Rentals': { gradient: 'from-cyan-500 to-blue-500', bg: 'bg-cyan-50' },
-    'Security & Guest Management': { gradient: 'from-red-500 to-rose-500', bg: 'bg-red-50' },
-    'Dress Designer/Tailor': { gradient: 'from-fuchsia-500 to-pink-500', bg: 'bg-fuchsia-50' },
-    'other': { gradient: 'from-gray-400 to-gray-600', bg: 'bg-gray-50' }
-  };
-  return colorMap[businessType] || colorMap['other'];
+  // Normalize category name for matching
+  const normalized = businessType.toLowerCase();
+  
+  // Dynamic color mapping based on keywords
+  if (normalized.includes('photo') || normalized.includes('video')) {
+    return { gradient: 'from-blue-500 to-purple-500', bg: 'bg-blue-50' };
+  }
+  if (normalized.includes('music') || normalized.includes('dj') || normalized.includes('band') || normalized.includes('entertainment')) {
+    return { gradient: 'from-green-500 to-teal-500', bg: 'bg-green-50' };
+  }
+  if (normalized.includes('cater') || normalized.includes('food') || normalized.includes('cake')) {
+    return { gradient: 'from-orange-500 to-red-500', bg: 'bg-orange-50' };
+  }
+  if (normalized.includes('transport') || normalized.includes('car')) {
+    return { gradient: 'from-gray-500 to-gray-700', bg: 'bg-gray-50' };
+  }
+  if (normalized.includes('florist') || normalized.includes('flower')) {
+    return { gradient: 'from-pink-500 to-rose-500', bg: 'bg-pink-50' };
+  }
+  if (normalized.includes('plan') || normalized.includes('coordinat')) {
+    return { gradient: 'from-purple-500 to-indigo-500', bg: 'bg-purple-50' };
+  }
+  if (normalized.includes('venue') || normalized.includes('location')) {
+    return { gradient: 'from-amber-500 to-yellow-500', bg: 'bg-amber-50' };
+  }
+  if (normalized.includes('makeup') || normalized.includes('beauty') || normalized.includes('hair')) {
+    return { gradient: 'from-pink-400 to-rose-400', bg: 'bg-pink-50' };
+  }
+  if (normalized.includes('invitation') || normalized.includes('stationery')) {
+    return { gradient: 'from-violet-500 to-purple-500', bg: 'bg-violet-50' };
+  }
+  if (normalized.includes('decoration')) {
+    return { gradient: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-50' };
+  }
+  if (normalized.includes('officiant')) {
+    return { gradient: 'from-slate-500 to-gray-500', bg: 'bg-slate-50' };
+  }
+  if (normalized.includes('rental')) {
+    return { gradient: 'from-cyan-500 to-blue-500', bg: 'bg-cyan-50' };
+  }
+  if (normalized.includes('security')) {
+    return { gradient: 'from-red-500 to-rose-500', bg: 'bg-red-50' };
+  }
+  if (normalized.includes('dress') || normalized.includes('tailor')) {
+    return { gradient: 'from-fuchsia-500 to-pink-500', bg: 'bg-fuchsia-50' };
+  }
+  if (normalized.includes('booth')) {
+    return { gradient: 'from-indigo-500 to-blue-500', bg: 'bg-indigo-50' };
+  }
+  
+  // Default fallback
+  return { gradient: 'from-gray-400 to-gray-600', bg: 'bg-gray-50' };
 };
 
 // Enhanced ServiceDetailsModal Component with Gallery
@@ -930,16 +948,21 @@ export const Services: React.FC = () => {
             
             if (categoriesResponse.ok) {
               const categoriesResult = await categoriesResponse.json();
-              const categories = categoriesResult.categories || [];
+              console.log('📊 Categories API response:', categoriesResult);
               
-              // Transform categories to ServiceCategoryData format
-              servicesData = categories.map((cat: any) => ({
-                business_type: cat.name || 'Wedding Services',
-                count: cat.vendorCount || cat.count || 0,
-                sample_image: cat.sample_image || cat.image
-              }));
-              
-              console.log('✅ Categories data received:', servicesData);
+              if (categoriesResult.success && Array.isArray(categoriesResult.categories)) {
+                const categories = categoriesResult.categories;
+                
+                // Transform API categories to ServiceCategoryData format
+                // Use the actual category names from database
+                servicesData = categories.map((cat: any) => ({
+                  business_type: cat.name || 'Wedding Services',
+                  count: cat.vendorCount || cat.count || 0,
+                  sample_image: cat.sample_image || cat.image
+                }));
+                
+                console.log('✅ Fetched', servicesData.length, 'categories from database API');
+              }
             }
           } catch (categoriesErr) {
             console.warn('❌ Categories endpoint failed:', categoriesErr);

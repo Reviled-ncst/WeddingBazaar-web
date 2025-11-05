@@ -1,5 +1,5 @@
 /**
- * AI Insights Component
+ * Smart Insights Component
  */
 
 import React from 'react';
@@ -22,7 +22,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
     <div className={`bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 ${className}`}>
       <div className="flex items-center space-x-2 mb-4">
         <Brain className="w-6 h-6 text-purple-500" />
-        <h2 className="text-xl font-semibold text-gray-900">AI Insights</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Smart Insights</h2>
         {isAnalyzing && (
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-500"></div>
         )}
@@ -37,7 +37,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
             </div>
           </div>
         )) : (
-          <p className="text-gray-500 text-sm">AI is analyzing your timeline for insights...</p>
+          <p className="text-gray-500 text-sm">Smart analysis of your timeline in progress...</p>
         )}
       </div>
     </div>

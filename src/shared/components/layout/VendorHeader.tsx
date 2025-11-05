@@ -79,16 +79,43 @@ export const VendorHeader: React.FC = () => {
     if (!user?.id) return;
     
     setIsLoadingNotifications(true);
+    
+    // Add timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.warn('⚠️ [VendorHeader] Notification loading timeout - stopping loader');
+      setIsLoadingNotifications(false);
+      setNotifications([]);
+      setUnreadCount(0);
+    }, 10000); // 10 second timeout
+    
     try {
       console.log('📡 [VendorHeader] Loading notifications from API for vendor:', user.id);
+      console.log('📡 [VendorHeader] User object:', user);
+      
       const response = await vendorNotificationService.getVendorNotifications(user.id);
+      
+      clearTimeout(timeout); // Clear timeout on success
       
       setNotifications(response.notifications);
       setUnreadCount(response.unreadCount);
       console.log('✅ [VendorHeader] Loaded', response.count, 'notifications,', response.unreadCount, 'unread');
     } catch (error) {
+      clearTimeout(timeout); // Clear timeout on error
       console.error('💥 [VendorHeader] Error loading notifications:', error);
-      showError('Failed to load notifications');
+      console.error('💥 [VendorHeader] Error details:', {
+        name: (error as Error).name,
+        message: (error as Error).message,
+        stack: (error as Error).stack
+      });
+      
+      // Set empty state instead of showing error to prevent UI issues
+      setNotifications([]);
+      setUnreadCount(0);
+      
+      // Only show error notification if it's not a network issue
+      if (!(error as Error).message.includes('Failed to fetch')) {
+        showError('Failed to load notifications');
+      }
     } finally {
       setIsLoadingNotifications(false);
     }

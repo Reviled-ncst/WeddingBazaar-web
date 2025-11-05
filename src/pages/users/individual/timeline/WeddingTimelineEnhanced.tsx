@@ -1,6 +1,6 @@
 /**
  * Enhanced Wedding Timeline - Advanced Planning Dashboard
- * AI-powered timeline with drag & drop, advanced insights, and collaboration features
+ * Smart timeline with drag & drop, advanced insights, and collaboration features
  */
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -473,7 +473,7 @@ export const WeddingTimelineEnhanced: React.FC = () => {
             Wedding <span className="text-pink-600">Timeline</span>
           </h1>
           <p className="text-lg text-gray-600 mb-6">
-            AI-powered planning with personalized insights and collaboration
+            Smart planning with personalized insights and collaboration
           </p>
 
           {/* Wedding Countdown */}

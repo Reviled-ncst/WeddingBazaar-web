@@ -52,6 +52,7 @@ class VendorNotificationService {
   async getVendorNotifications(vendorId: string): Promise<NotificationResponse> {
     try {
       console.log('🔔 [NotificationService] Fetching notifications for vendor:', vendorId);
+      console.log('🔔 [NotificationService] API URL:', `${this.apiUrl}/api/notifications/vendor/${vendorId}`);
       
       const response = await fetch(`${this.apiUrl}/api/notifications/vendor/${vendorId}`, {
         method: 'GET',
@@ -60,6 +61,7 @@ class VendorNotificationService {
       
       if (!response.ok) {
         console.error('❌ [NotificationService] API error:', response.status, response.statusText);
+        console.error('❌ [NotificationService] Response text:', await response.text());
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 

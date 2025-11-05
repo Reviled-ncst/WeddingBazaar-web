@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🛠️ Fix Vendor Services - Quick Tool</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 40px;
+      max-width: 800px;
+      width: 100%;
+    }
+    
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+    
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 18px;
+    }
+    
+    .status-box {
+      background: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    
+    .status-box.success {
+      background: #d4edda;
+      border-left-color: #28a745;
+    }
+    
+    .status-box.error {
+      background: #f8d7da;
+      border-left-color: #dc3545;
+    }
+    
+    .status-box.warning {
+      background: #fff3cd;
+      border-left-color: #ffc107;
+    }
+    
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin: 10px 10px 10px 0;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .btn-success {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+    
+    .btn-danger {
+      background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    }
+    
+    pre {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      margin: 15px 0;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    
+    .step {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+    }
+    
+    .step-number {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 30px;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+    
+    .highlight {
+      background: #fff3cd;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s linear infinite;
+      margin-left: 10px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .result-item {
+      padding: 10px;
+      margin: 10px 0;
+      background: white;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🛠️ Fix Vendor Services</h1>
+    <p class="subtitle">Your services exist in the database but aren't showing? Let's fix that!</p>
+    
+    <div id="output"></div>
+    
+    <div class="step">
+      <span class="step-number">1</span>
+      <strong>Check Current Status</strong>
+      <button onclick="checkStatus()">🔍 Run Diagnostic</button>
+    </div>
+    
+    <div class="step">
+      <span class="step-number">2</span>
+      <strong>Fix Vendor ID</strong>
+      <button onclick="fixVendorId()" class="btn-success">✅ Fix Now</button>
+    </div>
+    
+    <div class="step">
+      <span class="step-number">3</span>
+      <strong>Verify Services Load</strong>
+      <button onclick="verifyServices()" class="btn-success">🧪 Test Services API</button>
+    </div>
+    
+    <div class="step">
+      <span class="step-number">4</span>
+      <strong>Go to Vendor Services Page</strong>
+      <button onclick="goToServices()">🚀 Open Services Page</button>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'https://weddingbazaar-web.onrender.com';
+    const APP_URL = 'https://weddingbazaarph.web.app';
+    
+    function log(message, type = 'info') {
+      const output = document.getElementById('output');
+      const className = type === 'success' ? 'success' : 
+                       type === 'error' ? 'error' : 
+                       type === 'warning' ? 'warning' : '';
+      output.innerHTML += `<div class="status-box ${className}">${message}</div>`;
+      output.scrollTop = output.scrollHeight;
+    }
+    
+    function checkStatus() {
+      log('🔍 <strong>Running Diagnostic...</strong>');
+      
+      try {
+        const user = JSON.parse(localStorage.getItem('weddingbazaar_user'));
+        
+        if (!user) {
+          log('❌ <strong>ERROR:</strong> No user found in localStorage. Please login first!', 'error');
+          return;
+        }
+        
+        log(`
+          <strong>Current Session Data:</strong>
+          <pre>
+User ID:    ${user.id || 'NOT SET'}
+Vendor ID:  ${user.vendorId || 'NOT SET'}
+Email:      ${user.email || 'NOT SET'}
+Role:       ${user.role || 'NOT SET'}
+          </pre>
+        `);
+        
+        if (!user.vendorId) {
+          log('⚠️ <strong>PROBLEM FOUND:</strong> vendorId is missing!', 'warning');
+          log('💡 Click "Fix Now" button to set vendorId = user.id', 'warning');
+        } else if (user.vendorId !== user.id) {
+          log(`⚠️ <strong>PROBLEM FOUND:</strong> vendorId mismatch!<br>
+               Expected: <span class="highlight">${user.id}</span><br>
+               Current: <span class="highlight">${user.vendorId}</span>`, 'warning');
+          log('💡 Click "Fix Now" to correct this', 'warning');
+        } else {
+          log('✅ <strong>Vendor ID looks correct!</strong>', 'success');
+          log('If services still not showing, click "Test Services API" to check database', 'success');
+        }
+        
+      } catch (error) {
+        log(`❌ <strong>ERROR:</strong> ${error.message}`, 'error');
+      }
+    }
+    
+    function fixVendorId() {
+      log('🔧 <strong>Fixing Vendor ID...</strong>');
+      
+      try {
+        const user = JSON.parse(localStorage.getItem('weddingbazaar_user'));
+        
+        if (!user) {
+          log('❌ No user found. Please login first!', 'error');
+          return;
+        }
+        
+        const oldVendorId = user.vendorId;
+        user.vendorId = user.id;
+        
+        localStorage.setItem('weddingbazaar_user', JSON.stringify(user));
+        
+        log(`
+          <strong>✅ FIX APPLIED!</strong>
+          <pre>
+Old Vendor ID: ${oldVendorId || 'NOT SET'}
+New Vendor ID: ${user.vendorId}
+          </pre>
+        `, 'success');
+        
+        log('🎉 <strong>Success!</strong> Now click "Test Services API" to verify', 'success');
+        
+      } catch (error) {
+        log(`❌ <strong>ERROR:</strong> ${error.message}`, 'error');
+      }
+    }
+    
+    async function verifyServices() {
+      log('🧪 <strong>Testing Services API...</strong>');
+      
+      try {
+        const user = JSON.parse(localStorage.getItem('weddingbazaar_user'));
+        
+        if (!user || !user.vendorId) {
+          log('❌ Cannot test: vendor ID not set. Click "Fix Now" first!', 'error');
+          return;
+        }
+        
+        log(`📡 Fetching: <code>GET /api/services/vendor/${user.vendorId}</code>`);
+        
+        const response = await fetch(`${API_URL}/api/services/vendor/${user.vendorId}`);
+        const data = await response.json();
+        
+        if (!response.ok) {
+          log(`❌ <strong>API Error:</strong> ${data.error || 'Unknown error'}`, 'error');
+          return;
+        }
+        
+        const serviceCount = data.services?.length || 0;
+        
+        if (serviceCount === 0) {
+          log(`⚠️ <strong>No Services Found</strong><br>
+               The API returned 0 services for vendor ID: <span class="highlight">${user.vendorId}</span>`, 'warning');
+          log(`💡 <strong>Possible Causes:</strong>
+               <ul>
+                 <li>You haven't created any services yet</li>
+                 <li>Services in database have a different vendor_id</li>
+                 <li>Database connection issue</li>
+               </ul>`, 'warning');
+        } else {
+          log(`✅ <strong>SUCCESS!</strong> Found ${serviceCount} service(s)!`, 'success');
+          
+          data.services.forEach((service, index) => {
+            log(`
+              <div class="result-item">
+                <strong>Service ${index + 1}:</strong> ${service.service_name || service.name}<br>
+                <small>Category: ${service.service_category || 'N/A'} | Price: ₱${service.base_price || 'N/A'}</small>
+              </div>
+            `);
+          });
+          
+          log('🎉 <strong>Great!</strong> Now click "Open Services Page" to see them in the app', 'success');
+        }
+        
+      } catch (error) {
+        log(`❌ <strong>ERROR:</strong> ${error.message}`, 'error');
+        log('Check if backend is running: ' + API_URL, 'error');
+      }
+    }
+    
+    function goToServices() {
+      log('🚀 <strong>Opening Vendor Services page...</strong>');
+      setTimeout(() => {
+        window.open(`${APP_URL}/vendor/services`, '_blank');
+      }, 500);
+    }
+    
+    // Auto-run diagnostic on load
+    window.onload = () => {
+      log('👋 <strong>Welcome!</strong> Let\'s fix your vendor services issue.', 'success');
+      setTimeout(checkStatus, 500);
+    };
+  </script>
+</body>
+</html>

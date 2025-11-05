@@ -9,7 +9,6 @@ import {
   ArrowRight,
   DollarSign,
   MessageCircle,
-  HelpCircle,
   X,
   ChevronLeft,
   ChevronRight,
@@ -363,24 +362,6 @@ export const IndividualDashboard: React.FC = () => {
       <CoupleHeader />
       
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
-        {/* Help Button */}
-        <div className="fixed bottom-6 right-6 z-40 flex flex-col space-y-3">
-          <button
-            onClick={() => setShowQuickTips(true)}
-            className="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-3 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300"
-            title="Quick Tips"
-          >
-            <Lightbulb className="h-6 w-6" />
-          </button>
-          <button
-            onClick={() => setShowTutorial(true)}
-            className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-3 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300"
-            title="Take Tutorial"
-          >
-            <HelpCircle className="h-6 w-6" />
-          </button>
-        </div>
-
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Welcome Header */}
           <div id="dashboard-header" className="mb-8">

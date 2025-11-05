@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 Debug Vendor Services - Live Diagnostic</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 40px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    h1 { color: #667eea; margin-bottom: 10px; }
+    .subtitle { color: #666; margin-bottom: 30px; }
+    .box {
+      background: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    .box.success { background: #d4edda; border-left-color: #28a745; }
+    .box.error { background: #f8d7da; border-left-color: #dc3545; }
+    .box.warning { background: #fff3cd; border-left-color: #ffc107; }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 10px 10px 10px 0;
+      transition: all 0.3s;
+    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3); }
+    button.success { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+    button.danger { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
+    pre {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      margin: 15px 0;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .step {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+    }
+    .highlight {
+      background: #fff3cd;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .code { font-family: 'Courier New', monospace; background: #2d2d2d; color: #f8f8f2; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Vendor Services Debugger</h1>
+    <p class="subtitle">Let's find out why your services aren't loading!</p>
+    
+    <div id="output"></div>
+    
+    <button onclick="runFullDiagnostic()">🔍 Run Full Diagnostic</button>
+    <button onclick="fixVendorId()" class="success">✅ Apply Fix</button>
+    <button onclick="testAPI()" class="success">🧪 Test API Call</button>
+    <button onclick="showSQLQuery()">📊 Show SQL Query</button>
+    <button onclick="clearLogs()" class="danger">🗑️ Clear Logs</button>
+  </div>
+
+  <script>
+    const API_URL = 'https://weddingbazaar-web.onrender.com';
+    
+    function log(message, type = 'info') {
+      const output = document.getElementById('output');
+      const className = type === 'success' ? 'success' : 
+                       type === 'error' ? 'error' : 
+                       type === 'warning' ? 'warning' : '';
+      output.innerHTML += `<div class="box ${className}">${message}</div>`;
+      output.scrollTop = output.scrollHeight;
+    }
+    
+    function clearLogs() {
+      document.getElementById('output').innerHTML = '';
+      log('🧹 Logs cleared', 'info');
+    }
+    
+    async function runFullDiagnostic() {
+      log('<strong>🔍 STARTING FULL DIAGNOSTIC</strong>');
+      log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      // Step 1: Check localStorage
+      log('<strong>Step 1: Checking localStorage...</strong>');
+      const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || 'null');
+      
+      if (!user) {
+        log('❌ <strong>PROBLEM FOUND:</strong> No user in localStorage!<br>💡 Please login first', 'error');
+        return;
+      }
+      
+      log(`
+        <strong>User Data Found:</strong>
+        <pre>
+User ID:     ${user.id || 'NOT SET'}
+Vendor ID:   ${user.vendorId || 'NOT SET'}
+Email:       ${user.email || 'NOT SET'}
+Role:        ${user.role || 'NOT SET'}
+        </pre>
+      `);
+      
+      // Step 2: Check vendor ID
+      log('<strong>Step 2: Checking Vendor ID...</strong>');
+      
+      if (!user.vendorId) {
+        log('⚠️ <strong>PROBLEM #1:</strong> vendorId is <span class="highlight">NOT SET</span>!', 'warning');
+        log('This means the page can\'t fetch your services.', 'warning');
+      } else if (user.vendorId !== user.id) {
+        log(`⚠️ <strong>PROBLEM #2:</strong> vendorId <span class="highlight">DOESN'T MATCH</span> user.id!<br>
+             Expected: <code class="code">${user.id}</code><br>
+             Current: <code class="code">${user.vendorId}</code>`, 'warning');
+      } else {
+        log('✅ Vendor ID is correct!', 'success');
+      }
+      
+      // Step 3: Test API endpoint
+      log('<strong>Step 3: Testing API endpoint...</strong>');
+      
+      const vendorIdToTest = user.vendorId || user.id;
+      const apiEndpoint = `${API_URL}/api/services/vendor/${vendorIdToTest}`;
+      
+      log(`📡 Calling: <code class="code">GET ${apiEndpoint}</code>`);
+      
+      try {
+        const response = await fetch(apiEndpoint);
+        const data = await response.json();
+        
+        if (!response.ok) {
+          log(`❌ <strong>API ERROR:</strong> Status ${response.status}<br>
+               Message: ${data.error || data.message || 'Unknown error'}`, 'error');
+          return;
+        }
+        
+        log(`✅ API Response received!<br>
+             Status: <span class="highlight">${response.status} OK</span>`, 'success');
+        
+        // Step 4: Check response data
+        log('<strong>Step 4: Analyzing response...</strong>');
+        
+        const serviceCount = data.services?.length || 0;
+        
+        if (serviceCount === 0) {
+          log(`⚠️ <strong>RESULT:</strong> API returned <span class="highlight">0 services</span>`, 'warning');
+          log(`
+            <strong>This could mean:</strong>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+              <li>✅ You haven't created any services yet (normal)</li>
+              <li>⚠️ Services exist but vendor_id doesn't match</li>
+              <li>⚠️ Wrong vendor ID being used</li>
+            </ul>
+          `, 'warning');
+          
+          log('<strong>💡 Solution:</strong> Let\'s check the database...', 'info');
+          await checkDatabase(vendorIdToTest);
+          
+        } else {
+          log(`🎉 <strong>SUCCESS!</strong> Found <span class="highlight">${serviceCount} service(s)</span>!`, 'success');
+          
+          data.services.forEach((service, i) => {
+            log(`
+              <div style="background: white; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #667eea;">
+                <strong>Service ${i + 1}:</strong> ${service.service_name || service.name}<br>
+                <small>Category: ${service.service_category || service.category} | Price: ₱${service.base_price || 'N/A'}</small><br>
+                <small>Vendor ID: <code class="code">${service.vendor_id}</code></small>
+              </div>
+            `);
+          });
+          
+          log(`
+            <strong>✅ DIAGNOSIS COMPLETE</strong><br><br>
+            Your services ARE loading from the API!<br>
+            If they're not showing on the page, the problem is likely:<br>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+              <li>🔄 Browser cache (clear with Ctrl+Shift+Delete)</li>
+              <li>📦 Old code loaded (hard refresh with Ctrl+Shift+R)</li>
+              <li>⚛️ React state not updating</li>
+            </ul>
+          `, 'success');
+        }
+        
+      } catch (error) {
+        log(`❌ <strong>NETWORK ERROR:</strong> ${error.message}`, 'error');
+        log('Check if backend is running: ' + API_URL, 'error');
+      }
+    }
+    
+    async function checkDatabase(vendorId) {
+      log('<strong>Step 5: Database Check...</strong>');
+      
+      log(`
+        <strong>Run this SQL in Neon Console:</strong>
+        <pre>
+-- Check if services exist for your vendor ID
+SELECT 
+  id,
+  vendor_id,
+  service_name,
+  service_category,
+  base_price,
+  is_active,
+  created_at
+FROM services
+WHERE vendor_id = '${vendorId}'
+ORDER BY created_at DESC;
+
+-- If no results, check what vendor_ids DO exist:
+SELECT DISTINCT 
+  vendor_id,
+  COUNT(*) as service_count
+FROM services
+GROUP BY vendor_id;
+        </pre>
+      `);
+      
+      log(`
+        <strong>If services exist with different vendor_id:</strong><br>
+        <br>
+        <strong>Option A:</strong> Update services to match your user ID:<br>
+        <pre>
+UPDATE services 
+SET vendor_id = '${vendorId}'
+WHERE vendor_id = 'OLD-WRONG-ID';
+        </pre>
+        <br>
+        <strong>Option B:</strong> Update your session to match database:<br>
+        Click the "Apply Fix" button above (if vendor_id in DB is correct)
+      `);
+    }
+    
+    function fixVendorId() {
+      log('<strong>🔧 APPLYING VENDOR ID FIX...</strong>');
+      
+      const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || 'null');
+      
+      if (!user) {
+        log('❌ No user found. Please login first!', 'error');
+        return;
+      }
+      
+      log(`<strong>BEFORE FIX:</strong>
+        <pre>
+User ID:    ${user.id}
+Vendor ID:  ${user.vendorId || 'NOT SET'}
+        </pre>
+      `);
+      
+      user.vendorId = user.id;
+      localStorage.setItem('weddingbazaar_user', JSON.stringify(user));
+      
+      log(`<strong>✅ FIX APPLIED!</strong>
+        <pre>
+User ID:    ${user.id}
+Vendor ID:  ${user.vendorId}  ✅
+        </pre>
+      `, 'success');
+      
+      log('🔄 Now click "Test API Call" to verify...', 'success');
+    }
+    
+    async function testAPI() {
+      log('<strong>🧪 TESTING API CALL...</strong>');
+      
+      const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || 'null');
+      
+      if (!user) {
+        log('❌ Not logged in!', 'error');
+        return;
+      }
+      
+      const vendorId = user.vendorId || user.id;
+      const apiEndpoint = `${API_URL}/api/services/vendor/${vendorId}`;
+      
+      log(`📡 Fetching: <code class="code">${apiEndpoint}</code>`);
+      
+      try {
+        const response = await fetch(apiEndpoint);
+        const data = await response.json();
+        
+        log(`<strong>Response:</strong>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `);
+        
+        if (data.services && data.services.length > 0) {
+          log(`🎉 <strong>SUCCESS!</strong> Found ${data.services.length} service(s)!`, 'success');
+        } else {
+          log(`⚠️ API returned 0 services for vendor ID: <code class="code">${vendorId}</code>`, 'warning');
+        }
+        
+      } catch (error) {
+        log(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+    
+    function showSQLQuery() {
+      const user = JSON.parse(localStorage.getItem('weddingbazaar_user') || 'null');
+      const vendorId = user?.vendorId || user?.id || 'YOUR-VENDOR-ID';
+      
+      log(`
+        <strong>📊 SQL DIAGNOSTIC QUERIES</strong>
+        <pre>
+-- 1. Check YOUR services
+SELECT * FROM services WHERE vendor_id = '${vendorId}';
+
+-- 2. Count YOUR services
+SELECT COUNT(*) FROM services WHERE vendor_id = '${vendorId}';
+
+-- 3. See ALL vendor_ids that have services
+SELECT vendor_id, COUNT(*) as count
+FROM services
+GROUP BY vendor_id;
+
+-- 4. Check if YOUR vendor ID exists in vendors table
+SELECT * FROM vendors WHERE id = '${vendorId}';
+
+-- 5. Check vendor_profiles for YOUR user
+SELECT * FROM vendor_profiles WHERE user_id = '${vendorId}';
+        </pre>
+        
+        <strong>Copy these queries to Neon SQL Console:</strong><br>
+        https://console.neon.tech/
+      `);
+    }
+    
+    // Auto-run diagnostic on load
+    window.onload = () => {
+      log('👋 <strong>Welcome to Vendor Services Debugger!</strong>', 'success');
+      log('Click "Run Full Diagnostic" to start troubleshooting.', 'info');
+    };
+  </script>
+</body>
+</html>

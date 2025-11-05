@@ -43,7 +43,7 @@ export interface UseWeddingTimelineReturn {
   markComplete: (id: string) => Promise<void>;
   rescheduleEvent: (id: string, newDate: Date) => Promise<void>;
   
-  // AI Features
+  // Smart Features
   suggestions: any[];
   generateSuggestions: () => Promise<void>;
   autoSchedule: (eventType: string) => Promise<void>;
@@ -200,7 +200,7 @@ export const useWeddingTimeline = (): UseWeddingTimelineReturn => {
   const autoSchedule = async (_eventType: string) => {
     try {
       setError(null);
-      await getOptimizations(); // Use available AI function
+      await getOptimizations(); // Use smart optimization function
       await refreshData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to auto-schedule event');
@@ -211,7 +211,7 @@ export const useWeddingTimeline = (): UseWeddingTimelineReturn => {
   const generateSuggestions = async () => {
     try {
       setError(null);
-      await predictDeadlines(); // Use available AI function
+      await predictDeadlines(); // Use smart prediction function
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate suggestions');
       throw err;
@@ -244,7 +244,7 @@ export const useWeddingTimeline = (): UseWeddingTimelineReturn => {
     markComplete,
     rescheduleEvent,
     
-    // AI Features
+    // Smart Features
     suggestions,
     generateSuggestions,
     autoSchedule
