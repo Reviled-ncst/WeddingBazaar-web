@@ -472,4 +472,232 @@ router.get('/:vendorId/services', async (req, res) => {
   }
 });
 
+// Get vendor by ID with comprehensive details (contact, services, reviews, pricing)
+router.get('/:vendorId/details', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    console.log(`📋 [VENDORS] GET /api/vendors/${vendorId}/details called`);
+    
+    // Get vendor basic info
+    const vendors = await sql`
+      SELECT 
+        v.id,
+        v.business_name,
+        v.business_type,
+        v.category,
+        v.rating,
+        v.review_count,
+        v.location,
+        v.description,
+        v.profile_image,
+        v.website_url,
+        v.years_experience,
+        v.portfolio_images,
+        v.verified,
+        v.starting_price,
+        v.price_range_min,
+        v.price_range_max,
+        v.email,
+        v.phone,
+        v.social_media_links,
+        v.business_hours,
+        v.specialties,
+        v.created_at,
+        u.email as user_email,
+        u.phone as user_phone
+      FROM vendors v
+      LEFT JOIN users u ON v.user_id = u.id
+      WHERE v.id = ${vendorId}
+    `;
+    
+    if (vendors.length === 0) {
+      console.log(`❌ [VENDORS] Vendor ${vendorId} not found`);
+      return res.status(404).json({
+        success: false,
+        error: 'Vendor not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const vendor = vendors[0];
+    
+    // Get vendor's services with their pricing
+    const services = await sql`
+      SELECT 
+        id,
+        title,
+        category,
+        subcategory,
+        description,
+        price,
+        price_range_min,
+        price_range_max,
+        inclusions,
+        image_url,
+        is_active,
+        service_duration,
+        capacity
+      FROM services 
+      WHERE vendor_id = ${vendorId}
+        AND is_active = true
+      ORDER BY created_at DESC
+    `;
+    
+    // Get vendor's reviews
+    const reviews = await sql`
+      SELECT 
+        r.id,
+        r.rating,
+        r.comment,
+        r.created_at,
+        r.images,
+        u.full_name as reviewer_name,
+        u.profile_image_url as reviewer_image,
+        b.service_type,
+        b.event_date
+      FROM reviews r
+      LEFT JOIN users u ON r.user_id = u.id
+      LEFT JOIN bookings b ON r.booking_id = b.id
+      WHERE r.vendor_id = ${vendorId}
+      ORDER BY r.created_at DESC
+      LIMIT 10
+    `;
+    
+    // Calculate rating breakdown
+    const ratingBreakdown = await sql`
+      SELECT 
+        COUNT(*) as total_reviews,
+        AVG(rating) as average_rating,
+        COUNT(CASE WHEN rating = 5 THEN 1 END) as five_star,
+        COUNT(CASE WHEN rating = 4 THEN 1 END) as four_star,
+        COUNT(CASE WHEN rating = 3 THEN 1 END) as three_star,
+        COUNT(CASE WHEN rating = 2 THEN 1 END) as two_star,
+        COUNT(CASE WHEN rating = 1 THEN 1 END) as one_star
+      FROM reviews
+      WHERE vendor_id = ${vendorId}
+    `;
+    
+    // Get completed bookings count
+    const bookingStats = await sql`
+      SELECT 
+        COUNT(*) as total_bookings,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_bookings
+      FROM bookings
+      WHERE vendor_id = ${vendorId}
+    `;
+    
+    console.log(`✅ [VENDORS] Vendor details fetched: ${services.length} services, ${reviews.length} reviews`);
+    
+    // Format response
+    res.json({
+      success: true,
+      vendor: {
+        id: vendor.id,
+        name: vendor.business_name,
+        category: vendor.business_type || vendor.category,
+        rating: parseFloat(vendor.rating) || 0,
+        reviewCount: parseInt(vendor.review_count) || 0,
+        location: vendor.location || 'Location not specified',
+        description: vendor.description || 'Professional wedding services',
+        profileImage: vendor.profile_image,
+        websiteUrl: vendor.website_url,
+        yearsExperience: vendor.years_experience || 0,
+        portfolioImages: vendor.portfolio_images || [],
+        verified: vendor.verified || false,
+        specialties: vendor.specialties || [],
+        
+        // Contact Information
+        contact: {
+          email: vendor.email || vendor.user_email,
+          phone: vendor.phone || vendor.user_phone,
+          website: vendor.website_url,
+          socialMedia: vendor.social_media_links || {},
+          businessHours: vendor.business_hours || {}
+        },
+        
+        // Pricing Information
+        pricing: {
+          startingPrice: vendor.starting_price,
+          priceRangeMin: vendor.price_range_min,
+          priceRangeMax: vendor.price_range_max,
+          priceRange: vendor.price_range_min && vendor.price_range_max 
+            ? `₱${parseFloat(vendor.price_range_min).toLocaleString()} - ₱${parseFloat(vendor.price_range_max).toLocaleString()}`
+            : vendor.starting_price 
+            ? `Starting at ₱${parseFloat(vendor.starting_price).toLocaleString()}`
+            : 'Contact for pricing'
+        },
+        
+        // Statistics
+        stats: {
+          totalBookings: parseInt(bookingStats[0]?.total_bookings) || 0,
+          completedBookings: parseInt(bookingStats[0]?.completed_bookings) || 0,
+          totalReviews: parseInt(ratingBreakdown[0]?.total_reviews) || 0,
+          averageRating: parseFloat(ratingBreakdown[0]?.average_rating) || 0
+        },
+        
+        memberSince: vendor.created_at
+      },
+      
+      // Services offered by this vendor
+      services: services.map(service => ({
+        id: service.id,
+        title: service.title,
+        category: service.category,
+        subcategory: service.subcategory,
+        description: service.description,
+        price: service.price,
+        priceRangeMin: service.price_range_min,
+        priceRangeMax: service.price_range_max,
+        priceDisplay: service.price_range_min && service.price_range_max 
+          ? `₱${parseFloat(service.price_range_min).toLocaleString()} - ₱${parseFloat(service.price_range_max).toLocaleString()}`
+          : service.price 
+          ? `₱${parseFloat(service.price).toLocaleString()}`
+          : 'Contact for pricing',
+        inclusions: service.inclusions || [],
+        imageUrl: service.image_url,
+        duration: service.service_duration,
+        capacity: service.capacity
+      })),
+      
+      // Reviews
+      reviews: reviews.map(review => ({
+        id: review.id,
+        rating: review.rating,
+        comment: review.comment,
+        date: review.created_at,
+        images: review.images || [],
+        reviewer: {
+          name: review.reviewer_name || 'Anonymous',
+          image: review.reviewer_image
+        },
+        serviceType: review.service_type,
+        eventDate: review.event_date
+      })),
+      
+      // Rating breakdown
+      ratingBreakdown: {
+        total: parseInt(ratingBreakdown[0]?.total_reviews) || 0,
+        average: parseFloat(ratingBreakdown[0]?.average_rating) || 0,
+        breakdown: {
+          5: parseInt(ratingBreakdown[0]?.five_star) || 0,
+          4: parseInt(ratingBreakdown[0]?.four_star) || 0,
+          3: parseInt(ratingBreakdown[0]?.three_star) || 0,
+          2: parseInt(ratingBreakdown[0]?.two_star) || 0,
+          1: parseInt(ratingBreakdown[0]?.one_star) || 0
+        }
+      },
+      
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [VENDORS] Vendor details error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 module.exports = router;
