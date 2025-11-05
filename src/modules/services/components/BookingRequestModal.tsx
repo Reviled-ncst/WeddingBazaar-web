@@ -117,12 +117,14 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
     };
   }, [formData.guestCount, service.category]);
 
-  // Prefill user data
+  // Prefill user data - AUTO-FETCH from logged-in user
   useEffect(() => {
     if (isOpen && user) {
       setFormData(prev => ({
         ...prev,
-        contactName: user.full_name || user.email.split('@')[0],
+        contactPerson: user.first_name && user.last_name 
+          ? `${user.first_name} ${user.last_name}`.trim()
+          : user.full_name || user.email.split('@')[0],
         contactPhone: user.phone || '',
         contactEmail: user.email
       }));
@@ -680,62 +682,80 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                   Full Name *
+                  <span className="text-xs text-gray-500 font-normal">(Auto-filled from your account)</span>
                 </label>
                 <input
                   type="text"
                   value={formData.contactPerson}
-                  onChange={(e) => setFormData(prev => ({ ...prev, contactPerson: e.target.value }))}
+                  readOnly
+                  disabled
                   placeholder="Your full name"
                   className={cn(
-                    "w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all",
-                    formErrors.contactPerson ? "border-red-300" : "border-gray-200"
+                    "w-full px-4 py-3 border-2 rounded-lg transition-all bg-gray-100 cursor-not-allowed",
+                    formErrors.contactPerson ? "border-red-300" : "border-gray-300"
                   )}
+                  title="This field is automatically filled from your profile and cannot be edited"
                 />
                 {formErrors.contactPerson && (
                   <p className="mt-1 text-sm text-red-600">{formErrors.contactPerson}</p>
                 )}
+                <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                  🔒 This information is auto-filled from your profile
+                </p>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <Phone className="w-4 h-4 inline mr-2" />
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <Phone className="w-4 h-4 inline" />
                   Phone Number *
+                  <span className="text-xs text-gray-500 font-normal">(Auto-filled)</span>
                 </label>
                 <input
                   type="tel"
                   value={formData.contactPhone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, contactPhone: e.target.value }))}
+                  readOnly
+                  disabled
                   placeholder="+63 XXX XXX XXXX"
                   className={cn(
-                    "w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all",
-                    formErrors.contactPhone ? "border-red-300" : "border-gray-200"
+                    "w-full px-4 py-3 border-2 rounded-lg transition-all bg-gray-100 cursor-not-allowed",
+                    formErrors.contactPhone ? "border-red-300" : "border-gray-300"
                   )}
+                  title="This field is automatically filled from your profile and cannot be edited"
                 />
                 {formErrors.contactPhone && (
                   <p className="mt-1 text-sm text-red-600">{formErrors.contactPhone}</p>
                 )}
+                <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                  🔒 This information is auto-filled from your profile
+                </p>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <Mail className="w-4 h-4 inline mr-2" />
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <Mail className="w-4 h-4 inline" />
                   Email Address (Optional)
+                  <span className="text-xs text-gray-500 font-normal">(Auto-filled)</span>
                 </label>
                 <input
                   type="email"
                   value={formData.contactEmail}
-                  onChange={(e) => setFormData(prev => ({ ...prev, contactEmail: e.target.value }))}
+                  readOnly
+                  disabled
                   placeholder="your@email.com"
                   className={cn(
-                    "w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all",
-                    formErrors.contactEmail ? "border-red-300" : "border-gray-200"
+                    "w-full px-4 py-3 border-2 rounded-lg transition-all bg-gray-100 cursor-not-allowed",
+                    formErrors.contactEmail ? "border-red-300" : "border-gray-300"
                   )}
+                  title="This field is automatically filled from your profile and cannot be edited"
                 />
                 {formErrors.contactEmail && (
                   <p className="mt-1 text-sm text-red-600">{formErrors.contactEmail}</p>
                 )}
+                <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                  🔒 This information is auto-filled from your profile
+                </p>
               </div>
 
               <div>
