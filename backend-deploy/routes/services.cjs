@@ -10,75 +10,96 @@ router.get('/', async (req, res) => {
   try {
     const { vendorId, category, limit = 50, offset = 0 } = req.query;
     
-    // Step 1: Resolve vendor ID to handle both UUID and legacy formats
-    let actualVendorId = vendorId;
+    // Step 1: Resolve vendor ID to handle UUID, legacy VEN-xxxxx, AND user ID formats
+    let actualVendorIds = vendorId ? [vendorId] : null;
+    
     if (vendorId) {
       console.log('🔍 Resolving vendor ID:', vendorId);
       
-      // Check if this vendor exists and get both UUID and legacy ID
+      // Look up vendor to get ALL possible IDs (UUID, legacy, user_id)
       const vendorCheck = await sql`
-        SELECT id, legacy_vendor_id 
+        SELECT id, legacy_vendor_id, user_id
         FROM vendors 
-        WHERE id = ${vendorId} OR legacy_vendor_id = ${vendorId}
+        WHERE id = ${vendorId} 
+           OR legacy_vendor_id = ${vendorId}
+           OR user_id = ${vendorId}
         LIMIT 1
       `;
       
       if (vendorCheck.length > 0) {
         const vendor = vendorCheck[0];
-        console.log('✅ Found vendor:', { uuid: vendor.id, legacy: vendor.legacy_vendor_id });
+        console.log('✅ Found vendor:', { 
+          uuid: vendor.id, 
+          legacy: vendor.legacy_vendor_id,
+          user_id: vendor.user_id 
+        });
         
-        // Build service check query based on whether legacy_vendor_id exists
-        let serviceCheck;
+        // Build array of ALL possible vendor IDs to check
+        actualVendorIds = [vendor.id]; // Always include UUID
+        
         if (vendor.legacy_vendor_id) {
-          // Check for services using either UUID or legacy ID
-          serviceCheck = await sql`
-            SELECT vendor_id 
-            FROM services 
-            WHERE vendor_id = ${vendor.id} OR vendor_id = ${vendor.legacy_vendor_id}
-            LIMIT 1
-          `;
-        } else {
-          // Only check UUID
-          serviceCheck = await sql`
-            SELECT vendor_id 
-            FROM services 
-            WHERE vendor_id = ${vendor.id}
-            LIMIT 1
-          `;
+          actualVendorIds.push(vendor.legacy_vendor_id);
         }
         
-        if (serviceCheck.length > 0) {
-          actualVendorId = serviceCheck[0].vendor_id;
-          console.log('✅ Services use vendor_id format:', actualVendorId);
-        } else {
-          // No services found with either ID, use UUID as default
-          actualVendorId = vendor.id;
-          console.log('ℹ️ No services found, defaulting to UUID:', actualVendorId);
+        if (vendor.user_id) {
+          actualVendorIds.push(vendor.user_id);
         }
+        
+        console.log('✅ Will check services for vendor IDs:', actualVendorIds);
+      } else {
+        console.log('⚠️ Vendor not found, will try direct match with:', vendorId);
       }
     }
     
-    // Step 2: Get services
-    let servicesQuery = `SELECT * FROM services WHERE is_active = true`;
-    let params = [];
+    // Step 2: Get services - use parameterized query with vendor ID array
+    let services;
     
-    if (actualVendorId) {
-      servicesQuery += ` AND vendor_id = $${params.length + 1}`;
-      params.push(actualVendorId);
+    if (actualVendorIds) {
+      // Filter by vendor IDs
+      if (category) {
+        services = await sql`
+          SELECT * FROM services 
+          WHERE is_active = true 
+            AND vendor_id = ANY(${actualVendorIds})
+            AND category = ${category}
+          ORDER BY featured DESC, created_at DESC 
+          LIMIT ${parseInt(limit)} 
+          OFFSET ${parseInt(offset)}
+        `;
+      } else {
+        services = await sql`
+          SELECT * FROM services 
+          WHERE is_active = true 
+            AND vendor_id = ANY(${actualVendorIds})
+          ORDER BY featured DESC, created_at DESC 
+          LIMIT ${parseInt(limit)} 
+          OFFSET ${parseInt(offset)}
+        `;
+      }
+      console.log(`🔍 Queried services for vendor IDs: ${actualVendorIds.join(', ')}`);
+    } else {
+      // No vendor filter
+      if (category) {
+        services = await sql`
+          SELECT * FROM services 
+          WHERE is_active = true 
+            AND category = ${category}
+          ORDER BY featured DESC, created_at DESC 
+          LIMIT ${parseInt(limit)} 
+          OFFSET ${parseInt(offset)}
+        `;
+      } else {
+        services = await sql`
+          SELECT * FROM services 
+          WHERE is_active = true 
+          ORDER BY featured DESC, created_at DESC 
+          LIMIT ${parseInt(limit)} 
+          OFFSET ${parseInt(offset)}
+        `;
+      }
     }
     
-    if (category) {
-      servicesQuery += ` AND category = $${params.length + 1}`;
-      params.push(category);
-    }
-    
-    servicesQuery += ` ORDER BY featured DESC, created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-    params.push(parseInt(limit), parseInt(offset));
-    
-    console.log('🔍 Services query:', servicesQuery);
-    console.log('🔍 Query parameters:', params);
-    
-    const services = await sql(servicesQuery, params);
+    console.log(`✅ Found ${services.length} services`);
     
     console.log(`✅ Found ${services.length} services`);
     
@@ -157,7 +178,8 @@ router.get('/', async (req, res) => {
       success: true,
       services: services,
       count: services.length,
-      vendor_id_checked: actualVendorId, // 🔍 Debug: Show which vendor ID was used
+      vendor_id_requested: vendorId || null,
+      vendor_ids_checked: actualVendorIds || null, // 🔍 Debug: Show all vendor IDs checked
       timestamp: new Date().toISOString()
     });
     
@@ -227,45 +249,63 @@ router.get('/vendor/:vendorId', async (req, res) => {
   try {
     const { vendorId } = req.params;
     
-    // ✅ FIX: Handle both VEN-xxxxx and 2-yyyy-xxx formats
-    // If user sends 2-yyyy-xxx (user ID), look up actual vendor ID first
+    // ✅ ENHANCED FIX: Handle UUID, legacy VEN-xxxxx, AND user ID formats
     let actualVendorIds = [vendorId]; // Start with what was sent
     
-    // Check if this is a user ID format (2-yyyy-xxx)
-    if (vendorId.startsWith('2-')) {
-      console.log('🔍 User ID format detected, looking up vendor IDs for user:', vendorId);
+    console.log('🔍 Step 1: Checking vendor format for:', vendorId);
+    
+    // Step 1: Look up the vendor in vendors table to find ALL possible IDs
+    const vendorLookup = await sql`
+      SELECT id, legacy_vendor_id, user_id 
+      FROM vendors 
+      WHERE id = ${vendorId} 
+         OR legacy_vendor_id = ${vendorId}
+         OR user_id = ${vendorId}
+      LIMIT 1
+    `;
+    
+    if (vendorLookup.length > 0) {
+      const vendor = vendorLookup[0];
+      console.log('✅ Found vendor record:', {
+        uuid: vendor.id,
+        legacy: vendor.legacy_vendor_id,
+        user_id: vendor.user_id
+      });
       
-      // Get all vendor IDs associated with this user_id
-      const vendorLookup = await sql`
-        SELECT id FROM vendors WHERE user_id = ${vendorId}
-      `;
+      // Build list of ALL possible vendor IDs to check
+      actualVendorIds = [vendor.id]; // Always include UUID
       
-      if (vendorLookup.length > 0) {
-        actualVendorIds = vendorLookup.map(v => v.id);
-        console.log('✅ Found vendor IDs:', actualVendorIds);
-      } else {
-        console.log('⚠️ No vendor found with user_id:', vendorId, '- will also try direct match');
+      if (vendor.legacy_vendor_id) {
+        actualVendorIds.push(vendor.legacy_vendor_id);
+        console.log('✅ Added legacy vendor ID:', vendor.legacy_vendor_id);
       }
       
-      // Also include the user ID itself (for legacy entries where vendor.id = user.id)
-      actualVendorIds.push(vendorId);
+      if (vendor.user_id) {
+        actualVendorIds.push(vendor.user_id);
+        console.log('✅ Added user ID:', vendor.user_id);
+      }
+    } else {
+      console.log('⚠️ No vendor found matching:', vendorId, '- will try direct match only');
     }
     
-    // Query services using ALL possible vendor IDs
+    console.log('🔍 Step 2: Querying services with vendor IDs:', actualVendorIds);
+    
+    // Step 2: Query services using ALL possible vendor IDs
     const services = await sql`
       SELECT * FROM services 
       WHERE vendor_id = ANY(${actualVendorIds})
       ORDER BY created_at DESC
     `;
     
-    console.log(`✅ Found ${services.length} services for vendor ${vendorId} (checked IDs: ${actualVendorIds.join(', ')})`);
+    console.log(`✅ Found ${services.length} services for vendor ${vendorId}`);
+    console.log(`🔍 Checked vendor IDs: ${actualVendorIds.join(', ')}`);
     
     res.json({
       success: true,
       services: services,
       count: services.length,
-      vendor_id_checked: vendorId,
-      actual_vendor_ids_used: actualVendorIds,
+      vendor_id_requested: vendorId,
+      vendor_ids_checked: actualVendorIds,
       timestamp: new Date().toISOString()
     });
     
