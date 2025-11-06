@@ -16,33 +16,42 @@ router.get('/', async (req, res) => {
     if (vendorId) {
       console.log('🔍 Resolving vendor ID:', vendorId);
       
-      // Look up vendor to get ALL possible IDs (UUID, legacy, user_id)
-      const vendorCheck = await sql`
-        SELECT id, legacy_vendor_id, user_id
-        FROM vendors 
-        WHERE id = ${vendorId} 
-           OR legacy_vendor_id = ${vendorId}
-           OR user_id = ${vendorId}
-        LIMIT 1
-      `;
+      // Look up vendor to get ALL possible IDs (UUID and user_id)
+      let vendorCheck;
+      try {
+        vendorCheck = await sql`
+          SELECT id, user_id
+          FROM vendors 
+          WHERE id = ${vendorId} OR user_id = ${vendorId}
+          LIMIT 1
+        `;
+      } catch (err) {
+        console.error('⚠️ Vendor check error:', err.message);
+        vendorCheck = [];
+      }
       
       if (vendorCheck.length > 0) {
         const vendor = vendorCheck[0];
         console.log('✅ Found vendor:', { 
           uuid: vendor.id, 
-          legacy: vendor.legacy_vendor_id,
           user_id: vendor.user_id 
         });
         
         // Build array of ALL possible vendor IDs to check
         actualVendorIds = [vendor.id]; // Always include UUID
         
-        if (vendor.legacy_vendor_id) {
-          actualVendorIds.push(vendor.legacy_vendor_id);
-        }
-        
         if (vendor.user_id) {
           actualVendorIds.push(vendor.user_id);
+        }
+        
+        // Try VEN-xxxxx format based on user_id
+        if (vendor.user_id && vendor.user_id.startsWith('2-')) {
+          const parts = vendor.user_id.split('-');
+          if (parts.length === 3) {
+            const legacyId = `VEN-${parts[2]}`;
+            actualVendorIds.push(legacyId);
+            console.log('✅ Added potential legacy ID:', legacyId);
+          }
         }
         
         console.log('✅ Will check services for vendor IDs:', actualVendorIds);
@@ -255,34 +264,44 @@ router.get('/vendor/:vendorId', async (req, res) => {
     console.log('🔍 Step 1: Checking vendor format for:', vendorId);
     
     // Step 1: Look up the vendor in vendors table to find ALL possible IDs
-    const vendorLookup = await sql`
-      SELECT id, legacy_vendor_id, user_id 
-      FROM vendors 
-      WHERE id = ${vendorId} 
-         OR legacy_vendor_id = ${vendorId}
-         OR user_id = ${vendorId}
-      LIMIT 1
-    `;
+    // Try to get legacy_vendor_id if column exists, otherwise just id and user_id
+    let vendorLookup;
+    try {
+      vendorLookup = await sql`
+        SELECT id, user_id 
+        FROM vendors 
+        WHERE id = ${vendorId} OR user_id = ${vendorId}
+        LIMIT 1
+      `;
+    } catch (err) {
+      console.error('⚠️ Vendor lookup error:', err.message);
+      vendorLookup = [];
+    }
     
     if (vendorLookup.length > 0) {
       const vendor = vendorLookup[0];
       console.log('✅ Found vendor record:', {
         uuid: vendor.id,
-        legacy: vendor.legacy_vendor_id,
         user_id: vendor.user_id
       });
       
       // Build list of ALL possible vendor IDs to check
       actualVendorIds = [vendor.id]; // Always include UUID
       
-      if (vendor.legacy_vendor_id) {
-        actualVendorIds.push(vendor.legacy_vendor_id);
-        console.log('✅ Added legacy vendor ID:', vendor.legacy_vendor_id);
-      }
-      
+      // Also try common legacy formats
       if (vendor.user_id) {
         actualVendorIds.push(vendor.user_id);
         console.log('✅ Added user ID:', vendor.user_id);
+      }
+      
+      // Try VEN-xxxxx format based on numeric part of user_id
+      if (vendor.user_id && vendor.user_id.startsWith('2-')) {
+        const parts = vendor.user_id.split('-');
+        if (parts.length === 3) {
+          const legacyId = `VEN-${parts[2]}`; // e.g., 2-2025-003 → VEN-00003
+          actualVendorIds.push(legacyId);
+          console.log('✅ Added potential legacy ID:', legacyId);
+        }
       }
     } else {
       console.log('⚠️ No vendor found matching:', vendorId, '- will try direct match only');
