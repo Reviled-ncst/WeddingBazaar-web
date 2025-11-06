@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
+import { getPricingTemplates, getCategoryName } from './categoryPricingTemplates';
 
 export interface PackageItem {
   id?: string;
@@ -29,96 +30,8 @@ interface PackageBuilderProps {
   category?: string;
 }
 
-// Pre-defined package templates for quick setup
-const PACKAGE_TEMPLATES: Record<string, PackageItem[]> = {
-  default: [
-    {
-      item_name: 'Bronze Package',
-      description: 'Essential services for intimate weddings',
-      price: 50000,
-      inclusions: ['4 hours of service', 'Basic setup', 'Up to 50 guests'],
-      exclusions: [],
-      display_order: 0,
-      is_active: true
-    },
-    {
-      item_name: 'Silver Package',
-      description: 'Enhanced services for medium weddings',
-      price: 100000,
-      inclusions: ['6 hours of service', 'Premium setup', 'Up to 100 guests', 'Complimentary consultation'],
-      exclusions: [],
-      display_order: 1,
-      is_active: true
-    },
-    {
-      item_name: 'Gold Package',
-      description: 'Premium all-inclusive experience',
-      price: 200000,
-      inclusions: ['8 hours of service', 'Luxury setup', 'Up to 200 guests', 'Dedicated coordinator'],
-      exclusions: [],
-      display_order: 2,
-      is_active: true
-    }
-  ],
-  Photography: [
-    {
-      item_name: 'Basic Coverage',
-      description: '4-hour wedding photography',
-      price: 35000,
-      inclusions: ['4 hours coverage', '200 edited photos', 'Online gallery', 'USB drive'],
-      exclusions: ['Second photographer', 'Drone shots', 'Same-day edit video'],
-      display_order: 0,
-      is_active: true
-    },
-    {
-      item_name: 'Full Day Coverage',
-      description: '8-hour complete wedding documentation',
-      price: 65000,
-      inclusions: ['8 hours coverage', '400 edited photos', 'Second photographer', 'Online gallery', 'Premium album (20 pages)'],
-      exclusions: ['Drone photography', 'Same-day edit video'],
-      display_order: 1,
-      is_active: true
-    },
-    {
-      item_name: 'Premium Package',
-      description: 'Complete wedding documentation with all extras',
-      price: 120000,
-      inclusions: ['10 hours coverage', '600 edited photos', 'Second photographer', 'Drone photography', 'Same-day edit video', 'Premium album (40 pages)', 'Engagement shoot'],
-      exclusions: [],
-      display_order: 2,
-      is_active: true
-    }
-  ],
-  Catering: [
-    {
-      item_name: 'Buffet Package',
-      description: 'Traditional buffet style service',
-      price: 800,
-      inclusions: ['4-course menu', 'Standard tableware', 'Service staff', 'Setup and cleanup'],
-      exclusions: ['Premium dishes', 'Beverage packages', 'Themed decorations'],
-      display_order: 0,
-      is_active: true
-    },
-    {
-      item_name: 'Plated Service',
-      description: 'Elegant plated dining experience',
-      price: 1200,
-      inclusions: ['5-course gourmet menu', 'Premium tableware', 'Professional service staff', 'Chef on-site', 'Setup and cleanup'],
-      exclusions: ['Premium wine pairing', 'Custom menu items'],
-      display_order: 1,
-      is_active: true
-    },
-    {
-      item_name: 'Premium Experience',
-      description: 'Luxury dining with all inclusions',
-      price: 2000,
-      inclusions: ['7-course chef\'s special menu', 'Luxury tableware', 'Dedicated service team', 'Premium beverage package', 'Themed table settings', 'Dessert station'],
-      exclusions: [],
-      display_order: 2,
-      is_active: true
-    }
-  ]
-};
+// Note: Package templates are now imported from categoryPricingTemplates.ts
+// which contains comprehensive templates for all 15 wedding service categories
 
 export const PackageBuilder: React.FC<PackageBuilderProps> = ({
   packages,
@@ -200,9 +113,10 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
     setExpandedPackages(newExpanded);
   };
 
-  const loadTemplate = (templateKey: string) => {
-    const template = PACKAGE_TEMPLATES[templateKey] || PACKAGE_TEMPLATES.default;
-    onChange(template);
+  const loadTemplate = () => {
+    // Get category-specific templates from the new comprehensive template file
+    const templates = getPricingTemplates(category || 'default');
+    onChange(templates);
     setShowTemplates(false);
     setExpandedPackages(new Set([0]));
   };
@@ -243,14 +157,16 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => loadTemplate(category || 'default')}
+                onClick={() => loadTemplate()}
                 className="p-3 bg-white rounded-lg border border-gray-200 hover:border-pink-300 hover:shadow-md transition-all text-left"
               >
                 <div className="font-semibold text-gray-900">
-                  {category ? `${category} Template` : 'Standard Template'}
+                  {category ? `${getCategoryName(category)} Template` : 'Standard Template'}
                 </div>
                 <div className="text-sm text-gray-600 mt-1">
-                  Bronze, Silver, Gold packages
+                  {category 
+                    ? `Pre-built ${category} packages with realistic pricing` 
+                    : 'Bronze, Silver, Gold packages'}
                 </div>
               </button>
               <button
