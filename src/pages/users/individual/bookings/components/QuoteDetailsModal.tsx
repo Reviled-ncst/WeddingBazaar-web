@@ -97,20 +97,10 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
     setError(null);
     
     try {
-      // 🔍 DEBUG: Log the entire booking object to see what fields we have
-      console.log('🔍 [QuoteModal] Full booking object:', booking);
-      console.log('🔍 [QuoteModal] Booking keys:', Object.keys(booking));
-      console.log('🔍 [QuoteModal] booking.quoteItemization:', (booking as any)?.quoteItemization);
-      console.log('🔍 [QuoteModal] booking.quote_itemization:', (booking as any)?.quote_itemization);
-      console.log('🔍 [QuoteModal] booking.vendorNotes:', (booking as any)?.vendorNotes);
-      console.log('🔍 [QuoteModal] booking.vendor_notes:', (booking as any)?.vendor_notes);
-      console.log('🔍 [QuoteModal] booking.serviceItems:', (booking as any)?.serviceItems);
-      
-      // 🔥 PRIORITY 0: Check if booking already has pre-parsed serviceItems from mapping layer
+      // Check if booking already has pre-parsed serviceItems from mapping layer
       const bookingServiceItems = (booking as any)?.serviceItems;
       
       if (bookingServiceItems && Array.isArray(bookingServiceItems) && bookingServiceItems.length > 0) {
-        console.log('✅ [QuoteModal] Found pre-parsed serviceItems array:', bookingServiceItems);
         const transformedQuoteData: QuoteData = {
           quoteNumber: `QT-${booking.id?.slice(-6)?.toUpperCase() || '000001'}`,
           issueDate: new Date(booking.createdAt || Date.now()).toLocaleDateString(),
@@ -153,20 +143,17 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
           }
         };
         
-        console.log('✅ [QuoteModal] Transformed quote data with', transformedQuoteData.serviceItems.length, 'service items from pre-parsed array');
         setQuoteData(transformedQuoteData);
         setLoading(false);
         return;
       }
       
-      // 🔥 PRIORITY 1: Check if booking has quote_itemization field (NEW DATABASE FIELD)
+      // Check if booking has quote_itemization field
       const quoteItemization = (booking as any)?.quoteItemization || (booking as any)?.quote_itemization;
       
       if (quoteItemization) {
-        console.log('📋 [QuoteModal] Found quote_itemization, attempting to parse quote data...');
         try {
           const parsedQuote = typeof quoteItemization === 'string' ? JSON.parse(quoteItemization) : quoteItemization;
-          console.log('✅ [QuoteModal] Successfully parsed quote_itemization:', parsedQuote);
           
           // Transform vendor's quote data to QuoteData interface
           if (parsedQuote.serviceItems && Array.isArray(parsedQuote.serviceItems)) {
@@ -212,29 +199,21 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
               }
             };
             
-            console.log('✅ [QuoteModal] Transformed quote data with', transformedQuoteData.serviceItems.length, 'service items');
             setQuoteData(transformedQuoteData);
             setLoading(false);
             return;
           }
         } catch (parseError) {
-          console.error('⚠️ [QuoteModal] Failed to parse quote_itemization:', parseError);
-          console.error('⚠️ [QuoteModal] Raw quote_itemization value:', quoteItemization);
           // Continue to next fallback
         }
       }
       
-      // 🔧 PRIORITY 2: Check if booking has vendor_notes with real quote data (BACKWARD COMPATIBILITY)
+      // Check if booking has vendor_notes with real quote data
       const vendorNotes = (booking as any)?.vendorNotes || (booking as any)?.vendor_notes;
       
-      console.log('🔍 [QuoteModal] Extracted vendorNotes value:', vendorNotes);
-      console.log('🔍 [QuoteModal] vendorNotes type:', typeof vendorNotes);
-      
       if (vendorNotes) {
-        console.log('📋 [QuoteModal] Found vendor_notes, attempting to parse quote data...');
         try {
           const parsedQuote = typeof vendorNotes === 'string' ? JSON.parse(vendorNotes) : vendorNotes;
-          console.log('✅ [QuoteModal] Successfully parsed vendor_notes:', parsedQuote);
           
           // Transform vendor's quote data to QuoteData interface
           if (parsedQuote.serviceItems && Array.isArray(parsedQuote.serviceItems)) {
@@ -280,27 +259,17 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
               }
             };
             
-            console.log('✅ [QuoteModal] Transformed quote data with', transformedQuoteData.serviceItems.length, 'service items');
             setQuoteData(transformedQuoteData);
             setLoading(false);
             return;
           }
-        } catch (parseError) {
-          console.error('⚠️ [QuoteModal] Failed to parse vendor_notes:', parseError);
-          console.error('⚠️ [QuoteModal] Raw vendor_notes value:', vendorNotes);
+        } catch {
           // Continue to next fallback
         }
-      } else {
-        console.warn('⚠️ [QuoteModal] No vendor_notes found in booking!');
-        console.warn('⚠️ [QuoteModal] This means either:');
-        console.warn('   1. Backend did not store vendor_notes when quote was sent');
-        console.warn('   2. Backend did not return vendor_notes in API response');
-        console.warn('   3. Data mapper did not include vendor_notes in booking object');
       }
       
       // Second fallback: Check if booking already has mock quote data from our simulation
       if ((booking as any)?.quoteData) {
-        console.log('📋 [QuoteModal] Using mock quote data from booking:', (booking as any).quoteData);
         const mockData = (booking as any).quoteData;
         
         // Transform mock data to match expected QuoteData interface
@@ -491,15 +460,6 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
       </div>
     );
   }
-
-  // 🔥 EMERGENCY DEBUG: Always log render state
-  console.log('🚨 [QuoteModal RENDER CHECK]');
-  console.log('   - isOpen:', isOpen);
-  console.log('   - booking?.id:', booking?.id);
-  console.log('   - booking?.status:', booking?.status);
-  console.log('   - quoteData:', quoteData);
-  console.log('   - loading:', loading);
-  console.log('   - error:', error);
 
   // Show an error message if quoteData is null instead of returning null
   if (!quoteData && !loading) {

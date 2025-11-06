@@ -421,8 +421,10 @@ export const VendorServices: React.FC = () => {
       if (!editingService) { // Only check on create, not edit
         const maxServices = subscription?.plan?.limits?.max_services || 5;
         const currentServicesCount = services.length;
+        const isUnlimited = maxServices === -1; // -1 means unlimited
         
-        if (currentServicesCount >= maxServices) {
+        // ✅ FIX: Only block if NOT unlimited AND over limit
+        if (!isUnlimited && currentServicesCount >= maxServices) {
           const planName = subscription?.plan?.name || 'Basic';
           const nextPlan = subscription?.plan?.tier === 'basic' ? 'premium' : 'pro';
           // Show centralized upgrade modal (with payment integration)
@@ -608,9 +610,16 @@ export const VendorServices: React.FC = () => {
 
   // Quick service creation function with verification and subscription check
   const handleQuickCreateService = () => {
+    console.log('🔵 [ADD SERVICE] Button clicked!');
+    console.log('🔵 [ADD SERVICE] User:', user?.id, user?.email);
+    console.log('🔵 [ADD SERVICE] Services count:', services.length);
+    
     // Check if user is verified before allowing service creation
     const verification = getVerificationStatus();
+    console.log('🔵 [ADD SERVICE] Verification status:', verification);
+    
     if (!verification.emailVerified) {
+      console.log('❌ [ADD SERVICE] BLOCKED: Email not verified');
       setShowVerificationPrompt(true);
       return;
     }
@@ -618,15 +627,28 @@ export const VendorServices: React.FC = () => {
     // Check subscription limits
     const maxServices = subscription?.plan?.limits?.max_services || 5; // Default 5 for free tier
     const currentServicesCount = services.length;
+    const isUnlimited = maxServices === -1; // -1 means unlimited
     
-    if (currentServicesCount >= maxServices) {
+    console.log('🔵 [ADD SERVICE] Subscription:', {
+      plan: subscription?.plan?.name,
+      tier: subscription?.plan?.tier,
+      maxServices: isUnlimited ? 'Unlimited' : maxServices,
+      currentCount: currentServicesCount,
+      canAdd: isUnlimited || currentServicesCount < maxServices
+    });
+    
+    // ✅ FIX: Check for unlimited (-1) before checking limit
+    if (!isUnlimited && currentServicesCount >= maxServices) {
       const planName = subscription?.plan?.name || 'Free';
       const message = `You've reached the maximum of ${maxServices} services for your ${planName} plan. Upgrade to add more services!`;
       
+      console.log('❌ [ADD SERVICE] BLOCKED: Service limit reached');
+      console.log('❌ [ADD SERVICE] Showing upgrade prompt:', message);
       showUpgradePrompt(message, subscription?.plan?.tier === 'basic' ? 'premium' : 'pro');
       return;
     }
     
+    console.log('✅ [ADD SERVICE] All checks passed! Opening form...');
     setIsCreating(true);
     setEditingService(null);
   };

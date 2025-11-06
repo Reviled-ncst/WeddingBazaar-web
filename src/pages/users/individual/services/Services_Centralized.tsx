@@ -14,7 +14,8 @@ import {
   SlidersHorizontal,
   Brain,
   Sparkles,
-  Share2
+  Share2,
+  ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../../../utils/cn';
@@ -174,6 +175,8 @@ export function Services() {
     icon: 'check'
   });
   
+  // 🆕 Pagination for services grid (limit initial rendering to 10 services)
+  const [visibleServicesCount, setVisibleServicesCount] = useState(10);
   
   const { openModal: openMessagingModal } = useMessagingModal();
 
@@ -1176,25 +1179,15 @@ Best regards`;
                 </div>
 
                 {/* Smart Planning Button */}
-                <motion.button
+                <button
                   onClick={handleOpenDSS}
-                  className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-purple-500 via-purple-600 to-indigo-600 text-white rounded-2xl hover:from-purple-600 hover:via-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-xl border border-purple-300/50"
+                  className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-purple-500 via-purple-600 to-indigo-600 text-white rounded-2xl hover:from-purple-600 hover:via-purple-700 hover:to-indigo-700 transition-colors duration-300 font-semibold shadow-xl border border-purple-300/50"
                   title="Smart Wedding Recommendations"
-                  whileHover={{ 
-                    scale: 1.05,
-                    boxShadow: "0 20px 25px -5px rgba(139, 92, 246, 0.3)"
-                  }}
-                  whileTap={{ scale: 0.95 }}
                 >
-                  <motion.div
-                    animate={{ rotate: [0, 10, -10, 0] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    <Brain className="h-5 w-5" />
-                  </motion.div>
+                  <Brain className="h-5 w-5" />
                   <span>Smart Planner</span>
                   <Sparkles className="h-4 w-4 animate-pulse" />
-                </motion.button>
+                </button>
 
                 {/* View Mode Toggle */}
                 <div className="flex items-center bg-gradient-to-r from-pink-50 to-rose-50 rounded-2xl p-1 border border-pink-100/50 shadow-inner">
@@ -1454,29 +1447,79 @@ Best regards`;
               )}
             </div>
           ) : (
-            <motion.div 
-              layout
-              className={cn(
-                'grid gap-8',
-                viewMode === 'grid' 
-                  ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 auto-rows-fr' 
-                  : 'grid-cols-1'
+            <>
+              {/* 🆕 Pagination Info */}
+              {filteredServices.length > 10 && (
+                <div className="mb-6 text-center">
+                  <div className="inline-block px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Showing {Math.min(visibleServicesCount, filteredServices.length)} of {filteredServices.length}</strong> services
+                      {visibleServicesCount < filteredServices.length && 
+                        <span> • Click "Show More" below to see all services</span>
+                      }
+                    </p>
+                  </div>
+                </div>
               )}
-            >
-              {filteredServices.map((service, index) => (
-                <ServiceCard
-                  key={service.id}
-                  service={service}
-                  viewMode={viewMode}
-                  index={index}
-                  onSelect={handleServiceSelect}
-                  onMessage={handleMessageVendor}
-                  onFavorite={handleFavoriteService}
-                  onBookingRequest={handleBookingRequest}
-                  onShare={handleShareService}
-                />
-              ))}
-            </motion.div>
+
+              <motion.div 
+                layout
+                className={cn(
+                  'grid gap-8',
+                  viewMode === 'grid' 
+                    ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 auto-rows-fr' 
+                    : 'grid-cols-1'
+                )}
+              >
+                {/* 🆕 Limit rendering to visibleServicesCount */}
+                {filteredServices.slice(0, visibleServicesCount).map((service, index) => (
+                  <ServiceCard
+                    key={service.id}
+                    service={service}
+                    viewMode={viewMode}
+                    index={index}
+                    onSelect={handleServiceSelect}
+                    onMessage={handleMessageVendor}
+                    onFavorite={handleFavoriteService}
+                    onBookingRequest={handleBookingRequest}
+                    onShare={handleShareService}
+                  />
+                ))}
+              </motion.div>
+
+              {/* 🆕 Show More Button */}
+              {visibleServicesCount < filteredServices.length && (
+                <div className="mt-12 text-center">
+                  <button
+                    onClick={() => {
+                      console.log('[Services] Show More clicked - expanding from', visibleServicesCount, 'to', filteredServices.length);
+                      setVisibleServicesCount(filteredServices.length);
+                    }}
+                    className="px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 mx-auto group"
+                  >
+                    <span>Show All {filteredServices.length} Services</span>
+                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
+              )}
+
+              {/* 🆕 Show Less Button (when expanded) */}
+              {visibleServicesCount > 10 && visibleServicesCount >= filteredServices.length && (
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={() => {
+                      console.log('[Services] Show Less clicked - collapsing to 10');
+                      setVisibleServicesCount(10);
+                      // Scroll to top of services grid
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-all"
+                  >
+                    Show Less
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

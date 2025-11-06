@@ -1,5 +1,8 @@
-import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+// DSS Modal v2.3 - Button Click Fix (2025-01-XX)
+// CRITICAL: Removed stopPropagation from modal content div to fix button clicks
+// All buttons now use only onClick handlers without preventDefault or stopPropagation
+
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   X, 
   Sparkles, 
@@ -156,6 +159,20 @@ interface PackageService {
   matchReasons: string[];
 }
 
+// ==================== FALLBACK CATEGORIES ====================
+
+// Fallback categories if API fails
+const FALLBACK_CATEGORIES = [
+  { id: '1', name: 'photography', display_name: 'Photography', description: 'Professional wedding photography' },
+  { id: '2', name: 'videography', display_name: 'Videography', description: 'Wedding video coverage' },
+  { id: '3', name: 'catering', display_name: 'Catering', description: 'Food and beverage services' },
+  { id: '4', name: 'venue', display_name: 'Venue', description: 'Wedding venues and locations' },
+  { id: '5', name: 'music_entertainment', display_name: 'Music & Entertainment', description: 'DJs, bands, performers' },
+  { id: '6', name: 'flowers_decor', display_name: 'Flowers & Decor', description: 'Floral arrangements and decorations' },
+  { id: '7', name: 'planning_coordination', display_name: 'Planning & Coordination', description: 'Wedding planning services' },
+  { id: '8', name: 'beauty_styling', display_name: 'Beauty & Styling', description: 'Makeup, hair, beauty' }
+];
+
 // ==================== MAIN COMPONENT ====================
 
 export function IntelligentWeddingPlanner({
@@ -169,6 +186,19 @@ export function IntelligentWeddingPlanner({
   const [currentStep, setCurrentStep] = useState(1);
   const [showResults, setShowResults] = useState(false);
   const [selectedServiceDetail, setSelectedServiceDetail] = useState<PackageService | null>(null);
+  
+  // 🆕 Service Categories from Database
+  const [serviceCategories, setServiceCategories] = useState<Array<{
+    id: string;
+    name: string;
+    display_name: string;
+    description: string;
+  }>>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  
+  // 🆕 Pagination for Step 2 Service Priorities (to improve performance)
+  const [visibleCategoriesCount, setVisibleCategoriesCount] = useState(10);
+  
   const [preferences, setPreferences] = useState<WeddingPreferences>({
     weddingType: '',
     weddingDate: '',
@@ -205,6 +235,10 @@ export function IntelligentWeddingPlanner({
     if (currentIndex < relevantSteps.length - 1) {
       // Move to next relevant step
       setCurrentStep(relevantSteps[currentIndex + 1]);
+      // 🆕 Reset pagination when leaving Step 2
+      if (currentStep === 2) {
+        setVisibleCategoriesCount(10);
+      }
       // Scroll to top when changing steps
       setTimeout(() => {
         const contentArea = document.querySelector('.dss-content-area');
@@ -223,6 +257,10 @@ export function IntelligentWeddingPlanner({
     if (currentIndex > 0) {
       // Move to previous relevant step
       setCurrentStep(relevantSteps[currentIndex - 1]);
+      // 🆕 Reset pagination when leaving Step 2
+      if (currentStep === 2) {
+        setVisibleCategoriesCount(10);
+      }
       // Scroll to top when changing steps
       setTimeout(() => {
         const contentArea = document.querySelector('.dss-content-area');
@@ -261,9 +299,78 @@ export function IntelligentWeddingPlanner({
     onClose();
   };
 
-  const updatePreferences = (updates: Partial<WeddingPreferences>) => {
+  const updatePreferences = useCallback((updates: Partial<WeddingPreferences>) => {
     setPreferences(prev => ({ ...prev, ...updates }));
-  };
+  }, []);
+
+  // ==================== FETCH SERVICE CATEGORIES ====================
+
+  // 🆕 Fetch service categories from database when modal opens
+  useEffect(() => {
+    const fetchCategories = async () => {
+      if (!isOpen) return; // Only fetch when modal is open
+      
+      try {
+        console.log('[DSS] Fetching service categories from database...');
+        setCategoriesLoading(true);
+        
+        const API_URL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+        const response = await fetch(`${API_URL}/api/categories`);
+        
+        if (!response.ok) {
+          console.warn(`[DSS] API returned ${response.status}, using fallback categories`);
+          setServiceCategories(FALLBACK_CATEGORIES);
+          setCategoriesLoading(false);
+          return;
+        }
+        
+        const data = await response.json();
+        console.log('[DSS] Raw API response:', data);
+        
+        // Handle different response formats
+        let categories = [];
+        if (Array.isArray(data)) {
+          categories = data;
+        } else if (data.categories && Array.isArray(data.categories)) {
+          categories = data.categories;
+        } else if (data.data && Array.isArray(data.data)) {
+          categories = data.data;
+        } else {
+          console.warn('[DSS] Unexpected API response format, using fallback');
+          setServiceCategories(FALLBACK_CATEGORIES);
+          setCategoriesLoading(false);
+          return;
+        }
+        
+        console.log('[DSS] Categories array:', categories.length, 'items');
+        
+        // Map database categories to DSS format
+        const mappedCategories = categories.map((cat: any) => ({
+          id: cat.id || String(Math.random()),
+          name: cat.name || cat.category_name,
+          display_name: cat.display_name || cat.name || cat.category_name,
+          description: cat.description || `Select ${(cat.display_name || cat.name).toLowerCase()}`
+        }));
+        
+        if (mappedCategories.length > 0) {
+          console.log('[DSS] Successfully mapped', mappedCategories.length, 'categories');
+          setServiceCategories(mappedCategories);
+        } else {
+          console.warn('[DSS] No categories found, using fallback');
+          setServiceCategories(FALLBACK_CATEGORIES);
+        }
+      } catch (error) {
+        console.error('[DSS] Error fetching categories:', error);
+        // Fall back to hardcoded categories if API fails
+        console.log('[DSS] Using fallback categories due to error');
+        setServiceCategories(FALLBACK_CATEGORIES);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    
+    fetchCategories();
+  }, [isOpen]);
 
   // ==================== MATCHING ALGORITHM ====================
 
@@ -610,11 +717,11 @@ export function IntelligentWeddingPlanner({
               const isSelected = preferences.weddingType === type.value;
               
               return (
-                <motion.button
+                <button
                   key={type.value}
-                  onClick={() => updatePreferences({ weddingType: type.value as any })}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    updatePreferences({ weddingType: type.value as any });
+                  }}
                   className={`
                     relative p-4 rounded-2xl border-2 transition-all text-left
                     ${isSelected 
@@ -640,15 +747,11 @@ export function IntelligentWeddingPlanner({
                     </div>
                   </div>
                   {isSelected && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute top-2 right-2 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center"
-                    >
+                    <div className="absolute top-2 right-2 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center">
                       <Check className="w-4 h-4 text-white" />
-                    </motion.div>
+                    </div>
                   )}
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -733,15 +836,31 @@ export function IntelligentWeddingPlanner({
       { value: 'luxury', label: 'Luxury', range: '₱2M+', description: 'Top-tier services, no compromises' }
     ];
 
-    const serviceCategories = [
-      { value: 'venue', label: 'Venue', icon: Building2 },
-      { value: 'catering', label: 'Catering', icon: DollarSign },
-      { value: 'photography', label: 'Photography & Video', icon: Star },
-      { value: 'music_dj', label: 'Music & Entertainment', icon: Zap },
-      { value: 'flowers_decor', label: 'Flowers & Decor', icon: Heart },
-      { value: 'makeup_hair', label: 'Makeup & Hair', icon: Sparkles },
-      { value: 'wedding_planning', label: 'Wedding Planner', icon: Award }
-    ];
+    // 🆕 USE CATEGORIES FROM DATABASE (mapped to Step 2 format with icons)
+    // 🔧 FIX: Use useMemo to prevent re-creating array on every render (stops button flickering)
+    const categoryIconMap: Record<string, any> = {
+      'venue': Building2,
+      'catering': DollarSign,
+      'photography': Star,
+      'videography': Star,
+      'music_entertainment': Zap,
+      'flowers_decor': Heart,
+      'beauty_styling': Sparkles,
+      'planning_coordination': Award,
+      'photo_booth': Star,
+      'transportation': Building2,
+      'wedding_cake': DollarSign,
+      'invitations_stationery': Award
+    };
+
+    const mappedPriorityCategories = useMemo(() => 
+      serviceCategories.map(cat => ({
+        value: cat.name,
+        label: cat.display_name,
+        icon: categoryIconMap[cat.name] || Building2 // Default icon if not found
+      })),
+      [serviceCategories] // Only re-create when serviceCategories changes
+    );
 
     return (
       <div className="space-y-6">
@@ -764,32 +883,28 @@ export function IntelligentWeddingPlanner({
               const isSelected = preferences.budgetRange === budget.value;
               
               return (
-                <motion.button
+                <button
                   key={budget.value}
-                  onClick={() => updatePreferences({ budgetRange: budget.value as any })}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={`
-                    relative p-5 rounded-2xl border-2 transition-all text-left
-                    ${isSelected 
-                      ? 'border-pink-500 bg-pink-50 shadow-lg shadow-pink-100' 
-                      : 'border-gray-200 bg-white hover:border-pink-300 hover:shadow-md'
-                    }
-                  `}
+                  type="button"
+                  onClick={() => {
+                    console.log('[DSS Step 2] Budget button clicked:', budget.value);
+                    updatePreferences({ budgetRange: budget.value as any });
+                  }}
+                  className={
+                    isSelected 
+                      ? 'relative p-5 rounded-2xl border-2 border-pink-500 bg-pink-50 shadow-lg text-left cursor-pointer' 
+                      : 'relative p-5 rounded-2xl border-2 border-gray-200 bg-white text-left cursor-pointer'
+                  }
                 >
-                  <div className="space-y-2">
+                  <div className="space-y-2 pointer-events-none">
                     <div className="flex items-center justify-between">
                       <span className={`font-bold text-lg ${isSelected ? 'text-pink-900' : 'text-gray-900'}`}>
                         {budget.label}
                       </span>
                       {isSelected && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center"
-                        >
+                        <div className="w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center">
                           <Check className="w-4 h-4 text-white" />
-                        </motion.div>
+                        </div>
                       )}
                     </div>
                     <div className={`text-xl font-semibold ${isSelected ? 'text-pink-700' : 'text-gray-700'}`}>
@@ -799,7 +914,7 @@ export function IntelligentWeddingPlanner({
                       {budget.description}
                     </div>
                   </div>
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -807,11 +922,7 @@ export function IntelligentWeddingPlanner({
 
         {/* Custom Budget Input (if needed) */}
         {preferences.budgetRange && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="space-y-2"
-          >
+          <div className="space-y-2 transition-all">
             <label className="block text-sm font-semibold text-gray-900">
               Or enter your exact budget (Optional)
             </label>
@@ -827,7 +938,7 @@ export function IntelligentWeddingPlanner({
                 placeholder="e.g., 750000"
               />
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Budget Flexibility */}
@@ -843,11 +954,9 @@ export function IntelligentWeddingPlanner({
               const isSelected = preferences.budgetFlexibility === flex.value;
               
               return (
-                <motion.button
+                <button
                   key={flex.value}
                   onClick={() => updatePreferences({ budgetFlexibility: flex.value as any })}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   className={`
                     p-4 rounded-xl border-2 transition-all text-center
                     ${isSelected 
@@ -861,7 +970,7 @@ export function IntelligentWeddingPlanner({
                   {isSelected && (
                     <Check className="w-5 h-5 text-pink-500 mx-auto mt-2" />
                   )}
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -873,18 +982,34 @@ export function IntelligentWeddingPlanner({
             Rank your service priorities (most important first)
           </label>
           <p className="text-sm text-gray-600 mb-4">
-            Drag and drop to reorder, or click to select/deselect
+            Click to select/deselect • Selected items will be ranked automatically
           </p>
+          
+          {/* 🆕 Pagination Info */}
+          {mappedPriorityCategories.length > 10 && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Showing {Math.min(visibleCategoriesCount, mappedPriorityCategories.length)} of {mappedPriorityCategories.length}</strong> service categories
+                {visibleCategoriesCount < mappedPriorityCategories.length && 
+                  <span> • Click "Show More" below to see all options</span>
+                }
+              </p>
+            </div>
+          )}
+          
           <div className="space-y-2">
-            {serviceCategories.map((category) => {
+            {/* 🆕 Limit rendering to visibleCategoriesCount */}
+            {mappedPriorityCategories.slice(0, visibleCategoriesCount).map((category) => {
               const Icon = category.icon;
               const isSelected = preferences.servicePriorities.includes(category.value);
               const priority = preferences.servicePriorities.indexOf(category.value) + 1;
               
               return (
-                <motion.button
+                <button
                   key={category.value}
+                  type="button"
                   onClick={() => {
+                    console.log('[DSS Step 2] Category button clicked:', category.label);
                     if (isSelected) {
                       updatePreferences({
                         servicePriorities: preferences.servicePriorities.filter(p => p !== category.value)
@@ -895,16 +1020,13 @@ export function IntelligentWeddingPlanner({
                       });
                     }
                   }}
-                  whileHover={{ scale: 1.01 }}
-                  className={`
-                    w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between
-                    ${isSelected 
-                      ? 'border-pink-500 bg-pink-50' 
-                      : 'border-gray-200 bg-white hover:border-pink-300'
-                    }
-                  `}
+                  className={
+                    isSelected 
+                      ? 'w-full p-4 rounded-xl border-2 border-pink-500 bg-pink-50 flex items-center justify-between cursor-pointer' 
+                      : 'w-full p-4 rounded-xl border-2 border-gray-200 bg-white flex items-center justify-between cursor-pointer'
+                  }
                 >
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-3 pointer-events-none">
                     {isSelected && (
                       <div className="w-8 h-8 bg-pink-500 text-white rounded-full flex items-center justify-center font-bold">
                         {priority}
@@ -918,10 +1040,39 @@ export function IntelligentWeddingPlanner({
                   {isSelected && (
                     <Check className="w-5 h-5 text-pink-500" />
                   )}
-                </motion.button>
+                </button>
               );
             })}
           </div>
+          
+          {/* 🆕 Show More Button */}
+          {visibleCategoriesCount < mappedPriorityCategories.length && (
+            <button
+              type="button"
+              onClick={() => {
+                console.log('[DSS Step 2] Show More clicked - expanding from', visibleCategoriesCount, 'to', mappedPriorityCategories.length);
+                setVisibleCategoriesCount(mappedPriorityCategories.length);
+              }}
+              className="mt-4 w-full py-3 px-6 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 group"
+            >
+              <span>Show All {mappedPriorityCategories.length} Categories</span>
+              <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
+          )}
+          
+          {/* 🆕 Show Less Button (when expanded) */}
+          {visibleCategoriesCount > 10 && visibleCategoriesCount >= mappedPriorityCategories.length && (
+            <button
+              type="button"
+              onClick={() => {
+                console.log('[DSS Step 2] Show Less clicked - collapsing to 10');
+                setVisibleCategoriesCount(10);
+              }}
+              className="mt-2 w-full py-2 px-4 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-all"
+            >
+              Show Less
+            </button>
+          )}
         </div>
       </div>
     );
@@ -977,7 +1128,7 @@ export function IntelligentWeddingPlanner({
               const isSelected = preferences.styles.includes(style.value);
               
               return (
-                <motion.button
+                <button
                   key={style.value}
                   onClick={() => {
                     if (isSelected) {
@@ -990,8 +1141,6 @@ export function IntelligentWeddingPlanner({
                       });
                     }
                   }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   className={`
                     relative p-4 rounded-xl border-2 transition-all text-center
                     ${isSelected 
@@ -1008,15 +1157,11 @@ export function IntelligentWeddingPlanner({
                     {style.description}
                   </div>
                   {isSelected && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute top-2 right-2 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center"
-                    >
+                    <div className="absolute top-2 right-2 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center">
                       <Check className="w-4 h-4 text-white" />
-                    </motion.div>
+                    </div>
                   )}
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -1033,11 +1178,9 @@ export function IntelligentWeddingPlanner({
                 preferences.colorPalette.every(color => palette.colors.includes(color));
               
               return (
-                <motion.button
+                <button
                   key={palette.name}
                   onClick={() => updatePreferences({ colorPalette: palette.colors })}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   className={`
                     relative p-4 rounded-xl border-2 transition-all
                     ${isSelected 
@@ -1047,12 +1190,12 @@ export function IntelligentWeddingPlanner({
                   `}
                 >
                   <div className="flex justify-center space-x-2 mb-3">
-                    {palette.colors.map((color, idx) => (
+                    {palette.colors.map((color) => (
                       <div
-                        key={idx}
+                        key={color}
                         className={`w-10 h-10 rounded-full border-2 border-gray-200`}
                         style={{ backgroundColor: color }}
-                        aria-label={`Color ${idx + 1}`}
+                        aria-label={`Color ${color}`}
                       />
                     ))}
                   </div>
@@ -1060,15 +1203,11 @@ export function IntelligentWeddingPlanner({
                     {palette.name}
                   </div>
                   {isSelected && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute top-2 right-2 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center"
-                    >
+                    <div className="absolute top-2 right-2 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center">
                       <Check className="w-4 h-4 text-white" />
-                    </motion.div>
+                    </div>
                   )}
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -1084,11 +1223,9 @@ export function IntelligentWeddingPlanner({
               const isSelected = preferences.atmosphere === atm.value;
               
               return (
-                <motion.button
+                <button
                   key={atm.value}
                   onClick={() => updatePreferences({ atmosphere: atm.value as any })}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   className={`
                     p-5 rounded-xl border-2 transition-all text-left
                     ${isSelected 
@@ -1108,7 +1245,7 @@ export function IntelligentWeddingPlanner({
                   <div className="text-sm text-gray-600">
                     {atm.description}
                   </div>
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -1162,7 +1299,7 @@ export function IntelligentWeddingPlanner({
               const isSelected = preferences.locations.includes(region);
               
               return (
-                <motion.button
+                <button
                   key={region}
                   onClick={() => {
                     if (isSelected) {
@@ -1175,8 +1312,6 @@ export function IntelligentWeddingPlanner({
                       });
                     }
                   }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   className={`
                     p-3 rounded-lg border-2 transition-all text-sm font-medium
                     ${isSelected 
@@ -1189,7 +1324,7 @@ export function IntelligentWeddingPlanner({
                     <span>{region}</span>
                     {isSelected && <Check className="w-4 h-4 text-pink-500 ml-2" />}
                   </div>
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -1206,7 +1341,7 @@ export function IntelligentWeddingPlanner({
               const isSelected = preferences.venueTypes.includes(venue.value);
               
               return (
-                <motion.button
+                <button
                   key={venue.value}
                   onClick={() => {
                     if (isSelected) {
@@ -1219,8 +1354,6 @@ export function IntelligentWeddingPlanner({
                       });
                     }
                   }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   className={`
                     relative p-4 rounded-xl border-2 transition-all text-center
                     ${isSelected 
@@ -1239,15 +1372,11 @@ export function IntelligentWeddingPlanner({
                     {venue.label}
                   </div>
                   {isSelected && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute top-2 right-2 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center"
-                    >
+                    <div className="absolute top-2 right-2 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center">
                       <Check className="w-4 h-4 text-white" />
-                    </motion.div>
+                    </div>
                   )}
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -1263,7 +1392,7 @@ export function IntelligentWeddingPlanner({
               const isSelected = preferences.venueFeatures.includes(feature);
               
               return (
-                <motion.button
+                <button
                   key={feature}
                   onClick={() => {
                     if (isSelected) {
@@ -1276,8 +1405,6 @@ export function IntelligentWeddingPlanner({
                       });
                     }
                   }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   className={`
                     p-3 rounded-lg border-2 transition-all text-sm
                     ${isSelected 
@@ -1290,7 +1417,7 @@ export function IntelligentWeddingPlanner({
                     <span>{feature}</span>
                     {isSelected && <Check className="w-4 h-4 text-pink-500 ml-2" />}
                   </div>
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -1301,23 +1428,12 @@ export function IntelligentWeddingPlanner({
 
   // Step 5: Must-Have Services
   const MustHaveServicesStep = () => {
-    const serviceCategories = [
-      { value: 'photography', label: 'Photography', description: 'Professional photos' },
-      { value: 'videography', label: 'Videography', description: 'Video coverage' },
-      { value: 'catering', label: 'Catering', description: 'Food & beverages' },
-      { value: 'venue', label: 'Venue', description: 'Ceremony & reception' },
-      { value: 'music_dj', label: 'Music & DJ', description: 'Entertainment' },
-      { value: 'flowers_decor', label: 'Flowers & Decor', description: 'Floral arrangements' },
-      { value: 'wedding_planning', label: 'Wedding Planner', description: 'Coordination' },
-      { value: 'makeup_hair', label: 'Makeup & Hair', description: 'Beauty services' },
-      { value: 'wedding_cake', label: 'Wedding Cake', description: 'Custom cake' },
-      { value: 'transportation', label: 'Transportation', description: 'Bridal car' },
-      { value: 'lighting', label: 'Lighting', description: 'Event lighting' },
-      { value: 'entertainment', label: 'Entertainment', description: 'Performers' },
-      { value: 'officiant', label: 'Officiant', description: 'Ceremony leader' },
-      { value: 'invitations', label: 'Invitations', description: 'Custom designs' },
-      { value: 'favors', label: 'Wedding Favors', description: 'Guest gifts' }
-    ];
+    // 🆕 USE CATEGORIES FROM DATABASE (mapped to DSS format)
+    const mappedCategories = serviceCategories.map(cat => ({
+      value: cat.name, // Use database 'name' field (e.g., 'photography', 'venue')
+      label: cat.display_name, // Use 'display_name' for UI (e.g., 'Photography', 'Venue')
+      description: cat.description || `Select ${cat.display_name.toLowerCase()}`
+    }));
 
     const serviceTiers = ['basic', 'premium', 'luxury'];
 
@@ -1332,33 +1448,45 @@ export function IntelligentWeddingPlanner({
           </p>
         </div>
 
-        {/* Quick Select Button */}
-        <div className="flex justify-center mb-6">
-          <button
-            onClick={() => {
-              const essentials = ['venue', 'catering', 'photography', 'music_dj', 'flowers_decor'];
-              updatePreferences({ mustHaveServices: essentials });
-            }}
-            className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
-          >
-            ⚡ Select All Essentials
-          </button>
-        </div>
+        {/* Loading State */}
+        {categoriesLoading && (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading service categories...</p>
+          </div>
+        )}
 
-        {/* Service Selection Grid */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-4">
-            Select your must-have services
-          </label>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {serviceCategories.map((service) => {
-              const isSelected = preferences.mustHaveServices.includes(service.value);
-              const servicePref = preferences.servicePreferences[service.value] || '';
+        {/* Content - Only show when not loading */}
+        {!categoriesLoading && mappedCategories.length > 0 && (
+          <>
+            {/* Quick Select Button */}
+            <div className="flex justify-center mb-6">
+              <button
+                onClick={() => {
+                  // Select first 5 categories as essentials
+                  const essentials = mappedCategories.slice(0, 5).map(c => c.value);
+                  updatePreferences({ mustHaveServices: essentials });
+                }}
+                className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+              >
+                ⚡ Select All Essentials
+              </button>
+            </div>
+
+            {/* Service Selection Grid */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-4">
+                Select your must-have services
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 🆕 Use mapped categories from database */}
+                {mappedCategories.map((service) => {
+                  const isSelected = preferences.mustHaveServices.includes(service.value);
+                  const servicePref = preferences.servicePreferences[service.value] || '';
               
               return (
-                <motion.div
+                <div
                   key={service.value}
-                  whileHover={{ scale: 1.02 }}
                   className={`
                     rounded-xl border-2 transition-all overflow-hidden min-h-[140px] flex flex-col
                     ${isSelected 
@@ -1379,7 +1507,7 @@ export function IntelligentWeddingPlanner({
                         });
                       }
                     }}
-                    className="w-full p-4 text-left"
+                    className="w-full p-4 text-left select-none"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className={`font-semibold ${isSelected ? 'text-pink-900' : 'text-gray-900'}`}>
@@ -1396,11 +1524,7 @@ export function IntelligentWeddingPlanner({
 
                   {/* Service Tier Selection (only if selected) */}
                   {isSelected && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      className="border-t border-pink-200 bg-white p-3"
-                    >
+                    <div className="border-t border-pink-200 bg-white p-3 transition-all">
                       <div className="text-xs font-semibold text-gray-700 mb-2">
                         Preference:
                       </div>
@@ -1417,7 +1541,7 @@ export function IntelligentWeddingPlanner({
                               });
                             }}
                             className={`
-                              flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all
+                              flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all select-none
                               ${servicePref === tier
                                 ? 'bg-pink-500 text-white'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -1428,13 +1552,22 @@ export function IntelligentWeddingPlanner({
                           </button>
                         ))}
                       </div>
-                    </motion.div>
+                    </div>
                   )}
-                </motion.div>
+                </div>
               );
-            })}
+                })}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Empty State - Show if no categories loaded */}
+        {!categoriesLoading && mappedCategories.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-600">No service categories available. Please try again later.</p>
           </div>
-        </div>
+        )}
       </div>
     );
   };
@@ -1484,7 +1617,7 @@ export function IntelligentWeddingPlanner({
               const isSelected = preferences.dietaryConsiderations.includes(option);
               
               return (
-                <motion.button
+                <button
                   key={option}
                   onClick={() => {
                     if (isSelected) {
@@ -1497,8 +1630,6 @@ export function IntelligentWeddingPlanner({
                       });
                     }
                   }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   className={`
                     p-3 rounded-lg border-2 transition-all text-sm
                     ${isSelected 
@@ -1508,7 +1639,7 @@ export function IntelligentWeddingPlanner({
                   `}
                 >
                   {option}
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -1524,7 +1655,7 @@ export function IntelligentWeddingPlanner({
               const isSelected = preferences.accessibilityNeeds.includes(option);
               
               return (
-                <motion.button
+                <button
                   key={option}
                   onClick={() => {
                     if (isSelected) {
@@ -1537,8 +1668,6 @@ export function IntelligentWeddingPlanner({
                       });
                     }
                   }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   className={`
                     p-3 rounded-lg border-2 transition-all text-sm
                     ${isSelected 
@@ -1548,7 +1677,7 @@ export function IntelligentWeddingPlanner({
                   `}
                 >
                   {option}
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -1564,7 +1693,7 @@ export function IntelligentWeddingPlanner({
               const isSelected = preferences.culturalRequirements.includes(option);
               
               return (
-                <motion.button
+                <button
                   key={option}
                   onClick={() => {
                     // Single select - replace the array with just this option
@@ -1578,8 +1707,6 @@ export function IntelligentWeddingPlanner({
                       });
                     }
                   }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   className={`
                     p-3 rounded-lg border-2 transition-all text-sm
                     ${isSelected 
@@ -1589,7 +1716,7 @@ export function IntelligentWeddingPlanner({
                   `}
                 >
                   {option}
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -1605,7 +1732,7 @@ export function IntelligentWeddingPlanner({
               const isSelected = preferences.additionalServices.includes(option);
               
               return (
-                <motion.button
+                <button
                   key={option}
                   onClick={() => {
                     if (isSelected) {
@@ -1618,10 +1745,8 @@ export function IntelligentWeddingPlanner({
                       });
                     }
                   }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   className={`
-                    p-3 rounded-lg border-2 transition-all text-sm
+                    p-3 rounded-lg border-2 transition-all text-sm select-none
                     ${isSelected 
                       ? 'border-pink-500 bg-pink-50 text-pink-900 font-semibold' 
                       : 'border-gray-200 bg-white text-gray-700 hover:border-pink-300'
@@ -1629,7 +1754,7 @@ export function IntelligentWeddingPlanner({
                   `}
                 >
                   {option}
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -1663,19 +1788,23 @@ export function IntelligentWeddingPlanner({
     const relevantFields = getCategoryRelevantFields(service.category);
     
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+      <div
         className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
       >
-        <motion.div
-          initial={{ scale: 0.9, y: 20 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.9, y: 20 }}
-          onClick={(e) => e.stopPropagation()}
+        <div
           className="relative w-full max-w-3xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+          style={{ 
+            userSelect: 'text', 
+            WebkitUserSelect: 'text', 
+            MozUserSelect: 'text',
+            cursor: 'default'
+          }}
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-6 text-white">
@@ -1861,8 +1990,8 @@ export function IntelligentWeddingPlanner({
               Message Vendor
             </button>
           </div>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     );
   };
 
@@ -1900,13 +2029,9 @@ export function IntelligentWeddingPlanner({
       <div className="space-y-8">
         {/* Header */}
         <div className="text-center">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full mb-4"
-          >
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full mb-4">
             <Sparkles className="w-8 h-8 text-white" />
-          </motion.div>
+          </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             Your Personalized Wedding Packages
           </h2>
@@ -1927,11 +2052,8 @@ export function IntelligentWeddingPlanner({
             const colors = tierColors[pkg.tier];
 
             return (
-              <motion.div
+              <div
                 key={pkg.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
                 className={`relative rounded-2xl border-2 ${colors.border} ${colors.bg} overflow-hidden hover:shadow-xl transition-all`}
               >
                 {/* Best Match Badge */}
@@ -2030,8 +2152,10 @@ export function IntelligentWeddingPlanner({
                   <div className="space-y-2 pt-4">
                     <button
                       onClick={() => {
-                        // TODO: Handle package selection
-                        console.log('Selected package:', pkg.id);
+                        // Show first service for now
+                        if (pkg.services.length > 0) {
+                          setSelectedServiceDetail(pkg.services[0]);
+                        }
                       }}
                       className={`w-full py-3 bg-gradient-to-r ${colors.from} ${colors.to} text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center space-x-2`}
                     >
@@ -2051,7 +2175,7 @@ export function IntelligentWeddingPlanner({
                     </button>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             );
           })}
         </div>
@@ -2074,7 +2198,7 @@ export function IntelligentWeddingPlanner({
             <button
               onClick={() => {
                 // TODO: Handle browse all services
-                console.log('Browse all services');
+                onClose();
               }}
               className="px-6 py-3 bg-white border-2 border-pink-500 text-pink-600 rounded-xl font-semibold hover:bg-pink-50 transition-all"
             >
@@ -2087,8 +2211,6 @@ export function IntelligentWeddingPlanner({
   };
 
   // ==================== RENDER STEP ====================
-
-
 
   const renderStep = () => {
     if (showResults) {
@@ -2123,19 +2245,21 @@ export function IntelligentWeddingPlanner({
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+    <>
+      {/* Modal Overlay - NO userSelect prevention here to allow input field interaction */}
+      <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-        onClick={handleClose}
+        onClick={(e) => {
+          // Only close if clicking directly on the overlay (not bubbled from children)
+          if (e.target === e.currentTarget) {
+            console.log('[DSS Modal] Overlay clicked - closing');
+            handleClose();
+          }
+        }}
+        style={{ cursor: 'default' }}
       >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          onClick={(e) => e.stopPropagation()}
+        {/* Modal Content */}
+        <div
           className={`relative w-full ${showResults ? 'max-w-6xl' : 'max-w-4xl'} max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col transition-all`}
         >
           {/* Header */}
@@ -2143,7 +2267,7 @@ export function IntelligentWeddingPlanner({
             <button
               onClick={handleClose}
               aria-label="Close wedding planner"
-              className="absolute top-6 right-8 p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
+              className="absolute top-6 right-8 p-2 hover:bg-gray-100 rounded-full transition-colors z-10 select-none"
             >
               <X className="w-6 h-6 text-gray-600" />
             </button>
@@ -2177,11 +2301,9 @@ export function IntelligentWeddingPlanner({
             {!showResults && (
               <>
                 <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progressPercentage}%` }}
-                    transition={{ duration: 0.5, ease: 'easeOut' }}
-                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-500 to-purple-600 rounded-full"
+                  <div
+                    style={{ width: `${progressPercentage}%` }}
+                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-500 to-purple-600 rounded-full transition-all duration-500"
                   />
                 </div>
                 <div className="flex justify-between mt-2">
@@ -2202,17 +2324,9 @@ export function IntelligentWeddingPlanner({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-8 dss-content-area">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentStep}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                {renderStep()}
-              </motion.div>
-            </AnimatePresence>
+            <div key={currentStep}>
+              {renderStep()}
+            </div>
           </div>
 
           {/* Footer Navigation */}
@@ -2222,7 +2336,7 @@ export function IntelligentWeddingPlanner({
                 onClick={handleBack}
                 disabled={currentStep === 1}
                 className={`
-                  flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all
+                  flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all select-none
                   ${currentStep === 1
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-gray-400 hover:shadow-md'
@@ -2236,14 +2350,14 @@ export function IntelligentWeddingPlanner({
               <div className="flex items-center space-x-4">
                 <button
                   onClick={handleClose}
-                  className="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                  className="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium transition-colors select-none"
                 >
                   Save & Exit
                 </button>
                 
                 <button
                   onClick={handleNext}
-                  className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all"
+                  className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all select-none"
                 >
                   <span>{currentStepIndex === relevantSteps.length - 1 ? 'Generate Recommendations' : 'Next'}</span>
                   {currentStepIndex === relevantSteps.length - 1 ? (
@@ -2255,7 +2369,7 @@ export function IntelligentWeddingPlanner({
               </div>
             </div>
           )}
-        </motion.div>
+        </div>
 
         {/* Service Detail Modal */}
         {selectedServiceDetail && (
@@ -2264,7 +2378,7 @@ export function IntelligentWeddingPlanner({
             onClose={() => setSelectedServiceDetail(null)}
           />
         )}
-      </motion.div>
-    </AnimatePresence>
+      </div>
+    </>
   );
 }

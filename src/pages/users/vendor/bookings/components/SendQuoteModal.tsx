@@ -902,15 +902,6 @@ const getSmartPackages = (
   serviceFeatures?: string[], // ACTUAL service features from database
   servicePrice?: string // ACTUAL service price
 ): SimplePackage[] => {
-  console.log('🎯 [getSmartPackages] Called with:', {
-    serviceType,
-    guestCount,
-    budgetRange,
-    featuresCount: serviceFeatures?.length || 0,
-    servicePrice,
-    rawFeatures: serviceFeatures
-  });
-
   // Determine scale factor based on guest count
   const scale = !guestCount ? 1 : 
     guestCount < 50 ? 0.8 : 
@@ -926,8 +917,6 @@ const getSmartPackages = (
   
   // Parse actual service price if available - this is CRITICAL
   const actualPrice = servicePrice ? parseFloat(servicePrice.replace(/[^0-9.]/g, '')) || null : null;
-  console.log('💰 [getSmartPackages] Parsed service price:', actualPrice);
-  
   // 🎯 CLEAN AND VALIDATE SERVICE FEATURES
   // Filter out empty, null, or generic entries but be more lenient
   const actualFeatures = serviceFeatures && serviceFeatures.length > 0 
@@ -944,12 +933,8 @@ const getSmartPackages = (
         })
     : null;
   
-  console.log('✨ [getSmartPackages] Cleaned features:', actualFeatures);
-
   // 🎯 PRIORITY 1: Use actual price + actual features (BEST CASE)
   if (actualPrice && actualPrice > 0 && actualFeatures && actualFeatures.length > 0) {
-    console.log('✅ [SmartPackages] BEST CASE - Using ACTUAL price AND features!');
-    
     const baseServicePrice = actualPrice;
     
     // Split features into tiers based on count
@@ -991,8 +976,6 @@ const getSmartPackages = (
   
   // 🎯 PRIORITY 2: Use actual price only (create generic feature list)
   if (actualPrice && actualPrice > 0) {
-    console.log('⚙️ [SmartPackages] Using ACTUAL price with generated features');
-    
     const baseServicePrice = actualPrice;
     const categoryFeatures = getCategoryDefaultFeatures(serviceType);
     
@@ -1034,8 +1017,6 @@ const getSmartPackages = (
   
   // 🎯 PRIORITY 3: Use actual features only (estimate price from budget/category)
   if (actualFeatures && actualFeatures.length > 0) {
-    console.log('🔧 [SmartPackages] Using ACTUAL features with estimated pricing');
-    
     const estimatedPrice = budgetRange ? (
       budgetRange.includes('100,000+') ? 80000 :
       budgetRange.includes('50,000-100,000') ? 40000 :
@@ -1079,8 +1060,6 @@ const getSmartPackages = (
   }
   
   // 🔄 FALLBACK: Generic packages if no service data available
-  console.log('⚠️ [SmartPackages] FALLBACK - No service data, using category defaults');
-  
   const basePrices: Record<string, number[]> = {
     'Photographer & Videographer': [15000, 35000, 65000],
     'Caterer': [200, 350, 600], // per person
@@ -1185,8 +1164,6 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
   // Function to load existing quote data when editing
   const loadExistingQuoteData = React.useCallback(async () => {
     try {
-      console.log('🔍 [SendQuoteModal] Loading existing quote for booking:', booking.id);
-      
       // For now, reconstruct quote from booking data
       // In a real system, you'd fetch from /api/quotes/:bookingId
       if (booking.quoteAmount && booking.quoteAmount > 0) {
@@ -1214,12 +1191,7 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
         validityDate.setDate(validityDate.getDate() - 14); // Valid until 2 weeks before event
         setValidUntil(validityDate.toISOString().split('T')[0]);
         
-        console.log('✅ [SendQuoteModal] Loaded existing quote:', {
-          amount: booking.quoteAmount,
-          items: existingQuoteItems.length,
-          editMode: true
-        });
-      }
+        }
     } catch (error) {
       console.error('❌ [SendQuoteModal] Failed to load existing quote:', error);
       // Fall back to empty form
@@ -1238,12 +1210,9 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
       const isEditMode = booking.status === 'quote_sent' && booking.quoteAmount && booking.quoteAmount > 0;
       
       if (isEditMode) {
-        console.log('✏️ [SendQuoteModal] EDIT MODE - Loading previously sent quote data');
         // Call the function directly - don't depend on it in useEffect deps
         loadExistingQuoteData();
       } else if (serviceData && serviceData.features && serviceData.features.length > 0) {
-        console.log('🎯 [SendQuoteModal] NEW QUOTE - Using service items for prefill:', serviceData);
-        
         // Convert service items to quote items
         const basePrice = parseFloat(serviceData.price) || 10000;
         const pricePerItem = Math.round(basePrice / Math.max(serviceData.features.length, 1));
@@ -1261,10 +1230,8 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
         setQuoteItems(prefillItems);
         setQuoteMessage(`Thank you for your interest in our ${serviceData.name} service. Below is the detailed breakdown of all items and equipment included:`);
         
-        console.log('✅ [SendQuoteModal] Prefilled with', prefillItems.length, 'items from service inventory');
-      } else {
+        } else {
         // Reset to empty form - no pre-filled values
-        console.log('📝 [SendQuoteModal] No existing data, starting with empty form');
         setQuoteItems([]);
         setQuoteMessage('');
       }
@@ -1376,10 +1343,6 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
     };
 
     try {
-      console.log('📤 [SendQuoteModal] Sending quote to backend API...');
-      console.log('   Booking ID:', booking.id);
-      console.log('   Quote Data:', quoteData);
-      
       // � USE NEW /send-quote ENDPOINT that properly sets quoted_price field
       const sendQuotePayload = {
         quotedPrice: total,  // Total price from quote calculation
@@ -1388,8 +1351,6 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
         validityDays: Math.ceil((new Date(validUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
         itemization: quoteData  // Full quote details including items breakdown
       };
-      
-      console.log('📤 [SendQuoteModal] Sending quote with proper fields:', sendQuotePayload);
       
       // Call the NEW backend endpoint that sets quoted_price properly
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com'}/api/bookings/${booking.id}/send-quote`, {
@@ -1408,8 +1369,6 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
       }
       
       const result = await response.json();
-      console.log('✅ [SendQuoteModal] Quote sent successfully:', result);
-      
       // Create a formatted result that includes the quote data
       const formattedResult = {
         ...result,
@@ -1446,8 +1405,6 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
     const template = DEFAULT_QUOTE_TEMPLATES[serviceType];
     if (!template) return;
 
-    console.log(`📦 [SendQuoteModal] Loading additional template for: ${serviceType}`);
-    
     // Convert template items to QuoteItems with vendor pricing
     const newItems: QuoteItem[] = template.items.map((templateItem, index) => ({
       id: `${serviceType.toLowerCase().replace(/\s+/g, '-')}-${index}`,
@@ -1462,8 +1419,7 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
     // Add to existing items (don't replace)
     setQuoteItems(prevItems => [...prevItems, ...newItems]);
     
-    console.log(`✅ [SendQuoteModal] Added ${newItems.length} items from ${serviceType} template`);
-  };
+    };
 
   // Function to load preset package (replaces current quote items)
   const loadPresetPackage = (packageId: 'essential' | 'complete' | 'premium') => {
@@ -1481,8 +1437,6 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
       return;
     }
 
-    console.log(`🎯 [SendQuoteModal] Loading smart package: ${selectedPackage.name}`);
-    
     // Create quote items from package features
     const newItems: QuoteItem[] = selectedPackage.features.map((feature, index) => ({
       id: `${packageId}-${Date.now()}-${index}`,
@@ -1494,7 +1448,6 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
       category: booking.serviceType
     }));
 
-    console.log(`🔄 [SendQuoteModal] Replacing with ${newItems.length} items from ${selectedPackage.name}`);
     setQuoteItems([...newItems]);
     
     // Update quote message with package info

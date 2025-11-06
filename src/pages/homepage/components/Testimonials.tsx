@@ -109,59 +109,68 @@ export const Testimonials: React.FC = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
 
-  // Fetch real reviews from database
+  // Fetch real reviews from database using the featured reviews endpoint
   useEffect(() => {
     const fetchRealReviews = async () => {
       try {
         const apiBaseUrl = (import.meta as any).env?.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
         
-        // Fetch reviews from vendors (via details endpoint which includes reviews)
-        const response = await fetch(`${apiBaseUrl}/api/vendors/featured`);
-        const data = await response.json();
+        console.log('🔍 [Testimonials] Fetching featured reviews from:', `${apiBaseUrl}/api/reviews/featured`);
         
-        if (data.success && data.vendors) {
-          const realTestimonials: Testimonial[] = [];
+        // Fetch featured reviews directly
+        const response = await fetch(`${apiBaseUrl}/api/reviews/featured?limit=10`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const reviews = await response.json();
+        
+        console.log('📡 [Testimonials] API Response:', reviews);
+        
+        if (reviews && Array.isArray(reviews) && reviews.length > 0) {
+          // Transform reviews into testimonials format
+          const realTestimonials: Testimonial[] = reviews.map((review: any) => {
+            // Generate couple names from user name
+            const userName = review.name || 'Happy Couple';
+            const nameParts = userName.split(' ');
+            const coupleName = nameParts.length >= 2 
+              ? `${nameParts[0]} & ${nameParts[nameParts.length - 1]}`
+              : `${nameParts[0]} & Partner`;
+            
+            // Format date
+            const formattedDate = review.date || 'Recently';
+            
+            // Extract location (e.g., "Dasmariñas City, Cavite, Philippines" -> "Dasmariñas")
+            const location = 'Dasmariñas'; // All reviews are from Dasmariñas City, Cavite
+            
+            return {
+              id: review.id,
+              name: coupleName,
+              wedding: formattedDate,
+              location: location,
+              rating: parseInt(review.rating) || 4,
+              image: review.image || 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=200&h=200&fit=crop&crop=faces',
+              quote: review.review,
+              vendor: review.vendor || 'Wedding Vendor',
+              category: review.category || 'Wedding Services',
+              likes: Math.floor(Math.random() * 400) + 100, // Random likes between 100-500
+              verified: review.verified || true,
+              images: []
+            };
+          });
           
-          // For each vendor, fetch their reviews
-          for (const vendor of data.vendors.slice(0, 3)) { // Get reviews from first 3 vendors
-            try {
-              const vendorDetailsResponse = await fetch(`${apiBaseUrl}/api/vendors/${vendor.id}/details`);
-              const vendorData = await vendorDetailsResponse.json();
-              
-              if (vendorData.success && vendorData.reviews && vendorData.reviews.length > 0) {
-                // Transform reviews into testimonials format
-                vendorData.reviews.slice(0, 2).forEach((review: any) => {
-                  realTestimonials.push({
-                    id: review.id,
-                    name: review.reviewer?.name || 'Happy Couple',
-                    wedding: new Date(review.date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-                    location: vendor.location || 'Philippines',
-                    rating: review.rating,
-                    image: review.reviewer?.image || review.images?.[0] || 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=200&h=200&fit=crop&crop=faces',
-                    quote: review.comment,
-                    vendor: vendor.name,
-                    category: review.serviceType || vendor.category,
-                    likes: Math.floor(Math.random() * 500) + 100,
-                    verified: true,
-                    images: review.images || []
-                  });
-                });
-              }
-            } catch (err) {
-              console.warn('Could not fetch reviews for vendor:', vendor.id);
-            }
-          }
-          
-          // Use real testimonials if we got any, otherwise use fallback
-          if (realTestimonials.length > 0) {
-            console.log(`✅ [Testimonials] Loaded ${realTestimonials.length} real reviews from database`);
-            setTestimonials(realTestimonials);
-          } else {
-            console.log('ℹ️ [Testimonials] No real reviews found, using fallback testimonials');
-          }
+          console.log(`✅ [Testimonials] Loaded ${realTestimonials.length} real reviews from database`);
+          console.log('📊 Real testimonials:', realTestimonials);
+          setTestimonials(realTestimonials);
+        } else {
+          console.log('ℹ️ [Testimonials] No real reviews found, using fallback testimonials');
+          setTestimonials(fallbackTestimonials);
         }
       } catch (error) {
-        console.warn('Could not fetch real reviews, using fallback testimonials:', error);
+        console.error('❌ [Testimonials] Error fetching real reviews:', error);
+        console.log('ℹ️ [Testimonials] Using fallback testimonials due to error');
+        setTestimonials(fallbackTestimonials);
       } finally {
         setIsLoading(false);
       }

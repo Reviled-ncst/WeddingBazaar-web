@@ -50,6 +50,23 @@
 }
 
 @layer components {
+  /* DSS Modal - Prevent text selection on buttons but allow it on inputs */
+  .dss-content-area button {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+  }
+  
+  .dss-content-area input,
+  .dss-content-area textarea,
+  .dss-content-area select {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+  }
+  
   .btn {
     @apply inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
   }
