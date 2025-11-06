@@ -54,6 +54,39 @@ router.get('/', async (req, res) => {
           }
         }
         
+        // CRITICAL FIX: Check services table for existing vendor_id values
+        // This handles cases where services use VEN-XXXXX but vendor uses UUID
+        // Match by contact email from services.contact_info
+        try {
+          const vendorDetails = await sql`
+            SELECT email FROM users WHERE id = ${vendor.user_id} LIMIT 1
+          `;
+          
+          if (vendorDetails.length > 0) {
+            const vendorEmail = vendorDetails[0].email;
+            console.log('🔍 Looking for services by email:', vendorEmail);
+            
+            const existingServices = await sql`
+              SELECT DISTINCT vendor_id 
+              FROM services 
+              WHERE contact_info->>'email' = ${vendorEmail}
+                AND vendor_id LIKE 'VEN-%'
+              LIMIT 5
+            `;
+            
+            if (existingServices.length > 0) {
+              existingServices.forEach(row => {
+                if (!actualVendorIds.includes(row.vendor_id)) {
+                  actualVendorIds.push(row.vendor_id);
+                  console.log('✅ Added legacy vendor_id from services:', row.vendor_id);
+                }
+              });
+            }
+          }
+        } catch (err) {
+          console.error('⚠️ Could not query existing services by email:', err.message);
+        }
+        
         console.log('✅ Will check services for vendor IDs:', actualVendorIds);
       } else {
         console.log('⚠️ Vendor not found, will try direct match with:', vendorId);
