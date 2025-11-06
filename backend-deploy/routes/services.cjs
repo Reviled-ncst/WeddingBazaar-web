@@ -10,13 +10,49 @@ router.get('/', async (req, res) => {
   try {
     const { vendorId, category, limit = 50, offset = 0 } = req.query;
     
-    // Step 1: Get services
+    // Step 1: Resolve vendor ID to handle both UUID and legacy formats
+    let actualVendorId = vendorId;
+    if (vendorId) {
+      console.log('🔍 Resolving vendor ID:', vendorId);
+      
+      // Check if this vendor exists and get both UUID and legacy ID
+      const vendorCheck = await sql`
+        SELECT id, legacy_vendor_id 
+        FROM vendors 
+        WHERE id = ${vendorId} OR legacy_vendor_id = ${vendorId}
+        LIMIT 1
+      `;
+      
+      if (vendorCheck.length > 0) {
+        const vendor = vendorCheck[0];
+        console.log('✅ Found vendor:', { uuid: vendor.id, legacy: vendor.legacy_vendor_id });
+        
+        // Now check services table - which format does it use?
+        const serviceCheck = await sql`
+          SELECT vendor_id 
+          FROM services 
+          WHERE vendor_id = ${vendor.id} OR vendor_id = ${vendor.legacy_vendor_id}
+          LIMIT 1
+        `;
+        
+        if (serviceCheck.length > 0) {
+          actualVendorId = serviceCheck[0].vendor_id;
+          console.log('✅ Services use vendor_id format:', actualVendorId);
+        } else {
+          // No services found with either ID, use UUID as default
+          actualVendorId = vendor.id;
+          console.log('ℹ️ No services found, defaulting to UUID:', actualVendorId);
+        }
+      }
+    }
+    
+    // Step 2: Get services
     let servicesQuery = `SELECT * FROM services WHERE is_active = true`;
     let params = [];
     
-    if (vendorId) {
+    if (actualVendorId) {
       servicesQuery += ` AND vendor_id = $${params.length + 1}`;
-      params.push(vendorId);
+      params.push(actualVendorId);
     }
     
     if (category) {
@@ -109,6 +145,7 @@ router.get('/', async (req, res) => {
       success: true,
       services: services,
       count: services.length,
+      vendor_id_checked: actualVendorId, // 🔍 Debug: Show which vendor ID was used
       timestamp: new Date().toISOString()
     });
     
