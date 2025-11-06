@@ -27,13 +27,25 @@ router.get('/', async (req, res) => {
         const vendor = vendorCheck[0];
         console.log('✅ Found vendor:', { uuid: vendor.id, legacy: vendor.legacy_vendor_id });
         
-        // Now check services table - which format does it use?
-        const serviceCheck = await sql`
-          SELECT vendor_id 
-          FROM services 
-          WHERE vendor_id = ${vendor.id} OR vendor_id = ${vendor.legacy_vendor_id}
-          LIMIT 1
-        `;
+        // Build service check query based on whether legacy_vendor_id exists
+        let serviceCheck;
+        if (vendor.legacy_vendor_id) {
+          // Check for services using either UUID or legacy ID
+          serviceCheck = await sql`
+            SELECT vendor_id 
+            FROM services 
+            WHERE vendor_id = ${vendor.id} OR vendor_id = ${vendor.legacy_vendor_id}
+            LIMIT 1
+          `;
+        } else {
+          // Only check UUID
+          serviceCheck = await sql`
+            SELECT vendor_id 
+            FROM services 
+            WHERE vendor_id = ${vendor.id}
+            LIMIT 1
+          `;
+        }
         
         if (serviceCheck.length > 0) {
           actualVendorId = serviceCheck[0].vendor_id;
