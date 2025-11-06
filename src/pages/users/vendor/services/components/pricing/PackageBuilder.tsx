@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import {
   Plus,
@@ -41,6 +41,35 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [expandedPackages, setExpandedPackages] = useState<Set<number>>(new Set([0]));
   const [showTemplates, setShowTemplates] = useState(packages.length === 0);
+
+  // ✅ NEW: Sync packages to window.__tempPackageData for form submission
+  useEffect(() => {
+    if (!window.__tempPackageData) {
+      window.__tempPackageData = {
+        packages: [],
+        addons: [],
+        pricingRules: []
+      };
+    }
+    
+    // Transform PackageItem[] to ServicePackage[] format expected by backend
+    window.__tempPackageData.packages = packages.map((pkg, index) => ({
+      name: pkg.item_name,
+      description: pkg.description,
+      price: pkg.price,
+      is_default: index === 0, // First package is default
+      is_active: pkg.is_active,
+      items: pkg.inclusions.filter(inc => inc.trim()).map(inc => ({
+        category: 'deliverable', // Default category
+        name: inc,
+        quantity: 1,
+        unit: 'pcs',
+        description: ''
+      }))
+    }));
+    
+    console.log('📦 [PackageBuilder] Synced packages to window:', packages.length);
+  }, [packages]);
 
   const addPackage = (template?: PackageItem) => {
     const newPackage: PackageItem = template || {

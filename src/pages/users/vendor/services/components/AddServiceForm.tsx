@@ -81,6 +81,55 @@ interface Service {
   video_url?: string;
 }
 
+// ✅ NEW: Itemization interfaces
+interface PackageItem {
+  category: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  description?: string;
+}
+
+interface ServicePackage {
+  id?: string;
+  name: string;
+  description: string;
+  price: number;
+  is_default: boolean;
+  is_active: boolean;
+  items?: PackageItem[];
+}
+
+interface ServiceAddon {
+  id?: string;
+  name: string;
+  description: string;
+  price: number;
+  is_active: boolean;
+}
+
+interface PricingRule {
+  id?: string;
+  rule_type: string;
+  rule_name: string;
+  base_price: number;
+  price_per_unit?: number;
+  min_quantity?: number;
+  max_quantity?: number;
+  is_active: boolean;
+}
+
+// ✅ Extend Window interface for itemization data
+declare global {
+  interface Window {
+    __tempPackageData?: {
+      packages: ServicePackage[];
+      addons: ServiceAddon[];
+      pricingRules: PricingRule[];
+    };
+  }
+}
+
 interface LocationData {
   address: string;
   lat?: number;
@@ -676,8 +725,19 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         cultural_specialties: formData.cultural_specialties.length > 0 ? formData.cultural_specialties : null,
         availability: typeof formData.availability === 'object' 
           ? JSON.stringify(formData.availability)
-          : formData.availability
+          : formData.availability,
+        // ✅ NEW: Itemization data from PricingModeSelector and PackageBuilder components
+        // These will be populated if the user creates packages/add-ons in the pricing step
+        packages: window.__tempPackageData?.packages || [],
+        addons: window.__tempPackageData?.addons || [],
+        pricingRules: window.__tempPackageData?.pricingRules || []
       };
+      
+      console.log('📦 [AddServiceForm] Itemization data included:', {
+        packages: serviceData.packages.length,
+        addons: serviceData.addons.length,
+        pricingRules: serviceData.pricingRules.length
+      });
 
       console.log('📤 [AddServiceForm] Calling onSubmit with data:', serviceData);
       await onSubmit(serviceData);
