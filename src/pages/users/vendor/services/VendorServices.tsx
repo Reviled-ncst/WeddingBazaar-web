@@ -422,7 +422,8 @@ export const VendorServices: React.FC = () => {
         const maxServices = subscription?.plan?.limits?.max_services || 5;
         const currentServicesCount = services.length;
         
-        if (currentServicesCount >= maxServices) {
+        // ✅ FIX: Check if unlimited (-1) before enforcing limit
+        if (maxServices !== -1 && currentServicesCount >= maxServices) {
           const planName = subscription?.plan?.name || 'Basic';
           const nextPlan = subscription?.plan?.tier === 'basic' ? 'premium' : 'pro';
           // Show centralized upgrade modal (with payment integration)
@@ -619,7 +620,8 @@ export const VendorServices: React.FC = () => {
     const maxServices = subscription?.plan?.limits?.max_services || 5; // Default 5 for free tier
     const currentServicesCount = services.length;
     
-    if (currentServicesCount >= maxServices) {
+    // ✅ FIX: Check if unlimited (-1) before enforcing limit
+    if (maxServices !== -1 && currentServicesCount >= maxServices) {
       const planName = subscription?.plan?.name || 'Free';
       const message = `You've reached the maximum of ${maxServices} services for your ${planName} plan. Upgrade to add more services!`;
       
