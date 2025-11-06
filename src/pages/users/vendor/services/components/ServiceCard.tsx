@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Edit,
   Trash2,
@@ -16,7 +16,11 @@ import {
   MapPin,
   Share2,
   Crown,
-  CheckCircle2
+  CheckCircle2,
+  Package,
+  Gift,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
 import type { Service } from '../services/vendorServicesAPI';
@@ -41,6 +45,12 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 }) => {
   const [showActions, setShowActions] = React.useState(false);
   const [isToggling, setIsToggling] = React.useState(false);
+  const [showItemization, setShowItemization] = React.useState(false);
+  
+  // Check if service has itemization data
+  const hasItemization = (service as any).packages?.length > 0 || 
+                         (service as any).addons?.length > 0 || 
+                         (service as any).pricing_rules?.length > 0;
 
   const displayPrice = getDisplayPrice(service);
   const displayImage = getDisplayImage(service);
@@ -235,6 +245,108 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                 {service.years_in_business}+ years
               </span>
             )}
+          </div>
+        )}
+        
+        {/* ✅ NEW: Itemization Display Section */}
+        {hasItemization && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <button
+              onClick={() => setShowItemization(!showItemization)}
+              className="w-full flex items-center justify-between text-sm font-semibold text-gray-700 hover:text-pink-600 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                <span>View Packages & Details</span>
+              </div>
+              {showItemization ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
+            
+            <AnimatePresence>
+              {showItemization && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="mt-3 space-y-3 overflow-hidden"
+                >
+                  {/* Packages */}
+                  {(service as any).packages?.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-700 mb-2 flex items-center gap-1">
+                        <Package className="w-3 h-3" />
+                        Packages ({(service as any).packages.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {(service as any).packages.map((pkg: any, index: number) => (
+                          <div
+                            key={index}
+                            className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg p-3 text-xs"
+                          >
+                            <div className="flex items-start justify-between mb-1">
+                              <span className="font-bold text-gray-800">{pkg.name}</span>
+                              <span className="font-bold text-pink-600">
+                                ₱{pkg.price.toLocaleString()}
+                              </span>
+                            </div>
+                            {pkg.description && (
+                              <p className="text-gray-600 text-xs mb-2">{pkg.description}</p>
+                            )}
+                            {(service as any).package_items?.[pkg.id]?.length > 0 && (
+                              <div className="mt-2 space-y-1">
+                                {(service as any).package_items[pkg.id].slice(0, 3).map((item: any, idx: number) => (
+                                  <div key={idx} className="flex items-center gap-1 text-xs text-gray-600">
+                                    <CheckCircle2 className="w-3 h-3 text-green-500" />
+                                    <span>{item.quantity}× {item.item_name}</span>
+                                  </div>
+                                ))}
+                                {(service as any).package_items[pkg.id].length > 3 && (
+                                  <p className="text-xs text-gray-500 italic">
+                                    +{(service as any).package_items[pkg.id].length - 3} more items
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Add-ons */}
+                  {(service as any).addons?.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-700 mb-2 flex items-center gap-1">
+                        <Gift className="w-3 h-3" />
+                        Add-ons ({(service as any).addons.length})
+                      </h4>
+                      <div className="space-y-1">
+                        {(service as any).addons.slice(0, 3).map((addon: any, index: number) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between bg-blue-50 rounded px-2 py-1 text-xs"
+                          >
+                            <span className="text-gray-700">{addon.name}</span>
+                            <span className="font-semibold text-blue-600">
+                              +₱{addon.price.toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                        {(service as any).addons.length > 3 && (
+                          <p className="text-xs text-gray-500 italic px-2">
+                            +{(service as any).addons.length - 3} more add-ons
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>
