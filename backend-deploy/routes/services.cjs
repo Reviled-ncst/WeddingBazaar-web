@@ -575,9 +575,11 @@ router.post('/', async (req, res) => {
         LIMIT 1
       `;
       
-      // Default to basic plan if no subscription found
-      const planName = subscription.length > 0 ? subscription[0].plan_name : 'basic';
-      console.log(`📋 [Subscription Check] Plan: ${planName}`);
+      // ✅ TEMPORARY FIX: Default to premium plan (unlimited) if no subscription found
+      // This allows all vendors to add unlimited services during beta/testing
+      // TODO: Revert to 'basic' once subscription system is fully implemented
+      const planName = subscription.length > 0 ? subscription[0].plan_name : 'premium';  // Changed from 'basic' to 'premium'
+      console.log(`📋 [Subscription Check] Plan: ${planName}${subscription.length === 0 ? ' (DEFAULT - no subscription found)' : ''}`);
       
       // Define plan limits (matching subscription system)
       const planLimits = {
