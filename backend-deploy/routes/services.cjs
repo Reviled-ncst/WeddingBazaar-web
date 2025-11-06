@@ -178,18 +178,45 @@ router.get('/vendor/:vendorId', async (req, res) => {
   try {
     const { vendorId } = req.params;
     
+    // ✅ FIX: Handle both VEN-xxxxx and 2-yyyy-xxx formats
+    // If user sends 2-yyyy-xxx (user ID), look up actual vendor ID first
+    let actualVendorIds = [vendorId]; // Start with what was sent
+    
+    // Check if this is a user ID format (2-yyyy-xxx)
+    if (vendorId.startsWith('2-')) {
+      console.log('🔍 User ID format detected, looking up vendor IDs for user:', vendorId);
+      
+      // Get all vendor IDs associated with this user_id
+      const vendorLookup = await sql`
+        SELECT id FROM vendors WHERE user_id = ${vendorId}
+      `;
+      
+      if (vendorLookup.length > 0) {
+        actualVendorIds = vendorLookup.map(v => v.id);
+        console.log('✅ Found vendor IDs:', actualVendorIds);
+      } else {
+        console.log('⚠️ No vendor found with user_id:', vendorId, '- will also try direct match');
+      }
+      
+      // Also include the user ID itself (for legacy entries where vendor.id = user.id)
+      actualVendorIds.push(vendorId);
+    }
+    
+    // Query services using ALL possible vendor IDs
     const services = await sql`
       SELECT * FROM services 
-      WHERE vendor_id = ${vendorId}
+      WHERE vendor_id = ANY(${actualVendorIds})
       ORDER BY created_at DESC
     `;
     
-    console.log(`✅ Found ${services.length} services for vendor ${vendorId}`);
+    console.log(`✅ Found ${services.length} services for vendor ${vendorId} (checked IDs: ${actualVendorIds.join(', ')})`);
     
     res.json({
       success: true,
       services: services,
       count: services.length,
+      vendor_id_checked: vendorId,
+      actual_vendor_ids_used: actualVendorIds,
       timestamp: new Date().toISOString()
     });
     
