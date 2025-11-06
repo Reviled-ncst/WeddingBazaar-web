@@ -1146,7 +1146,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
                                 locationData
                               }));
                             }}
-                            placeholder="🔍 Search for your service location (e.g., Manila, Philippines)"
+                            placeholder="🔍 Search location (e.g., Dasmariñas, Cavite)"
                             className="w-full"
                           />
                         </div>

@@ -62,11 +62,13 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           setPosition([position.coords.latitude, position.coords.longitude]);
         },
         () => {
-          setPosition([14.5995, 120.9842]); // Manila default
+          // Default to Dasmariñas, Cavite instead of Manila
+          setPosition([14.3294, 120.9367]); // Dasmariñas City, Cavite
         }
       );
     } else {
-      setPosition([14.5995, 120.9842]);
+      // Default to Dasmariñas, Cavite instead of Manila
+      setPosition([14.3294, 120.9367]); // Dasmariñas City, Cavite
     }
   }, []);
 
@@ -193,7 +195,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       </div>
       {/* Search Results Dropdown */}
       {searchResults.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] max-h-60 overflow-y-auto">
           {searchResults.map((result, index) => (
             <button
               key={index}
@@ -213,7 +215,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       )}
       {/* Loading indicator */}
       {isSearching && searchQuery.length >= 3 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4 text-center">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] p-4 text-center">
           <div className="text-gray-500">Searching locations...</div>
         </div>
       )}
