@@ -10,138 +10,27 @@ router.get('/', async (req, res) => {
   try {
     const { vendorId, category, limit = 50, offset = 0 } = req.query;
     
-    // Step 1: Resolve vendor ID to handle UUID, legacy VEN-xxxxx, AND user ID formats
-    let actualVendorIds = vendorId ? [vendorId] : null;
+    // Step 1: Get services
+    let servicesQuery = `SELECT * FROM services WHERE is_active = true`;
+    let params = [];
     
     if (vendorId) {
-      console.log('🔍 Resolving vendor ID:', vendorId);
-      
-      // Look up vendor to get ALL possible IDs (UUID and user_id)
-      let vendorCheck;
-      try {
-        vendorCheck = await sql`
-          SELECT id, user_id
-          FROM vendors 
-          WHERE id = ${vendorId} OR user_id = ${vendorId}
-          LIMIT 1
-        `;
-      } catch (err) {
-        console.error('⚠️ Vendor check error:', err.message);
-        vendorCheck = [];
-      }
-      
-      if (vendorCheck.length > 0) {
-        const vendor = vendorCheck[0];
-        console.log('✅ Found vendor:', { 
-          uuid: vendor.id, 
-          user_id: vendor.user_id 
-        });
-        
-        // Build array of ALL possible vendor IDs to check
-        actualVendorIds = [vendor.id]; // Always include UUID
-        
-        if (vendor.user_id) {
-          actualVendorIds.push(vendor.user_id);
-        }
-        
-        // Try VEN-xxxxx format based on user_id
-        if (vendor.user_id && vendor.user_id.startsWith('2-')) {
-          const parts = vendor.user_id.split('-');
-          if (parts.length === 3) {
-            const legacyId = `VEN-${parts[2]}`;
-            actualVendorIds.push(legacyId);
-            console.log('✅ Added potential legacy ID:', legacyId);
-          }
-        }
-        
-        // CRITICAL FIX: Check services table for existing vendor_id values
-        // This handles cases where services use VEN-XXXXX but vendor uses UUID
-        // Match by contact email from services.contact_info
-        try {
-          const vendorDetails = await sql`
-            SELECT email FROM users WHERE id = ${vendor.user_id} LIMIT 1
-          `;
-          
-          if (vendorDetails.length > 0) {
-            const vendorEmail = vendorDetails[0].email;
-            console.log('🔍 Looking for services by email:', vendorEmail);
-            
-            const existingServices = await sql`
-              SELECT DISTINCT vendor_id 
-              FROM services 
-              WHERE contact_info->>'email' = ${vendorEmail}
-                AND vendor_id LIKE 'VEN-%'
-              LIMIT 5
-            `;
-            
-            if (existingServices.length > 0) {
-              existingServices.forEach(row => {
-                if (!actualVendorIds.includes(row.vendor_id)) {
-                  actualVendorIds.push(row.vendor_id);
-                  console.log('✅ Added legacy vendor_id from services:', row.vendor_id);
-                }
-              });
-            }
-          }
-        } catch (err) {
-          console.error('⚠️ Could not query existing services by email:', err.message);
-        }
-        
-        console.log('✅ Will check services for vendor IDs:', actualVendorIds);
-      } else {
-        console.log('⚠️ Vendor not found, will try direct match with:', vendorId);
-      }
+      servicesQuery += ` AND vendor_id = $${params.length + 1}`;
+      params.push(vendorId);
     }
     
-    // Step 2: Get services - use parameterized query with vendor ID array
-    let services;
-    
-    if (actualVendorIds) {
-      // Filter by vendor IDs
-      if (category) {
-        services = await sql`
-          SELECT * FROM services 
-          WHERE is_active = true 
-            AND vendor_id = ANY(${actualVendorIds})
-            AND category = ${category}
-          ORDER BY featured DESC, created_at DESC 
-          LIMIT ${parseInt(limit)} 
-          OFFSET ${parseInt(offset)}
-        `;
-      } else {
-        services = await sql`
-          SELECT * FROM services 
-          WHERE is_active = true 
-            AND vendor_id = ANY(${actualVendorIds})
-          ORDER BY featured DESC, created_at DESC 
-          LIMIT ${parseInt(limit)} 
-          OFFSET ${parseInt(offset)}
-        `;
-      }
-      console.log(`🔍 Queried services for vendor IDs: ${actualVendorIds.join(', ')}`);
-    } else {
-      // No vendor filter
-      if (category) {
-        services = await sql`
-          SELECT * FROM services 
-          WHERE is_active = true 
-            AND category = ${category}
-          ORDER BY featured DESC, created_at DESC 
-          LIMIT ${parseInt(limit)} 
-          OFFSET ${parseInt(offset)}
-        `;
-      } else {
-        services = await sql`
-          SELECT * FROM services 
-          WHERE is_active = true 
-          ORDER BY featured DESC, created_at DESC 
-          LIMIT ${parseInt(limit)} 
-          OFFSET ${parseInt(offset)}
-        `;
-      }
+    if (category) {
+      servicesQuery += ` AND category = $${params.length + 1}`;
+      params.push(category);
     }
     
-    console.log(`✅ Found ${services.length} services`);
+    servicesQuery += ` ORDER BY featured DESC, created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(parseInt(limit), parseInt(offset));
+    
+    console.log('🔍 Services query:', servicesQuery);
+    console.log('🔍 Query parameters:', params);
+    
+    const services = await sql(servicesQuery, params);
     
     console.log(`✅ Found ${services.length} services`);
     
@@ -220,8 +109,6 @@ router.get('/', async (req, res) => {
       success: true,
       services: services,
       count: services.length,
-      vendor_id_requested: vendorId || null,
-      vendor_ids_checked: actualVendorIds || null, // 🔍 Debug: Show all vendor IDs checked
       timestamp: new Date().toISOString()
     });
     
@@ -291,73 +178,18 @@ router.get('/vendor/:vendorId', async (req, res) => {
   try {
     const { vendorId } = req.params;
     
-    // ✅ ENHANCED FIX: Handle UUID, legacy VEN-xxxxx, AND user ID formats
-    let actualVendorIds = [vendorId]; // Start with what was sent
-    
-    console.log('🔍 Step 1: Checking vendor format for:', vendorId);
-    
-    // Step 1: Look up the vendor in vendors table to find ALL possible IDs
-    // Try to get legacy_vendor_id if column exists, otherwise just id and user_id
-    let vendorLookup;
-    try {
-      vendorLookup = await sql`
-        SELECT id, user_id 
-        FROM vendors 
-        WHERE id = ${vendorId} OR user_id = ${vendorId}
-        LIMIT 1
-      `;
-    } catch (err) {
-      console.error('⚠️ Vendor lookup error:', err.message);
-      vendorLookup = [];
-    }
-    
-    if (vendorLookup.length > 0) {
-      const vendor = vendorLookup[0];
-      console.log('✅ Found vendor record:', {
-        uuid: vendor.id,
-        user_id: vendor.user_id
-      });
-      
-      // Build list of ALL possible vendor IDs to check
-      actualVendorIds = [vendor.id]; // Always include UUID
-      
-      // Also try common legacy formats
-      if (vendor.user_id) {
-        actualVendorIds.push(vendor.user_id);
-        console.log('✅ Added user ID:', vendor.user_id);
-      }
-      
-      // Try VEN-xxxxx format based on numeric part of user_id
-      if (vendor.user_id && vendor.user_id.startsWith('2-')) {
-        const parts = vendor.user_id.split('-');
-        if (parts.length === 3) {
-          const legacyId = `VEN-${parts[2]}`; // e.g., 2-2025-003 → VEN-00003
-          actualVendorIds.push(legacyId);
-          console.log('✅ Added potential legacy ID:', legacyId);
-        }
-      }
-    } else {
-      console.log('⚠️ No vendor found matching:', vendorId, '- will try direct match only');
-    }
-    
-    console.log('🔍 Step 2: Querying services with vendor IDs:', actualVendorIds);
-    
-    // Step 2: Query services using ALL possible vendor IDs
     const services = await sql`
       SELECT * FROM services 
-      WHERE vendor_id = ANY(${actualVendorIds})
+      WHERE vendor_id = ${vendorId}
       ORDER BY created_at DESC
     `;
     
     console.log(`✅ Found ${services.length} services for vendor ${vendorId}`);
-    console.log(`🔍 Checked vendor IDs: ${actualVendorIds.join(', ')}`);
     
     res.json({
       success: true,
       services: services,
       count: services.length,
-      vendor_id_requested: vendorId,
-      vendor_ids_checked: actualVendorIds,
       timestamp: new Date().toISOString()
     });
     
@@ -582,18 +414,88 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // ⚠️ DOCUMENT VERIFICATION CHECK - TEMPORARILY DISABLED
-    // TODO: Create documents table and re-enable this check
-    console.log('⚠️  [Document Check] SKIPPED - documents table does not exist yet');
+    // ✅ DOCUMENT VERIFICATION CHECK - Required for service creation
+    console.log('🔍 [Document Check] Verifying documents for vendor:', actualVendorId);
     
-    // DISABLED: Document check requires documents table
-    // try {
-    //   const vendorProfile = await sql`...`;
-    //   const approvedDocs = await sql`SELECT * FROM documents...`;
-    //   // ... verification logic ...
-    // } catch (docError) {
-    //   return res.status(500).json({ error: docError.message });
-    // }
+    try {
+      // Get vendor profile to check vendor_type
+      const vendorProfile = await sql`
+        SELECT vp.vendor_type, v.id as vendor_id
+        FROM vendor_profiles vp
+        LEFT JOIN vendors v ON v.user_id = vp.user_id
+        WHERE vp.user_id = ${actualVendorId}
+        LIMIT 1
+      `;
+      
+      if (vendorProfile.length === 0) {
+        console.log('❌ [Document Check] No vendor profile found');
+        return res.status(403).json({
+          success: false,
+          error: 'Vendor profile not found',
+          message: 'Please complete your vendor profile first'
+        });
+      }
+      
+      const vendorType = vendorProfile[0].vendor_type || 'business';
+      const vendorTableId = vendorProfile[0].vendor_id;
+      
+      console.log(`📋 [Document Check] Vendor type: ${vendorType}`);
+      
+      // Get approved documents for this vendor
+      const approvedDocs = await sql`
+        SELECT DISTINCT document_type 
+        FROM documents 
+        WHERE vendor_id = ${vendorTableId}
+        AND verification_status = 'approved'
+      `;
+      
+      const approvedTypes = approvedDocs.map(d => d.document_type);
+      console.log(`📄 [Document Check] Approved documents: ${approvedTypes.join(', ')}`);
+      
+      // Check requirements based on vendor type
+      let missingDocs = [];
+      
+      if (vendorType === 'freelancer') {
+        // FREELANCERS need: valid_id + portfolio_samples + professional_certification
+        if (!approvedTypes.includes('valid_id')) {
+          missingDocs.push('Valid ID (government-issued)');
+        }
+        if (!approvedTypes.includes('portfolio_samples')) {
+          missingDocs.push('Portfolio Samples');
+        }
+        if (!approvedTypes.includes('professional_certification')) {
+          missingDocs.push('Professional Certification');
+        }
+      } else {
+        // BUSINESSES need: business_license
+        if (!approvedTypes.includes('business_license')) {
+          missingDocs.push('Business License/Permit');
+        }
+      }
+      
+      if (missingDocs.length > 0) {
+        console.log(`❌ [Document Check] Missing required documents: ${missingDocs.join(', ')}`);
+        return res.status(403).json({
+          success: false,
+          error: 'Documents not verified',
+          message: vendorType === 'freelancer'
+            ? 'Freelancers must have approved: Valid ID, Portfolio Samples, and Professional Certification'
+            : 'Businesses must have an approved Business License/Permit',
+          missing_documents: missingDocs,
+          vendor_type: vendorType,
+          approved_documents: approvedTypes
+        });
+      }
+      
+      console.log(`✅ [Document Check] All required documents verified for ${vendorType}`);
+    } catch (docError) {
+      console.error('❌ [Document Check] Error checking documents:', docError);
+      return res.status(500).json({
+        success: false,
+        error: 'Error checking document verification',
+        message: docError.message
+      });
+    }
 
     // ✅ SUBSCRIPTION LIMIT CHECK - Check if vendor can create more services
     console.log('🔍 [Subscription Check] Checking service limits for vendor:', actualVendorId);
