@@ -222,7 +222,6 @@ router.get('/:id', async (req, res) => {
     `;
     
     console.log(`📊 Query returned ${services.length} results`);
-    console.log(`📊 Query returned ${services.length} results`);
     
     if (services.length === 0) {
       console.log(`❌ Service not found in database: ${id}`);
@@ -237,15 +236,63 @@ router.get('/:id', async (req, res) => {
     const service = services[0];
     console.log(`✅ Found service: ${service.title} (ID: ${service.id})`);
     console.log(`📊 Service vendor_id: ${service.vendor_id}`);
-    console.log(`📊 Service vendor_id: ${service.vendor_id}`);
     
-    // TEMP: Return immediately to test if vendor/review queries are causing the issue
-    return res.json({
-      success: true,
-      service: service,
-      _debug: 'Early return for testing',
-      timestamp: new Date().toISOString()
-    });
+    // ✅ GET ITEMIZATION DATA - Packages, Items, Add-ons, Pricing Rules
+    console.log('📦 [Itemization] Fetching packages for service:', id);
+    
+    // 1. Get packages for this service
+    const packages = await sql`
+      SELECT * FROM service_packages
+      WHERE service_id = ${id}
+      ORDER BY is_default DESC, price ASC
+    `;
+    console.log(`📦 Found ${packages.length} packages`);
+    
+    // 2. Get all package items (if packages exist)
+    let packageItems = {};
+    if (packages.length > 0) {
+      const packageIds = packages.map(p => p.id);
+      const items = await sql`
+        SELECT * FROM package_items
+        WHERE package_id = ANY(${packageIds})
+        ORDER BY package_id, item_category, item_order
+      `;
+      
+      // Group items by package_id
+      items.forEach(item => {
+        if (!packageItems[item.package_id]) {
+          packageItems[item.package_id] = [];
+        }
+        packageItems[item.package_id].push(item);
+      });
+      
+      console.log(`📦 Found ${items.length} package items across ${Object.keys(packageItems).length} packages`);
+    }
+    
+    // 3. Get add-ons for this service
+    const addons = await sql`
+      SELECT * FROM service_addons
+      WHERE service_id = ${id}
+      AND is_active = true
+      ORDER BY price ASC
+    `;
+    console.log(`🎁 Found ${addons.length} add-ons`);
+    
+    // 4. Get pricing rules for this service
+    const pricingRules = await sql`
+      SELECT * FROM service_pricing_rules
+      WHERE service_id = ${id}
+      AND is_active = true
+      ORDER BY created_at DESC
+    `;
+    console.log(`💰 Found ${pricingRules.length} pricing rules`);
+    
+    // Enrich service with itemization data
+    service.packages = packages;
+    service.package_items = packageItems;
+    service.addons = addons;
+    service.pricing_rules = pricingRules;
+    service.has_itemization = packages.length > 0 || addons.length > 0 || pricingRules.length > 0;
     
     // Enrich with vendor information
     if (service.vendor_id) {
@@ -289,6 +336,8 @@ router.get('/:id', async (req, res) => {
       service.review_count = parseInt(reviewStats[0].review_count);
       console.log(`✅ Service rating: ${service.rating} (${service.review_count} reviews)`);
     }
+    
+    console.log(`✅ [Itemization] Complete service data ready with ${service.packages.length} packages, ${service.addons.length} add-ons`);
     
     res.json({
       success: true,
@@ -628,10 +677,139 @@ router.post('/', async (req, res) => {
 
     console.log('✅ [POST /api/services] Service created successfully:', result[0]);
 
+    // ✅ HANDLE ITEMIZATION DATA - Create packages, items, add-ons, and pricing rules
+    const itemizationData = {
+      packages: [],
+      addons: [],
+      pricingRules: []
+    };
+
+    try {
+      // 1. Create packages (if provided)
+      if (req.body.packages && Array.isArray(req.body.packages) && req.body.packages.length > 0) {
+        console.log(`📦 [Itemization] Creating ${req.body.packages.length} packages...`);
+        
+        for (const pkg of req.body.packages) {
+          const packageResult = await sql`
+            INSERT INTO service_packages (
+              service_id, name, description, price,
+              is_default, is_active, created_at, updated_at
+            ) VALUES (
+              ${serviceId},
+              ${pkg.name},
+              ${pkg.description || ''},
+              ${pkg.price ? parseFloat(pkg.price) : 0},
+              ${pkg.is_default || false},
+              ${pkg.is_active !== false},
+              NOW(),
+              NOW()
+            )
+            RETURNING *
+          `;
+          
+          const createdPackage = packageResult[0];
+          console.log(`✅ Package created: ${createdPackage.name} (ID: ${createdPackage.id})`);
+          
+          // 2. Create package items for this package
+          if (pkg.items && Array.isArray(pkg.items) && pkg.items.length > 0) {
+            console.log(`📦 [Itemization] Creating ${pkg.items.length} items for package ${createdPackage.name}...`);
+            
+            for (let i = 0; i < pkg.items.length; i++) {
+              const item = pkg.items[i];
+              await sql`
+                INSERT INTO package_items (
+                  package_id, item_category, item_name, 
+                  quantity, unit, description, item_order,
+                  created_at, updated_at
+                ) VALUES (
+                  ${createdPackage.id},
+                  ${item.category || 'other'},
+                  ${item.name},
+                  ${item.quantity || 1},
+                  ${item.unit || 'pcs'},
+                  ${item.description || ''},
+                  ${i + 1},
+                  NOW(),
+                  NOW()
+                )
+              `;
+            }
+            console.log(`✅ ${pkg.items.length} items created for package ${createdPackage.name}`);
+          }
+          
+          itemizationData.packages.push(createdPackage);
+        }
+      }
+      
+      // 3. Create add-ons (if provided)
+      if (req.body.addons && Array.isArray(req.body.addons) && req.body.addons.length > 0) {
+        console.log(`🎁 [Itemization] Creating ${req.body.addons.length} add-ons...`);
+        
+        for (const addon of req.body.addons) {
+          const addonResult = await sql`
+            INSERT INTO service_addons (
+              service_id, name, description, price,
+              is_active, created_at, updated_at
+            ) VALUES (
+              ${serviceId},
+              ${addon.name},
+              ${addon.description || ''},
+              ${addon.price ? parseFloat(addon.price) : 0},
+              ${addon.is_active !== false},
+              NOW(),
+              NOW()
+            )
+            RETURNING *
+          `;
+          
+          itemizationData.addons.push(addonResult[0]);
+          console.log(`✅ Add-on created: ${addon.name}`);
+        }
+      }
+      
+      // 4. Create pricing rules (if provided)
+      if (req.body.pricingRules && Array.isArray(req.body.pricingRules) && req.body.pricingRules.length > 0) {
+        console.log(`💰 [Itemization] Creating ${req.body.pricingRules.length} pricing rules...`);
+        
+        for (const rule of req.body.pricingRules) {
+          const ruleResult = await sql`
+            INSERT INTO service_pricing_rules (
+              service_id, rule_type, rule_name, base_price,
+              price_per_unit, min_quantity, max_quantity,
+              is_active, created_at, updated_at
+            ) VALUES (
+              ${serviceId},
+              ${rule.rule_type || 'fixed'},
+              ${rule.rule_name || ''},
+              ${rule.base_price ? parseFloat(rule.base_price) : 0},
+              ${rule.price_per_unit ? parseFloat(rule.price_per_unit) : 0},
+              ${rule.min_quantity || null},
+              ${rule.max_quantity || null},
+              ${rule.is_active !== false},
+              NOW(),
+              NOW()
+            )
+            RETURNING *
+          `;
+          
+          itemizationData.pricingRules.push(ruleResult[0]);
+          console.log(`✅ Pricing rule created: ${rule.rule_name}`);
+        }
+      }
+      
+      console.log(`✅ [Itemization] Complete: ${itemizationData.packages.length} packages, ${itemizationData.addons.length} add-ons, ${itemizationData.pricingRules.length} rules`);
+      
+    } catch (itemizationError) {
+      console.error('⚠️  [Itemization] Error creating itemization data:', itemizationError);
+      // Don't fail the entire request if itemization fails
+      // Service was created successfully, just log the error
+    }
+
     res.status(201).json({
       success: true,
       message: 'Service created successfully',
-      service: result[0]
+      service: result[0],
+      itemization: itemizationData
     });
 
   } catch (error) {
@@ -882,6 +1060,235 @@ router.get('/categories', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch categories',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// ✅ NEW: Get itemization data for a service - GET /api/services/:id/itemization
+router.get('/:id/itemization', async (req, res) => {
+  console.log('📦 [GET /api/services/:id/itemization] Fetching itemization for service:', req.params.id);
+  
+  try {
+    const { id } = req.params;
+    
+    // 1. Get packages
+    const packages = await sql`
+      SELECT * FROM service_packages
+      WHERE service_id = ${id}
+      ORDER BY is_default DESC, price ASC
+    `;
+    
+    // 2. Get package items (if packages exist)
+    let packageItems = {};
+    if (packages.length > 0) {
+      const packageIds = packages.map(p => p.id);
+      const items = await sql`
+        SELECT * FROM package_items
+        WHERE package_id = ANY(${packageIds})
+        ORDER BY package_id, item_category, item_order
+      `;
+      
+      // Group by package_id
+      items.forEach(item => {
+        if (!packageItems[item.package_id]) {
+          packageItems[item.package_id] = [];
+        }
+        packageItems[item.package_id].push(item);
+      });
+    }
+    
+    // 3. Get add-ons
+    const addons = await sql`
+      SELECT * FROM service_addons
+      WHERE service_id = ${id}
+      AND is_active = true
+      ORDER BY price ASC
+    `;
+    
+    // 4. Get pricing rules
+    const pricingRules = await sql`
+      SELECT * FROM service_pricing_rules
+      WHERE service_id = ${id}
+      AND is_active = true
+      ORDER BY created_at DESC
+    `;
+    
+    console.log(`✅ Found ${packages.length} packages, ${addons.length} add-ons, ${pricingRules.length} pricing rules`);
+    
+    res.json({
+      success: true,
+      itemization: {
+        packages,
+        package_items: packageItems,
+        addons,
+        pricing_rules: pricingRules
+      },
+      has_itemization: packages.length > 0 || addons.length > 0 || pricingRules.length > 0
+    });
+    
+  } catch (error) {
+    console.error('❌ [GET /api/services/:id/itemization] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch itemization data',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// ✅ NEW: Update itemization for a service - PUT /api/services/:id/itemization
+router.put('/:id/itemization', async (req, res) => {
+  console.log('📦 [PUT /api/services/:id/itemization] Updating itemization for service:', req.params.id);
+  
+  try {
+    const { id } = req.params;
+    const { packages, addons, pricingRules } = req.body;
+    
+    // Verify service exists
+    const serviceCheck = await sql`SELECT id FROM services WHERE id = ${id}`;
+    if (serviceCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found'
+      });
+    }
+    
+    const result = {
+      packages: [],
+      addons: [],
+      pricingRules: []
+    };
+    
+    // 1. Handle packages
+    if (packages && Array.isArray(packages)) {
+      console.log(`📦 Processing ${packages.length} packages...`);
+      
+      for (const pkg of packages) {
+        if (pkg.id) {
+          // Update existing package
+          const updated = await sql`
+            UPDATE service_packages
+            SET name = ${pkg.name},
+                description = ${pkg.description || ''},
+                price = ${pkg.price ? parseFloat(pkg.price) : 0},
+                is_default = ${pkg.is_default || false},
+                is_active = ${pkg.is_active !== false},
+                updated_at = NOW()
+            WHERE id = ${pkg.id} AND service_id = ${id}
+            RETURNING *
+          `;
+          if (updated.length > 0) result.packages.push(updated[0]);
+        } else {
+          // Create new package
+          const created = await sql`
+            INSERT INTO service_packages (
+              service_id, name, description, price,
+              is_default, is_active, created_at, updated_at
+            ) VALUES (
+              ${id}, ${pkg.name}, ${pkg.description || ''},
+              ${pkg.price ? parseFloat(pkg.price) : 0},
+              ${pkg.is_default || false}, ${pkg.is_active !== false},
+              NOW(), NOW()
+            )
+            RETURNING *
+          `;
+          result.packages.push(created[0]);
+        }
+      }
+    }
+    
+    // 2. Handle add-ons
+    if (addons && Array.isArray(addons)) {
+      console.log(`🎁 Processing ${addons.length} add-ons...`);
+      
+      for (const addon of addons) {
+        if (addon.id) {
+          // Update existing
+          const updated = await sql`
+            UPDATE service_addons
+            SET name = ${addon.name},
+                description = ${addon.description || ''},
+                price = ${addon.price ? parseFloat(addon.price) : 0},
+                is_active = ${addon.is_active !== false},
+                updated_at = NOW()
+            WHERE id = ${addon.id} AND service_id = ${id}
+            RETURNING *
+          `;
+          if (updated.length > 0) result.addons.push(updated[0]);
+        } else {
+          // Create new
+          const created = await sql`
+            INSERT INTO service_addons (
+              service_id, name, description, price,
+              is_active, created_at, updated_at
+            ) VALUES (
+              ${id}, ${addon.name}, ${addon.description || ''},
+              ${addon.price ? parseFloat(addon.price) : 0},
+              ${addon.is_active !== false}, NOW(), NOW()
+            )
+            RETURNING *
+          `;
+          result.addons.push(created[0]);
+        }
+      }
+    }
+    
+    // 3. Handle pricing rules
+    if (pricingRules && Array.isArray(pricingRules)) {
+      console.log(`💰 Processing ${pricingRules.length} pricing rules...`);
+      
+      for (const rule of pricingRules) {
+        if (rule.id) {
+          // Update existing
+          const updated = await sql`
+            UPDATE service_pricing_rules
+            SET rule_type = ${rule.rule_type || 'fixed'},
+                rule_name = ${rule.rule_name || ''},
+                base_price = ${rule.base_price ? parseFloat(rule.base_price) : 0},
+                price_per_unit = ${rule.price_per_unit ? parseFloat(rule.price_per_unit) : 0},
+                min_quantity = ${rule.min_quantity || null},
+                max_quantity = ${rule.max_quantity || null},
+                is_active = ${rule.is_active !== false},
+                updated_at = NOW()
+            WHERE id = ${rule.id} AND service_id = ${id}
+            RETURNING *
+          `;
+          if (updated.length > 0) result.pricingRules.push(updated[0]);
+        } else {
+          // Create new
+          const created = await sql`
+            INSERT INTO service_pricing_rules (
+              service_id, rule_type, rule_name, base_price,
+              price_per_unit, min_quantity, max_quantity,
+              is_active, created_at, updated_at
+            ) VALUES (
+              ${id}, ${rule.rule_type || 'fixed'}, ${rule.rule_name || ''},
+              ${rule.base_price ? parseFloat(rule.base_price) : 0},
+              ${rule.price_per_unit ? parseFloat(rule.price_per_unit) : 0},
+              ${rule.min_quantity || null}, ${rule.max_quantity || null},
+              ${rule.is_active !== false}, NOW(), NOW()
+            )
+            RETURNING *
+          `;
+          result.pricingRules.push(created[0]);
+        }
+      }
+    }
+    
+    console.log(`✅ Updated itemization: ${result.packages.length} packages, ${result.addons.length} add-ons, ${result.pricingRules.length} rules`);
+    
+    res.json({
+      success: true,
+      message: 'Itemization updated successfully',
+      itemization: result
+    });
+    
+  } catch (error) {
+    console.error('❌ [PUT /api/services/:id/itemization] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update itemization',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
