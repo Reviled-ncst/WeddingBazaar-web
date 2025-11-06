@@ -110,7 +110,7 @@ const mapToUIBookingStats = (data: any): UIBookingStats => ({
 });
 
 const downloadCSV = (data: any[], filename: string) => {
-  console.log('CSV download requested:', filename, data.length, 'items');
+
   alert('CSV download feature will be implemented in a future update.');
 };
 
@@ -128,7 +128,6 @@ const downloadJSON = (data: any[], filename: string) => {
 };
 
 const handleContactClient = (booking: UIBooking) => {
-  console.log('Contact client:', booking.coupleName);
   if (booking.contactEmail) {
     window.open(`mailto:${booking.contactEmail}?subject=Regarding your booking for ${booking.serviceType}`);
   } else {
@@ -261,7 +260,7 @@ export const VendorBookingsSecure: React.FC = () => {
         throw new Error('Vendor ID not available');
       }
 
-      console.log(`🔐 Loading bookings for vendor: ${vendorId}`);
+
 
       const response = await fetch(`${apiUrl}/api/bookings/vendor/${vendorId}`, {
         headers: {
@@ -298,20 +297,7 @@ export const VendorBookingsSecure: React.FC = () => {
 
       const data = await response.json();
 
-      // 🔍 DETAILED STATUS DEBUG: Log raw booking data from API
-      if (data.bookings && data.bookings.length > 0) {
-        console.log('🔍 [VendorBookingsSecure] RAW BOOKING DATA FROM API:', data.bookings.map((b: any) => ({
-          id: b.id,
-          status: b.status,
-          statusType: typeof b.status,
-          statusLength: b.status?.length,
-          statusTrimmed: b.status?.trim(),
-          payment_status: b.payment_status,
-          total_amount: b.total_amount,
-          total_paid: b.total_paid,
-          couple_name: b.couple_name
-        })));
-      }
+
 
       // SECURITY VALIDATION: Verify response integrity
       if (data.vendorId && data.vendorId !== vendorId) {
@@ -335,17 +321,7 @@ export const VendorBookingsSecure: React.FC = () => {
         return mapVendorBookingToUI(booking, vendorId);
       }).filter(Boolean);
 
-      // 🔍 DEBUG: Log transformed booking statuses
-      console.log('🎯 [VendorBookingsSecure] TRANSFORMED BOOKING STATUSES:', mappedBookings.map((b: any) => ({
-        id: b.id,
-        originalStatus: data.bookings.find((rb: any) => rb.id === b.id)?.status,
-        transformedStatus: b.status,
-        statusMatch: data.bookings.find((rb: any) => rb.id === b.id)?.status === b.status,
-        coupleName: b.coupleName
-      })));
-
       setBookings(mappedBookings);
-      console.log(`✅ Loaded ${mappedBookings.length} secure bookings`);
 
     } catch (error) {
       console.error('❌ Failed to load bookings:', error);
@@ -386,7 +362,7 @@ export const VendorBookingsSecure: React.FC = () => {
    * Two-sided completion: Both vendor and couple must confirm
    */
   const handleMarkComplete = useCallback(async (booking: UIBooking) => {
-    console.log('🎉 [VendorBookingsSecure] Mark Complete clicked for booking:', booking.id);
+
 
     // Check if booking is fully paid
     const isFullyPaid = (booking.status as string) === 'fully_paid' || 
@@ -426,7 +402,7 @@ export const VendorBookingsSecure: React.FC = () => {
         throw new Error(data.error || data.message || 'Failed to mark booking as completed');
       }
 
-      console.log('✅ [VendorBookingsSecure] Booking completion updated:', data);
+
 
       // Show success message
       const successMsg = data.waiting_for === null
@@ -1042,7 +1018,7 @@ export const VendorBookingsSecure: React.FC = () => {
                       <div className="flex items-center justify-end gap-2 pt-4 border-t border-gray-200">
                         <button
                           onClick={() => {
-                            console.log('🔍 [VendorBookingsSecure] View Details clicked for booking:', booking.id);
+
                             setSelectedBooking(booking);
                             setShowDetailsModal(true);
                           }}
@@ -1065,7 +1041,7 @@ export const VendorBookingsSecure: React.FC = () => {
                         {(booking.status === 'request' || booking.status === 'pending_review') && (
                           <button
                             onClick={() => {
-                              console.log('Send quote clicked for booking:', booking.id);
+
                               setSelectedBooking(booking);
                               setShowQuoteModal(true);
                             }}
@@ -1119,7 +1095,7 @@ export const VendorBookingsSecure: React.FC = () => {
             setSelectedBooking(null);
           }}
           onUpdateStatus={async (bookingId: string, newStatus: string, message?: string) => {
-            console.log('Status update:', bookingId, newStatus, message);
+
             await handleSecureRefresh();
           }}
           onSendQuote={(booking) => {
@@ -1128,7 +1104,7 @@ export const VendorBookingsSecure: React.FC = () => {
             setShowQuoteModal(true);
           }}
           onContactClient={(booking) => {
-            console.log('Contact client:', booking.coupleName);
+
             window.location.href = `mailto:${booking.contactEmail}`;
           }}
         />
@@ -1157,7 +1133,7 @@ export const VendorBookingsSecure: React.FC = () => {
             setSelectedBooking(null);
           }}
           onSendQuote={async (quoteData) => {
-            console.log('Quote sent:', quoteData);
+
             // Refresh bookings after quote is sent
             await handleSecureRefresh();
             setShowQuoteModal(false);

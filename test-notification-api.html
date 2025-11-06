@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification API Test - Wedding Bazaar</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #fce7f3 0%, #ddd6fe 100%);
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #ec4899;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            background: #f9fafb;
+        }
+        .test-section h3 {
+            color: #1f2937;
+            margin-top: 0;
+        }
+        button {
+            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(236, 72, 153, 0.3);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            background: white;
+            border: 2px solid #e5e7eb;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            border-color: #10b981;
+            background: #d1fae5;
+        }
+        .error {
+            border-color: #ef4444;
+            background: #fee2e2;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #e5e7eb;
+            border-top-color: #ec4899;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 12px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .badge-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .input-group {
+            margin: 15px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #374151;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔔 Notification API Test</h1>
+        <p class="subtitle">Test couple notification fetching and creation</p>
+
+        <!-- Test 1: Fetch Notifications for Couple -->
+        <div class="test-section">
+            <h3>📥 Test 1: Fetch Notifications for Couple</h3>
+            <p>Fetches notifications for couple ID: <strong>1-2025-001</strong></p>
+            <div class="input-group">
+                <label for="coupleId">Couple ID:</label>
+                <input type="text" id="coupleId" value="1-2025-001" placeholder="Enter couple ID">
+            </div>
+            <button onclick="fetchNotifications()">Fetch Notifications</button>
+            <button onclick="fetchNotifications(true)">Fetch Unread Only</button>
+            <div id="fetch-result"></div>
+        </div>
+
+        <!-- Test 2: Create Test Notification -->
+        <div class="test-section">
+            <h3>➕ Test 2: Create Test Notification</h3>
+            <p>Creates a test quote notification for the couple</p>
+            <div class="input-group">
+                <label for="testCoupleId">Couple ID:</label>
+                <input type="text" id="testCoupleId" value="1-2025-001">
+            </div>
+            <div class="input-group">
+                <label for="vendorName">Vendor Name:</label>
+                <input type="text" id="vendorName" value="Test Vendor Photography">
+            </div>
+            <div class="input-group">
+                <label for="serviceType">Service Type:</label>
+                <input type="text" id="serviceType" value="Photography">
+            </div>
+            <div class="input-group">
+                <label for="quoteAmount">Quote Amount (₱):</label>
+                <input type="number" id="quoteAmount" value="50000">
+            </div>
+            <button onclick="createTestNotification()">Create Test Notification</button>
+            <div id="create-result"></div>
+        </div>
+
+        <!-- Test 3: Check Notification Count -->
+        <div class="test-section">
+            <h3>📊 Test 3: Check Unread Count</h3>
+            <p>Fetches only unread notification count</p>
+            <button onclick="checkUnreadCount()">Check Unread Count</button>
+            <div id="count-result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://weddingbazaar-web.onrender.com';
+        
+        async function fetchNotifications(unreadOnly = false) {
+            const resultDiv = document.getElementById('fetch-result');
+            const coupleId = document.getElementById('coupleId').value;
+            
+            resultDiv.innerHTML = '<div class="loading"></div> Fetching notifications...';
+            
+            try {
+                const url = `${API_URL}/api/notifications/user/${coupleId}${unreadOnly ? '?unreadOnly=true' : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const statusClass = data.notifications.length > 0 ? 'success' : 'error';
+                    resultDiv.innerHTML = `
+                        <div class="result ${statusClass}">
+                            <strong>✅ Success!</strong>
+                            <span class="status-badge badge-success">${data.count} notifications</span>
+                            <span class="status-badge badge-success">${data.unreadCount} unread</span>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <strong>❌ Error:</strong> ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>❌ Network Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        async function createTestNotification() {
+            const resultDiv = document.getElementById('create-result');
+            const coupleId = document.getElementById('testCoupleId').value;
+            const vendorName = document.getElementById('vendorName').value;
+            const serviceType = document.getElementById('serviceType').value;
+            const quoteAmount = document.getElementById('quoteAmount').value;
+            
+            resultDiv.innerHTML = '<div class="loading"></div> Creating notification...';
+            
+            try {
+                const payload = {
+                    userId: coupleId,
+                    userType: 'individual',
+                    title: '💰 New Quote Received!',
+                    message: `${vendorName} sent you a quote for ${serviceType} - ₱${parseInt(quoteAmount).toLocaleString('en-PH')}`,
+                    type: 'quote',
+                    actionUrl: `/individual/bookings`,
+                    metadata: {
+                        vendorName,
+                        serviceType,
+                        quotedPrice: parseInt(quoteAmount),
+                        testNotification: true,
+                        createdAt: new Date().toISOString()
+                    }
+                };
+                
+                const response = await fetch(`${API_URL}/api/notifications`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <strong>✅ Notification Created!</strong>
+                            <span class="status-badge badge-success">ID: ${data.notification.id}</span>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <strong>❌ Error:</strong> ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>❌ Network Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        async function checkUnreadCount() {
+            const resultDiv = document.getElementById('count-result');
+            const coupleId = document.getElementById('coupleId').value;
+            
+            resultDiv.innerHTML = '<div class="loading"></div> Checking count...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/notifications/user/${coupleId}?unreadOnly=true`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h2 style="margin: 0 0 10px 0; color: #ec4899; font-size: 48px;">
+                                ${data.unreadCount}
+                            </h2>
+                            <p style="margin: 0; font-size: 18px; color: #6b7280;">unread notifications</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <strong>❌ Error:</strong> ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>❌ Network Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1154,6 +1154,13 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [isEditingPrices, setIsEditingPrices] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successData, setSuccessData] = useState<{
+    coupleName: string;
+    amount: string;
+    itemCount: number;
+    notificationSent: boolean;
+  } | null>(null);
 
   // Function to get vendor's custom price or default price
   const getVendorPrice = (serviceType: string, itemName: string, defaultPrice: number): number => {
@@ -1320,6 +1327,22 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
   const balance = total - downpayment;
 
   const handleSendQuote = async () => {
+    // 📋 STEP 1: Show confirmation dialog
+    const confirmed = window.confirm(
+      `📋 Send Quote to ${booking.coupleName}?\n\n` +
+      `Service: ${booking.serviceType}\n` +
+      `Total Amount: ${formatPHP(total)}\n` +
+      `Downpayment: ${formatPHP(downpayment)}\n` +
+      `Items: ${quoteItems.length}\n` +
+      `Valid Until: ${new Date(validUntil).toLocaleDateString()}\n\n` +
+      `The client will be notified immediately.\n\n` +
+      `Click OK to send quote now.`
+    );
+
+    if (!confirmed) {
+      return; // User cancelled
+    }
+
     setLoading(true);
     
     const quoteData = {
@@ -1343,18 +1366,18 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
     };
 
     try {
-      // � USE NEW /send-quote ENDPOINT that properly sets quoted_price field
+      // 📤 STEP 2: Send quote to backend
       const sendQuotePayload = {
-        quotedPrice: total,  // Total price from quote calculation
-        quotedDeposit: downpayment,  // Deposit amount
+        quotedPrice: total,
+        quotedDeposit: downpayment,
         vendorNotes: quoteMessage || `Quote for ${booking.serviceType} service`,
         validityDays: Math.ceil((new Date(validUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
-        itemization: quoteData  // Full quote details including items breakdown
+        itemization: quoteData
       };
       
-      // Call the NEW backend endpoint that sets quoted_price properly
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com'}/api/bookings/${booking.id}/send-quote`, {
-        method: 'PUT',  // Changed from PATCH to PUT
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+      const response = await fetch(`${apiUrl}/api/bookings/${booking.id}/send-quote`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -1364,11 +1387,61 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ [SendQuoteModal] Failed to send quote:', errorText);
         throw new Error(`Failed to send quote: ${response.status} - ${errorText}`);
       }
       
       const result = await response.json();
+      
+      // 🔔 STEP 3: Send notification to couple
+      let notificationSent = false;
+      try {
+        const notificationPayload = {
+          userId: booking.coupleId,
+          userType: 'individual',
+          title: '💰 New Quote Received!',
+          message: `${booking.vendorName} sent you a quote for ${booking.serviceType} - ${formatPHP(total)}`,
+          type: 'quote',
+          actionUrl: `/individual/bookings?bookingId=${booking.id}`,
+          metadata: {
+            bookingId: booking.id,
+            vendorId: booking.vendorId,
+            vendorName: booking.vendorName,
+            serviceType: booking.serviceType,
+            quotedPrice: total,
+            downpaymentAmount: downpayment,
+            eventDate: booking.eventDate,
+            quoteValidUntil: validUntil
+          }
+        };
+
+        const notificationResponse = await fetch(`${apiUrl}/api/notifications`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(notificationPayload)
+        });
+
+        if (notificationResponse.ok) {
+          await notificationResponse.json();
+          notificationSent = true;
+        } else {
+          const notifError = await notificationResponse.text();
+          console.error('⚠️ Notification API error:', notifError);
+        }
+      } catch (notifError) {
+        console.error('⚠️ Failed to send notification:', notifError);
+      }
+      
+      // ✅ STEP 4: Show success modal
+      setSuccessData({
+        coupleName: booking.coupleName,
+        amount: formatPHP(total),
+        itemCount: quoteItems.length,
+        notificationSent
+      });
+      setShowSuccessModal(true);
+      
       // Create a formatted result that includes the quote data
       const formattedResult = {
         ...result,
@@ -1382,13 +1455,24 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
       
       // Call the parent callback with the formatted result
       await onSendQuote(formattedResult);
-      onClose();
+      // Don't close immediately - wait for success modal confirmation
     } catch (error) {
       console.error('❌ [SendQuoteModal] Error sending quote:', error);
-      alert(`Failed to send quote: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again or contact support if the problem persists.`);
+      alert(
+        `❌ Failed to Send Quote\n\n` +
+        `Error: ${error instanceof Error ? error.message : 'Unknown error'}\n\n` +
+        `Please check your internet connection and try again.\n` +
+        `If the problem persists, contact support.`
+      );
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    setSuccessData(null);
+    onClose();
   };
 
   const groupedItems = quoteItems.reduce((groups, item) => {
@@ -1452,11 +1536,6 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
     
     // Update quote message with package info
     setQuoteMessage(`Thank you for your interest! I've prepared ${selectedPackage.name} for your ${booking.serviceType} needs. This package includes ${newItems.length} carefully selected services. Please review the breakdown below and let me know if you'd like any adjustments.`);
-    
-    // Show clear success notification that emphasizes review step
-    setTimeout(() => {
-      alert(`✅ Package Loaded Successfully!\n\n${selectedPackage.name}\n${newItems.length} items • ${formatPHP(selectedPackage.basePrice)}\n\n⚠️ NEXT STEPS:\n1. Review the items below\n2. Customize pricing if needed\n3. Click "Send Quote to Client" when ready\n\n💡 The quote has NOT been sent yet.`);
-    }, 100);
   };
 
   if (!isOpen) return null;
@@ -1984,6 +2063,112 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ✅ Success Modal */}
+      {showSuccessModal && successData && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-fadeIn">
+            {/* Success Header */}
+            <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-8 py-6 text-center">
+              <div className="w-16 h-16 bg-white rounded-full mx-auto mb-4 flex items-center justify-center">
+                <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Quote Sent Successfully!</h3>
+              <p className="text-green-50">Your quote has been delivered to the client</p>
+            </div>
+
+            {/* Success Body */}
+            <div className="p-8">
+              <div className="space-y-4">
+                {/* Client Info */}
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
+                      <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Client</p>
+                      <p className="font-semibold text-gray-900">{successData.coupleName}</p>
+                    </div>
+                  </div>
+
+                  {/* Quote Details */}
+                  <div className="flex items-center justify-between py-3 border-t border-gray-200">
+                    <span className="text-gray-600">Quote Amount</span>
+                    <span className="text-2xl font-bold text-green-600">{successData.amount}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                    <span className="text-gray-600">Items Included</span>
+                    <span className="font-semibold text-gray-900">{successData.itemCount} items</span>
+                  </div>
+                </div>
+
+                {/* Notification Status */}
+                <div className={`rounded-xl p-4 ${
+                  successData.notificationSent 
+                    ? 'bg-green-50 border-2 border-green-200' 
+                    : 'bg-yellow-50 border-2 border-yellow-200'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    {successData.notificationSent ? (
+                      <>
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-green-900">Client Notified</p>
+                          <p className="text-sm text-green-700 mt-1">
+                            {successData.coupleName} has been notified and can now review your quote in their dashboard.
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-yellow-900">Notification Pending</p>
+                          <p className="text-sm text-yellow-700 mt-1">
+                            Quote was saved but client notification may be delayed. Please follow up via email or phone.
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Next Steps */}
+                <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+                  <p className="font-semibold text-blue-900 mb-2">📋 What happens next?</p>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• Client reviews your quote in their dashboard</li>
+                    <li>• They can accept, decline, or request changes</li>
+                    <li>• You'll be notified of their response</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={handleSuccessModalClose}
+                className="w-full mt-6 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl px-6 py-4 font-semibold hover:shadow-lg transition-all hover:scale-[1.02]"
+              >
+                ✓ Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

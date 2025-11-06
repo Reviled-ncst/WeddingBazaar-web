@@ -2,6 +2,7 @@
 export { Logo } from './Logo';
 export { Navigation } from './Navigation';
 export { NotificationButton } from './NotificationButton';
+export { NotificationDropdown } from './NotificationDropdown';
 export { ProfileButton } from './ProfileButton';
 export { MobileControls } from './MobileControls';
 export { MobileMenu } from './MobileMenu';

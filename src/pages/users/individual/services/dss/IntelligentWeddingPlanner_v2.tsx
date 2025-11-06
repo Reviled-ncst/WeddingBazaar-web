@@ -26,6 +26,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import type { Service } from '../../../../../modules/services/types';
+import { EnhancedMatchingEngine, type SmartPackage as EnhancedSmartPackage } from './EnhancedMatchingEngine';
 
 interface IntelligentWeddingPlannerProps {
   services: Service[];
@@ -158,6 +159,24 @@ interface PackageService {
   matchScore: number;
   matchReasons: string[];
 }
+
+// ==================== CATEGORY ICON MAPPING ====================
+
+// 🔧 FIX: Move categoryIconMap OUTSIDE component to prevent re-creation on every render
+const CATEGORY_ICON_MAP: Record<string, any> = {
+  'venue': Building2,
+  'catering': DollarSign,
+  'photography': Star,
+  'videography': Star,
+  'music_entertainment': Zap,
+  'flowers_decor': Heart,
+  'beauty_styling': Sparkles,
+  'planning_coordination': Award,
+  'photo_booth': Star,
+  'transportation': Building2,
+  'wedding_cake': DollarSign,
+  'invitations_stationery': Award
+};
 
 // ==================== FALLBACK CATEGORIES ====================
 
@@ -494,191 +513,117 @@ export function IntelligentWeddingPlanner({
     return { score: Math.min(score, maxScore), reasons };
   };
 
-  // Generate wedding packages from matched services
+  // 🆕 Generate wedding packages using PRIORITY-BASED Enhanced Matching Engine
   const generateRecommendations = useMemo(() => {
     if (!showResults) return [];
 
-    // Calculate match scores for all services
-    const scoredServices = services
-      .map(service => ({
-        service,
-        ...calculateServiceMatch(service)
-      }))
-      .filter(item => item.score > 0)
-      .sort((a, b) => b.score - a.score);
+    // Use EnhancedMatchingEngine for priority-based matching
+    try {
+      // Create engine instance with preferences and services
+      // Note: Service type has minor differences between modules, so we use type coercion
+      const engine = new EnhancedMatchingEngine(preferences, services as never);
+      
+      // Generate smart packages with priority-based matching
+      const smartPackages = engine.generateSmartPackages();
+      
+      // Transform SmartPackage[] to WeddingPackage[] format for UI
+      const packages: WeddingPackage[] = smartPackages.map((pkg: EnhancedSmartPackage) => {
+        // Extract service matches with proper typing
+        const serviceMatches = pkg.services.map((match: unknown) => {
+          const m = match as { service: unknown; matchScore: { totalScore: number; reasons: string[] }; category: string };
+          return {
+            service: m.service as Service,
+            category: m.category,
+            matchScore: m.matchScore.totalScore,
+            matchReasons: m.matchScore.reasons
+          };
+        });
 
-    if (scoredServices.length === 0) return [];
-
-    // Group services by category
-    const servicesByCategory: Record<string, typeof scoredServices> = {};
-    scoredServices.forEach(item => {
-      const category = item.service.category || 'other';
-      if (!servicesByCategory[category]) {
-        servicesByCategory[category] = [];
-      }
-      servicesByCategory[category].push(item);
-    });
-
-    // Generate three packages: Essential, Deluxe, Premium
-    const packages: WeddingPackage[] = [];
-
-    // Essential Package - Budget-friendly essentials
-    const essentialServices: PackageService[] = [];
-    let essentialPrice = 0;
-    
-    Object.values(servicesByCategory).forEach(categoryServices => {
-      if (categoryServices.length > 0) {
-        // Pick the most affordable with decent rating
-        const affordable = categoryServices
-          .filter(s => s.service.rating >= 3.5)
-          .sort((a, b) => {
-            const priceA = a.service.basePrice || a.service.minimumPrice || 0;
-            const priceB = b.service.basePrice || b.service.minimumPrice || 0;
-            return priceA - priceB;
-          })[0];
-
-        if (affordable) {
-          essentialServices.push({
-            service: affordable.service,
-            category: affordable.service.category || 'other',
-            matchScore: affordable.score,
-            matchReasons: affordable.reasons
-          });
-          essentialPrice += affordable.service.basePrice || affordable.service.minimumPrice || 0;
-        }
-      }
-    });
-
-    if (essentialServices.length > 0) {
-      const discountPercentage = 10;
-      const discountedPrice = essentialPrice * (1 - discountPercentage / 100);
-      packages.push({
-        id: 'essential',
-        tier: 'essential',
-        name: 'Essential Package',
-        tagline: 'Perfect start to your special day',
-        description: 'All the wedding essentials you need, carefully selected to fit your budget while maintaining quality.',
-        services: essentialServices.slice(0, 5),
-        originalPrice: essentialPrice,
-        discountedPrice: discountedPrice,
-        savings: essentialPrice - discountedPrice,
-        discountPercentage,
-        matchScore: Math.round(essentialServices.reduce((sum, s) => sum + s.matchScore, 0) / essentialServices.length),
-        matchPercentage: Math.round((essentialServices.reduce((sum, s) => sum + s.matchScore, 0) / essentialServices.length)),
-        reasons: [
-          'Budget-friendly options',
-          'Well-rated vendors',
-          'Covers essential services',
-          '10% package discount'
-        ],
-        highlights: essentialServices.slice(0, 3).map(s => s.service.name)
+        return {
+          id: pkg.id,
+          tier: pkg.tier === 'custom' ? 'premium' : pkg.tier, // Map custom to premium for UI
+          name: pkg.name,
+          tagline: pkg.tier === 'essential' 
+            ? 'Perfect start to your special day'
+            : pkg.tier === 'deluxe'
+            ? 'Elevated experience with premium touches'
+            : pkg.tier === 'premium'
+            ? 'Luxury experience with the finest vendors'
+            : 'Perfectly customized for your dream wedding',
+          description: pkg.matchReasons.join(' • '),
+          services: serviceMatches,
+          originalPrice: pkg.totalPrice,
+          discountedPrice: pkg.discountedPrice,
+          savings: pkg.savings,
+          discountPercentage: pkg.discountPercentage,
+          matchScore: pkg.overallMatchScore,
+          matchPercentage: pkg.fulfillmentPercentage,
+          reasons: pkg.matchReasons,
+          highlights: serviceMatches.slice(0, 3).map(m => m.service.name || 'Service')
+        };
       });
-    }
 
-    // Deluxe Package - Balanced quality and value
-    const deluxeServices: PackageService[] = [];
-    let deluxePrice = 0;
-
-    Object.values(servicesByCategory).forEach(categoryServices => {
-      if (categoryServices.length > 0) {
-        // Pick medium price with good rating
-        const balanced = categoryServices
-          .filter(s => s.service.rating >= 4.0)
-          .sort((a, b) => b.score - a.score)[0];
-
-        if (balanced) {
-          deluxeServices.push({
-            service: balanced.service,
-            category: balanced.service.category || 'other',
-            matchScore: balanced.score,
-            matchReasons: balanced.reasons
-          });
-          deluxePrice += balanced.service.basePrice || balanced.service.minimumPrice || 0;
-        }
-      }
-    });
-
-    if (deluxeServices.length > 0) {
-      const discountPercentage = 15;
-      const discountedPrice = deluxePrice * (1 - discountPercentage / 100);
-      packages.push({
-        id: 'deluxe',
-        tier: 'deluxe',
-        name: 'Deluxe Package',
-        tagline: 'Elevated experience with premium touches',
-        description: 'The perfect balance of quality and value. Highly-rated vendors with excellent service and attention to detail.',
-        services: deluxeServices.slice(0, 6),
-        originalPrice: deluxePrice,
-        discountedPrice: discountedPrice,
-        savings: deluxePrice - discountedPrice,
-        discountPercentage,
-        matchScore: Math.round(deluxeServices.reduce((sum, s) => sum + s.matchScore, 0) / deluxeServices.length),
-        matchPercentage: Math.round((deluxeServices.reduce((sum, s) => sum + s.matchScore, 0) / deluxeServices.length)),
-        reasons: [
-          'Highly-rated vendors',
-          'Best match for your preferences',
-          'Premium quality services',
-          '15% package discount'
-        ],
-        highlights: deluxeServices.slice(0, 3).map(s => s.service.name)
+      // Log package generation results
+      console.log('🎯 Priority-Based Package Generation Results:');
+      console.log(`   📦 Generated ${packages.length} packages`);
+      console.log(`   ✅ Required categories: ${preferences.mustHaveServices.join(', ')}`);
+      packages.forEach(pkg => {
+        console.log(`   📋 ${pkg.name}: ${pkg.services.length} services, ${pkg.matchPercentage}% fulfillment`);
       });
-    }
 
-    // Premium Package - Luxury, best of the best
-    const premiumServices: PackageService[] = [];
-    let premiumPrice = 0;
+      return packages.sort((a, b) => b.matchPercentage - a.matchPercentage);
+      
+    } catch (error) {
+      console.error('❌ Error using EnhancedMatchingEngine:', error);
+      console.log('⚠️ Falling back to basic package generation...');
+      
+      // FALLBACK: Use simple scoring algorithm
+      const scoredServices = services
+        .map(service => ({
+          service,
+          ...calculateServiceMatch(service)
+        }))
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score);
 
-    Object.values(servicesByCategory).forEach(categoryServices => {
-      if (categoryServices.length > 0) {
-        // Pick highest-rated, premium services
-        const premium = categoryServices
-          .filter(s => s.service.rating >= 4.5)
-          .sort((a, b) => {
-            if (a.service.isPremium && !b.service.isPremium) return -1;
-            if (!a.service.isPremium && b.service.isPremium) return 1;
-            return b.service.rating - a.service.rating;
-          })[0];
+      if (scoredServices.length === 0) return [];
 
-        if (premium) {
-          premiumServices.push({
-            service: premium.service,
-            category: premium.service.category || 'other',
-            matchScore: premium.score,
-            matchReasons: premium.reasons
-          });
-          premiumPrice += premium.service.basePrice || premium.service.minimumPrice || 0;
-        }
+      const essentialServices = scoredServices
+        .filter(s => s.service.rating >= 3.5)
+        .slice(0, 5);
+      
+      if (essentialServices.length > 0) {
+        const essentialPrice = essentialServices.reduce((sum, s) => 
+          sum + (s.service.basePrice || s.service.minimumPrice || 0), 0);
+        const discountPercentage = 10;
+        const discountedPrice = essentialPrice * (1 - discountPercentage / 100);
+        
+        return [{
+          id: 'essential-fallback',
+          tier: 'essential',
+          name: 'Essential Package',
+          tagline: 'Perfect start to your special day',
+          description: 'Budget-friendly wedding essentials with quality vendors.',
+          services: essentialServices.map(s => ({
+            service: s.service,
+            category: s.service.category || 'other',
+            matchScore: s.score,
+            matchReasons: s.reasons
+          })),
+          originalPrice: essentialPrice,
+          discountedPrice,
+          savings: essentialPrice - discountedPrice,
+          discountPercentage,
+          matchScore: Math.round(essentialServices.reduce((sum, s) => sum + s.score, 0) / essentialServices.length),
+          matchPercentage: 75,
+          reasons: ['Budget-friendly', 'Well-rated vendors', '10% discount'],
+          highlights: essentialServices.slice(0, 3).map(s => s.service.name)
+        }];
       }
-    });
 
-    if (premiumServices.length > 0) {
-      const discountPercentage = 20;
-      const discountedPrice = premiumPrice * (1 - discountPercentage / 100);
-      packages.push({
-        id: 'premium',
-        tier: 'premium',
-        name: 'Premium Package',
-        tagline: 'Luxury experience with the finest vendors',
-        description: 'The ultimate wedding package featuring top-rated, premium vendors who will make your dream wedding a reality.',
-        services: premiumServices.slice(0, 7),
-        originalPrice: premiumPrice,
-        discountedPrice: discountedPrice,
-        savings: premiumPrice - discountedPrice,
-        discountPercentage,
-        matchScore: Math.round(premiumServices.reduce((sum, s) => sum + s.matchScore, 0) / premiumServices.length),
-        matchPercentage: Math.round((premiumServices.reduce((sum, s) => sum + s.matchScore, 0) / premiumServices.length)),
-        reasons: [
-          'Top-rated luxury vendors',
-          'Premium verified services',
-          'Exceptional quality guarantee',
-          '20% exclusive package discount'
-        ],
-        highlights: premiumServices.slice(0, 3).map(s => s.service.name)
-      });
+      return [];
     }
-
-    return packages.sort((a, b) => b.matchScore - a.matchScore);
-  }, [showResults, preferences, services]);
+  }, [showResults, preferences, services, calculateServiceMatch]);
 
   // ==================== STEP COMPONENTS ====================
 
@@ -837,27 +782,12 @@ export function IntelligentWeddingPlanner({
     ];
 
     // 🆕 USE CATEGORIES FROM DATABASE (mapped to Step 2 format with icons)
-    // 🔧 FIX: Use useMemo to prevent re-creating array on every render (stops button flickering)
-    const categoryIconMap: Record<string, any> = {
-      'venue': Building2,
-      'catering': DollarSign,
-      'photography': Star,
-      'videography': Star,
-      'music_entertainment': Zap,
-      'flowers_decor': Heart,
-      'beauty_styling': Sparkles,
-      'planning_coordination': Award,
-      'photo_booth': Star,
-      'transportation': Building2,
-      'wedding_cake': DollarSign,
-      'invitations_stationery': Award
-    };
-
+    // 🔧 FIX: Use useMemo with stable reference (CATEGORY_ICON_MAP is now outside component)
     const mappedPriorityCategories = useMemo(() => 
       serviceCategories.map(cat => ({
         value: cat.name,
         label: cat.display_name,
-        icon: categoryIconMap[cat.name] || Building2 // Default icon if not found
+        icon: CATEGORY_ICON_MAP[cat.name] || Building2 // Use constant from outside component
       })),
       [serviceCategories] // Only re-create when serviceCategories changes
     );
@@ -2212,7 +2142,8 @@ export function IntelligentWeddingPlanner({
 
   // ==================== RENDER STEP ====================
 
-  const renderStep = () => {
+  // 🔧 FIX: Memoize the rendered step to prevent unnecessary re-renders that cause button flickering
+  const renderedStep = useMemo(() => {
     if (showResults) {
       return <ResultsView />;
     }
@@ -2233,7 +2164,7 @@ export function IntelligentWeddingPlanner({
       default:
         return null;
     }
-  };
+  }, [currentStep, showResults, preferences, serviceCategories, categoriesLoading, visibleCategoriesCount]);
 
   // ==================== PROGRESS BAR ====================
 
@@ -2325,7 +2256,7 @@ export function IntelligentWeddingPlanner({
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-8 dss-content-area">
             <div key={currentStep}>
-              {renderStep()}
+              {renderedStep}
             </div>
           </div>
 

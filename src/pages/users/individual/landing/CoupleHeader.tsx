@@ -2,11 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useUnifiedMessaging } from '../../../../shared/contexts/UnifiedMessagingContext';
 import { InstructionDialog, weddingPlanningInstructions, quickStartInstructions } from '../../../../shared/components/InstructionDialog';
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
-import { centralizedBookingAPI as bookingApiService } from '../../../../services/api/CentralizedBookingAPI';
 import {
   Logo,
   Navigation,
   NotificationButton,
+  NotificationDropdown,
   ProfileButton,
   MobileControls,
   MobileMenu,
@@ -17,6 +17,7 @@ export const CoupleHeader: React.FC = () => {
   // State management
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
   const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
   const [instructionType, setInstructionType] = useState<'full' | 'quick'>('full');
   const [notificationCount, setNotificationCount] = useState(0);
@@ -56,7 +57,7 @@ export const CoupleHeader: React.FC = () => {
     };
   }, [preventDropdownClose]);
 
-  // Fetch pending bookings count for notification badge
+  // Fetch unread notifications count for notification badge
   useEffect(() => {
     const fetchNotificationCount = async () => {
       if (!user?.id) {
@@ -65,24 +66,13 @@ export const CoupleHeader: React.FC = () => {
       }
 
       try {
-        // Fetch all bookings to count pending actions
-        const response = await bookingApiService.getCoupleBookings(user.id, {
-          page: 1,
-          limit: 100,
-          sortBy: 'created_at',
-          sortOrder: 'desc'
-        });
-
-        if (response.bookings && response.bookings.length > 0) {
-          // Count bookings that require action from the couple
-          // Pending statuses: quote_sent (needs review), contract_sent (needs signing), etc.
-          const pendingCount = response.bookings.filter((booking: any) => 
-            booking.status === 'quote_sent' || 
-            booking.status === 'contract_sent' ||
-            booking.status === 'downpayment_requested' ||
-            booking.status === 'final_payment_due'
-          ).length;
-          setNotificationCount(pendingCount);
+        // Fetch unread notifications from the notifications API
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+        const response = await fetch(`${apiUrl}/api/notifications/user/${user.id}?unreadOnly=true`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setNotificationCount(data.unreadCount || 0);
         } else {
           setNotificationCount(0);
         }
@@ -140,7 +130,23 @@ export const CoupleHeader: React.FC = () => {
 
             {/* Desktop User Menu */}
             <div className="hidden md:flex items-center space-x-3 flex-shrink-0">
-              <NotificationButton notificationCount={notificationCount} />
+              {/* Notification Button with Dropdown */}
+              <div className="relative">
+                <NotificationButton 
+                  notificationCount={notificationCount}
+                  onClick={() => setIsNotificationDropdownOpen(!isNotificationDropdownOpen)}
+                  isOpen={isNotificationDropdownOpen}
+                />
+                
+                {user?.id && (
+                  <NotificationDropdown
+                    userId={user.id}
+                    isOpen={isNotificationDropdownOpen}
+                    onClose={() => setIsNotificationDropdownOpen(false)}
+                    onNotificationCountChange={setNotificationCount}
+                  />
+                )}
+              </div>
               
               <div className="relative" ref={dropdownRef}>
                 <ProfileButton 

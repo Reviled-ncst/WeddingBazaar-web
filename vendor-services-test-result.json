@@ -1,0 +1,25 @@
+﻿
+
+StatusCode        : 200
+StatusDescription : OK
+Content           : {"success":true,"services":[],"count":0,"vendor_id_checked":"6fe3dc
+                    77-6774-4de8-ae2e-81a8ffb258f6","actual_vendor_ids_used":["6fe3dc77
+                    -6774-4de8-ae2e-81a8ffb258f6"],"timestamp":"2025-11-06T12:01:15.04.
+                    ..
+RawContent        : HTTP/1.1 200 OK
+                    Transfer-Encoding: chunked
+                    Connection: keep-alive
+                    CF-RAY: 99a46f647f40bc51-MNL
+                    access-control-allow-credentials: true
+                    content-security-policy: default-src 'self';base-uri 'self';f...
+Forms             : {}
+Headers           : {[Transfer-Encoding, chunked], [Connection, keep-alive], [CF-RAY, 
+                    99a46f647f40bc51-MNL], [access-control-allow-credentials, true]...}
+Images            : {}
+InputFields       : {}
+Links             : {}
+ParsedHtml        : mshtml.HTMLDocumentClass
+RawContentLength  : 204
+
+
+
