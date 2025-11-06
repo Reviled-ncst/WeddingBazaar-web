@@ -89,7 +89,7 @@ app.get('/api/health', async (req, res) => {
         error: ''
       },
       environment: process.env.NODE_ENV || 'production',
-      version: '2.7.2-RENDER-CACHE-FIX',
+      version: '2.7.3-SERVICES-REVERTED',
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       endpoints: {
@@ -143,7 +143,7 @@ app.get('/api/ping', (req, res) => {
   res.json({ 
     success: true, 
     message: 'Wedding Bazaar Backend is running - Modular Architecture',
-    version: '2.7.2-RENDER-CACHE-FIX',
+    version: '2.7.3-SERVICES-REVERTED',
     timestamp: new Date().toISOString()
   });
 });
@@ -272,7 +272,7 @@ app.listen(PORT, () => {
   console.log('🎉========================================🎉');
   console.log('🚀 Wedding Bazaar Backend Server Started');
   console.log('🎉========================================🎉');
-  console.log(`📊 Version: 2.7.2-RENDER-CACHE-FIX`);
+  console.log(`📊 Version: 2.7.3-SERVICES-REVERTED`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔌 Port: ${PORT}`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
