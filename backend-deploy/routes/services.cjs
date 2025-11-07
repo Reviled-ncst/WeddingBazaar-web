@@ -255,7 +255,7 @@ router.get('/:id', async (req, res) => {
       const items = await sql`
         SELECT * FROM package_items
         WHERE package_id = ANY(${packageIds})
-        ORDER BY package_id, item_category, item_order
+        ORDER BY package_id, item_type, display_order
       `;
       
       // Group items by package_id
@@ -694,13 +694,14 @@ router.post('/', async (req, res) => {
         for (const pkg of req.body.packages) {
           const packageResult = await sql`
             INSERT INTO service_packages (
-              service_id, name, description, price,
+              service_id, package_name, package_description, base_price, tier,
               is_default, is_active, created_at, updated_at
             ) VALUES (
               ${serviceId},
               ${pkg.name},
               ${pkg.description || ''},
               ${pkg.price ? parseFloat(pkg.price) : 0},
+              ${pkg.tier || 'standard'},
               ${pkg.is_default || false},
               ${pkg.is_active !== false},
               NOW(),
@@ -714,14 +715,14 @@ router.post('/', async (req, res) => {
           
           // 2. Create package items for this package
           if (pkg.items && Array.isArray(pkg.items) && pkg.items.length > 0) {
-            console.log(`📦 [Itemization] Creating ${pkg.items.length} items for package ${createdPackage.name}...`);
+            console.log(`📦 [Itemization] Creating ${pkg.items.length} items for package ${createdPackage.package_name}...`);
             
             for (let i = 0; i < pkg.items.length; i++) {
               const item = pkg.items[i];
               await sql`
                 INSERT INTO package_items (
-                  package_id, item_category, item_name, 
-                  quantity, unit, description, item_order,
+                  package_id, item_type, item_name, 
+                  quantity, unit_type, item_description, display_order,
                   created_at, updated_at
                 ) VALUES (
                   ${createdPackage.id},
@@ -736,7 +737,7 @@ router.post('/', async (req, res) => {
                 )
               `;
             }
-            console.log(`✅ ${pkg.items.length} items created for package ${createdPackage.name}`);
+            console.log(`✅ ${pkg.items.length} items created for package ${createdPackage.package_name}`);
           }
           
           itemizationData.packages.push(createdPackage);
@@ -1088,7 +1089,7 @@ router.get('/:id/itemization', async (req, res) => {
       const items = await sql`
         SELECT * FROM package_items
         WHERE package_id = ANY(${packageIds})
-        ORDER BY package_id, item_category, item_order
+        ORDER BY package_id, item_type, display_order
       `;
       
       // Group by package_id
