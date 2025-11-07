@@ -89,25 +89,7 @@ export const DocumentVerification: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Check if mock data is enabled
-      const useMockData = import.meta.env.VITE_USE_MOCK_DOCUMENTS === 'true';
-      
-      if (useMockData) {
-        console.log('📊 [DocumentVerification] Using mock data (VITE_USE_MOCK_DOCUMENTS=true)');
-        const mockDocs = generateMockDocuments();
-        setDocuments(mockDocs);
-        setStats({
-          total: mockDocs.length,
-          pending: mockDocs.filter(d => d.verificationStatus === 'pending').length,
-          approved: mockDocs.filter(d => d.verificationStatus === 'approved').length,
-          rejected: mockDocs.filter(d => d.verificationStatus === 'rejected').length,
-          avgReviewTime: 2.5,
-        });
-        setLoading(false);
-        return;
-      }
-      
-      console.log('📡 [DocumentVerification] Fetching from API');
+      console.log(' [DocumentVerification] Fetching from API');
       const token = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       
@@ -125,6 +107,9 @@ export const DocumentVerification: React.FC = () => {
           rejected: 0,
           avgReviewTime: 0
         });
+      } else {
+        console.error('❌ [DocumentVerification] Stats API failed:', statsResponse.status);
+        setStats({ total: 0, pending: 0, approved: 0, rejected: 0, avgReviewTime: 0 });
       }
       
       // Then load documents with filter
@@ -138,80 +123,17 @@ export const DocumentVerification: React.FC = () => {
         console.log(`✅ [DocumentVerification] Loaded ${docsData.documents?.length || 0} documents (filter: ${filterStatus})`);
         setDocuments(docsData.documents || []);
       } else {
-        console.warn('⚠️ [DocumentVerification] API request failed, using mock data');
-        const mockDocs = generateMockDocuments();
-        setDocuments(mockDocs);
-        setStats({
-          total: mockDocs.length,
-          pending: mockDocs.filter(d => d.verificationStatus === 'pending').length,
-          approved: mockDocs.filter(d => d.verificationStatus === 'approved').length,
-          rejected: mockDocs.filter(d => d.verificationStatus === 'rejected').length,
-          avgReviewTime: 2.5,
-        });
+        console.error('❌ [DocumentVerification] Documents API failed:', docsResponse.status);
+        setDocuments([]);
+        showNotification('error', `Failed to load documents: ${docsResponse.statusText}`);
       }
     } catch (error) {
       console.error('❌ [DocumentVerification] Error loading documents:', error);
-      console.log('📊 [DocumentVerification] Falling back to mock data');
-      // Use mock data for development
-      const mockDocs = generateMockDocuments();
-      setDocuments(mockDocs);
-      setStats({
-        total: mockDocs.length,
-        pending: mockDocs.filter(d => d.verificationStatus === 'pending').length,
-        approved: mockDocs.filter(d => d.verificationStatus === 'approved').length,
-        rejected: mockDocs.filter(d => d.verificationStatus === 'rejected').length,
-        avgReviewTime: 2.5,
-      });
+      setDocuments([]);
+      showNotification('error', 'Failed to load documents. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateMockDocuments = (): VendorDocument[] => {
-    const documentTypes = [
-      'Business Permit',
-      'DTI Registration',
-      'Mayor\'s Permit',
-      'BIR Certificate',
-      'Valid ID',
-      'Insurance Certificate',
-      'Portfolio',
-      'Contract Template'
-    ];
-    
-    const vendors = [
-      { name: 'Perfect Weddings Co.', business: 'Perfect Weddings Photography Studio' },
-      { name: 'Elegant Events', business: 'Elegant Events Planning Services' },
-      { name: 'Dream Catchers', business: 'Dream Catchers Catering' },
-      { name: 'Royal Affairs', business: 'Royal Affairs Venue Management' },
-      { name: 'Blissful Moments', business: 'Blissful Moments DJ Services' },
-    ];
-
-    return Array.from({ length: 15 }, (_, i) => {
-      const vendor = vendors[i % vendors.length];
-      const status: 'pending' | 'approved' | 'rejected' = 
-        i < 5 ? 'pending' : i < 13 ? 'approved' : 'rejected';
-      
-      return {
-        id: `doc-${i + 1}`,
-        vendorId: `vendor-${(i % 5) + 1}`,
-        vendorName: vendor.name,
-        businessName: vendor.business,
-        documentType: documentTypes[i % documentTypes.length],
-        documentUrl: `https://example.com/docs/document-${i + 1}.pdf`,
-        fileName: `${documentTypes[i % documentTypes.length].replace(/'/g, '').replace(/\s+/g, '_')}_${i + 1}.pdf`,
-        uploadedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-        verificationStatus: status,
-        verifiedAt: status !== 'pending' ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
-        rejectionReason: status === 'rejected' ? 'Document expired or invalid' : undefined,
-        fileSize: Math.floor(Math.random() * 5000000) + 100000,
-        mimeType: 'application/pdf',
-        email: `vendor${(i % 5) + 1}@example.com`,
-        phone: `+1 (555) ${String(Math.floor(Math.random() * 900) + 100)}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
-        location: ['Manila', 'Cebu', 'Davao', 'Quezon City', 'Makati'][i % 5],
-        document_confidence: Math.floor(Math.random() * 30) + 70,
-      };
-    });
   };
 
   const handleApprove = async (docId: string) => {

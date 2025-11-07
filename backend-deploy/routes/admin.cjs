@@ -738,6 +738,160 @@ router.get('/bookings', async (req, res) => {
   }
 });
 
+/**
+ * Admin endpoint to get all vendor documents
+ * GET /api/admin/documents
+ */
+router.get('/documents', async (req, res) => {
+  try {
+    console.log('📄 [Admin] Getting vendor documents');
+    
+    const { status } = req.query;
+    
+    // Build query with optional status filter
+    let query;
+    if (status && status !== 'all') {
+      query = sql`
+        SELECT 
+          vd.id,
+          vd.vendor_id,
+          vd.document_type,
+          vd.document_url,
+          vd.file_name,
+          vd.file_size,
+          vd.mime_type,
+          vd.verification_status,
+          vd.verified_at,
+          vd.rejection_reason,
+          vd.uploaded_at,
+          vd.extracted_name,
+          vd.extracted_id_number,
+          vd.document_confidence,
+          v.business_name as vendor_name,
+          v.name as business_name,
+          v.email,
+          v.phone,
+          v.location
+        FROM vendor_documents vd
+        LEFT JOIN vendors v ON vd.vendor_id = v.id::text
+        WHERE vd.verification_status = ${status}
+        ORDER BY vd.uploaded_at DESC
+      `;
+    } else {
+      query = sql`
+        SELECT 
+          vd.id,
+          vd.vendor_id,
+          vd.document_type,
+          vd.document_url,
+          vd.file_name,
+          vd.file_size,
+          vd.mime_type,
+          vd.verification_status,
+          vd.verified_at,
+          vd.rejection_reason,
+          vd.uploaded_at,
+          vd.extracted_name,
+          vd.extracted_id_number,
+          vd.document_confidence,
+          v.business_name as vendor_name,
+          v.name as business_name,
+          v.email,
+          v.phone,
+          v.location
+        FROM vendor_documents vd
+        LEFT JOIN vendors v ON vd.vendor_id = v.id::text
+        ORDER BY vd.uploaded_at DESC
+      `;
+    }
+    
+    const documents = await query;
+    
+    console.log(`✅ [Admin] Retrieved ${documents.length} documents`);
+    
+    res.json({
+      success: true,
+      documents: documents.map(doc => ({
+        id: doc.id,
+        vendorId: doc.vendor_id,
+        vendorName: doc.vendor_name || 'Unknown Vendor',
+        businessName: doc.business_name || doc.vendor_name || 'Unknown Business',
+        documentType: doc.document_type,
+        documentUrl: doc.document_url,
+        fileName: doc.file_name,
+        fileSize: doc.file_size,
+        mimeType: doc.mime_type,
+        verificationStatus: doc.verification_status,
+        verifiedAt: doc.verified_at,
+        rejectionReason: doc.rejection_reason,
+        uploadedAt: doc.uploaded_at,
+        email: doc.email,
+        phone: doc.phone,
+        location: doc.location,
+        extracted_name: doc.extracted_name,
+        extracted_id_number: doc.extracted_id_number,
+        document_confidence: doc.document_confidence
+      })),
+      count: documents.length,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [Admin] Documents retrieval error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * Admin endpoint to get document statistics
+ * GET /api/admin/documents/stats
+ */
+router.get('/documents/stats', async (req, res) => {
+  try {
+    console.log('📊 [Admin] Getting document statistics');
+    
+    const [
+      totalCount,
+      pendingCount,
+      approvedCount,
+      rejectedCount
+    ] = await Promise.all([
+      sql`SELECT COUNT(*) as count FROM vendor_documents`,
+      sql`SELECT COUNT(*) as count FROM vendor_documents WHERE verification_status = 'pending'`,
+      sql`SELECT COUNT(*) as count FROM vendor_documents WHERE verification_status = 'approved'`,
+      sql`SELECT COUNT(*) as count FROM vendor_documents WHERE verification_status = 'rejected'`
+    ]);
+    
+    const stats = {
+      total: parseInt(totalCount[0]?.count || 0),
+      pending: parseInt(pendingCount[0]?.count || 0),
+      approved: parseInt(approvedCount[0]?.count || 0),
+      rejected: parseInt(rejectedCount[0]?.count || 0),
+      avgReviewTime: 0 // TODO: Calculate from actual data
+    };
+    
+    console.log('📈 [Admin] Document stats:', stats);
+    
+    res.json({
+      success: true,
+      stats: stats,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [Admin] Document stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Helper function to format timestamps
 function formatTimestamp(timestamp) {
   const now = new Date();
