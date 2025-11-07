@@ -5,6 +5,8 @@ import { X, Crown, Check, ArrowRight, Zap } from 'lucide-react';
 import { PayMongoPaymentModal } from '../PayMongoPaymentModal';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useAuth } from '../../contexts/HybridAuthContext';
+import { NotificationModal } from '../modals';
+import { useNotification } from '../../hooks/useNotification';
 
 interface CustomPlan {
   id: string;
@@ -39,6 +41,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
   customPlans,
   currentPlanId
 }) => {
+  const { notification, showNotification, hideNotification } = useNotification();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [currency, setCurrency] = useState({ code: 'PHP', symbol: '₱', rate: 1 });
@@ -335,7 +338,11 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
       }
     } catch (error) {
       console.error('Free upgrade error:', error);
-      alert('Failed to upgrade. Please try again.');
+      showNotification({
+        type: 'error',
+        title: 'Upgrade Failed',
+        message: 'Failed to upgrade your subscription. Please try again.'
+      });
     }
   };
 
@@ -486,14 +493,22 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
       console.error('🚨 Error stack:', error instanceof Error ? error.stack : 'No stack');
       console.error('🚨 Error type:', typeof error);
       console.error('🚨 Error constructor:', error?.constructor?.name);
-      alert('Payment successful but subscription upgrade failed. Please contact support.');
+      showNotification({
+        type: 'warning',
+        title: 'Payment Successful, Upgrade Pending',
+        message: 'Your payment was successful but subscription upgrade is pending. Please contact support if this issue persists.'
+      });
       throw error; // Re-throw to propagate to payment modal
     }
   };
 
   const handlePaymentError = (error: string) => {
     console.error('Payment error:', error);
-    alert(`Payment failed: ${error}`);
+    showNotification({
+      type: 'error',
+      title: 'Payment Failed',
+      message: `Your payment could not be processed: ${error}`
+    });
   };
 
   return (
@@ -793,6 +808,14 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
           onPaymentError={handlePaymentError}
         />
       )}
+      
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
     </AnimatePresence>
   );
 };

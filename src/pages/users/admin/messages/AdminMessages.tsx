@@ -14,6 +14,8 @@ import {
   Mail,
   X
 } from 'lucide-react';
+import { NotificationModal } from '../../../../shared/components/modals';
+import { useNotification } from '../../../../shared/hooks/useNotification';
 
 interface Conversation {
   id: string;
@@ -55,6 +57,7 @@ const statusColors = {
 };
 
 export const AdminMessages: React.FC = () => {
+  const { notification, showNotification, hideNotification } = useNotification();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [stats, setStats] = useState<Stats>({
     totalConversations: 0,
@@ -291,15 +294,27 @@ export const AdminMessages: React.FC = () => {
       });
 
       if (response.ok) {
-        alert('✅ Conversation deleted successfully!');
+        showNotification({
+          type: 'success',
+          title: 'Conversation Deleted',
+          message: 'The conversation has been deleted successfully.'
+        });
         setSelectedConversation(null);
         loadData();
       } else {
-        alert('❌ Failed to delete conversation');
+        showNotification({
+          type: 'error',
+          title: 'Delete Failed',
+          message: 'Failed to delete the conversation. Please try again.'
+        });
       }
     } catch (error) {
       console.error('Failed to delete:', error);
-      alert('❌ Failed to delete conversation');
+      showNotification({
+        type: 'error',
+        title: 'Delete Error',
+        message: 'An error occurred while deleting the conversation.'
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -683,6 +698,14 @@ export const AdminMessages: React.FC = () => {
           </div>
         )}
       </div>
+      
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
     </AdminLayout>
   );
 };
