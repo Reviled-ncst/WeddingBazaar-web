@@ -442,7 +442,7 @@ router.get('/:vendorId', async (req, res) => {
 
 // Get services for a vendor (alternative route pattern)
 router.get('/:vendorId/services', async (req, res) => {
-  console.log('🛠️ Getting services for vendor (alt route):', req.params.vendorId);
+  console.log('🛠️ Getting services for vendor (alt route) WITH ITEMIZATION:', req.params.vendorId);
   
   try {
     const { vendorId } = req.params;
@@ -454,6 +454,72 @@ router.get('/:vendorId/services', async (req, res) => {
     `;
     
     console.log(`✅ Found ${services.length} services for vendor ${vendorId}`);
+    
+    // ✅ ENRICH EACH SERVICE WITH ITEMIZATION DATA
+    console.log(`📦 [ITEMIZATION] Enriching ${services.length} services with packages, items, add-ons, pricing rules...`);
+    
+    for (const service of services) {
+      try {
+        // 1. Get packages for this service
+        const packages = await sql`
+          SELECT * FROM service_packages
+          WHERE service_id = ${service.id}
+          ORDER BY is_default DESC, price ASC
+        `;
+        
+        // 2. Get all package items (if packages exist)
+        let packageItems = {};
+        if (packages.length > 0) {
+          const packageIds = packages.map(p => p.id);
+          const items = await sql`
+            SELECT * FROM package_items
+            WHERE package_id IN ${sql(packageIds)}
+            ORDER BY package_id, item_type, display_order
+          `;
+          
+          // Group items by package_id
+          items.forEach(item => {
+            if (!packageItems[item.package_id]) {
+              packageItems[item.package_id] = [];
+            }
+            packageItems[item.package_id].push(item);
+          });
+        }
+        
+        // 3. Get add-ons for this service
+        const addons = await sql`
+          SELECT * FROM service_addons
+          WHERE service_id = ${service.id}
+          AND is_active = true
+          ORDER BY price ASC
+        `;
+        
+        // 4. Get pricing rules for this service
+        const pricingRules = await sql`
+          SELECT * FROM service_pricing_rules
+          WHERE service_id = ${service.id}
+          AND is_active = true
+          ORDER BY created_at DESC
+        `;
+        
+        // 5. Attach all itemization data to service
+        service.packages = packages.map(pkg => ({
+          ...pkg,
+          items: packageItems[pkg.id] || []
+        }));
+        service.addons = addons;
+        service.pricing_rules = pricingRules;
+        
+        console.log(`✅ [${service.title}] Packages: ${packages.length}, Add-ons: ${addons.length}, Rules: ${pricingRules.length}`);
+      } catch (err) {
+        console.error(`❌ Error enriching service ${service.id}:`, err);
+        service.packages = [];
+        service.addons = [];
+        service.pricing_rules = [];
+      }
+    }
+    
+    console.log(`✅ [Itemization] All ${services.length} services enriched with complete data`);
     
     res.json({
       success: true,
