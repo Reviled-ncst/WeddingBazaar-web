@@ -186,6 +186,69 @@ router.get('/vendor/:vendorId', async (req, res) => {
     
     console.log(`✅ Found ${services.length} services for vendor ${vendorId}`);
     
+    // ✅ PRIORITY 3 FIX: Enrich each service with itemization data
+    for (const service of services) {
+      console.log(`📦 [Itemization] Enriching service ${service.id} with packages, add-ons, and pricing rules`);
+      
+      // 1. Get packages for this service
+      const packages = await sql`
+        SELECT * FROM service_packages
+        WHERE service_id = ${service.id}
+        ORDER BY is_default DESC, price ASC
+      `;
+      console.log(`  📦 Found ${packages.length} packages for service ${service.id}`);
+      
+      // 2. Get all package items (if packages exist)
+      let packageItems = {};
+      if (packages.length > 0) {
+        const packageIds = packages.map(p => p.id);
+        const items = await sql`
+          SELECT * FROM package_items
+          WHERE package_id = ANY(${packageIds})
+          ORDER BY package_id, item_type, display_order
+        `;
+        
+        // Group items by package_id
+        items.forEach(item => {
+          if (!packageItems[item.package_id]) {
+            packageItems[item.package_id] = [];
+          }
+          packageItems[item.package_id].push(item);
+        });
+        
+        console.log(`  📦 Found ${items.length} package items across ${Object.keys(packageItems).length} packages`);
+      }
+      
+      // 3. Get add-ons for this service
+      const addons = await sql`
+        SELECT * FROM service_addons
+        WHERE service_id = ${service.id}
+        AND is_active = true
+        ORDER BY price ASC
+      `;
+      console.log(`  🎁 Found ${addons.length} add-ons for service ${service.id}`);
+      
+      // 4. Get pricing rules for this service
+      const pricingRules = await sql`
+        SELECT * FROM service_pricing_rules
+        WHERE service_id = ${service.id}
+        AND is_active = true
+        ORDER BY created_at DESC
+      `;
+      console.log(`  💰 Found ${pricingRules.length} pricing rules for service ${service.id}`);
+      
+      // Enrich service with itemization data
+      service.packages = packages;
+      service.package_items = packageItems;
+      service.addons = addons;
+      service.pricing_rules = pricingRules;
+      service.has_itemization = packages.length > 0 || addons.length > 0 || pricingRules.length > 0;
+      
+      console.log(`  ✅ Service ${service.id} enriched with ${packages.length} packages, ${addons.length} add-ons, ${pricingRules.length} pricing rules`);
+    }
+    
+    console.log(`✅ [Itemization] All ${services.length} services enriched with complete data`);
+    
     res.json({
       success: true,
       services: services,

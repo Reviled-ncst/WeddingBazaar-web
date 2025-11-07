@@ -16,19 +16,19 @@ import {
   Edit,
   Trash2
 } from 'lucide-react';
-import { bookingReportsService } from '../../../shared/services/bookingReportsService';
+import { bookingReportsService } from '@/shared/services/bookingReportsService';
 import type { 
   AdminBookingReportView, 
   ReportStatistics,
   ReportFilters
-} from '../../../shared/types/booking-reports.types';
+} from '@/shared/types/booking-reports.types';
 import { 
   REPORT_TYPE_LABELS, 
   STATUS_LABELS, 
   PRIORITY_LABELS,
   STATUS_COLORS,
   PRIORITY_COLORS
-} from '../../../shared/types/booking-reports.types';
+} from '@/shared/types/booking-reports.types';
 
 export const AdminReports: React.FC = () => {
   const [reports, setReports] = useState<AdminBookingReportView[]>([]);

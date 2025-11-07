@@ -534,7 +534,20 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         // No validation needed - packages define all pricing
         break;
       case 3:
-        // Step 3 is now Service Items & Equipment - no validation needed
+        // ✅ PRIORITY 2 FIX: Require DSS fields (wedding_styles, cultural_specialties, availability)
+        if (!formData.wedding_styles || formData.wedding_styles.length === 0) {
+          newErrors.wedding_styles = 'Please select at least one wedding style';
+        }
+        if (!formData.cultural_specialties || formData.cultural_specialties.length === 0) {
+          newErrors.cultural_specialties = 'Please select at least one cultural specialty';
+        }
+        if (!formData.availability || 
+            (typeof formData.availability === 'object' && 
+             !formData.availability.weekdays && 
+             !formData.availability.weekends && 
+             !formData.availability.holidays)) {
+          newErrors.availability = 'Please select at least one availability option';
+        }
         break;
     }
 
@@ -1452,6 +1465,14 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                             </label>
                           ))}
                         </div>
+                        
+                        {/* ✅ ERROR MESSAGE for wedding_styles */}
+                        {errors.wedding_styles && (
+                          <p className="mt-3 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-3 rounded-lg border border-red-200">
+                            <AlertCircle size={16} />
+                            {errors.wedding_styles}
+                          </p>
+                        )}
                       </div>
 
                       {/* Cultural Specialties - Enhanced with validation and tooltips */}
@@ -1591,6 +1612,14 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                             </label>
                           ))}
                         </div>
+                        
+                        {/* ✅ ERROR MESSAGE for cultural_specialties */}
+                        {errors.cultural_specialties && (
+                          <p className="mt-3 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-3 rounded-lg border border-red-200">
+                            <AlertCircle size={16} />
+                            {errors.cultural_specialties}
+                          </p>
+                        )}
                       </div>
 
                       {/* Availability Preferences */}
@@ -1666,6 +1695,14 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                             Block specific dates (vacations, holidays, already booked dates)
                           </p>
                         </div>
+                        
+                        {/* ✅ ERROR MESSAGE for availability */}
+                        {errors.availability && (
+                          <p className="mt-3 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-3 rounded-lg border border-red-200">
+                            <AlertCircle size={16} />
+                            {errors.availability}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </motion.div>

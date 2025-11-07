@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import type {
   BookingReport,
   AdminBookingReportView,
@@ -10,6 +10,13 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+interface PaginationData {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export const bookingReportsService = {
   // ==================== COUPLE & VENDOR ENDPOINTS ====================
   
@@ -20,9 +27,10 @@ export const bookingReportsService = {
     try {
       const response = await axios.post(`${API_BASE_URL}/api/booking-reports/submit`, data);
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error: string }>;
       console.error('Error submitting report:', error);
-      throw new Error(error.response?.data?.error || 'Failed to submit report');
+      throw new Error(axiosError.response?.data?.error || 'Failed to submit report');
     }
   },
 
@@ -32,7 +40,7 @@ export const bookingReportsService = {
   async getMyReports(userId: string, filters?: ReportFilters): Promise<{
     success: boolean;
     reports: BookingReport[];
-    pagination: any;
+    pagination: PaginationData;
   }> {
     try {
       const params = new URLSearchParams();
@@ -45,9 +53,10 @@ export const bookingReportsService = {
         `${API_BASE_URL}/api/booking-reports/my-reports/${userId}?${params.toString()}`
       );
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error: string }>;
       console.error('Error fetching user reports:', error);
-      throw new Error(error.response?.data?.error || 'Failed to fetch reports');
+      throw new Error(axiosError.response?.data?.error || 'Failed to fetch reports');
     }
   },
 
@@ -58,9 +67,10 @@ export const bookingReportsService = {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/booking-reports/booking/${bookingId}`);
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error: string }>;
       console.error('Error fetching booking reports:', error);
-      throw new Error(error.response?.data?.error || 'Failed to fetch booking reports');
+      throw new Error(axiosError.response?.data?.error || 'Failed to fetch booking reports');
     }
   },
 
@@ -73,7 +83,7 @@ export const bookingReportsService = {
     success: boolean;
     reports: AdminBookingReportView[];
     statistics: ReportStatistics;
-    pagination: any;
+    pagination: PaginationData;
   }> {
     try {
       const params = new URLSearchParams();
@@ -90,9 +100,10 @@ export const bookingReportsService = {
         `${API_BASE_URL}/api/booking-reports/admin/all?${params.toString()}`
       );
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error: string }>;
       console.error('Error fetching admin reports:', error);
-      throw new Error(error.response?.data?.error || 'Failed to fetch reports');
+      throw new Error(axiosError.response?.data?.error || 'Failed to fetch reports');
     }
   },
 
@@ -109,9 +120,10 @@ export const bookingReportsService = {
         data
       );
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error: string }>;
       console.error('Error updating report status:', error);
-      throw new Error(error.response?.data?.error || 'Failed to update report status');
+      throw new Error(axiosError.response?.data?.error || 'Failed to update report status');
     }
   },
 
@@ -128,9 +140,10 @@ export const bookingReportsService = {
         { priority }
       );
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error: string }>;
       console.error('Error updating report priority:', error);
-      throw new Error(error.response?.data?.error || 'Failed to update report priority');
+      throw new Error(axiosError.response?.data?.error || 'Failed to update report priority');
     }
   },
 
@@ -143,9 +156,10 @@ export const bookingReportsService = {
         `${API_BASE_URL}/api/booking-reports/admin/${reportId}`
       );
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error: string }>;
       console.error('Error deleting report:', error);
-      throw new Error(error.response?.data?.error || 'Failed to delete report');
+      throw new Error(axiosError.response?.data?.error || 'Failed to delete report');
     }
   }
 };
