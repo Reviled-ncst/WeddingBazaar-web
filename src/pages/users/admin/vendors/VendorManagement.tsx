@@ -16,7 +16,7 @@ import {
   Clock,
   Package
 } from 'lucide-react';
-import { AdminLayout, DataTable, StatCard, Badge, Button, Modal } from '../shared';
+import { AdminLayout, DataTable, Badge, Button, Modal } from '../shared';
 
 interface Vendor {
   id: string;
@@ -216,31 +216,75 @@ export const VendorManagement: React.FC = () => {
         { label: 'Vendor Management' }
       ]}
     >
-      {/* Stats Cards */}
+      {/* Stats Cards - Wedding Theme Glassmorphism */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          title="Total Vendors"
-          value={stats.total.toString()}
-          icon={Store}
-        />
-        <StatCard
-          title="Active Vendors"
-          value={stats.active.toString()}
-          icon={CheckCircle}
-          iconColor="text-green-600"
-        />
-        <StatCard
-          title="Total Revenue"
-          value={`₱${stats.totalRevenue.toLocaleString()}`}
-          icon={DollarSign}
-          iconColor="text-blue-600"
-        />
-        <StatCard
-          title="Avg Rating"
-          value={stats.avgRating.toFixed(1)}
-          icon={Star}
-          iconColor="text-yellow-600"
-        />
+        {/* Total Vendors Card */}
+        <div className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-200/40 to-pink-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg">
+                <Store className="w-6 h-6 text-white" />
+              </div>
+              <div className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+                All
+              </div>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.total}</h3>
+            <p className="text-sm text-gray-600 font-medium">Total Vendors</p>
+          </div>
+        </div>
+
+        {/* Active Vendors Card */}
+        <div className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-200/40 to-emerald-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl shadow-lg">
+                <CheckCircle className="w-6 h-6 text-white" />
+              </div>
+              <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                Active
+              </div>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.active}</h3>
+            <p className="text-sm text-gray-600 font-medium">Active Vendors</p>
+          </div>
+        </div>
+
+        {/* Total Revenue Card */}
+        <div className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-200/40 to-cyan-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
+                <DollarSign className="w-6 h-6 text-white" />
+              </div>
+              <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                PHP
+              </div>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900 mb-1">₱{stats.totalRevenue.toLocaleString()}</h3>
+            <p className="text-sm text-gray-600 font-medium">Total Revenue</p>
+          </div>
+        </div>
+
+        {/* Avg Rating Card */}
+        <div className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-200/40 to-amber-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-xl shadow-lg">
+                <Star className="w-6 h-6 text-white" />
+              </div>
+              <div className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">
+                Rating
+              </div>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.avgRating.toFixed(1)}</h3>
+            <p className="text-sm text-gray-600 font-medium">Avg Rating</p>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}

@@ -17,7 +17,7 @@ import {
   Loader2,
   RefreshCw
 } from 'lucide-react';
-import { AdminLayout, DataTable, StatCard, Badge, Button, Modal } from '../shared';
+import { AdminLayout, DataTable, Badge, Button, Modal } from '../shared';
 
 interface User {
   id: string;
@@ -366,31 +366,75 @@ export const UserManagement: React.FC = () => {
         { label: 'User Management' }
       ]}
     >
-      {/* Stats Cards */}
+      {/* Stats Cards - Wedding Theme Glassmorphism */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          title="Total Users"
-          value={stats.total.toString()}
-          icon={Users}
-        />
-        <StatCard
-          title="Active Users"
-          value={stats.active.toString()}
-          icon={CheckCircle}
-          iconColor="text-green-600"
-        />
-        <StatCard
-          title="Inactive Users"
-          value={stats.inactive.toString()}
-          icon={Clock}
-          iconColor="text-yellow-600"
-        />
-        <StatCard
-          title="Suspended Users"
-          value={stats.suspended.toString()}
-          icon={XCircle}
-          iconColor="text-red-600"
-        />
+        {/* Total Users Card */}
+        <div className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-pink-200/40 to-purple-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl shadow-lg">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <div className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs font-semibold">
+                All
+              </div>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.total}</h3>
+            <p className="text-sm text-gray-600 font-medium">Total Users</p>
+          </div>
+        </div>
+
+        {/* Active Users Card */}
+        <div className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-200/40 to-emerald-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl shadow-lg">
+                <CheckCircle className="w-6 h-6 text-white" />
+              </div>
+              <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                Online
+              </div>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.active}</h3>
+            <p className="text-sm text-gray-600 font-medium">Active Users</p>
+          </div>
+        </div>
+
+        {/* Inactive Users Card */}
+        <div className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-200/40 to-amber-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-xl shadow-lg">
+                <Clock className="w-6 h-6 text-white" />
+              </div>
+              <div className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">
+                Idle
+              </div>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.inactive}</h3>
+            <p className="text-sm text-gray-600 font-medium">Inactive Users</p>
+          </div>
+        </div>
+
+        {/* Suspended Users Card */}
+        <div className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-200/40 to-rose-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-gradient-to-br from-red-500 to-rose-500 rounded-xl shadow-lg">
+                <XCircle className="w-6 h-6 text-white" />
+              </div>
+              <div className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
+                Blocked
+              </div>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.suspended}</h3>
+            <p className="text-sm text-gray-600 font-medium">Suspended Users</p>
+          </div>
+        </div>
       </div>
 
       {/* Error Alert */}
@@ -413,82 +457,85 @@ export const UserManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search by name, email, or phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              />
+      {/* Filters - Wedding Theme Glassmorphism */}
+      <div className="relative group mb-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-pink-100/30 to-purple-100/30 rounded-2xl blur-xl"></div>
+        <div className="relative backdrop-blur-xl bg-white/80 rounded-2xl shadow-xl border border-white/60 p-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-pink-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name, email, or phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-white/50 backdrop-blur-sm border-2 border-pink-200/50 rounded-xl focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all placeholder:text-gray-400"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <select
+                value={filterRole}
+                onChange={(e) => setFilterRole(e.target.value)}
+                className="px-4 py-3 bg-white/50 backdrop-blur-sm border-2 border-pink-200/50 rounded-xl focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all"
+                aria-label="Filter users by role"
+              >
+                <option value="all">All Roles</option>
+                <option value="individual">Individual</option>
+                <option value="vendor">Vendor</option>
+                <option value="admin">Admin</option>
+              </select>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-4 py-3 bg-white/50 backdrop-blur-sm border-2 border-pink-200/50 rounded-xl focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all"
+                aria-label="Filter users by status"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="suspended">Suspended</option>
+              </select>
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                title="Refresh user list"
+                className="px-4 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden md:inline">Refresh</span>
+              </button>
+              <button className="px-4 py-3 bg-white/60 backdrop-blur-sm border-2 border-pink-200/50 rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2">
+                <Filter className="w-4 h-4 text-pink-600" />
+                <span className="hidden md:inline text-gray-700">Filters</span>
+              </button>
+              <button className="px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2">
+                <UserPlus className="w-4 h-4" />
+                <span className="hidden md:inline">Add User</span>
+              </button>
             </div>
           </div>
-          <div className="flex gap-2">
-            <select
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              aria-label="Filter users by role"
-            >
-              <option value="all">All Roles</option>
-              <option value="individual">Individual</option>
-              <option value="vendor">Vendor</option>
-              <option value="admin">Admin</option>
-            </select>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              aria-label="Filter users by status"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
-            </select>
-            <Button 
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              title="Refresh user list"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            <Button variant="outline">
-              <Filter className="w-4 h-4 mr-2" />
-              More Filters
-            </Button>
-            <Button variant="primary">
-              <UserPlus className="w-4 h-4 mr-2" />
-              Add User
-            </Button>
+          
+          {/* Results count */}
+          <div className="mt-4 pt-4 border-t border-pink-200/30">
+            <p className="text-sm text-gray-600">
+              Showing <span className="font-semibold text-pink-600">{filteredUsers.length}</span> of{' '}
+              <span className="font-semibold text-pink-600">{users.length}</span> users
+              {(searchQuery || filterRole !== 'all' || filterStatus !== 'all') && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setFilterRole('all');
+                    setFilterStatus('all');
+                  }}
+                  className="ml-3 text-pink-600 hover:text-pink-700 font-medium underline"
+                >
+                  Clear filters
+                </button>
+              )}
+            </p>
           </div>
-        </div>
-        
-        {/* Results count */}
-        <div className="mt-4 pt-4 border-t border-slate-200">
-          <p className="text-sm text-slate-600">
-            Showing <span className="font-semibold text-slate-900">{filteredUsers.length}</span> of{' '}
-            <span className="font-semibold text-slate-900">{users.length}</span> users
-            {(searchQuery || filterRole !== 'all' || filterStatus !== 'all') && (
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setFilterRole('all');
-                  setFilterStatus('all');
-                }}
-                className="ml-3 text-blue-600 hover:text-blue-700 font-medium underline"
-              >
-                Clear filters
-              </button>
-            )}
-          </p>
         </div>
       </div>
 

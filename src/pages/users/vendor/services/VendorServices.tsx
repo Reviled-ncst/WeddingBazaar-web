@@ -1972,11 +1972,26 @@ export const VendorServices: React.FC = () => {
                                           <h3 class="text-lg font-semibold text-gray-900 mb-3">Pricing Information</h3>
                                           <div class="p-4 bg-gradient-to-br from-rose-50 to-pink-50 rounded-xl">
                                             <div class="text-3xl font-bold text-rose-600 mb-2">
-                                              ${service.price_range && service.price_range !== '₱' 
-                                                ? service.price_range 
-                                                : `₱${typeof service.price === 'string' ? parseFloat(service.price).toLocaleString() : ((service.price as number) || 0).toLocaleString()}`}
+                                              ${(() => {
+                                                // Show package-based pricing if available
+                                                if (service.packages && service.packages.length > 0) {
+                                                  const prices = service.packages.map(p => p.base_price || 0).filter(p => p > 0);
+                                                  if (prices.length > 0) {
+                                                    const min = Math.min(...prices);
+                                                    const max = Math.max(...prices);
+                                                    if (min === max) {
+                                                      return `₱${min.toLocaleString()}`;
+                                                    }
+                                                    return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
+                                                  }
+                                                }
+                                                // Fallback to legacy pricing
+                                                return service.price_range && service.price_range !== '₱' 
+                                                  ? service.price_range 
+                                                  : (service.price ? `₱${typeof service.price === 'string' ? parseFloat(service.price).toLocaleString() : ((service.price) || 0).toLocaleString()}` : 'Contact for pricing');
+                                              })()}
                                             </div>
-                                            <p class="text-gray-600 text-sm">Base service pricing</p>
+                                            <p class="text-gray-600 text-sm">${service.packages && service.packages.length > 0 ? 'Package price range' : 'Base service pricing'}</p>
                                           </div>
                                         </div>
                                         
