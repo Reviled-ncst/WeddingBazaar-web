@@ -1051,15 +1051,20 @@ router.get('/profile', async (req, res) => {
     // If user is a vendor or coordinator, get additional profile info
     let vendorInfo = null;
     if (user.user_type === 'vendor' || user.user_type === 'coordinator') {
-      const vendors = await sql`
-        SELECT id, business_name, business_type, years_experience, team_size, 
-               specialties, service_areas
-        FROM vendor_profiles 
-        WHERE user_id = ${user.id}
-      `;
-      
-      if (vendors.length > 0) {
-        vendorInfo = vendors[0];
+      try {
+        const vendors = await sql`
+          SELECT id, business_name, business_type, years_experience, team_size, 
+                 specialties, service_areas
+          FROM vendor_profiles 
+          WHERE user_id = ${user.id}
+        `;
+        
+        if (vendors.length > 0) {
+          vendorInfo = vendors[0];
+        }
+      } catch (vendorError) {
+        console.log('⚠️ Could not fetch vendor profile (table may not exist):', vendorError.message);
+        // Continue without vendor info - not critical
       }
     }
     
