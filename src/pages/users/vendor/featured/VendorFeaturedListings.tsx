@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { Star, Eye, Calendar, Crown, TrendingUp, Users, MapPin, Clock } from 'lucide-react';
 import { SubscriptionGate } from '../../../../shared/components/subscription/SubscriptionGate';
+import { NotificationModal } from '../../../../shared/components/modals';
+import { useNotification } from '../../../../shared/hooks/useNotification';
 
 interface FeaturedListing {
   id: string;
@@ -29,6 +31,7 @@ interface FeaturedPackage {
 }
 
 export const VendorFeaturedListings: React.FC = () => {
+  const { notification, showNotification, hideNotification } = useNotification();
   const [listings, setListings] = useState<FeaturedListing[]>([]);
   const [packages, setPackages] = useState<FeaturedPackage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,13 +161,21 @@ export const VendorFeaturedListings: React.FC = () => {
       console.log('Upgrading listing:', listingId, 'to package:', packageId);
       
       // Show success message
-      alert('Your listing has been upgraded! It will be featured within 24 hours.');
+      showNotification({
+        type: 'success',
+        title: 'Listing Upgraded!',
+        message: 'Your listing has been upgraded! It will be featured within 24 hours.'
+      });
       
       // Refresh data
       fetchFeaturedData();
     } catch (error) {
       console.error('Error upgrading listing:', error);
-      alert('Failed to upgrade listing. Please try again.');
+      showNotification({
+        type: 'error',
+        title: 'Upgrade Failed',
+        message: 'Failed to upgrade listing. Please try again.'
+      });
     }
   };
 
@@ -384,6 +395,14 @@ export const VendorFeaturedListings: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
     </SubscriptionGate>
   );
 };

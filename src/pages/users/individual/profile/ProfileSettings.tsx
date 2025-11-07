@@ -18,11 +18,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { userService, type UserProfile, type UpdateProfileData } from '../../../../shared/services/userService';
+import { NotificationModal } from '../../../../shared/components/modals';
+import { useNotification } from '../../../../shared/hooks/useNotification';
 import { CoupleHeader } from '../landing/CoupleHeader';
 import { SecuritySettings, DocumentUploader, type ExtractedDocumentData } from '../../../../shared/components/security';
 
 export const ProfileSettings: React.FC = () => {
   const { user, isEmailVerified, firebaseUser } = useAuth();
+  const { notification, showNotification, hideNotification } = useNotification();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -297,10 +300,18 @@ export const ProfileSettings: React.FC = () => {
                           // Import Firebase auth service
                           const { firebaseAuthService } = await import('../../../../services/auth/firebaseAuthService');
                           await firebaseAuthService.resendEmailVerification();
-                          alert('✅ Verification email sent! Please check your inbox.');
+                          showNotification({
+                            type: 'success',
+                            title: 'Verification Email Sent',
+                            message: 'Verification email sent! Please check your inbox.'
+                          });
                         } catch (error) {
                           console.error('Error sending verification email:', error);
-                          alert('❌ Failed to send verification email. Please try again.');
+                          showNotification({
+                            type: 'error',
+                            title: 'Verification Failed',
+                            message: 'Failed to send verification email. Please try again.'
+                          });
                         }
                       }}
                       className="px-4 py-2 text-sm bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors"
@@ -661,6 +672,14 @@ export const ProfileSettings: React.FC = () => {
             onClose={() => setShowDocumentUploader(false)}
           />
         )}
+        
+        <NotificationModal
+          isOpen={notification.isOpen}
+          onClose={hideNotification}
+          type={notification.type}
+          title={notification.title}
+          message={notification.message}
+        />
       </div>
       )}
     </div>
