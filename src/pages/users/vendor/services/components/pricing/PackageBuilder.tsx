@@ -13,11 +13,12 @@ import {
 } from 'lucide-react';
 import { getPricingTemplates, getCategoryName } from './categoryPricingTemplates';
 
-// ✅ NEW: Enhanced inclusion with quantity and unit
+// ✅ NEW: Enhanced inclusion with quantity, unit, and unit_price
 export interface PackageInclusion {
   name: string;
   quantity: number;
   unit: string; // 'pcs', 'hours', 'sets', 'days', 'items', etc.
+  unit_price?: number; // ✅ ADDED: Price per unit
   description?: string;
 }
 
@@ -72,6 +73,7 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
         name: inc.name,
         quantity: inc.quantity,
         unit: inc.unit,
+        unit_price: inc.unit_price || 0, // ✅ FIX: Include unit_price field!
         description: inc.description || ''
       }))
     }));
@@ -84,7 +86,7 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
       item_name: '',
       description: '',
       price: 0,
-      inclusions: [{ name: '', quantity: 1, unit: 'pcs', description: '' }],
+      inclusions: [{ name: '', quantity: 1, unit: 'pcs', unit_price: 0, description: '' }],
       exclusions: [],
       display_order: packages.length,
       is_active: true
@@ -120,9 +122,24 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
 
   const addInclusion = (packageIndex: number) => {
     const pkg = packages[packageIndex];
+    const newInclusions = [...pkg.inclusions, { name: '', quantity: 1, unit: 'pcs', unit_price: 0, description: '' }];
+    
+    // ✅ Auto-calculate package price
+    const autoPrice = calculatePackagePrice(newInclusions);
+    
     updatePackage(packageIndex, {
-      inclusions: [...pkg.inclusions, { name: '', quantity: 1, unit: 'pcs', description: '' }]
+      inclusions: newInclusions,
+      price: autoPrice
     });
+  };
+
+  // ✅ NEW: Auto-calculate package price from inclusions
+  const calculatePackagePrice = (inclusions: PackageInclusion[]): number => {
+    return inclusions.reduce((total, inc) => {
+      const quantity = inc.quantity || 0;
+      const unitPrice = inc.unit_price || 0;
+      return total + (quantity * unitPrice);
+    }, 0);
   };
 
   const updateInclusion = (packageIndex: number, inclusionIndex: number, field: keyof PackageInclusion, value: string | number) => {
@@ -130,13 +147,26 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
     const updated = pkg.inclusions.map((inc, i) =>
       i === inclusionIndex ? { ...inc, [field]: value } : inc
     );
-    updatePackage(packageIndex, { inclusions: updated });
+    
+    // ✅ Auto-calculate package price based on items
+    const autoPrice = calculatePackagePrice(updated);
+    
+    updatePackage(packageIndex, { 
+      inclusions: updated,
+      price: autoPrice  // Auto-set the package price
+    });
   };
 
   const removeInclusion = (packageIndex: number, inclusionIndex: number) => {
     const pkg = packages[packageIndex];
+    const newInclusions = pkg.inclusions.filter((_, i) => i !== inclusionIndex);
+    
+    // ✅ Auto-calculate package price
+    const autoPrice = calculatePackagePrice(newInclusions);
+    
     updatePackage(packageIndex, {
-      inclusions: pkg.inclusions.filter((_, i) => i !== inclusionIndex)
+      inclusions: newInclusions,
+      price: autoPrice
     });
   };
 
@@ -154,16 +184,19 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
     // Get category-specific templates from the new comprehensive template file
     const templates = getPricingTemplates(category || 'default');
     
-    // Convert string[] inclusions to PackageInclusion[] format
-    const convertedTemplates: PackageItem[] = templates.map(template => ({
+    // ✅ Convert string inclusions to PackageInclusion format if needed
+    const convertedTemplates = templates.map(template => ({
       ...template,
-      inclusions: template.inclusions.map(inc => ({
-        name: inc,
-        quantity: 1,
-        unit: 'pcs',
-        description: ''
-      }))
-    }));
+      inclusions: typeof template.inclusions[0] === 'string'
+        ? (template.inclusions as unknown as string[]).map(incl => ({
+            name: incl,
+            quantity: 1,
+            unit: 'items' as const,
+            unit_price: 0,
+            description: ''
+          }))
+        : (template.inclusions as unknown as PackageInclusion[])
+    })) as PackageItem[];
     
     onChange(convertedTemplates);
     setShowTemplates(false);
@@ -346,20 +379,28 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
                             />
                           </div>
 
-                          {/* Price */}
+                          {/* Price - Auto-calculated */}
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Price (₱)
+                            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                              Package Price (₱)
+                              <span className="text-xs text-green-600 font-normal">✓ Auto-calculated from items</span>
                             </label>
-                            <input
-                              type="number"
-                              value={pkg.price || ''}
-                              onChange={(e) => updatePackage(index, { price: parseFloat(e.target.value) || 0 })}
-                              placeholder="0"
-                              min="0"
-                              step="1000"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                            />
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={`₱${pkg.price.toLocaleString()}`}
+                                readOnly
+                                aria-label="Auto-calculated package price"
+                                title="Auto-calculated from item prices"
+                                className="w-full px-3 py-2 border-2 border-green-200 bg-green-50 rounded-lg font-bold text-lg text-green-700 cursor-not-allowed"
+                              />
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600">
+                                <Package className="w-5 h-5" />
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              💡 Price updates automatically when you add/edit items below
+                            </p>
                           </div>
 
                           {/* Inclusions with Quantity */}
@@ -372,7 +413,7 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
                                 <div key={incIndex} className="flex items-start gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
                                   <div className="flex-1 grid grid-cols-12 gap-2">
                                     {/* Item Name */}
-                                    <div className="col-span-6">
+                                    <div className="col-span-5">
                                       <label className="block text-xs font-medium text-gray-600 mb-1">
                                         Item Name
                                       </label>
@@ -386,7 +427,7 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
                                     </div>
                                     
                                     {/* Quantity */}
-                                    <div className="col-span-3">
+                                    <div className="col-span-2">
                                       <label className="block text-xs font-medium text-gray-600 mb-1">
                                         Quantity
                                       </label>
@@ -401,7 +442,7 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
                                     </div>
                                     
                                     {/* Unit */}
-                                    <div className="col-span-3">
+                                    <div className="col-span-2">
                                       <label className="block text-xs font-medium text-gray-600 mb-1">
                                         Unit
                                       </label>
@@ -422,6 +463,28 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
                                         <option value="copies">copies</option>
                                         <option value="sessions">sessions</option>
                                       </select>
+                                    </div>
+                                    
+                                    {/* ✅ NEW: Unit Price */}
+                                    <div className="col-span-3">
+                                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                                        Unit Price (₱)
+                                      </label>
+                                      <input
+                                        type="number"
+                                        value={inclusion.unit_price || 0}
+                                        onChange={(e) => updateInclusion(index, incIndex, 'unit_price', parseFloat(e.target.value) || 0)}
+                                        placeholder="0"
+                                        min="0"
+                                        step="100"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                                      />
+                                      {/* ✅ Show calculated subtotal */}
+                                      {inclusion.quantity > 0 && inclusion.unit_price && inclusion.unit_price > 0 && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          = ₱{(inclusion.quantity * inclusion.unit_price).toLocaleString()}
+                                        </p>
+                                      )}
                                     </div>
                                     
                                     {/* Optional Description */}
