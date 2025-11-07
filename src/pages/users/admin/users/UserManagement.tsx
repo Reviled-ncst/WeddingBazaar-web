@@ -15,7 +15,10 @@ import {
   UserPlus,
   AlertCircle,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Ban,
+  Shield,
+  AlertOctagon
 } from 'lucide-react';
 import { AdminLayout, DataTable, Badge, Button, Modal } from '../shared';
 
@@ -26,9 +29,13 @@ interface User {
   last_name: string;
   phone?: string;
   role: 'individual' | 'vendor' | 'admin';
-  status: 'active' | 'inactive' | 'suspended';
+  status: 'active' | 'inactive' | 'suspended' | 'banned';
   created_at: string;
   last_login?: string;
+  suspension_end?: string;
+  suspension_reason?: string;
+  ban_reason?: string;
+  banned_at?: string;
 }
 
 interface Stats {
@@ -36,6 +43,7 @@ interface Stats {
   active: number;
   inactive: number;
   suspended: number;
+  banned: number;
 }
 
 export const UserManagement: React.FC = () => {
@@ -44,7 +52,8 @@ export const UserManagement: React.FC = () => {
     total: 0,
     active: 0,
     inactive: 0,
-    suspended: 0
+    suspended: 0,
+    banned: 0
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,6 +61,11 @@ export const UserManagement: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [showBanModal, setShowBanModal] = useState(false);
+  const [suspensionDuration, setSuspensionDuration] = useState('7');
+  const [suspensionReason, setSuspensionReason] = useState('');
+  const [banReason, setBanReason] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -108,7 +122,8 @@ export const UserManagement: React.FC = () => {
         total: mappedUsers.length,
         active: mappedUsers.filter((u: User) => u.status === 'active').length,
         inactive: mappedUsers.filter((u: User) => u.status === 'inactive').length,
-        suspended: mappedUsers.filter((u: User) => u.status === 'suspended').length
+        suspended: mappedUsers.filter((u: User) => u.status === 'suspended').length,
+        banned: mappedUsers.filter((u: User) => u.status === 'banned').length
       };
 
       setUsers(mappedUsers);
@@ -124,7 +139,8 @@ export const UserManagement: React.FC = () => {
         total: 0,
         active: 0,
         inactive: 0,
-        suspended: 0
+        suspended: 0,
+        banned: 0
       });
     } finally {
       setLoading(false);
@@ -146,6 +162,134 @@ export const UserManagement: React.FC = () => {
   const handleViewUser = (user: User) => {
     setSelectedUser(user);
     setShowDetailModal(true);
+  };
+
+  const handleSuspendUser = (user: User) => {
+    setSelectedUser(user);
+    setSuspensionReason('');
+    setSuspensionDuration('7');
+    setShowSuspendModal(true);
+  };
+
+  const handleBanUser = (user: User) => {
+    setSelectedUser(user);
+    setBanReason('');
+    setShowBanModal(true);
+  };
+
+  const confirmSuspension = async () => {
+    if (!selectedUser || !suspensionReason.trim()) {
+      alert('Please provide a suspension reason');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/admin/users/${selectedUser.id}/suspend`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            duration_days: parseInt(suspensionDuration),
+            reason: suspensionReason
+          })
+        }
+      );
+
+      if (response.ok) {
+        setShowSuspendModal(false);
+        await loadUsers();
+      } else {
+        alert('Failed to suspend user');
+      }
+    } catch (error) {
+      console.error('Error suspending user:', error);
+      alert('An error occurred while suspending the user');
+    }
+  };
+
+  const confirmBan = async () => {
+    if (!selectedUser || !banReason.trim()) {
+      alert('Please provide a ban reason');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/admin/users/${selectedUser.id}/ban`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            reason: banReason
+          })
+        }
+      );
+
+      if (response.ok) {
+        setShowBanModal(false);
+        await loadUsers();
+      } else {
+        alert('Failed to ban user');
+      }
+    } catch (error) {
+      console.error('Error banning user:', error);
+      alert('An error occurred while banning the user');
+    }
+  };
+
+  const handleUnban = async (userId: string) => {
+    if (!confirm('Are you sure you want to unban this user?')) return;
+
+    try {
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/admin/users/${userId}/unban`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        await loadUsers();
+      }
+    } catch (error) {
+      console.error('Error unbanning user:', error);
+    }
+  };
+
+  const handleRemoveSuspension = async (userId: string) => {
+    if (!confirm('Are you sure you want to remove this suspension?')) return;
+
+    try {
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/admin/users/${userId}/unsuspend`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        await loadUsers();
+      }
+    } catch (error) {
+      console.error('Error removing suspension:', error);
+    }
   };
 
   const handleUpdateStatus = async (userId: string, newStatus: string) => {
@@ -246,16 +390,18 @@ export const UserManagement: React.FC = () => {
       render: (user: User) => {
         if (!user || !user.status) return <Badge variant="default">Unknown</Badge>;
         
-        const statusColors = {
-          active: 'success' as const,
-          inactive: 'default' as const,
-          suspended: 'error' as const
+        const statusColors: Record<User['status'], 'success' | 'default' | 'error' | 'warning'> = {
+          active: 'success',
+          inactive: 'default',
+          suspended: 'warning',
+          banned: 'error'
         };
         
-        const statusIcons = {
+        const statusIcons: Record<User['status'], typeof CheckCircle> = {
           active: CheckCircle,
           inactive: Clock,
-          suspended: XCircle
+          suspended: AlertOctagon,
+          banned: Ban
         };
         
         const StatusIcon = statusIcons[user.status];
@@ -334,7 +480,7 @@ export const UserManagement: React.FC = () => {
         if (!user) return null;
         
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
@@ -343,14 +489,53 @@ export const UserManagement: React.FC = () => {
             >
               <Eye className="w-4 h-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {/* Edit user */}}
-              title="Edit user"
-            >
-              <Edit className="w-4 h-4" />
-            </Button>
+            
+            {user.status === 'active' && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSuspendUser(user)}
+                  title="Suspend user"
+                  className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
+                >
+                  <Shield className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleBanUser(user)}
+                  title="Ban user"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Ban className="w-4 h-4" />
+                </Button>
+              </>
+            )}
+            
+            {user.status === 'suspended' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleRemoveSuspension(user.id)}
+                title="Remove suspension"
+                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+              >
+                <CheckCircle className="w-4 h-4" />
+              </Button>
+            )}
+            
+            {user.status === 'banned' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleUnban(user.id)}
+                title="Unban user"
+                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+              >
+                <CheckCircle className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         );
       }
@@ -496,6 +681,7 @@ export const UserManagement: React.FC = () => {
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
                 <option value="suspended">Suspended</option>
+                <option value="banned">Banned</option>
               </select>
               <button
                 onClick={handleRefresh}
@@ -642,24 +828,78 @@ export const UserManagement: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-4 border-t">
+            <div className="flex flex-wrap gap-3 pt-4 border-t">
               {selectedUser.status === 'active' && (
-                <Button
-                  variant="warning"
-                  onClick={() => handleUpdateStatus(selectedUser.id, 'suspended')}
-                  className="flex-1"
-                >
-                  Suspend User
-                </Button>
+                <>
+                  <Button
+                    variant="warning"
+                    onClick={() => {
+                      setShowDetailModal(false);
+                      handleSuspendUser(selectedUser);
+                    }}
+                    className="flex-1"
+                  >
+                    <Shield className="w-4 h-4 mr-2" />
+                    Suspend User
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      setShowDetailModal(false);
+                      handleBanUser(selectedUser);
+                    }}
+                    className="flex-1"
+                  >
+                    <Ban className="w-4 h-4 mr-2" />
+                    Ban User
+                  </Button>
+                </>
               )}
               {selectedUser.status === 'suspended' && (
-                <Button
-                  variant="success"
-                  onClick={() => handleUpdateStatus(selectedUser.id, 'active')}
-                  className="flex-1"
-                >
-                  Reactivate User
-                </Button>
+                <>
+                  {selectedUser.suspension_reason && (
+                    <div className="w-full p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm font-semibold text-yellow-900 mb-1">Suspension Reason:</p>
+                      <p className="text-sm text-yellow-700">{selectedUser.suspension_reason}</p>
+                      {selectedUser.suspension_end && (
+                        <p className="text-xs text-yellow-600 mt-2">
+                          Ends: {new Date(selectedUser.suspension_end).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <Button
+                    variant="success"
+                    onClick={() => handleRemoveSuspension(selectedUser.id)}
+                    className="flex-1"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Remove Suspension
+                  </Button>
+                </>
+              )}
+              {selectedUser.status === 'banned' && (
+                <>
+                  {selectedUser.ban_reason && (
+                    <div className="w-full p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm font-semibold text-red-900 mb-1">Ban Reason:</p>
+                      <p className="text-sm text-red-700">{selectedUser.ban_reason}</p>
+                      {selectedUser.banned_at && (
+                        <p className="text-xs text-red-600 mt-2">
+                          Banned: {new Date(selectedUser.banned_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <Button
+                    variant="success"
+                    onClick={() => handleUnban(selectedUser.id)}
+                    className="flex-1"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Unban User
+                  </Button>
+                </>
               )}
               <Button
                 variant="danger"
@@ -668,6 +908,145 @@ export const UserManagement: React.FC = () => {
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Delete User
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Suspend User Modal */}
+      {selectedUser && (
+        <Modal
+          isOpen={showSuspendModal}
+          onClose={() => setShowSuspendModal(false)}
+          title="Suspend User"
+          size="md"
+        >
+          <div className="space-y-6">
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <Shield className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-yellow-900 mb-1">
+                    Suspend {selectedUser.first_name} {selectedUser.last_name}
+                  </h4>
+                  <p className="text-sm text-yellow-700">
+                    This user will be temporarily restricted from accessing the platform.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Suspension Duration
+              </label>
+              <select
+                value={suspensionDuration}
+                onChange={(e) => setSuspensionDuration(e.target.value)}
+                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                aria-label="Suspension duration"
+              >
+                <option value="1">1 day</option>
+                <option value="3">3 days</option>
+                <option value="7">7 days (1 week)</option>
+                <option value="14">14 days (2 weeks)</option>
+                <option value="30">30 days (1 month)</option>
+                <option value="90">90 days (3 months)</option>
+                <option value="365">365 days (1 year)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Reason for Suspension *
+              </label>
+              <textarea
+                value={suspensionReason}
+                onChange={(e) => setSuspensionReason(e.target.value)}
+                rows={4}
+                placeholder="Enter the reason for suspending this user..."
+                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t">
+              <Button
+                variant="ghost"
+                onClick={() => setShowSuspendModal(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="warning"
+                onClick={confirmSuspension}
+                className="flex-1"
+                disabled={!suspensionReason.trim()}
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                Confirm Suspension
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Ban User Modal */}
+      {selectedUser && (
+        <Modal
+          isOpen={showBanModal}
+          onClose={() => setShowBanModal(false)}
+          title="Ban User"
+          size="md"
+        >
+          <div className="space-y-6">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <Ban className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-red-900 mb-1">
+                    Permanently Ban {selectedUser.first_name} {selectedUser.last_name}
+                  </h4>
+                  <p className="text-sm text-red-700 mb-2">
+                    This action will permanently block this user from accessing the platform.
+                  </p>
+                  <p className="text-xs text-red-600 font-semibold">
+                    ⚠️ Warning: This is a permanent action. The user can only be unbanned by an admin.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Reason for Ban *
+              </label>
+              <textarea
+                value={banReason}
+                onChange={(e) => setBanReason(e.target.value)}
+                rows={4}
+                placeholder="Enter the reason for banning this user (e.g., violation of terms, fraudulent activity, harassment)..."
+                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t">
+              <Button
+                variant="ghost"
+                onClick={() => setShowBanModal(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={confirmBan}
+                className="flex-1"
+                disabled={!banReason.trim()}
+              >
+                <Ban className="w-4 h-4 mr-2" />
+                Confirm Ban
               </Button>
             </div>
           </div>
