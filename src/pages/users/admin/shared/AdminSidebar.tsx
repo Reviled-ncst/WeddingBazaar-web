@@ -20,6 +20,7 @@ import {
   Activity,
   TrendingUp,
   Zap,
+  FileText,
 } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';

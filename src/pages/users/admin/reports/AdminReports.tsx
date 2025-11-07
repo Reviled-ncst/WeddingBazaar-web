@@ -13,6 +13,7 @@ import {
   Edit,
   Trash2
 } from 'lucide-react';
+import { AdminLayout } from '../shared';
 import { bookingReportsService } from '@/shared/services/bookingReportsService';
 import type { 
   AdminBookingReportView, 
@@ -166,18 +167,14 @@ export const AdminReports: React.FC = () => {
   );
 
   return (
-    <div className="p-6 bg-gradient-to-br from-slate-50 via-white to-pink-50 min-h-screen">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2 flex items-center gap-2">
-          <AlertTriangle className="w-8 h-8 text-pink-500" />
-          Booking Reports Management
-        </h1>
-        <p className="text-slate-600">
-          Review and manage reports submitted by vendors and couples
-        </p>
-      </div>
-
+    <AdminLayout
+      title="Booking Reports"
+      subtitle="Review and manage reports submitted by vendors and couples"
+      breadcrumbs={[
+        { label: 'Dashboard', href: '/admin/dashboard' },
+        { label: 'Reports' }
+      ]}
+    >
       {/* Statistics Cards */}
       {statistics && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -666,7 +663,7 @@ export const AdminReports: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 };
 

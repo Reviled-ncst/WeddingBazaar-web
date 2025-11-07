@@ -337,7 +337,7 @@ export const AdminSettings: React.FC = () => {
             className="flex items-center"
           >
             {setting.value ? (
-              <ToggleRight className="h-6 w-6 text-blue-600" />
+              <ToggleRight className="h-6 w-6 text-pink-600" />
             ) : (
               <ToggleLeft className="h-6 w-6 text-gray-400" />
             )}
@@ -385,11 +385,11 @@ export const AdminSettings: React.FC = () => {
   return (
     <AdminLayout title="Platform Settings" subtitle="Configure system-wide settings and preferences">
       <div className="container mx-auto px-4 max-w-7xl">
-        {/* Header */}
+        {/* Header - Wedding Theme */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">
                 Platform Settings
               </h1>
               <p className="text-gray-600 text-lg">
@@ -397,102 +397,108 @@ export const AdminSettings: React.FC = () => {
               </p>
             </div>
             <div className="flex gap-3">
-              <button className="px-4 py-2 bg-white/90 backdrop-blur-xl border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
+              <button className="px-4 py-2 bg-white/90 backdrop-blur-xl border-2 border-pink-200/50 rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2 text-gray-700">
                 <RefreshCcw className="h-4 w-4" />
-                Reset to Defaults
+                <span className="hidden sm:inline">Reset</span>
               </button>
-              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors flex items-center gap-2">
+              <button className="px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-xl transition-all hover:scale-105 hover:shadow-lg flex items-center gap-2">
                 <Save className="h-4 w-4" />
-                Save Changes
+                <span className="hidden sm:inline">Save Changes</span>
               </button>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Settings Navigation */}
+          {/* Settings Navigation - Wedding Theme */}
           <div className="lg:col-span-1">
-            <div className="bg-white/95 backdrop-blur-xl rounded-2xl border border-white/60 shadow-lg p-6 sticky top-24">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Settings Categories</h2>
-              <nav className="space-y-2">
-                {settingSections.map((section) => (
-                  <button
-                    key={section.id}
-                    onClick={() => setSelectedSection(section.id)}
-                    className={cn(
-                      "w-full text-left p-3 rounded-xl transition-all duration-200 flex items-center gap-3",
-                      selectedSection === section.id
-                        ? "bg-blue-600 text-white shadow-lg"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                    )}
-                  >
-                    <section.icon className="h-5 w-5" />
-                    <div>
-                      <div className="font-medium">{section.title}</div>
-                      <div className={cn(
-                        "text-xs",
-                        selectedSection === section.id ? "text-blue-100" : "text-gray-500"
-                      )}>
-                        {section.description}
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-br from-pink-200/30 to-purple-200/30 rounded-2xl blur-xl"></div>
+              <div className="relative bg-white/95 backdrop-blur-xl rounded-2xl border border-white/60 shadow-xl p-6 sticky top-24">
+                <h2 className="text-lg font-bold text-gray-900 mb-4">Settings Categories</h2>
+                <nav className="space-y-2">
+                  {settingSections.map((section) => (
+                    <button
+                      key={section.id}
+                      onClick={() => setSelectedSection(section.id)}
+                      className={cn(
+                        "w-full text-left p-3 rounded-xl transition-all duration-200 flex items-center gap-3",
+                        selectedSection === section.id
+                          ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg"
+                          : "text-gray-600 hover:text-gray-900 hover:bg-pink-50"
+                      )}
+                    >
+                      <section.icon className="h-5 w-5" />
+                      <div>
+                        <div className="font-medium">{section.title}</div>
+                        <div className={cn(
+                          "text-xs",
+                          selectedSection === section.id ? "text-pink-100" : "text-gray-500"
+                        )}>
+                          {section.description}
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                ))}
-              </nav>
+                    </button>
+                  ))}
+                </nav>
+              </div>
             </div>
           </div>
 
-          {/* Settings Content */}
+          {/* Settings Content - Wedding Theme */}
           <div className="lg:col-span-3">
-            <div className="bg-white/95 backdrop-blur-xl rounded-2xl border border-white/60 shadow-lg">
-              <div className="p-8">
-                {settingSections.map((section) => {
-                  if (section.id !== selectedSection) return null;
-                  
-                  const sectionSettings = getSettingsForSection(section.id);
-                  
-                  return (
-                    <div key={section.id}>
-                      <div className="mb-8">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="p-3 bg-blue-600 rounded-xl">
-                            <section.icon className="h-6 w-6 text-white" />
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-200/30 to-pink-200/30 rounded-2xl blur-xl"></div>
+              <div className="relative bg-white/95 backdrop-blur-xl rounded-2xl border border-white/60 shadow-xl">
+                <div className="p-8">
+                  {settingSections.map((section) => {
+                    if (section.id !== selectedSection) return null;
+                    
+                    const sectionSettings = getSettingsForSection(section.id);
+                    
+                    return (
+                      <div key={section.id}>
+                        <div className="mb-8">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="p-3 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl shadow-lg">
+                              <section.icon className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                              <h2 className="text-2xl font-bold text-gray-900">{section.title}</h2>
+                              <p className="text-gray-600">{section.description}</p>
+                            </div>
                           </div>
-                          <div>
-                            <h2 className="text-2xl font-bold text-gray-900">{section.title}</h2>
-                            <p className="text-gray-600">{section.description}</p>
+                        </div>
+
+                        <div className="space-y-6">
+                          {sectionSettings.map((setting) => (
+                            <div key={setting.id} className="flex items-center justify-between p-6 bg-gradient-to-r from-pink-50/50 to-purple-50/50 rounded-xl border-2 border-pink-100/50">
+                              <div className="flex-1">
+                                <h3 className="font-medium text-gray-900 mb-1">{setting.label}</h3>
+                                <p className="text-sm text-gray-600">{setting.description}</p>
+                              </div>
+                              <div className="ml-6 flex-shrink-0">
+                                {renderSettingControl(setting)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="mt-8 pt-6 border-t border-pink-200/30">
+                          <div className="flex justify-end gap-3">
+                            <button className="px-6 py-3 border-2 border-pink-200/50 text-gray-700 rounded-xl hover:shadow-lg transition-all hover:scale-105">
+                              Cancel
+                            </button>
+                            <button className="px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-xl transition-all hover:scale-105 hover:shadow-lg flex items-center gap-2">
+                              <Save className="h-4 w-4" />
+                              Save {section.title}
+                            </button>
                           </div>
                         </div>
                       </div>
-
-                      <div className="space-y-6">
-                        {sectionSettings.map((setting) => (
-                          <div key={setting.id} className="flex items-center justify-between p-6 bg-gray-50 rounded-xl border border-gray-100">
-                            <div className="flex-1">
-                              <h3 className="font-medium text-gray-900 mb-1">{setting.label}</h3>
-                              <p className="text-sm text-gray-600">{setting.description}</p>
-                            </div>
-                            <div className="ml-6 flex-shrink-0">
-                              {renderSettingControl(setting)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="mt-8 pt-6 border-t border-gray-200">
-                        <div className="flex justify-end gap-3">
-                          <button className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
-                            Cancel
-                          </button>
-                          <button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors flex items-center gap-2">
-                            <Save className="h-4 w-4" />
-                            Save {section.title}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>

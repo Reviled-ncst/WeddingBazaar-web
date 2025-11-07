@@ -181,11 +181,11 @@ export const AdminSecurity: React.FC = () => {
   return (
     <AdminLayout title="Security & Compliance" subtitle="Monitor security events and system integrity">
       <div className="container mx-auto px-4 max-w-7xl">
-        {/* Header */}
+        {/* Header - Wedding Theme */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">
                 Security & Compliance
               </h1>
               <p className="text-gray-600 text-lg">
@@ -193,46 +193,49 @@ export const AdminSecurity: React.FC = () => {
               </p>
             </div>
             <div className="flex gap-3">
-              <button className="px-4 py-2 bg-white/90 backdrop-blur-xl border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
+              <button className="px-4 py-2 bg-white/90 backdrop-blur-xl border-2 border-pink-200/50 rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2 text-gray-700">
                 <Download className="h-4 w-4" />
-                Export Report
+                <span className="hidden sm:inline">Export</span>
               </button>
-              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors flex items-center gap-2">
+              <button className="px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-xl transition-all hover:scale-105 hover:shadow-lg flex items-center gap-2">
                 <RefreshCcw className="h-4 w-4" />
-                Refresh
+                <span className="hidden sm:inline">Refresh</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Security Metrics */}
+        {/* Security Metrics - Wedding Theme */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {securityMetrics.map((metric, index) => {
             const StatusIcon = getStatusIcon(metric.status);
             return (
-              <div key={index} className="p-6 bg-white/95 backdrop-blur-xl rounded-2xl border border-white/60 shadow-lg hover:shadow-xl transition-all duration-300">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={cn(
-                    "p-3 rounded-xl bg-gradient-to-r",
-                    getStatusColor(metric.status)
-                  )}>
-                    <metric.icon className="h-6 w-6 text-white" />
+              <div key={index} className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-br from-pink-200/30 to-purple-200/30 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+                <div className="relative p-6 bg-white/95 backdrop-blur-xl rounded-2xl border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={cn(
+                      "p-3 rounded-xl bg-gradient-to-r shadow-lg",
+                      getStatusColor(metric.status)
+                    )}>
+                      <metric.icon className="h-6 w-6 text-white" />
+                    </div>
+                    <StatusIcon className={cn(
+                      "h-5 w-5",
+                      metric.status === 'good' ? 'text-green-500' : 
+                      metric.status === 'warning' ? 'text-yellow-500' : 'text-red-500'
+                    )} />
                   </div>
-                  <StatusIcon className={cn(
-                    "h-5 w-5",
-                    metric.status === 'good' ? 'text-green-500' : 
-                    metric.status === 'warning' ? 'text-yellow-500' : 'text-red-500'
-                  )} />
+                  <div className="text-2xl font-bold text-gray-900 mb-1">{metric.value}</div>
+                  <div className="text-sm font-semibold text-gray-900 mb-2">{metric.title}</div>
+                  <div className="text-xs text-gray-600">{metric.description}</div>
                 </div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">{metric.value}</div>
-                <div className="text-sm font-semibold text-gray-900 mb-2">{metric.title}</div>
-                <div className="text-xs text-gray-600">{metric.description}</div>
               </div>
             );
           })}
         </div>
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation - Wedding Theme */}
         <div className="mb-8">
           <div className="flex space-x-1 bg-white/90 backdrop-blur-xl rounded-2xl p-1 border border-white/60 shadow-lg">
             {[
@@ -243,11 +246,11 @@ export const AdminSecurity: React.FC = () => {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setSelectedTab(tab.id as any)}
+                onClick={() => setSelectedTab(tab.id as typeof selectedTab)}
                 className={cn(
                   "flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-all duration-200",
                   selectedTab === tab.id
-                    ? "bg-blue-600 text-white shadow-lg"
+                    ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg"
                     : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                 )}
               >
