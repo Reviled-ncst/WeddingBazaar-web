@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, User } from 'lucide-react';
+import { X, Send, User, AlertCircle, Wifi, Shield } from 'lucide-react';
+import { useNotification } from '../../hooks/useNotification';
+import { NotificationModal } from '../modals';
 
 interface ConnectedChatModalProps {
   conversations: any[];
@@ -24,6 +26,7 @@ export const ConnectedChatModal: React.FC<ConnectedChatModalProps> = ({
   setModalOpen,
   user
 }) => {
+  const { notification, showNotification, hideNotification } = useNotification();
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -77,7 +80,12 @@ export const ConnectedChatModal: React.FC<ConnectedChatModalProps> = ({
 
     if (!activeConversation?.id) {
       console.error('❌ [ConnectedChatModal] No active conversation ID');
-      alert('No conversation selected. Please try again.');
+      showNotification({
+        title: 'No Conversation Selected',
+        message: 'Please select a conversation to send messages.',
+        type: 'warning',
+        customIcon: AlertCircle
+      });
       return;
     }
 
@@ -88,7 +96,12 @@ export const ConnectedChatModal: React.FC<ConnectedChatModalProps> = ({
 
     if (!user?.id) {
       console.error('❌ [ConnectedChatModal] No user ID found');
-      alert('User not authenticated. Please log in again.');
+      showNotification({
+        title: 'Not Authenticated',
+        message: 'Please log in again to send messages.',
+        type: 'error',
+        customIcon: Shield
+      });
       return;
     }
 
@@ -105,19 +118,44 @@ export const ConnectedChatModal: React.FC<ConnectedChatModalProps> = ({
     } catch (error) {
       console.error('❌ [ConnectedChatModal] Error sending message:', error);
       
-      // Provide more specific error messages
+      // Provide more specific error messages with appropriate modals
       if (error instanceof Error) {
         if (error.message.includes('404')) {
-          alert('Messaging service not available. Please try again later.');
+          showNotification({
+            title: 'Service Unavailable',
+            message: 'Messaging service not available. Please try again later.',
+            type: 'error',
+            customIcon: AlertCircle
+          });
         } else if (error.message.includes('Failed to fetch')) {
-          alert('Connection error. Please check your internet connection.');
+          showNotification({
+            title: 'Connection Error',
+            message: 'Please check your internet connection and try again.',
+            type: 'error',
+            customIcon: Wifi
+          });
         } else if (error.message.includes('403') || error.message.includes('401')) {
-          alert('Authentication error. Please log in again.');
+          showNotification({
+            title: 'Authentication Error',
+            message: 'Please log in again to continue.',
+            type: 'error',
+            customIcon: Shield
+          });
         } else {
-          alert(`Failed to send message: ${error.message}`);
+          showNotification({
+            title: 'Message Failed',
+            message: `Failed to send message: ${error.message}`,
+            type: 'error',
+            customIcon: AlertCircle
+          });
         }
       } else {
-        alert('Failed to send message. Please try again.');
+        showNotification({
+          title: 'Message Failed',
+          message: 'Failed to send message. Please try again.',
+          type: 'error',
+          customIcon: AlertCircle
+        });
       }
     }
   };
@@ -331,6 +369,21 @@ export const ConnectedChatModal: React.FC<ConnectedChatModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        confirmText={notification.confirmText}
+        showCancel={notification.showCancel}
+        onConfirm={notification.onConfirm}
+        customIcon={notification.customIcon}
+        iconColor={notification.iconColor}
+        size={notification.size}
+      />
     </div>
   );
 };
