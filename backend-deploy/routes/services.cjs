@@ -198,8 +198,7 @@ router.get('/vendor/:vendorId', async (req, res) => {
       `;
       console.log(`  📦 Found ${packages.length} packages for service ${service.id}`);
       
-      // 2. Get all package items (if packages exist)
-      let packageItems = {};
+      // 2. Get all package items (if packages exist) and attach to each package
       if (packages.length > 0) {
         const packageIds = packages.map(p => p.id);
         
@@ -212,15 +211,26 @@ router.get('/vendor/:vendorId', async (req, res) => {
             ORDER BY package_id, item_type, display_order
           `;
           
-          // Group items by package_id
+          // Group items by package_id and attach to each package
+          const packageItemsMap = {};
           items.forEach(item => {
-            if (!packageItems[item.package_id]) {
-              packageItems[item.package_id] = [];
+            if (!packageItemsMap[item.package_id]) {
+              packageItemsMap[item.package_id] = [];
             }
-            packageItems[item.package_id].push(item);
+            packageItemsMap[item.package_id].push(item);
           });
           
-          console.log(`  📦 Found ${items.length} package items across ${Object.keys(packageItems).length} packages`);
+          // ✅ CRITICAL FIX: Attach items array to each package
+          packages.forEach(pkg => {
+            pkg.items = packageItemsMap[pkg.id] || [];
+          });
+          
+          console.log(`  📦 Found ${items.length} package items across ${Object.keys(packageItemsMap).length} packages`);
+          console.log(`  ✅ Items attached to packages - sample package:`, {
+            id: packages[0]?.id,
+            name: packages[0]?.package_name,
+            itemCount: packages[0]?.items?.length || 0
+          });
         } else {
           console.log(`  ⚠️ No package IDs found, skipping package_items query`);
         }
@@ -245,13 +255,17 @@ router.get('/vendor/:vendorId', async (req, res) => {
       console.log(`  💰 Found ${pricingRules.length} pricing rules for service ${service.id}`);
       
       // Enrich service with itemization data
-      service.packages = packages;
-      service.package_items = packageItems;
+      service.packages = packages; // ✅ Each package now has .items array
       service.addons = addons;
       service.pricing_rules = pricingRules;
       service.has_itemization = packages.length > 0 || addons.length > 0 || pricingRules.length > 0;
       
-      console.log(`  ✅ Service ${service.id} enriched with ${packages.length} packages, ${addons.length} add-ons, ${pricingRules.length} pricing rules`);
+      console.log(`  ✅ Service ${service.id} enriched:`, {
+        packages: packages.length,
+        totalItems: packages.reduce((sum, pkg) => sum + (pkg.items?.length || 0), 0),
+        addons: addons.length,
+        pricingRules: pricingRules.length
+      });
     }
     
     console.log(`✅ [Itemization] All ${services.length} services enriched with complete data`);
