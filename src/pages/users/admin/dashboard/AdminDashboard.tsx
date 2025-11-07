@@ -10,132 +10,66 @@ import {
   AlertCircle,
   CheckCircle,
   ArrowUpRight,
-  ArrowDownRight,
   Clock,
   Heart,
 } from 'lucide-react';
 import { AdminLayout } from '../shared';
-
-interface PlatformStats {
-  totalUsers: number;
-  totalVendors: number;
-  totalBookings: number;
-  totalRevenue: number;
-  activeUsers: number;
-  pendingVerifications: number;
-}
-
-interface RecentActivity {
-  id: string;
-  type: string;
-  description: string;
-  timestamp: string;
-  status: 'success' | 'warning' | 'error' | 'info';
-}
+import { adminDashboardService } from '@/shared/services/adminDashboardService';
+import type { DashboardStats, RecentActivity } from '@/shared/services/adminDashboardService';
 
 export const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [stats, setStats] = useState<PlatformStats>({
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    
+    try {
+      // Fetch dashboard stats and activities in parallel
+      const [dashboardStats, activities] = await Promise.all([
+        adminDashboardService.fetchDashboardStats(),
+        adminDashboardService.fetchRecentActivities(10)
+      ]);
+      
+      setStats(dashboardStats);
+      setRecentActivities(activities);
+      
+      console.log('✅ Dashboard data loaded successfully');
+    } catch (err) {
+      console.error('❌ Error loading dashboard data:', err);
+      // Set default empty values on error
+      setStats({
+        totalUsers: 0,
+        totalVendors: 0,
+        totalBookings: 0,
+        totalRevenue: 0,
+        completedBookings: 0,
+        activeUsers: 0,
+        pendingVerifications: 0,
+        recentBookings: [],
+        bookingsByStatus: {},
+        timestamp: new Date().toISOString()
+      });
+      setRecentActivities([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  // Helper function to safely access stats
+  const safeStats = stats || {
     totalUsers: 0,
     totalVendors: 0,
     totalBookings: 0,
     totalRevenue: 0,
     activeUsers: 0,
     pendingVerifications: 0,
-  });
-
-  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
-
-  useEffect(() => {
-    // Simulate loading data
-    const loadData = async () => {
-      setLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setStats({
-        totalUsers: 1247,
-        totalVendors: 423,
-        totalBookings: 2891,
-        totalRevenue: 13386060,
-        activeUsers: 892,
-        pendingVerifications: 15,
-      });
-
-      setRecentActivities([
-        {
-          id: '1',
-          type: 'user_signup',
-          description: 'New user registration: john.doe@example.com',
-          timestamp: '2 minutes ago',
-          status: 'success',
-        },
-        {
-          id: '2',
-          type: 'vendor_verification',
-          description: 'Vendor verification pending: Perfect Weddings Photography',
-          timestamp: '15 minutes ago',
-          status: 'warning',
-        },
-        {
-          id: '3',
-          type: 'booking_created',
-          description: 'New booking: BK-2024-001234',
-          timestamp: '1 hour ago',
-          status: 'success',
-        },
-        {
-          id: '4',
-          type: 'payment_received',
-          description: 'Payment received: ₱67,500',
-          timestamp: '2 hours ago',
-          status: 'success',
-        },
-      ]);
-
-      setLoading(false);
-    };
-
-    loadData();
-  }, []);
-
-  const activityColumns = [
-    {
-      key: 'type',
-      label: 'Type',
-      render: (value: string) => {
-        const typeLabels: Record<string, string> = {
-          user_signup: 'User Signup',
-          vendor_verification: 'Vendor Verification',
-          booking_created: 'Booking Created',
-          payment_received: 'Payment Received',
-        };
-        return <span className="font-medium">{typeLabels[value] || value}</span>;
-      },
-    },
-    {
-      key: 'description',
-      label: 'Description',
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (value: string) => {
-        const statusConfig: Record<string, { variant: any; label: string }> = {
-          success: { variant: 'success' as const, label: 'Success' },
-          warning: { variant: 'warning' as const, label: 'Pending' },
-          error: { variant: 'error' as const, label: 'Error' },
-          info: { variant: 'info' as const, label: 'Info' },
-        };
-        const config = statusConfig[value] || statusConfig.info;
-        return <Badge variant={config.variant}>{config.label}</Badge>;
-      },
-    },
-    {
-      key: 'timestamp',
-      label: 'Time',
-    },
-  ];
+  };
 
   return (
     <AdminLayout>
@@ -163,7 +97,7 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Alert Banner with Glassmorphism */}
-      {stats.pendingVerifications > 0 && (
+      {safeStats.pendingVerifications > 0 && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -176,7 +110,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-yellow-900 mb-1">Pending Verifications</h3>
               <p className="text-yellow-700">
-                You have {stats.pendingVerifications} vendor verifications pending review.
+                You have {safeStats.pendingVerifications} vendor verifications pending review.
               </p>
             </div>
           </div>
@@ -206,7 +140,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <p className="text-sm font-medium text-slate-600 mb-1">Total Users</p>
             <p className="text-3xl font-bold text-slate-900">
-              {loading ? '...' : stats.totalUsers.toLocaleString()}
+              {loading ? '...' : safeStats.totalUsers.toLocaleString()}
             </p>
           </div>
         </motion.div>
@@ -232,7 +166,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <p className="text-sm font-medium text-slate-600 mb-1">Total Vendors</p>
             <p className="text-3xl font-bold text-slate-900">
-              {loading ? '...' : stats.totalVendors.toLocaleString()}
+              {loading ? '...' : safeStats.totalVendors.toLocaleString()}
             </p>
           </div>
         </motion.div>
@@ -258,7 +192,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <p className="text-sm font-medium text-slate-600 mb-1">Total Bookings</p>
             <p className="text-3xl font-bold text-slate-900">
-              {loading ? '...' : stats.totalBookings.toLocaleString()}
+              {loading ? '...' : safeStats.totalBookings.toLocaleString()}
             </p>
           </div>
         </motion.div>
@@ -284,7 +218,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <p className="text-sm font-medium text-slate-600 mb-1">Total Revenue</p>
             <p className="text-3xl font-bold text-slate-900">
-              {loading ? '...' : `₱${(stats.totalRevenue / 1000000).toFixed(2)}M`}
+              {loading ? '...' : `₱${(safeStats.totalRevenue / 1000000).toFixed(2)}M`}
             </p>
           </div>
         </motion.div>
@@ -306,7 +240,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex-1">
               <p className="text-sm font-medium text-slate-600 mb-1">Active Users</p>
               <p className="text-3xl font-bold text-slate-900">
-                {loading ? '...' : stats.activeUsers.toLocaleString()}
+                {loading ? '...' : safeStats.activeUsers.toLocaleString()}
               </p>
               <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
                 <Clock className="h-3 w-3" />
@@ -330,7 +264,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex-1">
               <p className="text-sm font-medium text-slate-600 mb-1">Pending Reviews</p>
               <p className="text-3xl font-bold text-slate-900">
-                {loading ? '...' : stats.pendingVerifications}
+                {loading ? '...' : safeStats.pendingVerifications}
               </p>
               <p className="text-xs text-slate-500 mt-1">Requires attention</p>
             </div>

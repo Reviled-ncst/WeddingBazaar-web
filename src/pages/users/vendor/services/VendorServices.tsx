@@ -218,6 +218,15 @@ export const VendorServices: React.FC = () => {
   // ✅ FIX: Fetch actual vendor ID from backend if not in session
   const [actualVendorId, setActualVendorId] = useState<string | null>(null);
   
+  // Delete confirmation modal state
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    service: Service | null;
+  }>({
+    isOpen: false,
+    service: null
+  });
+  
   // Fetch vendor ID from backend if user.vendorId is not available
   React.useEffect(() => {
     const fetchVendorId = async () => {
@@ -2221,60 +2230,10 @@ export const VendorServices: React.FC = () => {
                         
                         <button
                           onClick={() => {
-                            // Enhanced delete confirmation with better UX
-                            const confirmDelete = () => {
-                              const modalHtml = `
-                                <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                                  <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6">
-                                    <div class="text-center">
-                                      <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                        </svg>
-                                      </div>
-                                      <h3 class="text-xl font-bold text-gray-900 mb-2">Delete Service?</h3>
-                                      <p class="text-gray-600 mb-6">
-                                        Are you sure you want to delete "<strong>${service.title || service.name}</strong>"? This action cannot be undone.
-                                      </p>
-                                      <div class="flex gap-3 justify-center">
-                                        <button 
-                                          onclick="this.closest('.fixed').remove()" 
-                                          class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium"
-                                        >
-                                          Cancel
-                                        </button>
-                                        <button 
-                                          onclick="
-                                            this.innerHTML = 'Deleting...';
-                                            this.disabled = true;
-                                            // Call the actual delete function
-                                            window.deleteServiceConfirmed('${service.id}');
-                                            this.closest('.fixed').remove();
-                                          " 
-                                          class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-medium"
-                                        >
-                                          Delete Service
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              `;
-                              
-                              const modalElement = document.createElement('div');
-                              modalElement.innerHTML = modalHtml;
-                              const modalEl = modalElement.firstElementChild;
-                              if (modalEl) {
-                                document.body.appendChild(modalEl);
-                              }
-                            };
-                            
-                            // Set up the global delete function
-                            (window as any).deleteServiceConfirmed = (serviceId: string) => {
-                              deleteService(serviceId);
-                            };
-                            
-                            confirmDelete();
+                            setDeleteConfirmation({
+                              isOpen: true,
+                              service: service
+                            });
                           }}
                           className="flex-1 flex items-center justify-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl transition-all duration-200 text-xs font-semibold shadow-sm hover:shadow-md"
                           title="Delete service (with confirmation)"
@@ -2461,6 +2420,47 @@ export const VendorServices: React.FC = () => {
         showCancel={notification.showCancel}
         onConfirm={notification.onConfirm}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmation.isOpen && deleteConfirmation.service && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6"
+          >
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Service?</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete "<strong>{deleteConfirmation.service.title || deleteConfirmation.service.name}</strong>"? This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button 
+                  onClick={() => setDeleteConfirmation({ isOpen: false, service: null })}
+                  className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={async () => {
+                    if (deleteConfirmation.service) {
+                      await deleteService(deleteConfirmation.service.id);
+                      setDeleteConfirmation({ isOpen: false, service: null });
+                    }
+                  }}
+                  className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-medium"
+                >
+                  Delete Service
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
