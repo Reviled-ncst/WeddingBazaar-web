@@ -29,6 +29,7 @@ import { mapToEnhancedBooking } from '../../../../shared/utils/booking-data-mapp
 
 // Import custom hooks
 import { useBookingPreferences } from './hooks';
+import { useNotification } from '../../../../shared/hooks/useNotification';
 
 import type { 
   Booking
@@ -50,6 +51,9 @@ export const IndividualBookings: React.FC = () => {
   
   // Auth context to get user information
   const { user } = useAuth();
+  
+  // Notification hook
+  const { showSuccess, showError, showInfo } = useNotification();
 
   // Loading and error states
   const [loading, setLoading] = useState(true);
@@ -460,12 +464,12 @@ export const IndividualBookings: React.FC = () => {
       await loadBookings();
       
       // Show success message
-      alert('Quotation accepted successfully! You can now proceed with payment.');
+      showSuccess('You can now proceed with payment.', 'Quotation Accepted Successfully!');
       
       console.log('✅ [AcceptQuotation] Successfully accepted quotation for booking:', booking.id);
     } catch (error) {
       console.error('❌ [AcceptQuotation] Error accepting quotation:', error);
-      alert('Failed to accept quotation. Please try again.');
+      showError('Failed to accept quotation. Please try again.', 'Error');
     } finally {
       setLoading(false);
     }
@@ -779,7 +783,7 @@ export const IndividualBookings: React.FC = () => {
           try {
             console.log('🔄 [IndividualBookings] Requesting modification for booking:', booking.id);
             // TODO: Implement quote modification request
-            alert('Quote modification request sent to vendor.');
+            showInfo('Your modification request has been sent to the vendor.', 'Quote Modification Requested');
             setShowQuoteDetails(false);
           } catch (error) {
             console.error('❌ [IndividualBookings] Error requesting modification:', error);

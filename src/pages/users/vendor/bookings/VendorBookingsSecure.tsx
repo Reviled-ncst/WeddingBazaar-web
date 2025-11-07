@@ -30,6 +30,7 @@ import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { SendQuoteModal } from './components/SendQuoteModal';
 import { VendorBookingDetailsModal } from './components/VendorBookingDetailsModal';
 import { MarkCompleteModal } from './components/MarkCompleteModal';
+import { useNotification } from '../../../../shared/hooks/useNotification';
 
 // Helper function to format service type display
 const formatServiceType = (serviceType: string, serviceName?: string): string => {
@@ -110,8 +111,8 @@ const mapToUIBookingStats = (data: any): UIBookingStats => ({
 });
 
 const downloadCSV = (data: any[], filename: string) => {
-
-  alert('CSV download feature will be implemented in a future update.');
+  // Feature coming soon - will be implemented in future update
+  console.log('CSV download requested for:', filename);
 };
 
 const downloadJSON = (data: any[], filename: string) => {
@@ -131,7 +132,8 @@ const handleContactClient = (booking: UIBooking) => {
   if (booking.contactEmail) {
     window.open(`mailto:${booking.contactEmail}?subject=Regarding your booking for ${booking.serviceType}`);
   } else {
-    alert('No contact email available for this client.');
+    // Will be handled by showError in component
+    return null;
   }
 };
 
@@ -209,6 +211,7 @@ type BookingStatus =
  */
 export const VendorBookingsSecure: React.FC = () => {
   const { user } = useAuth();
+  const { showNotification, showSuccess, showError, showInfo } = useNotification();
   
   const [bookings, setBookings] = useState<UIBooking[]>([]);
   const [stats, setStats] = useState<UIBookingStats>({
@@ -370,14 +373,14 @@ export const VendorBookingsSecure: React.FC = () => {
                        (booking.status as string) === 'deposit_paid';
 
     if (!isFullyPaid) {
-      alert('This booking must be fully paid before marking as complete.');
+      showError('This booking must be fully paid before marking as complete.', 'Payment Required');
       return;
     }
 
     // Store the booking and show modal
     setBookingToComplete(booking);
     setShowMarkCompleteModal(true);
-  }, []);
+  }, [showError]);
 
   const handleConfirmMarkComplete = useCallback(async () => {
     if (!bookingToComplete) return;
@@ -406,10 +409,14 @@ export const VendorBookingsSecure: React.FC = () => {
 
       // Show success message
       const successMsg = data.waiting_for === null
-        ? '🎉 Booking Fully Completed!\n\nBoth you and the couple have confirmed. The booking is now marked as completed.'
-        : '✅ Completion Confirmed!\n\nYour confirmation has been recorded. The booking will be fully completed once the couple also confirms.';
+        ? 'Both you and the couple have confirmed. The booking is now marked as completed.'
+        : 'Your confirmation has been recorded. The booking will be fully completed once the couple also confirms.';
+      
+      const successTitle = data.waiting_for === null
+        ? 'Booking Fully Completed!'
+        : 'Completion Confirmed!';
 
-      alert(successMsg);
+      showSuccess(successMsg, successTitle);
 
       // Reload bookings to reflect new status
       await loadBookings(true); // Silent refresh
@@ -420,9 +427,9 @@ export const VendorBookingsSecure: React.FC = () => {
     } catch (error: unknown) {
       console.error('❌ [VendorBookingsSecure] Error marking complete:', error);
       const errorMessage = error instanceof Error ? error.message : 'An error occurred while marking the booking as complete.';
-      alert(`Error: ${errorMessage}`);
+      showError(errorMessage, 'Error');
     }
-  }, [bookingToComplete, loadBookings]);
+  }, [bookingToComplete, loadBookings, showSuccess, showError]);
 
   /**
    * Initialize component with auth context
@@ -688,7 +695,9 @@ export const VendorBookingsSecure: React.FC = () => {
               </button>
               
               <button
-                onClick={() => downloadCSV(filteredBookings, 'vendor-bookings')}
+                onClick={() => {
+                  showInfo('CSV download feature will be implemented in a future update.', 'Coming Soon');
+                }}
                 className="flex items-center px-4 py-2.5 bg-pink-500 text-white rounded-xl hover:bg-pink-600 transition-colors"
               >
                 <Download className="h-4 w-4 mr-2" />
@@ -1030,7 +1039,13 @@ export const VendorBookingsSecure: React.FC = () => {
                         </button>
                         
                         <button
-                          onClick={() => handleContactClient(booking)}
+                          onClick={() => {
+                            if (!booking.contactEmail) {
+                              showError('No contact email available for this client.', 'Contact Unavailable');
+                              return;
+                            }
+                            handleContactClient(booking);
+                          }}
                           className="flex items-center gap-2 px-4 py-2 text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-xl transition-all duration-200 font-medium"
                           title="Contact Client"
                         >

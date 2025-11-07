@@ -106,21 +106,24 @@ export const handleEmailContact = (booking: ProcessedBookingData, options: Conta
 
 /**
  * Handle phone contact action
+ * Returns false if phone is unavailable
  */
-export const handlePhoneContact = (booking: ProcessedBookingData) => {
+export const handlePhoneContact = (booking: ProcessedBookingData): boolean => {
   if (booking.contactPhone && booking.contactPhone !== 'Contact pending') {
     const cleanPhone = booking.contactPhone.replace(/[^\d+]/g, '');
     window.open(`tel:${cleanPhone}`);
+    return true;
   } else {
     console.warn('No phone number available for this booking');
-    alert('Phone number not available for this client. Please use email contact instead.');
+    return false; // Caller should show error notification
   }
 };
 
 /**
  * Handle WhatsApp contact action
+ * Returns false if phone is unavailable
  */
-export const handleWhatsAppContact = (booking: ProcessedBookingData, message?: string) => {
+export const handleWhatsAppContact = (booking: ProcessedBookingData, message?: string): boolean => {
   if (booking.contactPhone && booking.contactPhone !== 'Contact pending') {
     const cleanPhone = booking.contactPhone.replace(/[^\d]/g, '');
     const defaultMessage = `Hi ${booking.coupleName}! Thank you for your inquiry about our ${booking.serviceType} services for your wedding on ${booking.eventDate}. I'd love to discuss your requirements in detail.`;
@@ -129,9 +132,10 @@ export const handleWhatsAppContact = (booking: ProcessedBookingData, message?: s
     // WhatsApp Web URL format
     const whatsappURL = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
     window.open(whatsappURL, '_blank');
+    return true;
   } else {
     console.warn('No phone number available for WhatsApp');
-    alert('Phone number not available for WhatsApp. Please use email contact instead.');
+    return false; // Caller should show error notification
   }
 };
 

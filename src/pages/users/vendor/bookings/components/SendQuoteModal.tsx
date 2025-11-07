@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNotification } from '../../../../../shared/hooks/useNotification';
 
 // Temporary inline currency formatter
 const formatPHP = (amount: number): string => {
@@ -1146,6 +1147,7 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
   onSavePricing,
   serviceData
 }) => {
+  const { showError } = useNotification();
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [quoteMessage, setQuoteMessage] = useState('');
   const [validUntil, setValidUntil] = useState('');
@@ -1458,11 +1460,10 @@ export const SendQuoteModal: React.FC<SendQuoteModalProps> = ({
       // Don't close immediately - wait for success modal confirmation
     } catch (error) {
       console.error('❌ [SendQuoteModal] Error sending quote:', error);
-      alert(
-        `❌ Failed to Send Quote\n\n` +
-        `Error: ${error instanceof Error ? error.message : 'Unknown error'}\n\n` +
-        `Please check your internet connection and try again.\n` +
-        `If the problem persists, contact support.`
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showError(
+        `Error: ${errorMessage}\n\nPlease check your internet connection and try again.\nIf the problem persists, contact support.`,
+        'Failed to Send Quote'
       );
     } finally {
       setLoading(false);
