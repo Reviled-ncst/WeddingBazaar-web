@@ -1051,23 +1051,15 @@ router.get('/profile', async (req, res) => {
     // If user is a vendor or coordinator, get additional profile info
     let vendorInfo = null;
     if (user.user_type === 'vendor' || user.user_type === 'coordinator') {
-      try {
-        const vendors = await sql`
-          SELECT id, business_name, business_type, years_experience, team_size, 
-                 specialties, service_areas
-          FROM vendor_profiles 
-          WHERE user_id = ${user.id}
-        `;
-        
-        if (vendors.length > 0) {
-          vendorInfo = vendors[0];
-          console.log('✅ Vendor profile found:', { vendorId: vendorInfo.id, businessName: vendorInfo.business_name });
-        } else {
-          console.log('⚠️ No vendor profile found for user:', user.id);
-        }
-      } catch (vendorError) {
-        console.error('⚠️ Error fetching vendor profile:', vendorError.message);
-        // Continue without vendor info rather than failing the entire request
+      const vendors = await sql`
+        SELECT id, business_name, business_type, years_experience, team_size, 
+               specialties, service_areas
+        FROM vendor_profiles 
+        WHERE user_id = ${user.id}
+      `;
+      
+      if (vendors.length > 0) {
+        vendorInfo = vendors[0];
       }
     }
     
@@ -1080,9 +1072,7 @@ router.get('/profile', async (req, res) => {
       phone: user.phone,
       emailVerified: user.email_verified || false,  // Add email verification status
       businessName: vendorInfo?.business_name || '',
-      // ✅ FIX: Use user.id (2-2025-003) instead of vendor_profiles.id (UUID)
-      // This matches vendor_subscriptions.vendor_id column
-      vendorId: (user.user_type === 'vendor' || user.user_type === 'coordinator') ? user.id : null,
+      vendorId: vendorInfo?.id || null,
       // Coordinator-specific fields
       yearsExperience: vendorInfo?.years_experience || null,
       teamSize: vendorInfo?.team_size || null,
@@ -1114,16 +1104,11 @@ router.get('/profile', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Profile fetch failed:', {
-      error: error.message,
-      stack: error.stack,
-      email: req.query.email || req.headers['x-user-email']
-    });
+    console.error('❌ Profile fetch failed:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch profile',
-      message: error instanceof Error ? error.message : 'Unknown error occurred',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      message: error instanceof Error ? error.message : 'Unknown error occurred'
     });
   }
 });
