@@ -194,7 +194,7 @@ router.get('/vendor/:vendorId', async (req, res) => {
       const packages = await sql`
         SELECT * FROM service_packages
         WHERE service_id = ${service.id}
-        ORDER BY is_default DESC, price ASC
+        ORDER BY is_default DESC, base_price ASC
       `;
       console.log(`  📦 Found ${packages.length} packages for service ${service.id}`);
       
@@ -314,7 +314,7 @@ router.get('/:id', async (req, res) => {
     const packages = await sql`
       SELECT * FROM service_packages
       WHERE service_id = ${id}
-      ORDER BY is_default DESC, price ASC
+      ORDER BY is_default DESC, base_price ASC
     `;
     console.log(`📦 Found ${packages.length} packages`);
     
@@ -1301,7 +1301,7 @@ router.get('/:id/itemization', async (req, res) => {
     const packages = await sql`
       SELECT * FROM service_packages
       WHERE service_id = ${id}
-      ORDER BY is_default DESC, price ASC
+      ORDER BY is_default DESC, base_price ASC
     `;
     
     // 2. Get package items (if packages exist)
