@@ -23,6 +23,7 @@ import { VendorHeader } from '../../../../shared/components/layout/VendorHeader'
 import { VendorAvailabilityCalendar } from '../../../../shared/components/calendar/VendorAvailabilityCalendar';
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { serviceManager, SERVICE_BUSINESS_RULES } from '../../../../shared/services/CentralizedServiceManager';
+import { useNotification } from '../../../../shared/hooks/useNotification';
 
 // Local interface definitions to avoid module resolution issues
 interface Service {
@@ -99,6 +100,7 @@ interface ServiceAnalytics {
 }
 
 export function VendorServices() {
+  const { showError, showWarning } = useNotification();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -152,7 +154,7 @@ export function VendorServices() {
       setShowCreateModal(false);
       await loadVendorData(); // Refresh limits and analytics
     } else {
-      alert(result.error || 'Failed to create service');
+      showError(result.error || 'Failed to create service', 'Create Service Failed');
     }
   };
 
@@ -164,7 +166,7 @@ export function VendorServices() {
       setEditingService(null);
       await loadVendorData(); // Refresh analytics
     } else {
-      alert(result.error || 'Failed to update service');
+      showError(result.error || 'Failed to update service', 'Update Service Failed');
     }
   };
 
@@ -177,7 +179,7 @@ export function VendorServices() {
       setServices(prev => prev.filter(s => s.id !== serviceId));
       await loadVendorData(); // Refresh limits and analytics
     } else {
-      alert(result.error || 'Failed to delete service');
+      showError(result.error || 'Failed to delete service', 'Delete Service Failed');
     }
   };
 
@@ -190,7 +192,10 @@ export function VendorServices() {
 
   const handleFeatureService = async (service: Service) => {
     if (!vendorLimits?.can_feature_service && !service.featured) {
-      alert(`Your ${vendorTier} plan allows maximum ${vendorLimits?.max_featured_services} featured services. Upgrade to feature more services.`);
+      showWarning(
+        `Your ${vendorTier} plan allows maximum ${vendorLimits?.max_featured_services} featured services. Upgrade to feature more services.`,
+        'Feature Limit Reached'
+      );
       return;
     }
 
