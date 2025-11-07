@@ -8,9 +8,12 @@ import {
   DollarSign,
   Download,
   Printer,
-  Loader
+  Loader,
+  FileText
 } from 'lucide-react';
 import type { Booking } from '../types/booking.types';
+import { useNotification } from '../../../../../shared/hooks/useNotification';
+import { NotificationModal } from '../../../../../shared/components/modals';
 
 interface ServiceItem {
   id: number;
@@ -79,6 +82,9 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
   onRejectQuote,
   onRequestModification
 }) => {
+  // Notification system
+  const { notification, showInfo, hideNotification } = useNotification();
+
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -781,8 +787,10 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
               </button>
               <button
                 onClick={() => {
-                  // In a real app, this would generate a PDF
-                  alert('PDF download feature coming soon!');
+                  showInfo(
+                    'We\'re working on the PDF download feature! For now, you can print this quote using the Print button.',
+                    '📄 Coming Soon'
+                  );
                 }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
               >
@@ -817,6 +825,20 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        confirmText={notification.confirmText}
+        showCancel={notification.showCancel}
+        onConfirm={notification.onConfirm}
+        customIcon={FileText}
+        iconColor="text-blue-500"
+      />
     </div>
   );
 };

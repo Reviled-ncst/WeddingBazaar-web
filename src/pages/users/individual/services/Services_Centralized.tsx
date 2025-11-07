@@ -28,6 +28,8 @@ import { createServiceShareUrl } from '../../../../shared/utils/slug-generator';
 import { ConfirmationModal } from '../../../../shared/components/modals/ConfirmationModal';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 import type { Service as BookingService } from '../../../../modules/services/types';
+import { useNotification } from '../../../../shared/hooks/useNotification';
+import { NotificationModal } from '../../../../shared/components/modals';
 
 // Debug flag - set to false in production for better performance
 const DEBUG = false;
@@ -143,6 +145,9 @@ interface Service {
 
 export function Services() {
   // Infinite render loop fixed: useEffect → useMemo for filtering (Oct 29, 2025)
+  
+  // Notification system
+  const { notification, showError, hideNotification } = useNotification();
   
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1008,7 +1013,10 @@ Best regards`;
       console.error('❌ [Services] Error opening messaging modal:', error);
       console.error('❌ [Services] Error details:', error instanceof Error ? error.message : 'Unknown error');
       console.error('❌ [Services] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-      alert('Unable to start conversation at this time. Please try again later.');
+      showError(
+        'We couldn\'t start the conversation right now. Please try again in a moment, or contact the vendor directly using their contact information.',
+        '💬 Messaging Unavailable'
+      );
     }
   };
 
@@ -2418,6 +2426,20 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        confirmText={notification.confirmText}
+        showCancel={notification.showCancel}
+        onConfirm={notification.onConfirm}
+        customIcon={MessageCircle}
+        iconColor="text-pink-500"
+      />
     </AnimatePresence>
   );
 }
