@@ -1276,23 +1276,9 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                         <strong>🐛 DEBUG:</strong> Current pricingMode = <code className="bg-yellow-200 px-2 py-1 rounded">{pricingMode}</code>
                       </div>
 
-                      {/* Conditional Pricing UI based on selected mode */}
-                      {pricingMode === 'itemized' ? (
-                        /* ITEMIZED PRICING: Package Builder UI */
-                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-2xl border border-purple-100">
-                          <div className="text-center mb-6">
-                            <h4 className="text-xl font-semibold text-gray-900 mb-2">📦 Package Builder</h4>
-                            <p className="text-gray-600">Create itemized packages for your service</p>
-                          </div>
-                          <PackageBuilder
-                            packages={packages}
-                            onChange={(pkgs: PackageBuilderItem[]) => {
-                              setPackages(pkgs);
-                            }}
-                            category={formData.category}
-                          />
-                        </div>
-                      ) : pricingMode === 'simple' && !showCustomPricing ? (
+                      {/* Pricing Display Section (changes based on mode) */}
+                      {pricingMode === 'simple' && !showCustomPricing ? (
+                        /* SIMPLE PRICING: Recommended Price Ranges */
                         <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
                           {/* Header with Toggle */}
                           <div className="flex items-center justify-between mb-3">
@@ -1444,6 +1430,28 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                         </div>
                       )}
 
+                    </div>
+
+                    {/* ✅ PACKAGE BUILDER - Shows in ALL pricing modes */}
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-2xl border border-purple-100">
+                      <div className="mb-6">
+                        <h4 className="text-xl font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                          📦 Package Builder
+                          <span className="text-sm font-normal text-gray-600">(Optional)</span>
+                        </h4>
+                        <p className="text-gray-600 text-sm">
+                          Create detailed itemized packages for quotations. This allows you to provide line-item breakdowns to customers, 
+                          even if you selected Simple Pricing or Custom Quote above.
+                        </p>
+                      </div>
+                      <PackageBuilder
+                        packages={packages}
+                        onChange={(pkgs: PackageBuilderItem[]) => {
+                          console.log('📦 [AddServiceForm] Package data updated:', pkgs.length, 'packages');
+                          setPackages(pkgs);
+                        }}
+                        category={formData.category}
+                      />
                     </div>
 
                     {/* Service Options */}
