@@ -160,9 +160,9 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
   return (
     <div className={cn("relative", className)}>
-      {/* Input Field */}
-      <div className="relative">
-        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+      {/* Input Field with Search Dropdown */}
+      <div className="relative z-10">
+        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 z-10" />
         <input
           type="text"
           value={value}
@@ -172,10 +172,10 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             setSearchQuery(inputValue);
           }}
           placeholder={placeholder}
-          className="w-full pl-10 pr-20 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+          className="w-full pl-10 pr-20 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 relative z-10"
         />
         {/* Action Buttons */}
-        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-1">
+        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-1 z-10">
           <button
             type="button"
             onClick={getCurrentLocation}
@@ -185,17 +185,17 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             <Navigation className="h-4 w-4" />
           </button>
         </div>
-      </div>
-      {/* Search Results Dropdown */}
-      {searchResults.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-[10000] max-h-60 overflow-y-auto">
-          {searchResults.map((result, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => handleLocationSelect(result)}
-              className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 relative z-[10001]"
-            >
+        
+        {/* Search Results Dropdown - Directly below input */}
+        {searchResults.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-rose-200 rounded-lg shadow-2xl z-50 max-h-60 overflow-y-auto">
+            {searchResults.map((result, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => handleLocationSelect(result)}
+                className="w-full px-4 py-3 text-left hover:bg-rose-50 border-b border-gray-100 last:border-b-0 transition-colors"
+              >
               <div className="font-medium text-gray-900 truncate">{result.address}</div>
               {result.city && result.state && (
                 <div className="text-sm text-gray-500">
@@ -206,12 +206,15 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           ))}
         </div>
       )}
-      {/* Loading indicator */}
+      
+      {/* Loading indicator - Also above map */}
       {isSearching && searchQuery.length >= 3 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] p-4 text-center">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-rose-200 rounded-lg shadow-2xl z-50 p-4 text-center">
           <div className="text-gray-500">Searching locations...</div>
         </div>
       )}
+    </div>
+    {/* Close input wrapper div */}
       {/* Map Preview (always visible) - Focused on Dasmariñas */}
       {position && (
         <div className="mt-4 rounded-lg overflow-hidden border border-gray-200 shadow-sm relative z-0">
