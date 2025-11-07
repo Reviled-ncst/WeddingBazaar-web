@@ -15,6 +15,8 @@ import {
 import { useDocumentUpload } from '../hooks/useDocumentUpload';
 import { cn } from '../utils/cn';
 import styles from './DocumentUpload.module.css';
+import { NotificationModal } from '../shared/components/modals';
+import { useNotification } from '../shared/hooks/useNotification';
 
 interface DocumentUploadComponentProps {
   vendorId: string;
@@ -78,6 +80,8 @@ export const DocumentUploadComponent: React.FC<DocumentUploadComponentProps> = (
   vendorType = 'business',
   className
 }) => {
+  const { notification, showNotification, hideNotification } = useNotification();
+  
   // Get appropriate document types based on vendor type
   const DOCUMENT_TYPES = vendorType === 'freelancer' ? FREELANCER_DOCUMENT_TYPES : BUSINESS_DOCUMENT_TYPES;
   
@@ -128,13 +132,21 @@ export const DocumentUploadComponent: React.FC<DocumentUploadComponentProps> = (
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      alert('Please select a valid document file (PDF, DOC, DOCX, TXT, or image)');
+      showNotification({
+        type: 'error',
+        title: 'Invalid File Type',
+        message: 'Please select a valid document file (PDF, DOC, DOCX, TXT, or image)'
+      });
       return;
     }
 
     // Validate file size (25MB)
     if (file.size > 25 * 1024 * 1024) {
-      alert('File size must be less than 25MB');
+      showNotification({
+        type: 'error',
+        title: 'File Too Large',
+        message: 'File size must be less than 25MB'
+      });
       return;
     }
 
@@ -475,6 +487,14 @@ export const DocumentUploadComponent: React.FC<DocumentUploadComponentProps> = (
           <p>• Optional documents: Professional Certifications, Portfolio Samples</p>
         </div>
       </div>
+      
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
     </div>
   );
 };
