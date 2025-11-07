@@ -24,7 +24,8 @@ import {
   Send,
   Eye,
   Download,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import { useVendorProfile } from '../../../../hooks/useVendorData';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
@@ -35,8 +36,11 @@ import { PhoneVerification } from '../../../../components/PhoneVerification';
 import { DocumentUploadComponent } from '../../../../components/DocumentUpload';
 import { cloudinaryService } from '../../../../services/cloudinaryService';
 import { getBusinessVerificationStatus } from '../../../../utils/vendorVerification';
+import { useNotification } from '../../../../shared/hooks/useNotification';
+import { NotificationModal } from '../../../../shared/components/modals';
 
 export const VendorProfile: React.FC = () => {
+  const { notification, showNotification, hideNotification } = useNotification();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('business');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -127,7 +131,12 @@ export const VendorProfile: React.FC = () => {
       if (reloadedUser?.emailVerified) {
         // Email is already verified - update local state immediately
         setFirebaseEmailVerified(true);
-        alert('✅ Your email is already verified!');
+        showNotification({
+          title: 'Email Already Verified',
+          message: 'Your email is already verified!',
+          type: 'success',
+          customIcon: CheckCircle
+        });
         setIsVerifyingEmail(false);
         return;
       }
@@ -136,7 +145,12 @@ export const VendorProfile: React.FC = () => {
       await firebaseAuthService.resendEmailVerification();
       
       console.log('✅ Firebase verification email sent successfully');
-      alert('✅ Verification email sent! Please check your inbox and click the verification link. The badge will update automatically after verification.');
+      showNotification({
+        title: 'Verification Email Sent',
+        message: 'Please check your inbox and click the verification link. The badge will update automatically after verification.',
+        type: 'info',
+        customIcon: Mail
+      });
       
     } catch (error) {
       console.error('❌ Email verification error:', error);
@@ -154,7 +168,12 @@ export const VendorProfile: React.FC = () => {
         }
       }
       
-      alert('❌ ' + errorMessage);
+      showNotification({
+        title: 'Verification Failed',
+        message: errorMessage,
+        type: 'error',
+        customIcon: AlertCircle
+      });
     } finally {
       setIsVerifyingEmail(false);
     }
@@ -197,11 +216,21 @@ export const VendorProfile: React.FC = () => {
       // Hide verification modal
       setShowPhoneVerification(false);
       
-      alert('✅ Phone number verified successfully!');
+      showNotification({
+        title: 'Phone Verified',
+        message: 'Phone number verified successfully!',
+        type: 'success',
+        customIcon: CheckCircle
+      });
       
     } catch (error) {
       console.error('❌ Error updating phone verification:', error);
-      alert('⚠️ Phone verified but failed to update profile. Please refresh the page.');
+      showNotification({
+        title: 'Update Failed',
+        message: 'Phone verified but failed to update profile. Please refresh the page.',
+        type: 'warning',
+        customIcon: AlertTriangle
+      });
     }
   };
 
@@ -244,11 +273,21 @@ export const VendorProfile: React.FC = () => {
       await refetch();
       
       // Show success message
-      alert('✅ Profile updated successfully! Vendor type: ' + (editForm.vendorType || 'business'));
+      showNotification({
+        title: 'Profile Updated',
+        message: `Profile updated successfully! Vendor type: ${editForm.vendorType || 'business'}`,
+        type: 'success',
+        customIcon: CheckCircle
+      });
       
     } catch (error) {
       console.error('❌ Failed to update profile:', error);
-      alert('❌ Failed to save changes to database. Please try again.');
+      showNotification({
+        title: 'Update Failed',
+        message: 'Failed to save changes to database. Please try again.',
+        type: 'error',
+        customIcon: XCircle
+      });
     }
   };
 
@@ -278,12 +317,22 @@ export const VendorProfile: React.FC = () => {
 
     // Validate file
     if (!file.type.startsWith('image/')) {
-      alert('❌ Please select a valid image file (JPG, PNG, GIF, etc.)');
+      showNotification({
+        title: 'Invalid File Type',
+        message: 'Please select a valid image file (JPG, PNG, GIF, etc.)',
+        type: 'error',
+        customIcon: AlertCircle
+      });
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) { // 10MB limit
-      alert('❌ Image must be smaller than 10MB');
+      showNotification({
+        title: 'File Too Large',
+        message: 'Image must be smaller than 10MB',
+        type: 'error',
+        customIcon: AlertCircle
+      });
       return;
     }
 
@@ -301,11 +350,21 @@ export const VendorProfile: React.FC = () => {
       // Refresh profile data
       await refetch();
       
-      alert('✅ Profile image uploaded and saved successfully!');
+      showNotification({
+        title: 'Image Uploaded',
+        message: 'Profile image uploaded and saved successfully!',
+        type: 'success',
+        customIcon: CheckCircle
+      });
       
     } catch (error) {
       console.error('❌ Image upload error:', error);
-      alert(`❌ Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showNotification({
+        title: 'Upload Failed',
+        message: `Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        type: 'error',
+        customIcon: XCircle
+      });
     } finally {
       setIsUploadingImage(false);
     }
@@ -321,28 +380,45 @@ export const VendorProfile: React.FC = () => {
 
   // Handle image deletion - RECREATED
   const handleImageDelete = async () => {
-    if (!confirm('⚠️ Are you sure you want to delete your profile image?')) {
-      return;
-    }
+    // Use the custom notification modal for confirmation
+    showNotification({
+      title: 'Delete Profile Image',
+      message: 'Are you sure you want to delete your profile image?',
+      type: 'warning',
+      customIcon: AlertTriangle,
+      showCancel: true,
+      confirmText: 'Delete',
+      onConfirm: async () => {
+        try {
+          setIsUploadingImage(true);
+          console.log('🗑️ Deleting profile image...');
 
-    try {
-      setIsUploadingImage(true);
-      console.log('🗑️ Deleting profile image...');
-
-      // Remove image from profile
-      await updateProfile({ profileImage: undefined });
-      
-      // Refresh profile data
-      await refetch();
-      
-      alert('✅ Profile image deleted successfully!');
-      
-    } catch (error) {
-      console.error('❌ Image deletion error:', error);
-      alert('❌ Failed to delete image. Please try again.');
-    } finally {
-      setIsUploadingImage(false);
-    }
+          // Remove image from profile
+          await updateProfile({ profileImage: undefined });
+          
+          // Refresh profile data
+          await refetch();
+          
+          showNotification({
+            title: 'Image Deleted',
+            message: 'Profile image deleted successfully!',
+            type: 'success',
+            customIcon: CheckCircle
+          });
+          
+        } catch (error) {
+          console.error('❌ Image deletion error:', error);
+          showNotification({
+            title: 'Deletion Failed',
+            message: 'Failed to delete image. Please try again.',
+            type: 'error',
+            customIcon: XCircle
+          });
+        } finally {
+          setIsUploadingImage(false);
+        }
+      }
+    });
   };
 
   // Trigger file input
@@ -533,7 +609,12 @@ export const VendorProfile: React.FC = () => {
                         />
                         {isEditing && (
                           <button
-                            onClick={() => alert('Cover image upload coming soon!')}
+                            onClick={() => showNotification({
+                              title: 'Coming Soon',
+                              message: 'Cover image upload feature is coming soon!',
+                              type: 'info',
+                              customIcon: Camera
+                            })}
                             className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-lg hover:bg-black/70 transition-colors"
                             title="Upload cover image"
                           >
@@ -1332,6 +1413,21 @@ export const VendorProfile: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        confirmText={notification.confirmText}
+        showCancel={notification.showCancel}
+        onConfirm={notification.onConfirm}
+        customIcon={notification.customIcon}
+        iconColor={notification.iconColor}
+        size={notification.size}
+      />
     </div>
   );
 };

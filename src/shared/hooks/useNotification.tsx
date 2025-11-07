@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { NotificationType } from '../components/modals/NotificationModal';
+import type { LucideIcon } from 'lucide-react';
 
 interface NotificationOptions {
   title?: string;
@@ -8,6 +9,9 @@ interface NotificationOptions {
   confirmText?: string;
   showCancel?: boolean;
   onConfirm?: () => void;
+  customIcon?: LucideIcon;
+  iconColor?: string;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 interface NotificationState extends NotificationOptions {
