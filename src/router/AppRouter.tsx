@@ -4,6 +4,7 @@ import { Header } from '../shared/components/layout/Header';
 import { Footer } from '../shared/components/layout/Footer';
 import { ProtectedRoute } from './ProtectedRoute';
 import { RoleProtectedRoute } from './RoleProtectedRoute';
+import { LazyLoadErrorBoundary } from '../shared/components/LazyLoadErrorBoundary';
 
 // Loading fallback component
 const PageLoader = () => (
@@ -119,9 +120,10 @@ export const AppRouter: React.FC = () => {
           <UnifiedMessagingProvider>
             <MessagingModalConnector>
               <Router>
-          <div className="min-h-screen flex flex-col">
-            <Suspense fallback={<PageLoader />}>
-            <Routes>
+                <LazyLoadErrorBoundary>
+                  <div className="min-h-screen flex flex-col">
+                    <Suspense fallback={<PageLoader />}>
+                      <Routes>
               {/* Public Homepage - NO AUTH CHECK to prevent re-renders */}
               {/* Auto-redirect removed to fix Services refetch bug on login failure */}
               <Route path="/" element={
@@ -512,10 +514,11 @@ export const AppRouter: React.FC = () => {
             
             {/* 404 Page */}
             <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-          </Suspense>
-        </div>
-      </Router>
+                      </Routes>
+                    </Suspense>
+                  </div>
+                </LazyLoadErrorBoundary>
+              </Router>
             </MessagingModalConnector>
           </UnifiedMessagingProvider>
         </NotificationProvider>
