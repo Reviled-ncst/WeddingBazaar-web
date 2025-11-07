@@ -1264,9 +1264,17 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                       {/* ✅ NEW: Pricing Mode Selector */}
                       <PricingModeSelector
                         value={pricingMode}
-                        onChange={setPricingMode}
+                        onChange={(mode) => {
+                          console.log('🎯 [AddServiceForm] Pricing mode changed to:', mode);
+                          setPricingMode(mode);
+                        }}
                         category={formData.category}
                       />
+
+                      {/* DEBUG: Show current pricing mode */}
+                      <div className="bg-yellow-100 border border-yellow-300 p-3 rounded-lg text-sm">
+                        <strong>🐛 DEBUG:</strong> Current pricingMode = <code className="bg-yellow-200 px-2 py-1 rounded">{pricingMode}</code>
+                      </div>
 
                       {/* Conditional Pricing UI based on selected mode */}
                       {pricingMode === 'itemized' ? (
