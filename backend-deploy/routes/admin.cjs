@@ -748,7 +748,7 @@ router.get('/documents', async (req, res) => {
     
     const { status } = req.query;
     
-    // Build query with optional status filter - JOIN with vendor_profiles (correct table)
+    // Query with JOIN to get vendor business names
     let query;
     if (status && status !== 'all') {
       query = sql`
@@ -767,13 +767,11 @@ router.get('/documents', async (req, res) => {
           vd.uploaded_at,
           vd.created_at,
           vd.updated_at,
-          vp.business_name as vendor_name,
-          vp.business_name,
-          vp.email,
-          vp.contact_number as phone,
-          vp.location
+          v.business_name,
+          v.business_type,
+          v.user_id as vendor_user_id
         FROM vendor_documents vd
-        LEFT JOIN vendor_profiles vp ON vd.vendor_id = vp.id
+        LEFT JOIN vendors v ON vd.vendor_id = v.id
         WHERE vd.verification_status = ${status}
         ORDER BY vd.uploaded_at DESC
       `;
@@ -794,43 +792,38 @@ router.get('/documents', async (req, res) => {
           vd.uploaded_at,
           vd.created_at,
           vd.updated_at,
-          vp.business_name as vendor_name,
-          vp.business_name,
-          vp.email,
-          vp.contact_number as phone,
-          vp.location
+          v.business_name,
+          v.business_type,
+          v.user_id as vendor_user_id
         FROM vendor_documents vd
-        LEFT JOIN vendor_profiles vp ON vd.vendor_id = vp.id
+        LEFT JOIN vendors v ON vd.vendor_id = v.id
         ORDER BY vd.uploaded_at DESC
       `;
     }
     
     const documents = await query;
     
-    console.log(`✅ [Admin] Retrieved ${documents.length} documents`);
+    console.log(`✅ [Admin] Retrieved ${documents.length} documents with vendor info`);
     
+    // Return full response with real vendor names
     res.json({
       success: true,
       documents: documents.map(doc => ({
         id: doc.id,
         vendorId: doc.vendor_id,
-        vendorName: doc.vendor_name || 'Unknown Vendor',
-        businessName: doc.business_name || doc.vendor_name || 'Unknown Business',
+        vendorName: doc.business_name || `Vendor ${doc.vendor_id.substring(0, 8)}...`,
+        businessName: doc.business_name || 'Unknown Business',
+        businessType: doc.business_type || 'Unknown Type',
         documentType: doc.document_type,
         documentUrl: doc.document_url,
         fileName: doc.file_name,
-        fileSize: doc.file_size,
+        fileSize: doc.file_size || 0,
         mimeType: doc.mime_type,
         verificationStatus: doc.verification_status,
         verifiedAt: doc.verified_at,
+        verifiedBy: doc.verified_by,
         rejectionReason: doc.rejection_reason,
-        uploadedAt: doc.uploaded_at,
-        email: doc.email,
-        phone: doc.phone,
-        location: doc.location,
-        extracted_name: doc.extracted_name,
-        extracted_id_number: doc.extracted_id_number,
-        document_confidence: doc.document_confidence
+        uploadedAt: doc.uploaded_at
       })),
       count: documents.length,
       timestamp: new Date().toISOString()
