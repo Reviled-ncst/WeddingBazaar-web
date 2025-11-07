@@ -722,7 +722,7 @@ router.post('/', async (req, res) => {
               await sql`
                 INSERT INTO package_items (
                   package_id, item_type, item_name, 
-                  quantity, unit_type, item_description, display_order,
+                  quantity, unit_type, unit_price, item_description, display_order,
                   created_at, updated_at
                 ) VALUES (
                   ${createdPackage.id},
@@ -730,6 +730,7 @@ router.post('/', async (req, res) => {
                   ${item.name},
                   ${item.quantity || 1},
                   ${item.unit || 'pcs'},
+                  ${item.unit_price || 0},
                   ${item.description || ''},
                   ${i + 1},
                   NOW(),
