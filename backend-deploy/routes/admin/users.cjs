@@ -448,4 +448,251 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/admin/users/:id/suspend
+ * Suspend a user with duration and reason
+ */
+router.post('/:id/suspend', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { duration_days, reason } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Suspension reason is required'
+      });
+    }
+
+    if (!duration_days || duration_days < 1) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid suspension duration is required'
+      });
+    }
+
+    console.log(`🛡️ [AdminAPI] Suspending user ${id} for ${duration_days} days`);
+
+    // Calculate suspension end date
+    const suspension_end = new Date();
+    suspension_end.setDate(suspension_end.getDate() + parseInt(duration_days));
+
+    // Update user to suspended status
+    const result = await sql`
+      UPDATE users
+      SET 
+        account_status = 'suspended',
+        suspension_end = ${suspension_end.toISOString()},
+        suspension_reason = ${reason.trim()},
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING id, email, first_name, last_name, account_status, suspension_end, suspension_reason
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Log suspension in history (if table exists)
+    try {
+      await sql`
+        INSERT INTO user_suspensions (user_id, reason, suspension_end)
+        VALUES (${id}, ${reason.trim()}, ${suspension_end.toISOString()})
+      `;
+    } catch (historyError) {
+      console.warn('⚠️ Could not log suspension history (table may not exist):', historyError.message);
+    }
+
+    res.json({
+      success: true,
+      message: `User suspended for ${duration_days} days`,
+      user: result[0],
+      suspension_end: suspension_end.toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ [AdminAPI] Error suspending user:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to suspend user',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/admin/users/:id/unsuspend
+ * Remove suspension from a user
+ */
+router.post('/:id/unsuspend', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log(`✅ [AdminAPI] Removing suspension from user ${id}`);
+
+    const result = await sql`
+      UPDATE users
+      SET 
+        account_status = 'active',
+        suspension_end = NULL,
+        suspension_reason = NULL,
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING id, email, first_name, last_name, account_status
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Log unsuspension in history (if table exists)
+    try {
+      await sql`
+        UPDATE user_suspensions
+        SET removed_at = NOW()
+        WHERE user_id = ${id} AND removed_at IS NULL
+      `;
+    } catch (historyError) {
+      console.warn('⚠️ Could not update suspension history:', historyError.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Suspension removed successfully',
+      user: result[0]
+    });
+
+  } catch (error) {
+    console.error('❌ [AdminAPI] Error removing suspension:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to remove suspension',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/admin/users/:id/ban
+ * Permanently ban a user
+ */
+router.post('/:id/ban', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Ban reason is required'
+      });
+    }
+
+    console.log(`🚫 [AdminAPI] Permanently banning user ${id}`);
+
+    const result = await sql`
+      UPDATE users
+      SET 
+        account_status = 'banned',
+        ban_reason = ${reason.trim()},
+        banned_at = NOW(),
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING id, email, first_name, last_name, account_status, ban_reason, banned_at
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Log ban in history (if table exists)
+    try {
+      await sql`
+        INSERT INTO user_bans (user_id, ban_reason, banned_at)
+        VALUES (${id}, ${reason.trim()}, NOW())
+      `;
+    } catch (historyError) {
+      console.warn('⚠️ Could not log ban history (table may not exist):', historyError.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'User banned permanently',
+      user: result[0]
+    });
+
+  } catch (error) {
+    console.error('❌ [AdminAPI] Error banning user:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to ban user',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/admin/users/:id/unban
+ * Remove ban from a user
+ */
+router.post('/:id/unban', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log(`✅ [AdminAPI] Unbanning user ${id}`);
+
+    const result = await sql`
+      UPDATE users
+      SET 
+        account_status = 'active',
+        ban_reason = NULL,
+        banned_at = NULL,
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING id, email, first_name, last_name, account_status
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Log unban in history (if table exists)
+    try {
+      await sql`
+        UPDATE user_bans
+        SET unbanned_at = NOW()
+        WHERE user_id = ${id} AND unbanned_at IS NULL
+      `;
+    } catch (historyError) {
+      console.warn('⚠️ Could not update ban history:', historyError.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'User unbanned successfully',
+      user: result[0]
+    });
+
+  } catch (error) {
+    console.error('❌ [AdminAPI] Error unbanning user:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to unban user',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;
