@@ -204,7 +204,7 @@ router.get('/vendor/:vendorId', async (req, res) => {
         const packageIds = packages.map(p => p.id);
         const items = await sql`
           SELECT * FROM package_items
-          WHERE package_id = ANY(${packageIds})
+          WHERE package_id IN ${sql(packageIds)}
           ORDER BY package_id, item_type, display_order
         `;
         
@@ -948,36 +948,6 @@ router.post('/', async (req, res) => {
       }
       
       console.log(`✅ [Itemization] Complete: ${itemizationData.packages.length} packages, ${itemizationData.addons.length} add-ons, ${itemizationData.pricingRules.length} rules`);
-      
-      // ✅ FIX ISSUE 1: Auto-calculate price, max_price, price_range from packages
-      if (itemizationData.packages.length > 0) {
-        const packagePrices = itemizationData.packages.map(pkg => parseFloat(pkg.base_price || 0));
-        const minPrice = Math.min(...packagePrices);
-        const maxPrice = Math.max(...packagePrices);
-        const priceRange = minPrice === maxPrice 
-          ? `₱${minPrice.toLocaleString('en-PH')}` 
-          : `₱${minPrice.toLocaleString('en-PH')} - ₱${maxPrice.toLocaleString('en-PH')}`;
-        
-        console.log(`💰 [Pricing] Auto-calculated from packages: min=${minPrice}, max=${maxPrice}, range="${priceRange}"`);
-        
-        // Update service with calculated pricing
-        await sql`
-          UPDATE services
-          SET 
-            price = ${minPrice},
-            max_price = ${maxPrice},
-            price_range = ${priceRange},
-            updated_at = NOW()
-          WHERE id = ${serviceId}
-        `;
-        
-        // Update result object
-        result[0].price = minPrice;
-        result[0].max_price = maxPrice;
-        result[0].price_range = priceRange;
-        
-        console.log(`✅ [Pricing] Service pricing updated automatically`);
-      }
       
     } catch (itemizationError) {
       console.error('⚠️  [Itemization] Error creating itemization data:', itemizationError);
