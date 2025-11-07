@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { AdminLayout, DataTable, StatCard, statusColors } from '../shared';
 import { cn } from '../../../../utils/cn';
+import { useNotification } from '../../../../shared/hooks/useNotification';
+import { NotificationModal } from '../../../../shared/components/modals';
 
 interface Verification {
   id: string;
@@ -50,6 +52,7 @@ interface Stats {
 }
 
 export const AdminVerificationReview: React.FC = () => {
+  const { notification, showNotification, hideNotification } = useNotification();
   const [verifications, setVerifications] = useState<Verification[]>([]);
   const [stats, setStats] = useState<Stats>({
     total: 0,
@@ -135,14 +138,29 @@ export const AdminVerificationReview: React.FC = () => {
         setVerifications(verifications.filter(v => v.id !== verificationId));
         setShowDetailsModal(false);
         setAdminNotes('');
-        alert('✅ Verification approved successfully!');
+        showNotification({
+          title: 'Verification Approved',
+          message: 'Verification approved successfully!',
+          type: 'success',
+          customIcon: CheckCircle
+        });
         loadData(); // Refresh data
       } else {
-        alert(`❌ Failed to approve: ${data.error}`);
+        showNotification({
+          title: 'Approval Failed',
+          message: `Failed to approve: ${data.error}`,
+          type: 'error',
+          customIcon: XCircle
+        });
       }
     } catch (error) {
       console.error('Failed to approve verification:', error);
-      alert('❌ Failed to approve verification');
+      showNotification({
+        title: 'Approval Failed',
+        message: 'Failed to approve verification. Please try again.',
+        type: 'error',
+        customIcon: XCircle
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -150,7 +168,12 @@ export const AdminVerificationReview: React.FC = () => {
 
   const handleReject = async () => {
     if (!selectedVerification || !rejectReason.trim()) {
-      alert('Please provide a rejection reason');
+      showNotification({
+        title: 'Rejection Reason Required',
+        message: 'Please provide a rejection reason before rejecting the verification.',
+        type: 'warning',
+        customIcon: AlertTriangle
+      });
       return;
     }
 
@@ -178,14 +201,29 @@ export const AdminVerificationReview: React.FC = () => {
         setShowRejectModal(false);
         setRejectReason('');
         setAdminNotes('');
-        alert('Verification rejected');
+        showNotification({
+          title: 'Verification Rejected',
+          message: 'Verification has been rejected and user will be notified.',
+          type: 'info',
+          customIcon: XCircle
+        });
         loadData(); // Refresh data
       } else {
-        alert(`❌ Failed to reject: ${data.error}`);
+        showNotification({
+          title: 'Rejection Failed',
+          message: `Failed to reject: ${data.error}`,
+          type: 'error',
+          customIcon: XCircle
+        });
       }
     } catch (error) {
       console.error('Failed to reject verification:', error);
-      alert('❌ Failed to reject verification');
+      showNotification({
+        title: 'Rejection Failed',
+        message: 'Failed to reject verification. Please try again.',
+        type: 'error',
+        customIcon: XCircle
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -589,6 +627,21 @@ export const AdminVerificationReview: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        confirmText={notification.confirmText}
+        showCancel={notification.showCancel}
+        onConfirm={notification.onConfirm}
+        customIcon={notification.customIcon}
+        iconColor={notification.iconColor}
+        size={notification.size}
+      />
     </AdminLayout>
   );
 };
