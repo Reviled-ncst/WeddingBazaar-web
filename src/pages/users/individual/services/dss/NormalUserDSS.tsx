@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, Star, Phone, Mail, MapPin, ArrowLeft } from 'lucide-react';
 import { CoupleHeader } from '../../../individual/landing/CoupleHeader';
+import { useNotification } from '../../../../../shared/hooks/useNotification';
 
 interface SimpleRecommendation {
   id: string;
@@ -19,6 +20,7 @@ interface SimpleRecommendation {
 
 export const NormalUserDSS: React.FC = () => {
   const navigate = useNavigate();
+  const { showInfo } = useNotification();
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
 
   const recommendations: SimpleRecommendation[] = [
@@ -95,8 +97,7 @@ export const NormalUserDSS: React.FC = () => {
 
   const handleContactAll = () => {
     const selectedVendors = recommendations.filter(rec => selectedServices.includes(rec.id));
-    // In a real app, this would create a group chat or send emails
-    alert(`Contacting ${selectedVendors.length} vendors: ${selectedVendors.map(v => v.vendor).join(', ')}`);
+    showInfo(`Contacting ${selectedVendors.length} vendors: ${selectedVendors.map(v => v.vendor).join(', ')}`, 'Contact Requests');
   };
 
   return (

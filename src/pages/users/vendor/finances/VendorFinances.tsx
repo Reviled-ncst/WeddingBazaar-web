@@ -24,10 +24,13 @@ import { getVendorWallet, getWalletTransactions, requestWithdrawal, downloadTran
 import type { VendorWallet, WalletTransaction, WalletSummary, EarningsBreakdown } from '../../../../shared/types/wallet.types';
 import { formatCentavos } from '../../../../shared/types/wallet.types';
 import { getVendorIdForUser } from '../../../../utils/vendorIdMapping';
+import { NotificationModal } from '../../../../shared/components/modals';
+import { useNotification } from '../../../../shared/hooks/useNotification';
 
 export const VendorFinances: React.FC = () => {
   const { user } = useAuth();
   const vendorId = getVendorIdForUser(user) || '';
+  const { notification, showNotification, hideNotification } = useNotification();
 
   // State Management
   const [wallet, setWallet] = useState<VendorWallet | null>(null);
@@ -121,15 +124,27 @@ export const VendorFinances: React.FC = () => {
     try {
       const response = await requestWithdrawal(vendorId, withdrawalData);
       if (response.success) {
-        alert('Withdrawal request submitted successfully!');
+        showNotification({
+          type: 'success',
+          title: 'Withdrawal Requested',
+          message: 'Your withdrawal request has been submitted successfully!'
+        });
         setShowWithdrawModal(false);
         resetWithdrawalForm();
         await loadWalletData();
       } else {
-        alert(response.error || 'Failed to submit withdrawal request');
+        showNotification({
+          type: 'error',
+          title: 'Withdrawal Failed',
+          message: response.error || 'Failed to submit withdrawal request. Please try again.'
+        });
       }
     } catch (error) {
-      alert('Error submitting withdrawal request');
+      showNotification({
+        type: 'error',
+        title: 'Request Error',
+        message: 'An error occurred while submitting your withdrawal request.'
+      });
     }
   };
 
@@ -150,9 +165,17 @@ export const VendorFinances: React.FC = () => {
     });
 
     if (success) {
-      alert('Transactions exported successfully!');
+      showNotification({
+        type: 'success',
+        title: 'Export Successful',
+        message: 'Your transaction history has been exported to CSV!'
+      });
     } else {
-      alert('Failed to export transactions');
+      showNotification({
+        type: 'error',
+        title: 'Export Failed',
+        message: 'Failed to export transactions. Please try again.'
+      });
     }
   };
 
@@ -694,6 +717,14 @@ export const VendorFinances: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
     </div>
   );
 };

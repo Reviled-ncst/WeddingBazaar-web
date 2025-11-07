@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Star, Phone, Mail, MapPin, ArrowLeft, Heart, MessageCircle, Calendar } from 'lucide-react';
 import { CoupleHeader } from '../../../individual/landing/CoupleHeader';
+import { useNotification } from '../../../../../shared/hooks/useNotification';
 
 interface SimpleService {
   id: string;
@@ -19,6 +20,7 @@ interface SimpleService {
 
 export const DecisionSupportSystem: React.FC = () => {
   const navigate = useNavigate();
+  const { showInfo } = useNotification();
   const [searchParams] = useSearchParams();
   const [recommendedServices, setRecommendedServices] = useState<SimpleService[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,8 +110,7 @@ export const DecisionSupportSystem: React.FC = () => {
 
   const handleContactAll = () => {
     const selectedVendors = recommendedServices.filter(rec => selectedServices.includes(rec.id));
-    // In a real app, this would create a group chat or send emails
-    alert(`Contacting ${selectedVendors.length} vendors: ${selectedVendors.map(v => v.vendor).join(', ')}`);
+    showInfo(`Contacting ${selectedVendors.length} vendors: ${selectedVendors.map(v => v.vendor).join(', ')}`, 'Contact Requests');
   };
 
   const handleContactVendor = (serviceId: string) => {

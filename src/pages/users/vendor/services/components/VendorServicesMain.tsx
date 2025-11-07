@@ -14,6 +14,7 @@ import { ServiceListView } from './ServiceListView';
 import { AddServiceForm } from './AddServiceForm';
 import { useAuth } from '../../../../../shared/contexts/HybridAuthContext';
 import { useSubscription } from '../../../../../shared/contexts/SubscriptionContext';
+import { useNotification } from '../../../../../shared/hooks/useNotification';
 
 // Import micro services
 import {
@@ -39,6 +40,7 @@ export const VendorServicesMain: React.FC = () => {
   // Auth & Context
   const { user } = useAuth();
   const { subscription, showUpgradePrompt } = useSubscription();
+  const { showError, showSuccess } = useNotification();
   
   // State
   const [services, setServices] = useState<Service[]>([]);
@@ -183,7 +185,7 @@ export const VendorServicesMain: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete service';
       console.error('Error deleting service:', errorMessage);
-      alert(`Failed to delete service: ${errorMessage}`);
+      showError(errorMessage, 'Delete Service Failed');
     }
   };
 
@@ -198,7 +200,7 @@ export const VendorServicesMain: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to toggle status';
       console.error('Error toggling status:', errorMessage);
-      alert(`Failed to toggle status: ${errorMessage}`);
+      showError(errorMessage, 'Toggle Status Failed');
     }
   };
 
@@ -212,7 +214,7 @@ export const VendorServicesMain: React.FC = () => {
   const handleShare = (service: Service) => {
     const shareUrl = `${window.location.origin}/services/${service.id}`;
     navigator.clipboard.writeText(shareUrl);
-    alert('Service link copied to clipboard!');
+    showSuccess('Service link copied to clipboard!', 'Link Copied');
   };
 
   // Filter services

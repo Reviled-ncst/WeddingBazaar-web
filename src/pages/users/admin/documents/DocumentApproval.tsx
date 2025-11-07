@@ -12,6 +12,8 @@ import {
   User,
   Building2
 } from 'lucide-react';
+import { NotificationModal } from '../../../../shared/components/modals';
+import { useNotification } from '../../../../shared/hooks/useNotification';
 
 interface VendorDocument {
   id: string;
@@ -186,6 +188,7 @@ export const DocumentApprovalPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const { notification, showNotification, hideNotification } = useNotification();
 
   // Fetch documents from API
   useEffect(() => {
@@ -308,7 +311,11 @@ export const DocumentApprovalPage: React.FC = () => {
       const document = documents.find(doc => doc.id === documentId);
       
       if (!document) {
-        alert('Document not found');
+        showNotification({
+          type: 'error',
+          title: 'Document Not Found',
+          message: 'The requested document could not be found. Please refresh the page.'
+        });
         return;
       }
 
@@ -342,10 +349,18 @@ export const DocumentApprovalPage: React.FC = () => {
           : doc
       ));
       
-      alert('Document approved successfully!');
+      showNotification({
+        type: 'success',
+        title: 'Document Approved',
+        message: 'The document has been approved successfully!'
+      });
     } catch (error) {
       console.error('Error approving document:', error);
-      alert('Failed to approve document. Please try again.');
+      showNotification({
+        type: 'error',
+        title: 'Approval Failed',
+        message: 'Failed to approve the document. Please try again.'
+      });
     }
   };
 
@@ -355,7 +370,11 @@ export const DocumentApprovalPage: React.FC = () => {
       const document = documents.find(doc => doc.id === documentId);
       
       if (!document) {
-        alert('Document not found');
+        showNotification({
+          type: 'error',
+          title: 'Document Not Found',
+          message: 'The requested document could not be found. Please refresh the page.'
+        });
         return;
       }
 
@@ -392,10 +411,18 @@ export const DocumentApprovalPage: React.FC = () => {
           : doc
       ));
       
-      alert('Document rejected successfully!');
+      showNotification({
+        type: 'warning',
+        title: 'Document Rejected',
+        message: `The document has been rejected. Reason: ${reason}`
+      });
     } catch (error) {
       console.error('Error rejecting document:', error);
-      alert('Failed to reject document. Please try again.');
+      showNotification({
+        type: 'error',
+        title: 'Rejection Failed',
+        message: 'Failed to reject the document. Please try again.'
+      });
     }
   };
 
@@ -532,6 +559,14 @@ export const DocumentApprovalPage: React.FC = () => {
           </div>
         )}
       </div>
+      
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
     </AdminLayout>
   );
 };

@@ -49,6 +49,10 @@ import { mapToEnhancedBooking } from '../../../../shared/utils/booking-data-mapp
 // Import custom hooks
 import { useBookingPreferences } from './hooks';
 
+// Import notification system
+import { NotificationModal } from '../../../../shared/components/modals';
+import { useNotification } from '../../../../shared/hooks/useNotification';
+
 import type { 
   Booking
 } from './types/booking.types';
@@ -84,6 +88,9 @@ interface EnhancedBooking {
 }
 
 export const IndividualBookings: React.FC = () => {
+  
+  // Notification system
+  const { notification, showNotification, hideNotification } = useNotification();
   
   // User preferences from localStorage
   const { 
@@ -611,12 +618,20 @@ export const IndividualBookings: React.FC = () => {
       await loadBookings();
       
       // Show success message
-      alert('Quotation accepted successfully! You can now proceed with payment.');
+      showNotification({
+        type: 'success',
+        title: 'Quote Accepted!',
+        message: 'Quotation accepted successfully! You can now proceed with payment.'
+      });
       
       console.log('✅ [AcceptQuotation] Successfully accepted quotation for booking:', booking.id);
     } catch (error) {
       console.error('❌ [AcceptQuotation] Error accepting quotation:', error);
-      alert('Failed to accept quotation. Please try again.');
+      showNotification({
+        type: 'error',
+        title: 'Acceptance Failed',
+        message: 'Failed to accept quotation. Please try again.'
+      });
     } finally {
       setLoading(false);
     }
@@ -1189,12 +1204,24 @@ export const IndividualBookings: React.FC = () => {
           try {
             console.log('🔄 [IndividualBookings] Requesting modification for booking:', booking.id);
             // TODO: Implement quote modification request
-            alert('Quote modification request sent to vendor.');
+            showNotification({
+              type: 'info',
+              title: 'Modification Requested',
+              message: 'Quote modification request sent to vendor.'
+            });
             setShowQuoteDetails(false);
           } catch (error) {
             console.error('❌ [IndividualBookings] Error requesting modification:', error);
           }
         }}
+      />
+      
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
       />
     </div>
   );

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { VendorHeader } from '../../../shared/components/layout/VendorHeader';
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
+import { useNotification } from '../../../../shared/hooks/useNotification';
 
 // Service interface based on the actual API response
 interface Service {
@@ -86,6 +87,7 @@ const SERVICE_CATEGORIES = [
 export const VendorServices: React.FC = () => {
   // Auth context to get the logged-in vendor
   const { user } = useAuth();
+  const { showSuccess, showInfo } = useNotification();
 
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -260,9 +262,9 @@ export const VendorServices: React.FC = () => {
       console.log('✅ Service deleted successfully:', result);
 
       if (result.softDelete) {
-        alert('✅ Service deleted successfully!\n\nNote: The service was preserved in our records due to existing bookings, but it\'s no longer visible to customers.');
+        showInfo('The service was preserved in our records due to existing bookings, but it\'s no longer visible to customers.', 'Service Deleted Successfully');
       } else {
-        alert('✅ Service deleted successfully and completely removed!');
+        showSuccess('Service completely removed from the system!', 'Service Deleted Successfully');
       }
 
       await fetchServices();

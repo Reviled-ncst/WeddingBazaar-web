@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Check, Star, MapPin } from 'lucide-react';
+import { useNotification } from '../../../../../shared/hooks/useNotification';
 
 interface Service {
   id: string;
@@ -38,6 +39,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
   onClose,
   onServiceRecommend
 }) => {
+  const { showWarning, showSuccess } = useNotification();
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [showContactForm, setShowContactForm] = useState(false);
 
@@ -63,7 +65,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
 
   const handleContactAllVendors = () => {
     if (selectedServices.length === 0) {
-      alert('Please select at least one service to contact vendors.');
+      showWarning('Please select at least one service to contact vendors.', 'No Services Selected');
       return;
     }
     setShowContactForm(true);
@@ -71,8 +73,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
 
   const handleBookService = (serviceId: string) => {
     onServiceRecommend(serviceId);
-    // You can add booking logic here
-    alert(`Booking request sent for this service! We'll connect you with the vendor.`);
+    showSuccess('We\'ll connect you with the vendor shortly!', 'Booking Request Sent');
   };
 
   const formatPrice = (service: Service): string => {
@@ -262,7 +263,7 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                   onClick={() => {
                     setShowContactForm(false);
                     onClose();
-                    alert('Contact requests sent! Vendors will reach out to you soon.');
+                    showSuccess('Vendors will reach out to you soon!', 'Contact Requests Sent');
                   }}
                   className="flex-1 bg-pink-500 hover:bg-pink-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                 >
