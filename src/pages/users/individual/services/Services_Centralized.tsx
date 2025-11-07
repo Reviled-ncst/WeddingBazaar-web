@@ -1750,29 +1750,26 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
             </div>
             {/* Small Gallery Row Below - Only for List View */}
             {(service.gallery && service.gallery.length > 1) || (service.images && service.images.length > 1) ? (
-              <div className="absolute bottom-2 left-2 right-2">
-                <div className="flex gap-1 overflow-x-auto">
-                  {(service.gallery?.slice(1, 5) || service.images?.slice(1, 5) || []).map((img, idx) => (
-                    <div key={idx} className="flex-shrink-0 w-10 h-10 rounded-md overflow-hidden border border-white shadow-sm">
-                      <img
-                        src={img}
-                        alt={`${service.name} ${idx + 2}`}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=100';
-                        }}
-                      />
-                    </div>
-                  ))}
-                  {((service.gallery?.length || service.images?.length || 1) > 5) && (
-                    <div className="flex-shrink-0 w-10 h-10 rounded-md bg-black/60 border border-white shadow-sm flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">
-                        +{((service.gallery?.length || service.images?.length || 1) - 4)}
-                      </span>
-                    </div>
-                  )}
-                </div>
+              <div className="mt-3 grid grid-cols-4 gap-2">
+                {(service.gallery || service.images || []).slice(1, 4).map((img, idx) => (
+                  <img
+                    key={idx}
+                    src={img}
+                    alt={`Gallery ${idx + 1}`}
+                    className="w-full h-16 object-cover rounded-lg border border-pink-100"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=100';
+                    }}
+                  />
+                ))}
+                {((service.gallery?.length || service.images?.length || 1) > 4) && (
+                  <div className="w-full h-16 rounded-lg bg-black/10 backdrop-blur-sm border border-pink-100 flex items-center justify-center">
+                    <span className="text-gray-600 text-xs font-medium">
+                      +{((service.gallery?.length || service.images?.length || 1) - 3)}
+                    </span>
+                  </div>
+                )}
               </div>
             ) : null}
           </div>
@@ -2143,10 +2140,69 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
               <div className="text-xs text-gray-400 italic">Standard service package</div>
             )}
           </div>
+          
+          {/* 🎉 NEW: Package Display Section */}
+          {service.packages && service.packages.length > 0 && (
+            <div className="border-t border-purple-100 pt-3 mt-3 mb-3 flex-shrink-0">
+              <div className="flex items-center justify-between mb-2">
+                <h5 className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                  </svg>
+                  Package Tiers
+                </h5>
+                <div className="flex gap-1.5">
+                  <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">
+                    ✓ Itemized
+                  </span>
+                  <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-semibold">
+                    {service.packages.length} {service.packages.length === 1 ? 'Package' : 'Packages'}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                {service.packages.slice(0, 3).map((pkg, idx) => (
+                  <div key={pkg.id || idx} className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-2 border border-purple-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="font-medium text-xs text-gray-900 truncate">{pkg.package_name}</span>
+                        {pkg.is_default && (
+                          <span className="px-1.5 py-0.5 bg-blue-500 text-white rounded text-xs font-bold flex-shrink-0">✓</span>
+                        )}
+                      </div>
+                      <span className="text-purple-600 font-bold text-sm flex-shrink-0 ml-2">₱{(pkg.base_price || 0).toLocaleString()}</span>
+                    </div>
+                    {pkg.items && pkg.items.length > 0 && (
+                      <p className="text-xs text-gray-600 mt-0.5">{pkg.items.length} items included</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
           <div className="flex items-center justify-between mt-auto flex-shrink-0">
             <div className="flex flex-col">
-              <span className="text-xs text-gray-500 mb-0.5">Starting from</span>
-              <span className="font-bold text-pink-600 text-base">{service.priceRange}</span>
+              <span className="text-xs text-gray-500 mb-0.5">
+                {service.packages && service.packages.length > 0 ? 'Package range' : 'Starting from'}
+              </span>
+              <span className="font-bold text-pink-600 text-base">
+                {service.packages && service.packages.length > 0 
+                  ? (() => {
+                      const prices = service.packages.map(p => p.base_price || 0).filter(p => p > 0);
+                      if (prices.length > 0) {
+                        const min = Math.min(...prices);
+                        const max = Math.max(...prices);
+                        if (min === max) {
+                          return `₱${min.toLocaleString()}`;
+                        }
+                        return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
+                      }
+                      return service.priceRange;
+                    })()
+                  : service.priceRange
+                }
+              </span>
             </div>
             <div className="flex gap-2">
               <button
@@ -2193,6 +2249,22 @@ interface ServiceDetailModalProps {
 
 function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, onMessage, onBookingRequest, onOpenGallery }: ServiceDetailModalProps) {
   if (!service) return null;
+
+  // Calculate package price range for display
+  const getPackagePriceRange = () => {
+    if (service.packages && service.packages.length > 0) {
+      const prices = service.packages.map(p => p.base_price || 0).filter(p => p > 0);
+      if (prices.length > 0) {
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        if (min === max) {
+          return `₱${min.toLocaleString()}`;
+        }
+        return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
+      }
+    }
+    return service.priceRange;
+  };
 
   return (
     <AnimatePresence>
@@ -2251,7 +2323,10 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-semibold text-pink-600">{service.priceRange}</span>
+                <span className="text-2xl font-semibold text-pink-600">{getPackagePriceRange()}</span>
+                {service.has_itemization && (
+                  <div className="text-xs text-purple-600 font-medium mt-1">Package pricing available</div>
+                )}
                 <div className="mt-2 flex gap-2 justify-end">
                   <button
                     onClick={() => onMessage(service)}
@@ -2451,6 +2526,136 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
               )}
             </div>
 
+            {/* 🎉 NEW: Package & Itemization Section */}
+            {service.packages && service.packages.length > 0 && (
+              <div className="mb-8 border-t border-gray-200 pt-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h4 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                      </svg>
+                    </div>
+                    Package Tiers & Itemization
+                  </h4>
+                  <span className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-bold flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    {service.packages.length} Package{service.packages.length > 1 ? 's' : ''} Available
+                  </span>
+                </div>
+                
+                <div className="space-y-6">
+                  {service.packages.map((pkg, pkgIdx) => (
+                    <div 
+                      key={pkg.id || pkgIdx} 
+                      className={`bg-gradient-to-br from-purple-50/50 to-pink-50/50 rounded-2xl border-2 ${
+                        pkg.is_default ? 'border-blue-300 shadow-lg' : 'border-purple-200/30'
+                      } p-6 transition-all hover:shadow-xl`}
+                    >
+                      {/* Package Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h5 className="text-xl font-bold text-gray-900">{pkg.package_name}</h5>
+                            {pkg.is_default && (
+                              <span className="px-2 py-1 bg-blue-500 text-white rounded-lg text-xs font-semibold">✓ Default Package</span>
+                            )}
+                            {pkg.is_active === false && (
+                              <span className="px-2 py-1 bg-gray-400 text-white rounded-lg text-xs font-semibold">Inactive</span>
+                            )}
+                          </div>
+                          {pkg.package_description && (
+                            <p className="text-gray-600 text-sm leading-relaxed">{pkg.package_description}</p>
+                          )}
+                        </div>
+                        <div className="text-right ml-4 flex-shrink-0">
+                          <div className="text-3xl font-bold text-purple-600">₱{(pkg.base_price || 0).toLocaleString()}</div>
+                          <div className="text-xs text-gray-500 mt-1">Base Price</div>
+                        </div>
+                      </div>
+                      
+                      {/* Package Items */}
+                      {pkg.items && pkg.items.length > 0 && (
+                        <div className="mt-5 border-t border-purple-200/50 pt-5">
+                          <h6 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                            Included Items ({pkg.items.length})
+                          </h6>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {pkg.items.map((item, itemIdx) => (
+                              <div 
+                                key={item.id || itemIdx} 
+                                className="bg-white/80 rounded-xl p-4 border border-purple-100 hover:border-purple-300 transition-all"
+                              >
+                                <div className="flex items-start gap-3">
+                                  {/* Item Type Icon */}
+                                  <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
+                                    item.item_type === 'personnel' ? 'bg-blue-100' :
+                                    item.item_type === 'equipment' ? 'bg-green-100' :
+                                    item.item_type === 'deliverable' ? 'bg-purple-100' :
+                                    'bg-gray-100'
+                                  }`}>
+                                    <svg className={`w-5 h-5 ${
+                                      item.item_type === 'personnel' ? 'text-blue-600' :
+                                      item.item_type === 'equipment' ? 'text-green-600' :
+                                      item.item_type === 'deliverable' ? 'text-purple-600' :
+                                      'text-gray-600'
+                                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      {item.item_type === 'personnel' ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                      ) : item.item_type === 'equipment' ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                                      ) : item.item_type === 'deliverable' ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                      ) : (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                                      )}
+                                    </svg>
+                                  </div>
+                                  
+                                  {/* Item Details */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-semibold text-gray-900 text-sm truncate">{item.item_name}</div>
+                                        {item.item_description && (
+                                          <div className="text-xs text-gray-600 mt-1 line-clamp-2">{item.item_description}</div>
+                                        )}
+                                      </div>
+                                      {item.quantity && (
+                                        <div className="flex-shrink-0 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-bold">
+                                          ×{item.quantity}
+                                        </div>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Item Meta Info */}
+                                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                                      <span className="capitalize px-2 py-0.5 bg-gray-100 rounded">{item.item_type}</span>
+                                      {item.unit_type && (
+                                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded">{item.unit_type}</span>
+                                      )}
+                                      {item.unit_price && (
+                                        <span className="text-purple-600 font-semibold">₱{item.unit_price.toLocaleString()}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="mb-8">
               <h4 className="font-semibold text-gray-900 mb-2">Gallery</h4>
               <div className="flex gap-2 overflow-x-auto">
@@ -2488,20 +2693,6 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
           </div>
         </motion.div>
       </motion.div>
-
-      {/* Notification Modal */}
-      <NotificationModal
-        isOpen={notification.isOpen}
-        onClose={hideNotification}
-        title={notification.title}
-        message={notification.message}
-        type={notification.type}
-        confirmText={notification.confirmText}
-        showCancel={notification.showCancel}
-        onConfirm={notification.onConfirm}
-        customIcon={MessageCircle}
-        iconColor="text-pink-500"
-      />
     </AnimatePresence>
   );
 }
