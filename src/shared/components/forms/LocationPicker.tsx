@@ -188,13 +188,13 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       </div>
       {/* Search Results Dropdown */}
       {searchResults.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-[10000] max-h-60 overflow-y-auto">
           {searchResults.map((result, index) => (
             <button
               key={index}
               type="button"
               onClick={() => handleLocationSelect(result)}
-              className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+              className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 relative z-[10001]"
             >
               <div className="font-medium text-gray-900 truncate">{result.address}</div>
               {result.city && result.state && (
@@ -214,11 +214,11 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       )}
       {/* Map Preview (always visible) - Focused on Dasmariñas */}
       {position && (
-        <div className="mt-4 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+        <div className="mt-4 rounded-lg overflow-hidden border border-gray-200 shadow-sm relative z-0">
           <MapContainer
             center={position}
             zoom={14}
-            style={{ height: '300px', width: '100%' }}
+            style={{ height: '300px', width: '100%', position: 'relative', zIndex: 0 }}
             className="rounded-lg"
           >
             <TileLayer
