@@ -1072,7 +1072,9 @@ router.get('/profile', async (req, res) => {
       phone: user.phone,
       emailVerified: user.email_verified || false,  // Add email verification status
       businessName: vendorInfo?.business_name || '',
-      vendorId: vendorInfo?.id || null,
+      // ✅ FIX: Use user.id (2-2025-003) instead of vendor_profiles.id (UUID)
+      // This matches vendor_subscriptions.vendor_id column
+      vendorId: (user.user_type === 'vendor' || user.user_type === 'coordinator') ? user.id : null,
       // Coordinator-specific fields
       yearsExperience: vendorInfo?.years_experience || null,
       teamSize: vendorInfo?.team_size || null,
