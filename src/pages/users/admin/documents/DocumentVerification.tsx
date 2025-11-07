@@ -215,8 +215,6 @@ export const DocumentVerification: React.FC = () => {
   };
 
   const handleApprove = async (docId: string) => {
-    if (!confirm('Are you sure you want to approve this document?')) return;
-
     setIsProcessing(true);
     try {
       const token = localStorage.getItem('auth_token');
@@ -239,6 +237,7 @@ export const DocumentVerification: React.FC = () => {
           customIcon: CheckCircle
         });
         setSelectedDocument(null);
+        setShowApproveModal(false);
         setAdminNotes('');
         loadData();
       } else {
@@ -537,7 +536,10 @@ export const DocumentVerification: React.FC = () => {
                       {document.verificationStatus === 'pending' && (
                         <>
                           <button
-                            onClick={() => handleApprove(document.id)}
+                            onClick={() => {
+                              setSelectedDocument(document);
+                              setShowApproveModal(true);
+                            }}
                             disabled={isProcessing}
                             className="flex items-center justify-center gap-1.5 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors font-medium text-sm disabled:opacity-50"
                           >
@@ -694,7 +696,7 @@ export const DocumentVerification: React.FC = () => {
                 {selectedDocument.verificationStatus === 'pending' && (
                   <div className="flex gap-4 pt-4 border-t border-gray-200">
                     <button
-                      onClick={() => handleApprove(selectedDocument.id)}
+                      onClick={() => setShowApproveModal(true)}
                       disabled={isProcessing}
                       className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors font-semibold disabled:opacity-50"
                     >
@@ -711,6 +713,79 @@ export const DocumentVerification: React.FC = () => {
                     </button>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Approve Confirmation Modal */}
+        {showApproveModal && selectedDocument && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full">
+              <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-6 rounded-t-3xl">
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <CheckCircle className="h-6 w-6" />
+                  Approve Document
+                </h2>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-gray-700">
+                  Are you sure you want to approve <span className="font-semibold">{selectedDocument.documentType}</span> from {selectedDocument.businessName}?
+                </p>
+
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <Shield className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-green-800">
+                      <p className="font-semibold mb-1">Verification Confirmation</p>
+                      <p>This action will verify the vendor's document and grant them access to relevant features.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Admin Notes (Optional)
+                  </label>
+                  <textarea
+                    value={adminNotes}
+                    onChange={(e) => setAdminNotes(e.target.value)}
+                    placeholder="Add any notes about this approval..."
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowApproveModal(false);
+                      setAdminNotes('');
+                    }}
+                    disabled={isProcessing}
+                    className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl transition-colors font-semibold disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => selectedDocument && handleApprove(selectedDocument.id)}
+                    disabled={isProcessing}
+                    className="flex-1 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4" />
+                        Confirm Approval
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
