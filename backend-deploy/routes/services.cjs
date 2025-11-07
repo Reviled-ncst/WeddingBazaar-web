@@ -230,8 +230,8 @@ router.get('/vendor/:vendorId', async (req, res) => {
       const addons = await sql`
         SELECT * FROM service_addons
         WHERE service_id = ${service.id}
-        AND is_active = true
-        ORDER BY price ASC
+        AND is_available = true
+        ORDER BY addon_price ASC
       `;
       console.log(`  🎁 Found ${addons.length} add-ons for service ${service.id}`);
       
@@ -959,8 +959,8 @@ router.post('/', async (req, res) => {
         for (const addon of req.body.addons) {
           const addonResult = await sql`
             INSERT INTO service_addons (
-              service_id, name, description, price,
-              is_active, created_at, updated_at
+              service_id, addon_name, addon_description, addon_price,
+              is_available, created_at, updated_at
             ) VALUES (
               ${serviceId},
               ${addon.name},
@@ -986,7 +986,7 @@ router.post('/', async (req, res) => {
           const ruleResult = await sql`
             INSERT INTO service_pricing_rules (
               service_id, rule_type, rule_name, base_price,
-              price_per_unit, min_quantity, max_quantity,
+              additional_unit_price, minimum_units, maximum_units,
               is_active, created_at, updated_at
             ) VALUES (
               ${serviceId},
@@ -1445,8 +1445,8 @@ router.put('/:id/itemization', async (req, res) => {
           // Create new
           const created = await sql`
             INSERT INTO service_addons (
-              service_id, name, description, price,
-              is_active, created_at, updated_at
+              service_id, addon_name, addon_description, addon_price,
+              is_available, created_at, updated_at
             ) VALUES (
               ${id}, ${addon.name}, ${addon.description || ''},
               ${addon.price ? parseFloat(addon.price) : 0},
@@ -1485,7 +1485,7 @@ router.put('/:id/itemization', async (req, res) => {
           const created = await sql`
             INSERT INTO service_pricing_rules (
               service_id, rule_type, rule_name, base_price,
-              price_per_unit, min_quantity, max_quantity,
+              additional_unit_price, minimum_units, maximum_units,
               is_active, created_at, updated_at
             ) VALUES (
               ${id}, ${rule.rule_type || 'fixed'}, ${rule.rule_name || ''},

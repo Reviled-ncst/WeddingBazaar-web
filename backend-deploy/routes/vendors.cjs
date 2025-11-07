@@ -499,8 +499,8 @@ router.get('/:vendorId/services', async (req, res) => {
         const addons = await sql`
           SELECT * FROM service_addons
           WHERE service_id = ${service.id}
-          AND is_active = true
-          ORDER BY price ASC
+          AND is_available = true
+          ORDER BY addon_price ASC
         `;
         
         // 4. Get pricing rules for this service
