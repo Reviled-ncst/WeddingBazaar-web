@@ -136,9 +136,54 @@ interface Service {
   cultural_specialties?: string[];
   availability: string; // Changed from boolean to string to match backend
   
+  // 🎉 NEW: Itemization data (packages, items, add-ons) - MATCHING VENDOR SERVICES
+  packages?: ServicePackage[];
+  addons?: ServiceAddon[];
+  pricing_rules?: PricingRule[];
+  has_itemization?: boolean;
+  
   // Timestamps
   created_at: string;
   updated_at: string;
+}
+
+// 🎉 NEW: Package interface for itemized pricing (MATCHING VENDOR SERVICES)
+interface ServicePackage {
+  id?: string;
+  package_name: string;
+  package_description?: string;
+  base_price: number;
+  is_default?: boolean;
+  is_active?: boolean;
+  items?: PackageItem[];
+}
+
+// 🎉 NEW: Package item interface (MATCHING VENDOR SERVICES)
+interface PackageItem {
+  id?: string;
+  item_type: 'personnel' | 'equipment' | 'deliverable' | 'other';
+  item_name: string;
+  item_description?: string;
+  quantity?: number;
+  unit_type?: string;
+  unit_price?: number;
+}
+
+// 🎉 NEW: Add-on interface (MATCHING VENDOR SERVICES)
+interface ServiceAddon {
+  id?: string;
+  addon_name: string;
+  addon_description?: string;
+  addon_price: number;
+  is_available?: boolean;
+}
+
+// 🎉 NEW: Pricing rule interface (MATCHING VENDOR SERVICES)
+interface PricingRule {
+  id?: string;
+  rule_name: string;
+  rule_type: string;
+  value?: number;
 }
 
 // ServiceFilters interface removed - not currently used

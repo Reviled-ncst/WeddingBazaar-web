@@ -482,14 +482,21 @@ router.get('/dashboard/stats', async (req, res) => {
       `
     ]);
     
+    // Debug logging
+    console.log('🔍 [Admin] Raw query results:');
+    console.log('  Users count result:', usersCount);
+    console.log('  Vendors count result:', vendorsCount);
+    console.log('  Bookings count result:', bookingsCount);
+    console.log('  Active users result:', activeUsersCount);
+    
     const stats = {
-      totalUsers: parseInt(usersCount[0].count),
-      totalVendors: parseInt(vendorsCount[0].count),
-      totalBookings: parseInt(bookingsCount[0].count),
-      totalRevenue: parseFloat(completedBookingsRevenue[0].total_revenue || 0),
-      completedBookings: parseInt(completedBookingsRevenue[0].completed_count),
-      activeUsers: parseInt(activeUsersCount[0].count),
-      pendingVerifications: parseInt(pendingVerifications[0].count),
+      totalUsers: parseInt(usersCount[0]?.count || 0),
+      totalVendors: parseInt(vendorsCount[0]?.count || 0),
+      totalBookings: parseInt(bookingsCount[0]?.count || 0),
+      totalRevenue: parseFloat(completedBookingsRevenue[0]?.total_revenue || 0),
+      completedBookings: parseInt(completedBookingsRevenue[0]?.completed_count || 0),
+      activeUsers: parseInt(activeUsersCount[0]?.count || 0),
+      pendingVerifications: parseInt(pendingVerifications[0]?.count || 0),
       recentBookings: recentBookings.map(booking => ({
         id: booking.id,
         status: booking.status,
