@@ -368,6 +368,15 @@ router.post('/', async (req, res) => {
     console.log('   title:', req.body.title);
     console.log('   category:', req.body.category);
     console.log('   service_tier:', req.body.service_tier);
+    
+    // ✅ LOG ITEMIZATION DATA RECEIVED
+    console.log('📦 [ITEMIZATION CHECK] Packages received:', req.body.packages ? `${req.body.packages.length} packages` : 'NONE');
+    console.log('🎁 [ITEMIZATION CHECK] Addons received:', req.body.addons ? `${req.body.addons.length} addons` : 'NONE');
+    console.log('💰 [ITEMIZATION CHECK] Pricing rules received:', req.body.pricingRules ? `${req.body.pricingRules.length} rules` : 'NONE');
+    
+    if (req.body.packages && req.body.packages.length > 0) {
+      console.log('📦 [PACKAGE DETAILS] First package:', JSON.stringify(req.body.packages[0], null, 2));
+    }
 
     const {
       vendor_id,
