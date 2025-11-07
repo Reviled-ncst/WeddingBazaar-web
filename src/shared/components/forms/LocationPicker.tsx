@@ -57,6 +57,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchCacheRef = useRef<Map<string, LocationData[]>>(new Map());
 
   // Initialize with Dasmariñas location (no geolocation request by default)
   useEffect(() => {
@@ -70,6 +71,15 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       setSearchResults([]);
       return;
     }
+    
+    // Check cache first for instant results
+    const cacheKey = query.toLowerCase().trim();
+    if (searchCacheRef.current.has(cacheKey)) {
+      setSearchResults(searchCacheRef.current.get(cacheKey)!);
+      setIsSearching(false);
+      return;
+    }
+    
     setIsSearching(true);
     try {
       // ✅ STRICT CAVITE-ONLY SEARCH: Force Philippines country code and Cavite province
@@ -133,6 +143,17 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           country: 'Philippines'
         }));
       
+      // Store in cache for faster future searches
+      searchCacheRef.current.set(cacheKey, caviteResults);
+      
+      // Limit cache size to prevent memory issues (keep last 50 searches)
+      if (searchCacheRef.current.size > 50) {
+        const firstKey = searchCacheRef.current.keys().next().value;
+        if (firstKey) {
+          searchCacheRef.current.delete(firstKey);
+        }
+      }
+      
       setSearchResults(caviteResults);
     } catch (error) {
       setSearchResults([]);
@@ -145,9 +166,17 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
+    
+    // Show loading immediately when user types
+    if (searchQuery.length >= 3) {
+      setIsSearching(true);
+    }
+    
+    // Reduced delay from 300ms to 150ms for faster response
     searchTimeoutRef.current = setTimeout(() => {
       searchLocation(searchQuery);
-    }, 300);
+    }, 150);
+    
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -206,7 +235,10 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     <div className={cn("relative", className)}>
       {/* Input Field with Search Dropdown */}
       <div className="relative z-10">
-        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 z-10" />
+        <MapPin className={cn(
+          "absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 z-10 transition-colors",
+          isSearching && searchQuery.length >= 3 ? "text-rose-500 animate-pulse" : "text-gray-400"
+        )} />
         <input
           type="text"
           value={value}
@@ -216,7 +248,12 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             setSearchQuery(inputValue);
           }}
           placeholder={placeholder}
-          className="w-full pl-10 pr-20 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 relative z-10"
+          className={cn(
+            "w-full pl-10 pr-20 py-3 border rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 relative z-10 transition-all",
+            isSearching && searchQuery.length >= 3 
+              ? "border-rose-300 bg-rose-50/30" 
+              : "border-gray-300 bg-white"
+          )}
         />
         {/* Action Buttons */}
         <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-1 z-10">
@@ -251,10 +288,13 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         </div>
       )}
       
-      {/* Loading indicator - Also above map */}
-      {isSearching && searchQuery.length >= 3 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-rose-200 rounded-lg shadow-2xl z-50 p-4 text-center">
-          <div className="text-gray-500">Searching locations...</div>
+      {/* Loading indicator - Appears instantly with animation */}
+      {isSearching && searchQuery.length >= 3 && searchResults.length === 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-rose-200 rounded-lg shadow-2xl z-50 p-3 text-center animate-fadeIn">
+          <div className="flex items-center justify-center gap-2 text-gray-600">
+            <div className="w-4 h-4 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm font-medium">Searching Cavite locations...</span>
+          </div>
         </div>
       )}
     </div>
