@@ -615,6 +615,129 @@ router.get('/dashboard/activities', async (req, res) => {
   }
 });
 
+/**
+ * Admin endpoint to get all bookings
+ * GET /api/admin/bookings
+ */
+router.get('/bookings', async (req, res) => {
+  try {
+    console.log('📋 [Admin] Getting all bookings');
+    
+    const { status, limit, offset } = req.query;
+    
+    // Build query with optional filters
+    let query = sql`
+      SELECT 
+        b.id,
+        b.booking_reference,
+        b.couple_id,
+        b.vendor_id,
+        b.service_id,
+        b.status,
+        b.total_amount,
+        b.deposit_amount,
+        b.remaining_balance,
+        b.event_date,
+        b.event_time,
+        b.event_location,
+        b.guest_count,
+        b.budget_range,
+        b.process_stage,
+        b.progress_percentage,
+        b.next_action,
+        b.next_action_by,
+        b.special_requests,
+        b.notes,
+        b.preferred_contact_method,
+        b.created_at,
+        b.updated_at,
+        u.full_name as couple_name,
+        u.email as couple_email,
+        u.phone as couple_phone,
+        v.business_name as vendor_name,
+        v.email as vendor_email,
+        v.phone as vendor_phone,
+        s.name as service_name,
+        s.category as service_type
+      FROM bookings b
+      LEFT JOIN users u ON b.couple_id = u.id
+      LEFT JOIN vendors v ON b.vendor_id = v.id::text
+      LEFT JOIN services s ON b.service_id = s.id::text
+      ORDER BY b.created_at DESC
+    `;
+    
+    // Apply filters if provided
+    if (status) {
+      query = sql`
+        SELECT 
+          b.id,
+          b.booking_reference,
+          b.couple_id,
+          b.vendor_id,
+          b.service_id,
+          b.status,
+          b.total_amount,
+          b.deposit_amount,
+          b.remaining_balance,
+          b.event_date,
+          b.event_time,
+          b.event_location,
+          b.guest_count,
+          b.budget_range,
+          b.process_stage,
+          b.progress_percentage,
+          b.next_action,
+          b.next_action_by,
+          b.special_requests,
+          b.notes,
+          b.preferred_contact_method,
+          b.created_at,
+          b.updated_at,
+          u.full_name as couple_name,
+          u.email as couple_email,
+          u.phone as couple_phone,
+          v.business_name as vendor_name,
+          v.email as vendor_email,
+          v.phone as vendor_phone,
+          s.name as service_name,
+          s.category as service_type
+        FROM bookings b
+        LEFT JOIN users u ON b.couple_id = u.id
+        LEFT JOIN vendors v ON b.vendor_id = v.id::text
+        LEFT JOIN services s ON b.service_id = s.id::text
+        WHERE b.status = ${status}
+        ORDER BY b.created_at DESC
+      `;
+    }
+    
+    // Apply limit and offset if provided
+    if (limit) {
+      const limitNum = parseInt(limit);
+      const offsetNum = parseInt(offset || 0);
+      query = sql`${query} LIMIT ${limitNum} OFFSET ${offsetNum}`;
+    }
+    
+    const bookings = await query;
+    
+    console.log(`✅ [Admin] Retrieved ${bookings.length} bookings`);
+    
+    res.json({
+      success: true,
+      bookings: bookings,
+      count: bookings.length,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [Admin] Bookings retrieval error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Helper function to format timestamps
 function formatTimestamp(timestamp) {
   const now = new Date();
