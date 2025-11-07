@@ -593,31 +593,33 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // ✅ SIMPLIFIED: Use user ID directly as vendor_id
-    // No more VEN-XXXXX format - just use the user.id (2-2025-XXX)
-    const actualVendorId = vendor_id || vendorId;
+    // ✅ FIX: Resolve user_id to actual vendor_id from vendors table
+    // Frontend sends user.id (2-2025-XXX), but we need vendors.id (UUID)
+    const userIdFromFrontend = vendor_id || vendorId;
     const finalTitle = title || name;
 
-    console.log('🔑 [Service Creation] Using vendor ID (user.id):', actualVendorId);
+    console.log('🔑 [Service Creation] User ID from frontend:', userIdFromFrontend);
 
-    // Basic validation: check if user exists and is a vendor
+    // Look up the actual vendor record in vendors table
+    let actualVendorId;
     try {
+      // First verify user exists and is a vendor
       const userCheck = await sql`
-        SELECT id, user_type FROM users WHERE id = ${actualVendorId} LIMIT 1
+        SELECT id, user_type FROM users WHERE id = ${userIdFromFrontend} LIMIT 1
       `;
       
       if (userCheck.length === 0) {
-        console.log(`❌ [Vendor Check] User not found: ${actualVendorId}`);
+        console.log(`❌ [Vendor Check] User not found: ${userIdFromFrontend}`);
         return res.status(400).json({
           success: false,
           error: 'User not found',
           message: 'Please ensure you are logged in',
-          vendor_id_sent: actualVendorId
+          vendor_id_sent: userIdFromFrontend
         });
       }
       
       if (userCheck[0].user_type !== 'vendor') {
-        console.log(`❌ [Vendor Check] User is not a vendor: ${actualVendorId}, type: ${userCheck[0].user_type}`);
+        console.log(`❌ [Vendor Check] User is not a vendor: ${userIdFromFrontend}, type: ${userCheck[0].user_type}`);
         return res.status(403).json({
           success: false,
           error: 'Not authorized',
@@ -626,9 +628,28 @@ router.post('/', async (req, res) => {
         });
       }
       
-      console.log(`✅ [Vendor Check] User is valid vendor: ${actualVendorId}`);
+      console.log(`✅ [Vendor Check] User is valid vendor: ${userIdFromFrontend}`);
+      
+      // Now look up the vendor record to get the actual vendor.id
+      const vendorRecord = await sql`
+        SELECT id FROM vendors WHERE user_id = ${userIdFromFrontend} LIMIT 1
+      `;
+      
+      if (vendorRecord.length === 0) {
+        console.log(`❌ [Vendor Lookup] No vendor record found for user: ${userIdFromFrontend}`);
+        return res.status(400).json({
+          success: false,
+          error: 'Vendor profile not found',
+          message: 'Please complete your vendor profile first',
+          user_id: userIdFromFrontend
+        });
+      }
+      
+      actualVendorId = vendorRecord[0].id;
+      console.log(`✅ [Vendor Lookup] Found vendor record: ${actualVendorId} for user: ${userIdFromFrontend}`);
+      
     } catch (vendorError) {
-      console.error('❌ [Vendor Check] Error checking user:', vendorError);
+      console.error('❌ [Vendor Check] Error checking user/vendor:', vendorError);
       return res.status(500).json({
         success: false,
         error: 'Error validating user',
