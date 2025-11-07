@@ -13,12 +13,20 @@ import {
 } from 'lucide-react';
 import { getPricingTemplates, getCategoryName } from './categoryPricingTemplates';
 
+// ✅ NEW: Enhanced inclusion with quantity and unit
+export interface PackageInclusion {
+  name: string;
+  quantity: number;
+  unit: string; // 'pcs', 'hours', 'sets', 'days', 'items', etc.
+  description?: string;
+}
+
 export interface PackageItem {
   id?: string;
   item_name: string;
   description: string;
   price: number;
-  inclusions: string[];
+  inclusions: PackageInclusion[]; // ✅ CHANGED: Now includes quantity
   exclusions: string[];
   display_order: number;
   is_active: boolean;
@@ -59,12 +67,12 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
       price: pkg.price,
       is_default: index === 0, // First package is default
       is_active: pkg.is_active,
-      items: pkg.inclusions.filter(inc => inc.trim()).map(inc => ({
+      items: pkg.inclusions.filter(inc => inc.name && inc.name.trim()).map(inc => ({
         category: 'deliverable', // Default category
-        name: inc,
-        quantity: 1,
-        unit: 'pcs',
-        description: ''
+        name: inc.name,
+        quantity: inc.quantity,
+        unit: inc.unit,
+        description: inc.description || ''
       }))
     }));
     
@@ -76,7 +84,7 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
       item_name: '',
       description: '',
       price: 0,
-      inclusions: [''],
+      inclusions: [{ name: '', quantity: 1, unit: 'pcs', description: '' }],
       exclusions: [],
       display_order: packages.length,
       is_active: true
@@ -113,14 +121,14 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
   const addInclusion = (packageIndex: number) => {
     const pkg = packages[packageIndex];
     updatePackage(packageIndex, {
-      inclusions: [...pkg.inclusions, '']
+      inclusions: [...pkg.inclusions, { name: '', quantity: 1, unit: 'pcs', description: '' }]
     });
   };
 
-  const updateInclusion = (packageIndex: number, inclusionIndex: number, value: string) => {
+  const updateInclusion = (packageIndex: number, inclusionIndex: number, field: keyof PackageInclusion, value: string | number) => {
     const pkg = packages[packageIndex];
     const updated = pkg.inclusions.map((inc, i) =>
-      i === inclusionIndex ? value : inc
+      i === inclusionIndex ? { ...inc, [field]: value } : inc
     );
     updatePackage(packageIndex, { inclusions: updated });
   };
@@ -145,7 +153,19 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
   const loadTemplate = () => {
     // Get category-specific templates from the new comprehensive template file
     const templates = getPricingTemplates(category || 'default');
-    onChange(templates);
+    
+    // Convert string[] inclusions to PackageInclusion[] format
+    const convertedTemplates: PackageItem[] = templates.map(template => ({
+      ...template,
+      inclusions: template.inclusions.map(inc => ({
+        name: inc,
+        quantity: 1,
+        unit: 'pcs',
+        description: ''
+      }))
+    }));
+    
+    onChange(convertedTemplates);
     setShowTemplates(false);
     setExpandedPackages(new Set([0]));
   };
@@ -234,6 +254,8 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
                     <button
                       type="button"
                       className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                      title="Drag to reorder package"
+                      aria-label="Drag to reorder"
                     >
                       <GripVertical className="w-5 h-5" />
                     </button>
@@ -252,7 +274,7 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
                       )}
                       {!isEditing && (
                         <p className="text-sm text-gray-600 mt-1">
-                          ₱{pkg.price.toLocaleString()} · {pkg.inclusions.filter(i => i.trim()).length} inclusions
+                          ₱{pkg.price.toLocaleString()} · {pkg.inclusions.filter(i => i.name && i.name.trim()).length} inclusions
                         </p>
                       )}
                     </div>
@@ -263,6 +285,8 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
                           type="button"
                           onClick={() => setEditingIndex(null)}
                           className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                          title="Save package changes"
+                          aria-label="Save changes"
                         >
                           <Check className="w-4 h-4" />
                         </button>
@@ -271,6 +295,8 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
                           type="button"
                           onClick={() => setEditingIndex(index)}
                           className="p-2 text-gray-600 hover:text-pink-600 rounded-lg hover:bg-pink-50 transition-colors"
+                          title="Edit package"
+                          aria-label="Edit package"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
@@ -279,6 +305,8 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
                         type="button"
                         onClick={() => toggleExpanded(index)}
                         className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+                        title={isExpanded ? "Collapse package details" : "Expand package details"}
+                        aria-label={isExpanded ? "Collapse" : "Expand"}
                       >
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
@@ -286,6 +314,8 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
                         type="button"
                         onClick={() => removePackage(index)}
                         className="p-2 text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+                        title="Remove package"
+                        aria-label="Remove package"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -332,25 +362,90 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
                             />
                           </div>
 
-                          {/* Inclusions */}
+                          {/* Inclusions with Quantity */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              What's Included
+                              What's Included (Items & Quantities)
                             </label>
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                               {pkg.inclusions.map((inclusion, incIndex) => (
-                                <div key={incIndex} className="flex items-center gap-2">
-                                  <input
-                                    type="text"
-                                    value={inclusion}
-                                    onChange={(e) => updateInclusion(index, incIndex, e.target.value)}
-                                    placeholder="e.g., 4 hours of service"
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                                  />
+                                <div key={incIndex} className="flex items-start gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                  <div className="flex-1 grid grid-cols-12 gap-2">
+                                    {/* Item Name */}
+                                    <div className="col-span-6">
+                                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                                        Item Name
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={inclusion.name}
+                                        onChange={(e) => updateInclusion(index, incIndex, 'name', e.target.value)}
+                                        placeholder="e.g., Professional Camera"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                                      />
+                                    </div>
+                                    
+                                    {/* Quantity */}
+                                    <div className="col-span-3">
+                                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                                        Quantity
+                                      </label>
+                                      <input
+                                        type="number"
+                                        value={inclusion.quantity}
+                                        onChange={(e) => updateInclusion(index, incIndex, 'quantity', parseInt(e.target.value) || 1)}
+                                        placeholder="1"
+                                        min="1"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                                      />
+                                    </div>
+                                    
+                                    {/* Unit */}
+                                    <div className="col-span-3">
+                                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                                        Unit
+                                      </label>
+                                      <select
+                                        value={inclusion.unit}
+                                        onChange={(e) => updateInclusion(index, incIndex, 'unit', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                                        title="Select unit of measurement"
+                                        aria-label="Unit of measurement"
+                                      >
+                                        <option value="pcs">pcs</option>
+                                        <option value="hours">hours</option>
+                                        <option value="days">days</option>
+                                        <option value="sets">sets</option>
+                                        <option value="items">items</option>
+                                        <option value="people">people</option>
+                                        <option value="tables">tables</option>
+                                        <option value="copies">copies</option>
+                                        <option value="sessions">sessions</option>
+                                      </select>
+                                    </div>
+                                    
+                                    {/* Optional Description */}
+                                    <div className="col-span-12">
+                                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                                        Description (optional)
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={inclusion.description || ''}
+                                        onChange={(e) => updateInclusion(index, incIndex, 'description', e.target.value)}
+                                        placeholder="e.g., Full-frame sensor, 24MP resolution"
+                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-xs"
+                                      />
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Remove Button */}
                                   <button
                                     type="button"
                                     onClick={() => removeInclusion(index, incIndex)}
-                                    className="p-2 text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50"
+                                    className="p-2 text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50 flex-shrink-0"
+                                    title="Remove item"
+                                    aria-label="Remove inclusion item"
                                   >
                                     <X className="w-4 h-4" />
                                   </button>
