@@ -205,10 +205,10 @@ router.get('/vendor/:vendorId', async (req, res) => {
         
         // Only query if we have package IDs (defensive check to prevent 500 error)
         if (packageIds.length > 0) {
-          // ✅ Use sql() helper for array parameter (Neon compatibility)
+          // ✅ Use ANY() for Neon PostgreSQL compatibility
           const items = await sql`
             SELECT * FROM package_items
-            WHERE package_id IN ${sql(packageIds)}
+            WHERE package_id = ANY(${packageIds})
             ORDER BY package_id, item_type, display_order
           `;
           
