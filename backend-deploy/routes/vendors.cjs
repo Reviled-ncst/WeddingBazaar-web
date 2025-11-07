@@ -471,19 +471,23 @@ router.get('/:vendorId/services', async (req, res) => {
         let packageItems = {};
         if (packages.length > 0) {
           const packageIds = packages.map(p => p.id);
-          const items = await sql`
-            SELECT * FROM package_items
-            WHERE package_id IN ${sql(packageIds)}
-            ORDER BY package_id, item_type, display_order
-          `;
           
-          // Group items by package_id
-          items.forEach(item => {
-            if (!packageItems[item.package_id]) {
-              packageItems[item.package_id] = [];
-            }
-            packageItems[item.package_id].push(item);
-          });
+          // Only query if we have package IDs
+          if (packageIds.length > 0) {
+            const items = await sql`
+              SELECT * FROM package_items
+              WHERE package_id IN ${sql(packageIds)}
+              ORDER BY package_id, item_type, display_order
+            `;
+            
+            // Group items by package_id
+            items.forEach(item => {
+              if (!packageItems[item.package_id]) {
+                packageItems[item.package_id] = [];
+              }
+              packageItems[item.package_id].push(item);
+            });
+          }
         }
         
         // 3. Get add-ons for this service
