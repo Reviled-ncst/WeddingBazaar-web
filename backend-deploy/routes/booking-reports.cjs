@@ -74,6 +74,7 @@ router.post('/submit', async (req, res) => {
         report_type,
         subject,
         description,
+        cancellation_reason,
         evidence_urls,
         priority,
         status
@@ -84,6 +85,7 @@ router.post('/submit', async (req, res) => {
         ${report_type},
         ${subject},
         ${description},
+        ${req.body.cancellation_reason || null},
         ${evidence_urls},
         ${priority},
         'open'

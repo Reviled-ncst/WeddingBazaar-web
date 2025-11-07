@@ -16,6 +16,7 @@ interface ReportIssueModalProps {
     reportType: ReportType;
     subject: string;
     description: string;
+    cancellationReason?: string; // NEW: Optional cancellation reason
   }) => Promise<void>;
 }
 
@@ -28,6 +29,7 @@ export const ReportIssueModal: React.FC<ReportIssueModalProps> = ({
   const [reportType, setReportType] = useState<ReportType>('payment_issue');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
+  const [cancellationReason, setCancellationReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string>('');
 
@@ -60,18 +62,26 @@ export const ReportIssueModal: React.FC<ReportIssueModalProps> = ({
       return;
     }
 
+    // Validate cancellation reason if report type is cancellation_dispute
+    if (reportType === 'cancellation_dispute' && !cancellationReason.trim()) {
+      setValidationError('Cancellation reason is required for cancellation disputes');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await onSubmit({
         reportType,
         subject: subject.trim(),
-        description: description.trim()
+        description: description.trim(),
+        cancellationReason: reportType === 'cancellation_dispute' ? cancellationReason.trim() : undefined
       });
       
       // Reset form
       setReportType('payment_issue');
       setSubject('');
       setDescription('');
+      setCancellationReason('');
       setValidationError('');
       onClose();
     } catch (error) {
@@ -206,6 +216,27 @@ export const ReportIssueModal: React.FC<ReportIssueModalProps> = ({
               Be as specific as possible to help us resolve the issue quickly
             </p>
           </div>
+
+          {/* Cancellation Reason - Show only for cancellation_dispute */}
+          {reportType === 'cancellation_dispute' && (
+            <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Cancellation Reason <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={cancellationReason}
+                onChange={(e) => setCancellationReason(e.target.value)}
+                required={reportType === 'cancellation_dispute'}
+                rows={3}
+                placeholder="Explain why you're disputing this cancellation (who initiated it, policy violations, refund issues, etc.)..."
+                className="w-full px-4 py-3 border border-yellow-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent resize-none bg-white"
+              />
+              <p className="text-xs text-yellow-700 mt-1 flex items-start gap-1">
+                <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                <span>This field is required for cancellation disputes. Include details about who cancelled and any policy concerns.</span>
+              </p>
+            </div>
+          )}
 
           {/* Info Box */}
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">

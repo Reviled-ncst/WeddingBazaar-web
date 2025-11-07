@@ -558,6 +558,7 @@ export const IndividualBookings: React.FC = () => {
     reportType: ReportType;
     subject: string;
     description: string;
+    cancellationReason?: string; // NEW: Optional cancellation reason
   }) => {
     if (!reportBooking || !user?.id) return;
 
@@ -569,6 +570,7 @@ export const IndividualBookings: React.FC = () => {
         report_type: reportData.reportType,
         subject: reportData.subject,
         description: reportData.description,
+        cancellation_reason: reportData.cancellationReason, // NEW: Pass cancellation reason
         evidence_urls: [] // Can be added later for file uploads
       });
 

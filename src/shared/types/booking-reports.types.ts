@@ -8,6 +8,7 @@ export interface BookingReport {
   report_type: ReportType;
   subject: string;
   description: string;
+  cancellation_reason?: string; // NEW: Optional cancellation reason for disputes
   evidence_urls: string[];
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'open' | 'in_review' | 'resolved' | 'dismissed';
@@ -68,6 +69,7 @@ export interface SubmitReportRequest {
   report_type: ReportType;
   subject: string;
   description: string;
+  cancellation_reason?: string; // NEW: Optional cancellation reason
   evidence_urls?: string[];
   priority?: 'low' | 'medium' | 'high' | 'urgent';
 }

@@ -14,7 +14,6 @@ import {
   User,
   MapPin,
   Eye,
-
   Shield,
   Lock,
   RefreshCw,
@@ -23,13 +22,16 @@ import {
   Users,
   Mail,
   Phone,
-  Heart
+  Heart,
+  X, // NEW: For modals
+  AlertTriangle // NEW: For report button
 } from 'lucide-react';
 import { VendorHeader } from '../../../../shared/components/layout/VendorHeader';
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
 import { SendQuoteModal } from './components/SendQuoteModal';
 import { VendorBookingDetailsModal } from './components/VendorBookingDetailsModal';
 import { MarkCompleteModal } from './components/MarkCompleteModal';
+import { ReportIssueModal } from '../../individual/bookings/components/ReportIssueModal'; // NEW: Reuse couple's modal
 import { useNotification } from '../../../../shared/hooks/useNotification';
 
 // Helper function to format service type display
@@ -237,6 +239,15 @@ export const VendorBookingsSecure: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<UIBooking | null>(null);
   const [showMarkCompleteModal, setShowMarkCompleteModal] = useState(false);
   const [bookingToComplete, setBookingToComplete] = useState<UIBooking | null>(null);
+  
+  // NEW: Report Issue modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportBooking, setReportBooking] = useState<UIBooking | null>(null);
+  
+  // NEW: Cancellation modal state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelBooking, setCancelBooking] = useState<UIBooking | null>(null);
+  const [cancellationReason, setCancellationReason] = useState('');
 
   // 🔧 CRITICAL FIX: Use user.id (2-2025-001) which IS the vendor profile ID
   // Backend returns: user.id = '2-2025-001' (vendor profile ID from vendor_profiles)
@@ -382,55 +393,136 @@ export const VendorBookingsSecure: React.FC = () => {
     setShowMarkCompleteModal(true);
   }, [showError]);
 
-  const handleConfirmMarkComplete = useCallback(async () => {
-    if (!bookingToComplete) return;
+  /**
+   * NEW: Handle cancellation request from vendor
+   */
+  const handleCancelBooking = useCallback((booking: UIBooking) => {
+    console.log('🚫 [VendorBookingsSecure] Opening cancel modal for booking:', booking.id);
+    setCancelBooking(booking);
+    setShowCancelModal(true);
+  }, []);
+
+  /**
+   * NEW: Confirm cancellation with reason
+   */
+  const handleConfirmCancellation = useCallback(async () => {
+    if (!cancelBooking) return;
 
     try {
-      // Close modal first
-      setShowMarkCompleteModal(false);
-
-      // Call the completion API
       const API_URL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
-      const response = await fetch(`${API_URL}/api/bookings/${bookingToComplete.id}/mark-completed`, {
+      
+      // Determine if this is a direct cancel or requires approval
+      const isDirectCancel = cancelBooking.status === 'request' || cancelBooking.status === 'pending_review';
+      
+      const endpoint = isDirectCancel 
+        ? `/api/bookings/${cancelBooking.id}/cancel`
+        : `/api/bookings/${cancelBooking.id}/request-cancellation`;
+
+      const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ completed_by: 'vendor' }),
+        body: JSON.stringify({
+          userId: user?.id || vendorId,
+          reason: cancellationReason || 'Vendor initiated cancellation'
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Failed to mark booking as completed');
+        throw new Error(data.error || data.message || 'Failed to cancel booking');
       }
 
-
+      console.log('✅ [VendorBookingsSecure] Cancellation successful:', data);
 
       // Show success message
-      const successMsg = data.waiting_for === null
-        ? 'Both you and the couple have confirmed. The booking is now marked as completed.'
-        : 'Your confirmation has been recorded. The booking will be fully completed once the couple also confirms.';
+      const successMsg = isDirectCancel
+        ? 'Booking cancelled successfully.'
+        : 'Cancellation request submitted. Awaiting admin approval.';
       
-      const successTitle = data.waiting_for === null
-        ? 'Booking Fully Completed!'
-        : 'Completion Confirmed!';
+      showSuccess(successMsg, 'Cancellation Processed');
 
-      showSuccess(successMsg, successTitle);
+      // Reload bookings
+      await loadBookings(true);
 
-      // Reload bookings to reflect new status
-      await loadBookings(true); // Silent refresh
-
-      // Clear booking state
-      setBookingToComplete(null);
+      // Close modal and reset state
+      setShowCancelModal(false);
+      setCancelBooking(null);
+      setCancellationReason('');
 
     } catch (error: unknown) {
-      console.error('❌ [VendorBookingsSecure] Error marking complete:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred while marking the booking as complete.';
-      showError(errorMessage, 'Error');
+      console.error('❌ [VendorBookingsSecure] Error cancelling booking:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while cancelling the booking.';
+      showError(errorMessage, 'Cancellation Error');
     }
-  }, [bookingToComplete, loadBookings, showSuccess, showError]);
+  }, [cancelBooking, cancellationReason, user?.id, vendorId, showSuccess, showError, loadBookings]);
 
+  /**
+   * NEW: Handle report issue for vendor
+   */
+  const handleReportIssue = useCallback((booking: UIBooking) => {
+    console.log('⚠️ [VendorBookingsSecure] Opening report modal for booking:', booking.id);
+    setReportBooking(booking);
+    setShowReportModal(true);
+  }, []);
+
+  /**
+   * NEW: Submit report from vendor
+   */
+  const handleSubmitReport = useCallback(async (reportData: {
+    reportType: string;
+    subject: string;
+    description: string;
+    cancellationReason?: string;
+  }) => {
+    if (!reportBooking || !user?.id) return;
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+      
+      const response = await fetch(`${API_URL}/api/booking-reports/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          booking_id: reportBooking.id,
+          reported_by: user.id,
+          reporter_type: 'vendor',
+          report_type: reportData.reportType,
+          subject: reportData.subject,
+          description: reportData.description,
+          cancellation_reason: reportData.cancellationReason,
+          evidence_urls: []
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to submit report');
+      }
+
+      console.log('✅ [VendorBookingsSecure] Report submitted:', data);
+
+      showSuccess(
+        'Report submitted successfully! Our admin team will review your issue and respond within 1-2 business days.',
+        'Report Submitted'
+      );
+
+      // Close modal and reset state
+      setShowReportModal(false);
+      setReportBooking(null);
+
+    } catch (error: unknown) {
+      console.error('❌ [VendorBookingsSecure] Error submitting report:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to submit report.';
+      showError(errorMessage, 'Report Error');
+    }
+  }, [reportBooking, user?.id, showSuccess, showError]);
+  
   /**
    * Initialize component with auth context
    */
@@ -1087,6 +1179,28 @@ export const VendorBookingsSecure: React.FC = () => {
                             <span>Completed ✓</span>
                           </div>
                         )}
+
+                        {/* NEW: Cancel Booking Button - For pending/request status */}
+                        {(booking.status === 'request' || booking.status === 'pending_review') && (
+                          <button
+                            onClick={() => handleCancelBooking(booking)}
+                            className="flex items-center gap-2 px-4 py-2 text-red-700 bg-red-100 hover:bg-red-200 rounded-xl transition-all duration-200 font-medium"
+                            title="Cancel this booking"
+                          >
+                            <X className="h-4 w-4" />
+                            <span>Cancel</span>
+                          </button>
+                        )}
+
+                        {/* NEW: Report Issue Button - Universal for all statuses */}
+                        <button
+                          onClick={() => handleReportIssue(booking)}
+                          className="flex items-center gap-2 px-4 py-2 text-orange-700 bg-orange-100 hover:bg-orange-200 rounded-xl transition-all duration-200 font-medium"
+                          title="Report an issue with this booking"
+                        >
+                          <AlertTriangle className="h-4 w-4" />
+                          <span>Report Issue</span>
+                        </button>
                       </div>
                     </div>
                   </motion.div>
@@ -1166,8 +1280,129 @@ export const VendorBookingsSecure: React.FC = () => {
             setShowMarkCompleteModal(false);
             setBookingToComplete(null);
           }}
-          onConfirm={handleConfirmMarkComplete}
+          onConfirm={async () => {
+            // The actual confirmation logic from IndividualBookings (vendor version)
+            if (!bookingToComplete) return;
+
+            try {
+              // Close modal first
+              setShowMarkCompleteModal(false);
+
+              // Call the completion API
+              const API_URL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
+              const response = await fetch(`${API_URL}/api/bookings/${bookingToComplete.id}/mark-completed`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ completed_by: 'vendor' }),
+              });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                throw new Error(data.error || data.message || 'Failed to mark booking as completed');
+              }
+
+              // Show success message
+              const successMsg = data.waiting_for === null
+                ? 'Both you and the couple have confirmed. The booking is now marked as completed.'
+                : 'Your confirmation has been recorded. The booking will be fully completed once the couple also confirms.';
+              
+              const successTitle = data.waiting_for === null
+                ? 'Booking Fully Completed!'
+                : 'Completion Confirmed!';
+
+              showSuccess(successMsg, successTitle);
+
+              // Reload bookings to reflect new status
+              await loadBookings(true); // Silent refresh
+
+              // Clear booking state
+              setBookingToComplete(null);
+
+            } catch (error: unknown) {
+              console.error('❌ [VendorBookingsSecure] Error marking complete:', error);
+              const errorMessage = error instanceof Error ? error.message : 'An error occurred while marking the booking as complete.';
+              showError(errorMessage, 'Error');
+            }
+          }}
         />
+      )}
+
+      {/* Report Issue Modal - Using shared component */}
+      <ReportIssueModal
+        isOpen={showReportModal}
+        onClose={() => {
+          setShowReportModal(false);
+          setReportBooking(null);
+        }}
+        booking={reportBooking ? {
+          id: reportBooking.id,
+          vendorName: reportBooking.vendorName || 'Client',
+          serviceType: reportBooking.serviceType,
+          bookingReference: `VB-${reportBooking.id.slice(0, 8)}`
+        } : null}
+        onSubmit={handleSubmitReport}
+      />
+
+      {/* Cancellation Confirmation Modal */}
+      {showCancelModal && cancelBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Cancellation</h3>
+            <p className="text-gray-700 mb-4">
+              Are you sure you want to cancel this booking? Please provide a reason for cancellation.
+            </p>
+            
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                handleConfirmCancellation();
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="cancellationReason">
+                  Reason for Cancellation
+                </label>
+                <textarea
+                  id="cancellationReason"
+                  value={cancellationReason}
+                  onChange={e => setCancellationReason(e.target.value)}
+                  rows={3}
+                  required
+                  className="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  placeholder="Please explain the reason for cancellation"
+                ></textarea>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCancelModal(false);
+                    setCancelBooking(null);
+                    setCancellationReason('');
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  Go Back
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                >
+                  Confirm Cancellation
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
       )}
     </div>
   );
