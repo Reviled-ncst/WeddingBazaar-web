@@ -21,8 +21,7 @@ const notificationRoutes = require('./routes/notifications.cjs');
 const debugRoutes = require('./routes/debug.cjs');
 const bookingsTestRoutes = require('./routes/bookings-test.cjs');
 const bookingCompletionRoutes = require('./routes/booking-completion.cjs'); // Two-sided completion system
-const adminRoutes = require('./routes/admin.cjs'); // Old admin routes
-const adminUserRoutes = require('./routes/admin/index.cjs'); // New modular admin routes
+const adminRoutes = require('./routes/admin/index.cjs'); // Modular admin routes (documents, bookings, users, etc.)
 const dssRoutes = require('./routes/dss.cjs'); // Decision Support System routes
 const categoryRoutes = require('./routes/categories.cjs'); // Dynamic categories system
 const subscriptionRoutes = require('./routes/subscriptions/index.cjs'); // NEW MODULAR subscription system with PayMongo
@@ -229,9 +228,8 @@ app.use('/api/wallet', walletRoutes); // Vendor wallet and earnings system
 app.use('/api/coordinator', coordinatorRoutes); // Coordinator feature modules (weddings, milestones, vendors, clients, commissions)
 app.use('/api/booking-reports', bookingReportsRoutes); // Booking reports system (vendor & couple)
 
-// Admin routes - Dashboard stats, vendor mappings, documents
-app.use('/api/admin', adminRoutes); // Main admin routes (dashboard/stats, fix-vendor-mappings, documents, etc.)
-app.use('/api/admin/users', adminUserRoutes); // User management routes
+// Admin routes - Dashboard stats, vendor mappings, documents, users
+app.use('/api/admin', adminRoutes); // Modular admin routes (all endpoints)
 
 // DSS routes - Intelligent recommendation system
 app.use('/api/dss', dssRoutes); // Decision Support System endpoints
