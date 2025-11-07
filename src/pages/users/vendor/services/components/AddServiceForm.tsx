@@ -632,6 +632,19 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         is_active: formData.is_active,
         featured: formData.featured,
         location: formData.location.trim(),
+        // ✅ FIX ISSUE 4: Location Data - Send structured location and coordinates
+        location_data: formData.locationData ? JSON.stringify({
+          address: formData.location.trim(),
+          city: formData.locationData.city || '',
+          state: formData.locationData.state || '',
+          country: formData.locationData.country || 'Philippines',
+          zip: formData.locationData.zip || ''
+        }) : null,
+        location_coordinates: formData.locationData?.lat && formData.locationData?.lng ? JSON.stringify({
+          lat: formData.locationData.lat,
+          lng: formData.locationData.lng
+        }) : null,
+        location_details: formData.locationData ? JSON.stringify(formData.locationData) : null,
         contact_info: formData.contact_info,
         tags: formData.tags.filter(t => t.trim()),
         keywords: formData.keywords.trim(),
