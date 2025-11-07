@@ -632,8 +632,20 @@ router.post('/', async (req, res) => {
       price: price ? parseFloat(price) : null
     });
 
-    // Normalize service_tier to lowercase (constraint requires 'basic', 'standard', 'premium')
-    const normalizedServiceTier = service_tier ? service_tier.toLowerCase() : null;
+    // ✅ Normalize service_tier and provide valid default
+    // Database CHECK constraint requires: 'basic', 'standard', or 'premium'
+    // Always provide a valid value to avoid constraint violations
+    const validTiers = ['basic', 'standard', 'premium'];
+    let normalizedServiceTier = 'standard'; // Default fallback
+    
+    if (service_tier && typeof service_tier === 'string') {
+      const lowerTier = service_tier.toLowerCase().trim();
+      if (validTiers.includes(lowerTier)) {
+        normalizedServiceTier = lowerTier;
+      }
+    }
+    
+    console.log(`🎯 [Service Tier] Input: "${service_tier}" → Normalized: "${normalizedServiceTier}"`);
     
     // ✅ COMPLETE FIX: Insert ALL fields that frontend sends (no data loss)
     const result = await sql`
