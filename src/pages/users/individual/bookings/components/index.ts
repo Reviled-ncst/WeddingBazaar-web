@@ -12,3 +12,4 @@ export { ServiceImage } from './ServiceImage';
 export { EnhancedEventLocationMap } from './EnhancedEventLocationMap';
 export { BookingProgress } from './BookingProgress';
 export { BookingActions } from './BookingActions';
+export { ReportIssueModal } from './ReportIssueModal';

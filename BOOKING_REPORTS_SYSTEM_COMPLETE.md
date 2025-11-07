@@ -1,7 +1,8 @@
 # 📊 BOOKING REPORTS SYSTEM - COMPLETE IMPLEMENTATION
 
-**Status**: ✅ READY FOR DEPLOYMENT  
+**Status**: ✅ READY FOR DEPLOYMENT ⭐ **REPORT BUTTON ADDED FOR ALL STATUSES**  
 **Created**: November 8, 2025  
+**Updated**: November 8, 2025 - Confirmed button visible for PAID and COMPLETED bookings  
 **Purpose**: Allow vendors and couples to report booking issues, with admin review system
 
 ---
@@ -87,6 +88,11 @@ The Booking Reports System enables vendors and couples to report issues related 
    `src/pages/users/admin/shared/AdminSidebar.tsx`
    - Added "Reports" navigation item
    - Positioned between Bookings and Documents
+
+9. **Booking Report Button**  
+   `src/pages/users/individual/bookings/IndividualBookings.tsx`
+   - Added "Report Issue" button for all booking statuses
+   - Integrated with report submission workflow
 
 ---
 
@@ -235,6 +241,60 @@ DELETE /api/booking-reports/admin/:reportId
 ### Modals
 - **View Details Modal** - Full report information
 - **Update Report Modal** - Update status and add responses
+
+---
+
+## 🔥 CRITICAL CONFIRMATION: Report Button for ALL Statuses
+
+### ✅ VERIFIED IMPLEMENTATION
+
+**File**: `src/pages/users/individual/bookings/IndividualBookings.tsx`  
+**Lines**: 1464-1473
+
+The "Report Issue" button has been **strategically placed OUTSIDE all conditional status checks**, ensuring it appears for **EVERY booking status**:
+
+```typescript
+{/* Report Issue Button - Available for ALL bookings (universal) */}
+<button
+  onClick={() => handleReportIssue(booking)}
+  className="w-full px-3 py-2 bg-gradient-to-r from-orange-500 to-red-500 
+             text-white rounded-lg hover:shadow-lg transition-all 
+             hover:scale-105 flex items-center justify-center gap-2 
+             font-medium text-sm border border-orange-300"
+  title="Report an issue with this booking"
+>
+  <AlertTriangle className="w-4 h-4" />
+  Report Issue
+</button>
+```
+
+### ✅ Button Appears For:
+
+| Status | Visible | Notes |
+|--------|---------|-------|
+| **Awaiting Quote** | ✅ | `quote_requested`, `request` |
+| **Quote Received** | ✅ | `quote_sent` |
+| **Confirmed** | ✅ | `quote_accepted`, `confirmed`, `approved` |
+| **Deposit Paid** | ✅ | `deposit_paid`, `downpayment_paid` |
+| **Fully Paid** | ✅ ⭐ | `paid_in_full`, `fully_paid` |
+| **Completed** | ✅ ⭐ | `completed` |
+| **Cancelled** | ✅ | `cancelled` |
+| **All Others** | ✅ | Any status not listed |
+
+### 🎨 Button Design:
+- **Color**: Orange-to-red gradient (warning/alert colors)
+- **Icon**: AlertTriangle (⚠️)
+- **Position**: Last button in booking card actions section
+- **Always Visible**: No conditional rendering
+- **Hover Effect**: Scale + shadow animation
+- **Border**: Orange accent border
+- **Full Width**: Spans entire card width
+
+### 🔌 Integration:
+- **Handler**: `handleReportIssue(booking)` (Line 551)
+- **Modal**: `ReportIssueModal` (Lines 2089-2104)
+- **Service**: `bookingReportsService.submitReport()` (Lines 557-592)
+- **State**: `showReportModal`, `reportBooking` (Lines 184-185)
 
 ---
 

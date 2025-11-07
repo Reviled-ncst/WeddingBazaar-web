@@ -69,12 +69,12 @@ export const PackageBuilder: React.FC<PackageBuilderProps> = ({
       is_default: index === 0, // First package is default
       is_active: pkg.is_active,
       items: pkg.inclusions.filter(inc => inc.name && inc.name.trim()).map(inc => ({
-        category: 'deliverable', // Default category
-        name: inc.name,
+        item_type: 'deliverable', // ✅ FIXED: Changed from 'category' to 'item_type'
+        item_name: inc.name,
         quantity: inc.quantity,
-        unit: inc.unit,
-        unit_price: inc.unit_price || 0, // ✅ FIX: Include unit_price field!
-        description: inc.description || ''
+        unit_type: inc.unit,
+        unit_price: inc.unit_price || 0,
+        item_description: inc.description || ''
       }))
     }));
     

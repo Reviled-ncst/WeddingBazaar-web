@@ -897,31 +897,34 @@ router.post('/', async (req, res) => {
             for (let i = 0; i < pkg.items.length; i++) {
               const item = pkg.items[i];
               
-              // ✅ Map frontend category to valid item_type constraint values
-              // Database CHECK constraint: item_type IN ('package', 'per_pax', 'addon', 'base')
+              // ✅ Map frontend item_type to valid CHECK constraint values
+              // Database CHECK constraint: item_type IN ('personnel', 'equipment', 'deliverable', 'other')
               const itemTypeMap = {
-                'personnel': 'base',
-                'equipment': 'base',
-                'deliverables': 'base',
-                'deliverable': 'base',
-                'other': 'base',
-                'package': 'package',
-                'per_pax': 'per_pax',
-                'addon': 'addon',
-                'base': 'base'
+                'personnel': 'personnel',
+                'equipment': 'equipment',
+                'deliverables': 'deliverable',
+                'deliverable': 'deliverable',
+                'other': 'other',
+                // Legacy mappings (in case old format is used)
+                'package': 'deliverable',
+                'per_pax': 'deliverable',
+                'addon': 'deliverable',
+                'base': 'deliverable'
               };
-              const validItemType = itemTypeMap[item.category?.toLowerCase()] || 'base';
+              // Frontend now sends 'item_type', but check both for backwards compatibility
+              const itemTypeValue = item.item_type || item.category;
+              const validItemType = itemTypeMap[itemTypeValue?.toLowerCase()] || 'deliverable';
               
               console.log(`📦 [ITEM INSERT #${i+1}] Sending item to database:`, {
                 package_id: createdPackage.id,
                 item_type: validItemType,
-                item_name: item.name,
+                item_name: item.item_name || item.name,
                 quantity: item.quantity || 1,
-                unit_type: item.unit || 'pcs',
+                unit_type: item.unit_type || item.unit || 'pcs',
                 unit_price: item.unit_price || 0,
-                item_description: item.description || '',
+                item_description: item.item_description || item.description || '',
                 display_order: i + 1,
-                original_category: item.category
+                original_item_type: itemTypeValue
               });
               
               await sql`
@@ -932,11 +935,11 @@ router.post('/', async (req, res) => {
                 ) VALUES (
                   ${createdPackage.id},
                   ${validItemType},
-                  ${item.name},
+                  ${item.item_name || item.name},
                   ${item.quantity || 1},
-                  ${item.unit || 'pcs'},
+                  ${item.unit_type || item.unit || 'pcs'},
                   ${item.unit_price || 0},
-                  ${item.description || ''},
+                  ${item.item_description || item.description || ''},
                   ${i + 1},
                   NOW(),
                   NOW()

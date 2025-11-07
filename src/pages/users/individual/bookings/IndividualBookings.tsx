@@ -9,6 +9,7 @@ import {
   CheckCircle2, 
   XCircle, 
   AlertCircle,
+  AlertTriangle,
   Sparkles,
   Heart,
   Star,
@@ -36,7 +37,8 @@ import {
   QuoteConfirmationModal,
   ReceiptModal,
   RatingModal,
-  CustomDepositModal
+  CustomDepositModal,
+  ReportIssueModal
 } from './components';
 
 // Import payment components
@@ -75,6 +77,10 @@ import {
 
 // Import review service for modular review functionality
 import { reviewService } from '../../../../shared/services/reviewService';
+
+// Import booking reports service
+import { bookingReportsService } from '../../../../shared/services/bookingReportsService';
+import type { ReportType } from '../../../../shared/types/booking-reports.types';
 
 import type { 
   Booking
@@ -173,6 +179,10 @@ export const IndividualBookings: React.FC = () => {
   
   // Track which bookings have been reviewed (to hide "Rate & Review" button)
   const [reviewedBookings, setReviewedBookings] = useState<Set<string>>(new Set());
+  
+  // Report Issue modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportBooking, setReportBooking] = useState<EnhancedBooking | null>(null);
   
   // Confirmation modal state
   const [confirmationModal, setConfirmationModal] = useState<{
@@ -535,6 +545,48 @@ export const IndividualBookings: React.FC = () => {
   const handleRateBooking = (booking: EnhancedBooking) => {
     setRatingBooking(booking);
     setShowRatingModal(true);
+  };
+
+  // Handle opening report issue modal
+  const handleReportIssue = (booking: EnhancedBooking) => {
+    setReportBooking(booking);
+    setShowReportModal(true);
+  };
+
+  // Handle report submission
+  const handleSubmitReport = async (reportData: {
+    reportType: ReportType;
+    subject: string;
+    description: string;
+  }) => {
+    if (!reportBooking || !user?.id) return;
+
+    try {
+      await bookingReportsService.submitReport({
+        booking_id: reportBooking.id,
+        reported_by: user.id,
+        reporter_type: 'couple',
+        report_type: reportData.reportType,
+        subject: reportData.subject,
+        description: reportData.description,
+        evidence_urls: [] // Can be added later for file uploads
+      });
+
+      // Show success message
+      setSuccessMessage(
+        `Report submitted successfully! Our admin team will review your issue and respond within 1-2 business days. ` +
+        `You'll receive updates via email at ${user.email || 'your registered email'}.`
+      );
+      setShowSuccessModal(true);
+
+      // Close report modal
+      setShowReportModal(false);
+      setReportBooking(null);
+    } catch (error) {
+      console.error('❌ [SubmitReport] Error:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to submit report. Please try again.');
+      setShowErrorModal(true);
+    }
   };
 
   // Handle review submission - modular function (matching RatingModal interface)
@@ -1408,6 +1460,16 @@ export const IndividualBookings: React.FC = () => {
                             )}
                           </>
                         )}
+
+                        {/* Report Issue Button - Available for ALL bookings (universal) */}
+                        <button
+                          onClick={() => handleReportIssue(booking)}
+                          className="w-full px-3 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2 font-medium text-sm border border-orange-300"
+                          title="Report an issue with this booking"
+                        >
+                          <AlertTriangle className="w-4 h-4" />
+                          Report Issue
+                        </button>
                       </div>
                     </div>
                   </motion.div>
@@ -1764,6 +1826,7 @@ export const IndividualBookings: React.FC = () => {
                         <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
                           <span className="font-medium">{confirmationModal.bookingData.vendorName}</span>
                           {confirmationModal.bookingData.vendorRating && (
+
                             <span className="flex items-center gap-1 text-yellow-600">
                               <Star className="w-3 h-3 fill-current" />
                               {confirmationModal.bookingData.vendorRating.toFixed(1)}
@@ -2021,6 +2084,22 @@ export const IndividualBookings: React.FC = () => {
             : 'Vendor'
         }
         currencySymbol="₱"
+      />
+
+      {/* Report Issue Modal */}
+      <ReportIssueModal
+        isOpen={showReportModal}
+        onClose={() => {
+          setShowReportModal(false);
+          setReportBooking(null);
+        }}
+        booking={reportBooking ? {
+          id: reportBooking.id,
+          vendorName: reportBooking.vendorName || reportBooking.vendorBusinessName,
+          serviceType: reportBooking.serviceType,
+          bookingReference: reportBooking.bookingReference
+        } : null}
+        onSubmit={handleSubmitReport}
       />
     </div>
   );

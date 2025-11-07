@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS booking_reports (
   )),
   subject VARCHAR(255) NOT NULL,
   description TEXT NOT NULL,
+  cancellation_reason TEXT,
   evidence_urls TEXT[],
   priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
   status VARCHAR(20) DEFAULT 'open' CHECK (status IN ('open', 'in_review', 'resolved', 'dismissed')),

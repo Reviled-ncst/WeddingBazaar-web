@@ -1,3 +1,10 @@
+#!/usr/bin/env pwsh
+# Check what columns actually exist in the services table
+
+Write-Host "`nChecking services table schema..." -ForegroundColor Cyan
+
+# Use Node.js to query the database directly
+$script = @'
 const { neon } = require('@neondatabase/serverless');
 require('dotenv').config();
 
@@ -29,3 +36,11 @@ async function checkSchema() {
 }
 
 checkSchema();
+'@
+
+Set-Content -Path "c:\Games\WeddingBazaar-web\check-services-schema.cjs" -Value $script
+
+# Run the script
+Write-Host "Running schema check..." -ForegroundColor Yellow
+cd "c:\Games\WeddingBazaar-web"
+node check-services-schema.cjs
