@@ -2250,7 +2250,31 @@ interface ServiceDetailModalProps {
 function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, onMessage, onBookingRequest, onOpenGallery }: ServiceDetailModalProps) {
   if (!service) return null;
 
-  // Calculate package price range for display
+  // 🎉 NEW: State for selected package
+  const [selectedPackage, setSelectedPackage] = React.useState<ServicePackage | null>(
+    service.packages?.find(p => p.is_default) || service.packages?.[0] || null
+  );
+
+  // Calculate current price based on selected package or service price range
+  const getCurrentPrice = () => {
+    if (selectedPackage) {
+      return `₱${(selectedPackage.base_price || 0).toLocaleString()}`;
+    }
+    if (service.packages && service.packages.length > 0) {
+      const prices = service.packages.map(p => p.base_price || 0).filter(p => p > 0);
+      if (prices.length > 0) {
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        if (min === max) {
+          return `₱${min.toLocaleString()}`;
+        }
+        return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
+      }
+    }
+    return service.priceRange;
+  };
+
+  // Get package price range for display
   const getPackagePriceRange = () => {
     if (service.packages && service.packages.length > 0) {
       const prices = service.packages.map(p => p.base_price || 0).filter(p => p > 0);
@@ -2264,6 +2288,21 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
       }
     }
     return service.priceRange;
+  };
+
+  // Handle booking request with selected package
+  const handleBookingWithPackage = () => {
+    // Pass selected package info with the service
+    console.log('📦 Selected package for booking:', selectedPackage);
+    
+    // Create enhanced service object with selected package
+    const serviceWithPackage = {
+      ...service,
+      selectedPackage: selectedPackage,
+      bookingPrice: selectedPackage ? selectedPackage.base_price : undefined
+    };
+    
+    onBookingRequest(serviceWithPackage);
   };
 
   return (
@@ -2536,7 +2575,7 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                       </svg>
                     </div>
-                    Package Tiers & Itemization
+                    Select a Package
                   </h4>
                   <span className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-bold flex items-center gap-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2549,36 +2588,58 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
                 <div className="space-y-6">
                   {service.packages.map((pkg, pkgIdx) => (
                     <div 
-                      key={pkg.id || pkgIdx} 
+                      key={pkg.id || pkgIdx}
+                      onClick={() => setSelectedPackage(pkg)}
                       className={`bg-gradient-to-br from-purple-50/50 to-pink-50/50 rounded-2xl border-2 ${
-                        pkg.is_default ? 'border-blue-300 shadow-lg' : 'border-purple-200/30'
-                      } p-6 transition-all hover:shadow-xl`}
+                        selectedPackage?.id === pkg.id 
+                          ? 'border-purple-500 shadow-xl ring-4 ring-purple-200' 
+                          : pkg.is_default 
+                          ? 'border-blue-300 shadow-lg' 
+                          : 'border-purple-200/30'
+                      } p-6 transition-all hover:shadow-xl cursor-pointer`}
                     >
                       {/* Package Header */}
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
+                            {/* Selection indicator */}
+                            <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                              selectedPackage?.id === pkg.id 
+                                ? 'border-purple-500 bg-purple-500' 
+                                : 'border-gray-300 bg-white'
+                            }`}>
+                              {selectedPackage?.id === pkg.id && (
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"></path>
+                                </svg>
+                              )}
+                            </div>
                             <h5 className="text-xl font-bold text-gray-900">{pkg.package_name}</h5>
-                            {pkg.is_default && (
-                              <span className="px-2 py-1 bg-blue-500 text-white rounded-lg text-xs font-semibold">✓ Default Package</span>
+                            {pkg.is_default && !selectedPackage && (
+                              <span className="px-2 py-1 bg-blue-500 text-white rounded-lg text-xs font-semibold">✓ Recommended</span>
+                            )}
+                            {selectedPackage?.id === pkg.id && (
+                              <span className="px-2 py-1 bg-purple-500 text-white rounded-lg text-xs font-semibold">✓ Selected</span>
                             )}
                             {pkg.is_active === false && (
                               <span className="px-2 py-1 bg-gray-400 text-white rounded-lg text-xs font-semibold">Inactive</span>
                             )}
                           </div>
                           {pkg.package_description && (
-                            <p className="text-gray-600 text-sm leading-relaxed">{pkg.package_description}</p>
+                            <p className="text-gray-600 text-sm leading-relaxed ml-9">{pkg.package_description}</p>
                           )}
                         </div>
                         <div className="text-right ml-4 flex-shrink-0">
-                          <div className="text-3xl font-bold text-purple-600">₱{(pkg.base_price || 0).toLocaleString()}</div>
+                          <div className={`text-3xl font-bold transition-colors ${
+                            selectedPackage?.id === pkg.id ? 'text-purple-600' : 'text-gray-700'
+                          }`}>₱{(pkg.base_price || 0).toLocaleString()}</div>
                           <div className="text-xs text-gray-500 mt-1">Base Price</div>
                         </div>
                       </div>
                       
                       {/* Package Items */}
                       {pkg.items && pkg.items.length > 0 && (
-                        <div className="mt-5 border-t border-purple-200/50 pt-5">
+                        <div className="mt-5 border-t border-purple-200/50 pt-5 ml-9">
                           <h6 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
                             <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
@@ -2653,34 +2714,76 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
                     </div>
                   ))}
                 </div>
+                
+                {/* Current Selection Summary */}
+                {selectedPackage && (
+                  <div className="mt-6 bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-5 border-2 border-purple-300">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-gray-600 mb-1">Currently Selected:</div>
+                        <div className="text-lg font-bold text-gray-900">{selectedPackage.package_name}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-gray-600 mb-1">Package Price:</div>
+                        <div className="text-2xl font-bold text-purple-600">₱{(selectedPackage.base_price || 0).toLocaleString()}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             <div className="mb-8">
-              <h4 className="font-semibold text-gray-900 mb-2">Gallery</h4>
-              <div className="flex gap-2 overflow-x-auto">
+              <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Gallery ({service.gallery.length} photos)
+              </h4>
+              <div className="grid grid-cols-4 gap-3">
                 {service.gallery.map((img, idx) => (
-                  <img
+                  <div
                     key={idx}
-                    src={img}
-                    alt={`${service.name} gallery ${idx + 1}`}
-                    className="w-32 h-24 object-cover rounded-lg border border-pink-100 cursor-pointer hover:scale-105 transition-transform"
+                    className="relative aspect-square rounded-xl overflow-hidden group cursor-pointer border-2 border-transparent hover:border-pink-500 transition-all"
                     onClick={() => onOpenGallery(service.gallery, idx)}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=100';
-                    }}
-                  />
+                  >
+                    <img
+                      src={img}
+                      alt={`${service.name} gallery ${idx + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=300';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                      <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                      </svg>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
             <div className="flex gap-4 justify-end">
               <button
-                onClick={() => onBookingRequest(service)}
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-colors font-semibold shadow-lg"
-                title="Request booking"
+                onClick={handleBookingWithPackage}
+                disabled={service.packages && service.packages.length > 0 && !selectedPackage}
+                className={`px-6 py-3 rounded-xl font-semibold shadow-lg transition-all ${
+                  service.packages && service.packages.length > 0 && !selectedPackage
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 hover:shadow-xl'
+                }`}
+                title={service.packages && service.packages.length > 0 && !selectedPackage 
+                  ? 'Please select a package first' 
+                  : 'Request booking'}
               >
-                Request Booking
+                {service.packages && service.packages.length > 0 && !selectedPackage 
+                  ? '⚠️ Select Package First' 
+                  : selectedPackage 
+                  ? `Book ${selectedPackage.package_name} - ₱${(selectedPackage.base_price || 0).toLocaleString()}`
+                  : 'Request Booking'
+                }
               </button>
               <button
                 onClick={() => onMessage(service)}
