@@ -748,7 +748,7 @@ router.get('/documents', async (req, res) => {
     
     const { status } = req.query;
     
-    // Build query with optional status filter
+    // Build query with optional status filter - JOIN with vendor_profiles (correct table)
     let query;
     if (status && status !== 'all') {
       query = sql`
@@ -762,18 +762,18 @@ router.get('/documents', async (req, res) => {
           vd.mime_type,
           vd.verification_status,
           vd.verified_at,
+          vd.verified_by,
           vd.rejection_reason,
           vd.uploaded_at,
-          vd.extracted_name,
-          vd.extracted_id_number,
-          vd.document_confidence,
-          v.business_name as vendor_name,
-          v.name as business_name,
-          v.email,
-          v.phone,
-          v.location
+          vd.created_at,
+          vd.updated_at,
+          vp.business_name as vendor_name,
+          vp.business_name,
+          vp.email,
+          vp.contact_number as phone,
+          vp.location
         FROM vendor_documents vd
-        LEFT JOIN vendors v ON vd.vendor_id = v.id::text
+        LEFT JOIN vendor_profiles vp ON vd.vendor_id = vp.id
         WHERE vd.verification_status = ${status}
         ORDER BY vd.uploaded_at DESC
       `;
@@ -789,18 +789,18 @@ router.get('/documents', async (req, res) => {
           vd.mime_type,
           vd.verification_status,
           vd.verified_at,
+          vd.verified_by,
           vd.rejection_reason,
           vd.uploaded_at,
-          vd.extracted_name,
-          vd.extracted_id_number,
-          vd.document_confidence,
-          v.business_name as vendor_name,
-          v.name as business_name,
-          v.email,
-          v.phone,
-          v.location
+          vd.created_at,
+          vd.updated_at,
+          vp.business_name as vendor_name,
+          vp.business_name,
+          vp.email,
+          vp.contact_number as phone,
+          vp.location
         FROM vendor_documents vd
-        LEFT JOIN vendors v ON vd.vendor_id = v.id::text
+        LEFT JOIN vendor_profiles vp ON vd.vendor_id = vp.id
         ORDER BY vd.uploaded_at DESC
       `;
     }
