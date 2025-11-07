@@ -4,6 +4,8 @@ import 'leaflet/dist/leaflet.css';
 import { MapPin, Search, Navigation, X } from 'lucide-react';
 import { reverseGeocode, isWithinPhilippines } from '../../../utils/geolocation-enhanced';
 import { useGeolocation } from '../../../hooks/useGeolocation';
+import { useNotification } from '../../hooks/useNotification';
+import { NotificationModal } from '../modals';
 
 // Configure Leaflet marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -55,6 +57,7 @@ const BusinessLocationMap: React.FC<BusinessLocationMapProps> = ({
   const [locationName, setLocationName] = useState('');
   
   const { getCurrentLocation, isLoading: isGeoLoading, error: geoError, location: geoLocation } = useGeolocation();
+  const { notification, showWarning, hideNotification } = useNotification();
 
   // Initialize map
   useEffect(() => {
@@ -90,7 +93,10 @@ const BusinessLocationMap: React.FC<BusinessLocationMapProps> = ({
       
       // Check if location is within Philippines
       if (!isWithinPhilippines(lat, lng)) {
-        alert('Please select a location within the Philippines.');
+        showWarning(
+          'Please select a location within the Philippines for your business.',
+          '📍 Location Outside Philippines'
+        );
         return;
       }
       
@@ -164,7 +170,10 @@ const BusinessLocationMap: React.FC<BusinessLocationMapProps> = ({
         const { latitude, longitude } = geoLocation;
         
         if (!isWithinPhilippines(latitude, longitude)) {
-          alert('Your current location is outside the Philippines. Please select a location within the Philippines.');
+          showWarning(
+            'Your current location is outside the Philippines. Please select a location within the Philippines for your business.',
+            '📍 Location Outside Philippines'
+          );
           return;
         }
         
@@ -314,6 +323,9 @@ const BusinessLocationMap: React.FC<BusinessLocationMapProps> = ({
           </div>
         </div>
       </div>
+      
+      {/* Notification Modal */}
+      <NotificationModal {...notification} onClose={hideNotification} />
     </div>
   );
 };

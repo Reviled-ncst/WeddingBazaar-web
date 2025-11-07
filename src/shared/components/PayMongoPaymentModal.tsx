@@ -23,6 +23,8 @@ import bookingProcessService from '../../services/booking-process-tracking';
 import QRCodeDisplay from './payment/QRCodeDisplay';
 import type { PaymentWebhookData } from '../../services/paymentWebhookHandler';
 import { useAuth } from '../contexts/HybridAuthContext';
+import { useNotification } from '../hooks/useNotification';
+import { NotificationModal } from './modals';
 
 console.log('✅ [PayMongoModal] All imports successful');
 
@@ -83,6 +85,7 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
   console.log('🎬 [PayMongoModal] Component render', { isOpen, amount, booking: booking.id });
   
   const { user } = useAuth(); // Get authenticated user
+  const { notification, showError, hideNotification } = useNotification();
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'select' | 'card_form' | 'processing' | 'qr_code' | 'redirect' | 'bank_transfer_instructions' | 'success' | 'error'>('select');
@@ -1548,7 +1551,10 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
                           });
                         } catch (error) {
                           console.error('❌ onPaymentSuccess callback failed:', error);
-                          alert('Payment successful but subscription upgrade failed. Please contact support.');
+                          showError(
+                            'Payment successful but subscription upgrade failed. Please contact support with your payment reference.',
+                            '⚠️ Upgrade Issue'
+                          );
                         }
                         
                         // Close modal after callback completes
@@ -1675,6 +1681,9 @@ export const PayMongoPaymentModal: React.FC<PayMongoPaymentModalProps> = ({
             Close
           </button>
         </div>
+        
+        {/* Notification Modal */}
+        <NotificationModal {...notification} onClose={hideNotification} />
       </div>
     );
   }

@@ -28,6 +28,7 @@ import type { Service } from '../../../../../modules/services/types';
 import { dssApiService } from './DSSApiService';
 import { useAuth } from '../../../../../shared/contexts/HybridAuthContext';
 import { useNotification } from '../../../../../shared/hooks/useNotification';
+import { NotificationModal } from '../../../../../shared/components/modals';
 
 // Import booking functionality
 import { BookingRequestModal } from '../../../../../modules/services/components/BookingRequestModal';
@@ -148,6 +149,9 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
   const [services, setServices] = useState<Service[]>(initialServices);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
+
+  // Notification hook
+  const { notification, showInfo, hideNotification } = useNotification();
 
   // Booking modal state
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -1656,8 +1660,11 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
                                       className="text-xs text-purple-600 hover:text-purple-700 font-medium ml-5 flex items-center gap-1 mt-1"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        // Show all reasons in a tooltip or expand
-                                        alert(rec.reasons.join('\n\n'));
+                                        // Show all reasons in modal
+                                        showInfo(
+                                          rec.reasons.map((reason, i) => `${i + 1}. ${reason}`).join('\n\n'),
+                                          '💡 All AI Insights'
+                                        );
                                       }}
                                     >
                                       <Lightbulb className="h-3 w-3" />
@@ -2244,6 +2251,9 @@ export const DecisionSupportSystem: React.FC<DSSProps> = ({
         }}
         onCreateGroupChat={createGroupChatWithVendors}
       />
+
+      {/* Notification Modal */}
+      <NotificationModal {...notification} onDismiss={hideNotification} />
     </motion.div>
   );
 };
