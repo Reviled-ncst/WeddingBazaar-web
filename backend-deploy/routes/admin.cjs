@@ -748,76 +748,70 @@ router.get('/documents', async (req, res) => {
     
     const { status } = req.query;
     
-    // Query with JOIN to get vendor business names
+    // NOTE: vendor_documents.vendor_id are UUIDs that don't match vendors.id (which are strings like "VEN-00009")
+    // So we'll query documents only and show placeholder vendor names until the vendor_id references are fixed
     let query;
     if (status && status !== 'all') {
       query = sql`
         SELECT 
-          vd.id,
-          vd.vendor_id,
-          vd.document_type,
-          vd.document_url,
-          vd.file_name,
-          vd.file_size,
-          vd.mime_type,
-          vd.verification_status,
-          vd.verified_at,
-          vd.verified_by,
-          vd.rejection_reason,
-          vd.uploaded_at,
-          vd.created_at,
-          vd.updated_at,
-          v.business_name,
-          v.business_type,
-          v.user_id as vendor_user_id
-        FROM vendor_documents vd
-        LEFT JOIN vendors v ON vd.vendor_id = v.id
-        WHERE vd.verification_status = ${status}
-        ORDER BY vd.uploaded_at DESC
+          id,
+          vendor_id,
+          document_type,
+          document_url,
+          file_name,
+          file_size,
+          mime_type,
+          verification_status,
+          verified_at,
+          verified_by,
+          rejection_reason,
+          uploaded_at,
+          created_at,
+          updated_at
+        FROM vendor_documents
+        WHERE verification_status = ${status}
+        ORDER BY uploaded_at DESC
       `;
     } else {
       query = sql`
         SELECT 
-          vd.id,
-          vd.vendor_id,
-          vd.document_type,
-          vd.document_url,
-          vd.file_name,
-          vd.file_size,
-          vd.mime_type,
-          vd.verification_status,
-          vd.verified_at,
-          vd.verified_by,
-          vd.rejection_reason,
-          vd.uploaded_at,
-          vd.created_at,
-          vd.updated_at,
-          v.business_name,
-          v.business_type,
-          v.user_id as vendor_user_id
-        FROM vendor_documents vd
-        LEFT JOIN vendors v ON vd.vendor_id = v.id
-        ORDER BY vd.uploaded_at DESC
+          id,
+          vendor_id,
+          document_type,
+          document_url,
+          file_name,
+          file_size,
+          mime_type,
+          verification_status,
+          verified_at,
+          verified_by,
+          rejection_reason,
+          uploaded_at,
+          created_at,
+          updated_at
+        FROM vendor_documents
+        ORDER BY uploaded_at DESC
       `;
     }
     
     const documents = await query;
     
-    console.log(`✅ [Admin] Retrieved ${documents.length} documents with vendor info`);
+    console.log(`✅ [Admin] Retrieved ${documents.length} documents`);
+    console.log('⚠️ [Admin] Note: vendor_id references are invalid UUIDs, not matching vendors.id');
     
-    // Return full response with real vendor names
+    // Return documents with placeholder vendor names (vendor_id mismatch issue)
     res.json({
       success: true,
       documents: documents.map(doc => ({
         id: doc.id,
         vendorId: doc.vendor_id,
-        vendorName: doc.business_name || `Vendor ${doc.vendor_id.substring(0, 8)}...`,
-        businessName: doc.business_name || 'Unknown Business',
-        businessType: doc.business_type || 'Unknown Type',
+        vendorName: `Vendor (${doc.vendor_id.substring(0, 8)}...)`,
+        businessName: 'Business (ID mismatch)',
+        businessType: 'Unknown',
         documentType: doc.document_type,
         documentUrl: doc.document_url,
         fileName: doc.file_name,
-        fileSize: doc.file_size || 0,
+        fileSize: parseInt(doc.file_size) || 0,
         mimeType: doc.mime_type,
         verificationStatus: doc.verification_status,
         verifiedAt: doc.verified_at,
@@ -826,7 +820,8 @@ router.get('/documents', async (req, res) => {
         uploadedAt: doc.uploaded_at
       })),
       count: documents.length,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      note: 'vendor_id references are UUIDs that do not match current vendors table IDs'
     });
     
   } catch (error) {
