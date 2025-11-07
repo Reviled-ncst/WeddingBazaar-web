@@ -1543,11 +1543,31 @@ export const VendorServices: React.FC = () => {
                       <div className="flex-1 flex flex-col justify-between">
                         <div className="h-7 flex items-center">
                           <div className="text-xl font-bold text-rose-600">
-                            {service.price_range || service.price || 'Price on request'}
+                            {(() => {
+                              // Show package-based pricing if available
+                              if (service.packages && service.packages.length > 0) {
+                                const prices = service.packages.map(p => p.base_price || 0).filter(p => p > 0);
+                                if (prices.length > 0) {
+                                  const min = Math.min(...prices);
+                                  const max = Math.max(...prices);
+                                  if (min === max) {
+                                    return `₱${min.toLocaleString()}`;
+                                  }
+                                  return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
+                                }
+                              }
+                              // Fallback to legacy pricing
+                              return service.price_range || service.price || 'Contact for pricing';
+                            })()}
                           </div>
                         </div>
                         <div className="h-5 flex items-center">
-                          <span className="text-xs text-gray-400">{service.category || 'Service'}</span>
+                          <span className="text-xs text-gray-400">
+                            {service.packages && service.packages.length > 0 
+                              ? `${service.packages.length} package${service.packages.length > 1 ? 's' : ''} available`
+                              : service.category || 'Service'
+                            }
+                          </span>
                         </div>
                       </div>
                       <div className="w-24 flex flex-col justify-between items-end text-right">
@@ -1860,10 +1880,10 @@ export const VendorServices: React.FC = () => {
                             const securePath = createServiceShareUrl(serviceName, vendorName, service.id);
                             const serviceUrl = `${window.location.origin}${securePath}`;
                             
-                            // Create a comprehensive detailed preview modal
+                            // Create a comprehensive detailed preview modal with ALL itemization data
                             const modalHtml = `
                               <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onclick="this.remove()">
-                                <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto" onclick="event.stopPropagation()">
+                                <div class="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto" onclick="event.stopPropagation()">
                                   <div class="p-8">
                                     <!-- Header -->
                                     <div class="flex items-center justify-between mb-6">
@@ -1999,6 +2019,166 @@ export const VendorServices: React.FC = () => {
                                         ` : ''}
                                       </div>
                                     </div>
+                                    
+                                    <!-- 🎉 NEW: Package & Itemization Section -->
+                                    ${service.packages && service.packages.length > 0 ? `
+                                      <div class="border-t border-gray-200 pt-8 mb-8">
+                                        <div class="flex items-center justify-between mb-6">
+                                          <h3 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                                            <div class="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl">
+                                              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                              </svg>
+                                            </div>
+                                            Package Tiers & Itemization
+                                          </h3>
+                                          <span class="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-bold flex items-center gap-2">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            ${service.packages.length} Package${service.packages.length > 1 ? 's' : ''} Configured
+                                          </span>
+                                        </div>
+                                        
+                                        <div class="space-y-6">
+                                          ${service.packages.map((pkg) => `
+                                            <div class="bg-gradient-to-br from-purple-50/50 to-pink-50/50 rounded-2xl border-2 ${pkg.is_default ? 'border-blue-300 shadow-lg' : 'border-purple-200/30'} p-6 transition-all hover:shadow-xl">
+                                              <!-- Package Header -->
+                                              <div class="flex items-start justify-between mb-4">
+                                                <div class="flex-1">
+                                                  <div class="flex items-center gap-3 mb-2">
+                                                    <h4 class="text-xl font-bold text-gray-900">${pkg.package_name}</h4>
+                                                    ${pkg.is_default ? '<span class="px-2 py-1 bg-blue-500 text-white rounded-lg text-xs font-semibold">✓ Default Package</span>' : ''}
+                                                    ${pkg.is_active === false ? '<span class="px-2 py-1 bg-gray-400 text-white rounded-lg text-xs font-semibold">Inactive</span>' : ''}
+                                                  </div>
+                                                  ${pkg.package_description ? `
+                                                    <p class="text-gray-600 text-sm leading-relaxed">${pkg.package_description}</p>
+                                                  ` : ''}
+                                                </div>
+                                                <div class="text-right ml-4 flex-shrink-0">
+                                                  <div class="text-3xl font-bold text-purple-600">₱${(pkg.base_price || 0).toLocaleString()}</div>
+                                                  <div class="text-xs text-gray-500 mt-1">Base Price</div>
+                                                </div>
+                                              </div>
+                                              
+                                              <!-- Package Items -->
+                                              ${pkg.items && pkg.items.length > 0 ? `
+                                                <div class="mt-5 border-t border-purple-200/50 pt-5">
+                                                  <h5 class="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                                    <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                                    </svg>
+                                                    Included Items (${pkg.items.length})
+                                                  </h5>
+                                                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    ${pkg.items.map((item) => `
+                                                      <div class="bg-white/80 rounded-xl p-4 border border-purple-100 hover:border-purple-300 transition-all">
+                                                        <div class="flex items-start gap-3">
+                                                          <!-- Item Type Icon -->
+                                                          <div class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
+                                                            item.item_type === 'personnel' ? 'bg-blue-100' :
+                                                            item.item_type === 'equipment' ? 'bg-green-100' :
+                                                            item.item_type === 'deliverable' ? 'bg-purple-100' :
+                                                            'bg-gray-100'
+                                                          }">
+                                                            ${item.item_type === 'personnel' ? 
+                                                              '<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>' :
+                                                              item.item_type === 'equipment' ?
+                                                              '<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>' :
+                                                              item.item_type === 'deliverable' ?
+                                                              '<svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>' :
+                                                              '<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>'
+                                                            }
+                                                          </div>
+                                                          
+                                                          <div class="flex-1 min-w-0">
+                                                            <div class="flex items-center justify-between gap-2 mb-1">
+                                                              <h6 class="text-sm font-semibold text-gray-900 truncate">${item.item_name}</h6>
+                                                              <span class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium flex-shrink-0">
+                                                                ${item.item_type}
+                                                              </span>
+                                                            </div>
+                                                            
+                                                            ${item.item_description ? `
+                                                              <p class="text-xs text-gray-600 mb-2 line-clamp-2">${item.item_description}</p>
+                                                            ` : ''}
+                                                            
+                                                            <div class="flex items-center gap-3 text-xs text-gray-500">
+                                                              ${item.quantity ? `
+                                                                <span class="flex items-center gap-1">
+                                                                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path>
+                                                                  </svg>
+                                                                  ${item.quantity}${item.unit_type ? ' ' + item.unit_type : ''}
+                                                                </span>
+                                                              ` : ''}
+                                                              ${item.unit_price ? `
+                                                                <span class="flex items-center gap-1 font-medium text-purple-600">
+                                                                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                                                  </svg>
+                                                                  ₱${(item.unit_price || 0).toLocaleString()}
+                                                                </span>
+                                                              ` : ''}
+                                                            </div>
+                                                          </div>
+                                                        </div>
+                                                      </div>
+                                                    `).join('')}
+                                                  </div>
+                                                </div>
+                                              ` : `
+                                                <div class="mt-5 p-4 bg-amber-50 rounded-xl border border-amber-200 flex items-center gap-3">
+                                                  <svg class="w-5 h-5 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                                  </svg>
+                                                  <span class="text-sm text-amber-700 font-medium">No items configured for this package</span>
+                                                </div>
+                                              `}
+                                            </div>
+                                          `).join('')}
+                                        </div>
+                                      </div>
+                                    ` : `
+                                      <div class="border-t border-gray-200 pt-8 mb-8">
+                                        <div class="p-8 bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border-2 border-amber-200 text-center">
+                                          <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                            </svg>
+                                          </div>
+                                          <h3 class="text-xl font-bold text-gray-900 mb-2">No Package Tiers Configured</h3>
+                                          <p class="text-gray-600 mb-4">This service doesn't have detailed pricing packages yet.</p>
+                                          <p class="text-sm text-amber-700 font-medium">Edit this service to add itemized packages with detailed pricing tiers!</p>
+                                        </div>
+                                      </div>
+                                    `}
+                                    
+                                    <!-- 🎉 NEW: Add-ons Section (if any) -->
+                                    ${service.addons && service.addons.length > 0 ? `
+                                      <div class="border-t border-gray-200 pt-8 mb-8">
+                                        <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                          </svg>
+                                          Available Add-ons (${service.addons.length})
+                                        </h3>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                          ${service.addons.map((addon) => `
+                                            <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border-2 border-green-200 hover:border-green-400 transition-all">
+                                              <div class="flex items-start justify-between mb-2">
+                                                <h5 class="text-base font-bold text-gray-900">${addon.addon_name}</h5>
+                                                ${addon.is_available === false ? '<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-semibold">Unavailable</span>' : ''}
+                                              </div>
+                                              ${addon.addon_description ? `
+                                                <p class="text-sm text-gray-600 mb-3">${addon.addon_description}</p>
+                                              ` : ''}
+                                              <div class="text-2xl font-bold text-green-600">+₱${(addon.addon_price || 0).toLocaleString()}</div>
+                                            </div>
+                                          `).join('')}
+                                        </div>
+                                      </div>
+                                    ` : ''}
                                     
                                     <!-- Contact & Actions Section -->
                                     <div class="border-t border-gray-200 pt-6">
