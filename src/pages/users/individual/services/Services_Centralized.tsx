@@ -195,13 +195,14 @@ export function Services() {
       
       try {
         // Load services and vendors in parallel
+        // 🎉 NEW: Include itemization data (packages, items, add-ons) in services API
         console.log('🌐 [Services] Fetching from APIs:', {
-          servicesUrl: 'https://weddingbazaar-web.onrender.com/api/services',
+          servicesUrl: 'https://weddingbazaar-web.onrender.com/api/services?include_itemization=true',
           vendorsUrl: 'https://weddingbazaar-web.onrender.com/api/vendors/featured'
         });
         
         const [servicesResponse, vendorsResponse] = await Promise.all([
-          fetch('https://weddingbazaar-web.onrender.com/api/services'),
+          fetch('https://weddingbazaar-web.onrender.com/api/services?include_itemization=true'),
           fetch('https://weddingbazaar-web.onrender.com/api/vendors/featured')
         ]);
 
@@ -571,7 +572,13 @@ export function Services() {
               years_in_business: service.years_in_business ? parseInt(service.years_in_business) : undefined,
               service_tier: service.service_tier || undefined,
               wedding_styles: service.wedding_styles || [],
-              cultural_specialties: service.cultural_specialties || []
+              cultural_specialties: service.cultural_specialties || [],
+              
+              // 🎉 NEW: Itemization data (packages, items, add-ons)
+              packages: service.packages || [],
+              addons: service.addons || [],
+              pricing_rules: service.pricing_rules || [],
+              has_itemization: !!(service.packages && service.packages.length > 0)
             };
           }).filter(Boolean); // Remove null values from services without real images
 
@@ -580,12 +587,17 @@ export function Services() {
             servicesWithRealRatings: enhancedServices.filter((s: Service) => s.rating > 0).length,
             servicesWithReviews: enhancedServices.filter((s: Service) => s.reviewCount > 0).length,
             averageRating: (enhancedServices.reduce((sum: number, s: Service) => sum + s.rating, 0) / enhancedServices.length).toFixed(2),
-            totalReviews: enhancedServices.reduce((sum: number, s: Service) => sum + s.reviewCount, 0)
+            totalReviews: enhancedServices.reduce((sum: number, s: Service) => sum + s.reviewCount, 0),
+            // 🎉 NEW: Itemization statistics
+            servicesWithPackages: enhancedServices.filter((s: Service) => s.packages && s.packages.length > 0).length,
+            servicesWithAddons: enhancedServices.filter((s: Service) => s.addons && s.addons.length > 0).length,
+            totalPackages: enhancedServices.reduce((sum: number, s: Service) => sum + (s.packages?.length || 0), 0),
+            totalAddons: enhancedServices.reduce((sum: number, s: Service) => sum + (s.addons?.length || 0), 0)
           });
           
-          // Log a sample of the final enhanced services
+          // Log a sample of the final enhanced services WITH ITEMIZATION DATA
           if (enhancedServices.length > 0) {
-            console.log('📋 [Services] Sample enhanced services:', enhancedServices.slice(0, 3).map((s: Service) => ({
+            console.log('📋 [Services] Sample enhanced services WITH ITEMIZATION:', enhancedServices.slice(0, 3).map((s: Service) => ({
               id: s.id,
               name: s.name,
               category: s.category,
@@ -593,7 +605,12 @@ export function Services() {
               rating: s.rating,
               reviewCount: s.reviewCount,
               price: s.price,
-              imageCount: s.images?.length || 0
+              imageCount: s.images?.length || 0,
+              // 🎉 NEW: Show itemization data
+              packageCount: s.packages?.length || 0,
+              packageNames: s.packages?.map(p => p.package_name) || [],
+              addonCount: s.addons?.length || 0,
+              hasItemization: s.has_itemization
             })));
           }
           
