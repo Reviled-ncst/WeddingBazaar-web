@@ -29,6 +29,7 @@ const subscriptionRoutes = require('./routes/subscriptions/index.cjs'); // NEW M
 const reviewRoutes = require('./routes/reviews.cjs'); // Reviews and ratings system
 const walletRoutes = require('./routes/wallet.cjs'); // Vendor wallet and earnings system
 const coordinatorRoutes = require('./routes/coordinator/index.cjs'); // Coordinator feature modules
+const bookingReportsRoutes = require('./routes/booking-reports.cjs'); // Booking reports system (vendor & couple)
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -226,6 +227,7 @@ app.use('/api/subscriptions', subscriptionRoutes); // Vendor subscription manage
 app.use('/api/reviews', reviewRoutes); // Reviews and ratings system
 app.use('/api/wallet', walletRoutes); // Vendor wallet and earnings system
 app.use('/api/coordinator', coordinatorRoutes); // Coordinator feature modules (weddings, milestones, vendors, clients, commissions)
+app.use('/api/booking-reports', bookingReportsRoutes); // Booking reports system (vendor & couple)
 
 // Admin routes - New modular user management system
 app.use('/api/admin', adminUserRoutes); // User management, stats, etc.

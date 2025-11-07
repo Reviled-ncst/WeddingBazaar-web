@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus,
   X,
   Save,
   Upload,
   MapPin,
-  DollarSign,
   Star,
-  Phone,
-  Mail,
   Globe,
   Tag,
   CheckCircle2,
@@ -18,7 +14,10 @@ import {
   Camera,
   Sparkles,
   Loader2,
-  Calendar
+  Calendar,
+  Package,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { LocationPicker } from '../../../../../shared/components/forms/LocationPicker';
 import categoryService from '../../../../../services/api/categoryService';
@@ -102,6 +101,7 @@ interface ServicePackage {
   name: string;
   description: string;
   price: number;
+  tier?: 'basic' | 'standard' | 'premium'; // ✅ Package-level tier
   is_default: boolean;
   is_active: boolean;
   items?: PackageItem[];
@@ -206,7 +206,8 @@ interface VendorProfile {
   contact_email?: string;
   contact_website?: string;
   website_url?: string;
-  yearsInBusiness?: number; // ✅ NEW: Auto-fill years in business
+  years_experience?: string | number; // ✅ FIXED: Match auth context field name
+  yearsInBusiness?: number; // Legacy fallback
 }
 
 interface AddServiceFormProps {
@@ -218,131 +219,6 @@ interface AddServiceFormProps {
   vendorProfile?: VendorProfile | null;
   isLoading?: boolean;
 }
-
-// Price range options for services
-// ✨ STANDARDIZED PRICE RANGES - Aligned with customer filter categories
-const PRICE_RANGES = [
-  { 
-    value: '₱10,000 - ₱50,000', 
-    label: '💰 Budget-Friendly', 
-    description: 'Great value for couples on a budget (< ₱50K)'
-  },
-  { 
-    value: '₱50,000 - ₱100,000', 
-    label: '⭐ Mid-Range', 
-    description: 'Balance of quality and affordability (₱50K-₱100K)'
-  },
-  { 
-    value: '₱100,000 - ₱200,000', 
-    label: '✨ Premium', 
-    description: 'High-end services and experiences (₱100K-₱200K)'
-  },
-  { 
-    value: '₱200,000 - ₱500,000', 
-    label: '👑 Luxury', 
-    description: 'Exclusive and bespoke services (₱200K-₱500K)'
-  },
-  { 
-    value: '₱500,000+', 
-    label: '💎 Ultra-Luxury', 
-    description: 'The finest wedding services available (₱500K+)'
-  }
-];
-
-// Item/Equipment examples for different service categories to help vendors
-const getCategoryExamples = (category: string): string[] => {
-  const examples: Record<string, string[]> = {
-    'Photography': [
-      'DSLR Camera with 24-70mm lens',
-      'Prime lens 50mm f/1.4',
-      'Professional flash with diffuser',
-      'LED continuous lighting kit',
-      'Tripod and monopod',
-      'Memory cards and backup storage',
-      'Reflectors and light modifiers',
-      'Drone with 4K camera (if permitted)'
-    ],
-    'Planning': [
-      'Wedding timeline and checklist',
-      'Emergency bridal kit',
-      'Vendor contact coordination',
-      'Budget tracking spreadsheet',
-      'Day-of coordination services',
-      'Setup supervision',
-      'Guest seating chart',
-      'Wedding rehearsal coordination'
-    ],
-    'Catering': [
-      'Chafing dishes and food warmers',
-      'Serving utensils and platters',
-      'Table linens and napkins',
-      'Dinnerware and glassware',
-      'Professional serving staff',
-      'Bar setup and bartender',
-      'Food preparation and cooking',
-      'Cleanup and dishwashing service'
-    ],
-    'Florist': [
-      'Bridal bouquet (seasonal flowers)',
-      'Groom and groomsmen boutonnieres',
-      'Ceremony arch with fresh flowers',
-      'Aisle petals and decorations',
-      'Reception centerpieces (8 tables)',
-      'Flower crown for bride',
-      'Corsages for mothers',
-      'Delivery and setup service'
-    ],
-    'Beauty': [
-      'Professional makeup brushes and tools',
-      'High-end cosmetic products',
-      'Hair styling tools and equipment',
-      'Hair extensions and accessories',
-      'Touch-up kit for the day',
-      'Bridal makeup application',
-      'Hair styling and updo',
-      'Trial session (2 hours)'
-    ],
-    'Music': [
-      'Professional DJ mixing console',
-      'Speakers and amplification system',
-      'Wireless microphones (2 units)',
-      'Lighting equipment and effects',
-      'Backup sound system',
-      'DJ booth and equipment setup',
-      'Music library and playlist',
-      'MC services throughout event'
-    ],
-    'Venue': [
-      'Round tables for 150 guests',
-      'Chiavari chairs with cushions',
-      'Table linens and chair covers',
-      'Basic lighting system',
-      'Sound system for ceremony',
-      'Bridal suite access (4 hours)',
-      'Parking coordination',
-      'Security and staff supervision'
-    ],
-    'Rentals': [
-      'White wedding tent (40x60 ft)',
-      'Round tables (60" diameter)',
-      'White folding chairs',
-      'Table linens and napkins',
-      'Portable dance floor',
-      'String lighting installation',
-      'Generator and power distribution',
-      'Delivery, setup, and breakdown'
-    ]
-  };
-  
-  return examples[category] || [
-    'Professional equipment rental',
-    'Quality materials and supplies',
-    'Setup and installation service',
-    'Delivery and pickup included',
-    'Backup equipment available',
-    'Professional consultation'
-  ];
-};
 
 export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   isOpen,
@@ -414,8 +290,9 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDragOver, setIsDragOver] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [showCustomPricing, setShowCustomPricing] = useState(false);
+
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [expandedPackages, setExpandedPackages] = useState<Record<number, boolean>>({}); // Track which packages are expanded
 
   // ✅ NEW: Pricing mode state for itemization
   const [pricingMode, setPricingMode] = useState<PricingModeValue>('simple');
@@ -430,7 +307,8 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   // Ref for scroll container
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
-  const totalSteps = 6; // 1=Basic Info, 2=Pricing, 3=Features, 4=DSS Details, 5=Images & Tags, 6=Category-Specific Fields
+  const totalSteps = 5; // 1=Basic Info, 2=Pricing, 3=DSS Details, 4=Images & Tags, 5=Category-Specific Fields
+  // Note: Removed old "Service Items & Equipment" step - itemization now happens in PackageBuilder
 
   // Load categories on mount
   useEffect(() => {
@@ -489,6 +367,34 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   // Initialize form data when editing OR when vendor profile is available
   useEffect(() => {
     if (editingService) {
+      console.log('📝 [AddServiceForm] Loading editingService:', editingService);
+      
+      // ✅ Load packages from editingService AND merge with package_items
+      if ((editingService as any).packages && Array.isArray((editingService as any).packages)) {
+        console.log('📦 [AddServiceForm] Loading packages from editingService:', (editingService as any).packages);
+        console.log('📦 [AddServiceForm] package_items:', (editingService as any).package_items);
+        
+        // Merge packages with their items
+        const packageItems = (editingService as any).package_items || {};
+        const mergedPackages = (editingService as any).packages.map((pkg: any) => {
+          const items = packageItems[pkg.id] || [];
+          return {
+            ...pkg,
+            items: items
+          };
+        });
+        
+        console.log('📦 [AddServiceForm] Merged packages with items:', mergedPackages);
+        setPackages(mergedPackages);
+        
+        // Also populate window.__tempPackageData for confirmation modal
+        window.__tempPackageData = {
+          packages: mergedPackages,
+          addons: (editingService as any).addons || [],
+          pricingRules: (editingService as any).pricingRules || []
+        };
+      }
+      
       setFormData({
         title: editingService.title || '',
         description: editingService.description || '',
@@ -546,6 +452,11 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         video_url: editingService.video_url || ''
       });
     } else {
+      // ✅ Clear packages for new service
+      console.log('🆕 [AddServiceForm] Creating new service - clearing packages');
+      setPackages([]);
+      window.__tempPackageData = { packages: [], addons: [], pricingRules: [] };
+      
       // Auto-populate contact info from vendor profile
       const contactInfo = {
         phone: vendorProfile?.phone || vendorProfile?.contact_phone || '',
@@ -574,7 +485,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         tags: [],
         keywords: '',
         // DSS fields
-        years_in_business: vendorProfile?.yearsInBusiness?.toString() || '0', // ✅ AUTO-FILL from vendor profile
+        years_in_business: vendorProfile?.years_experience?.toString() || vendorProfile?.yearsInBusiness?.toString() || '0', // ✅ FIXED: Use years_experience from vendor profile
         service_tier: 'basic',
         wedding_styles: [],
         cultural_specialties: [],
@@ -620,29 +531,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         if (!formData.location.trim()) newErrors.location = 'Service location is required';
         break;
       case 2:
-        // Validate based on pricing mode
-        if (!showCustomPricing) {
-          // Recommended price range mode
-          if (!formData.price_range) {
-            newErrors.price_range = 'Please select a price range';
-          }
-        } else {
-          // Custom pricing mode
-          if (!formData.price || formData.price.trim() === '') {
-            newErrors.price = 'Minimum price is required';
-          } else if (parseFloat(formData.price) < 0) {
-            newErrors.price = 'Price must be a positive number';
-          }
-          
-          if (formData.max_price && parseFloat(formData.max_price) < 0) {
-            newErrors.max_price = 'Maximum price must be a positive number';
-          }
-          
-          if (formData.price && formData.max_price && 
-              parseFloat(formData.price) > parseFloat(formData.max_price)) {
-            newErrors.max_price = 'Maximum price must be greater than minimum price';
-          }
-        }
+        // No validation needed - packages define all pricing
         break;
       case 3:
         // Step 3 is now Service Items & Equipment - no validation needed
@@ -721,10 +610,10 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         title: formData.title.trim(),
         description: formData.description.trim(),
         category: formData.category,
-        // Only send price_range if in recommended mode, otherwise send price/max_price
-        price_range: !showCustomPricing && formData.price_range ? formData.price_range : null,
-        price: showCustomPricing && formData.price ? parseFloat(formData.price) : null,
-        max_price: showCustomPricing && formData.max_price ? parseFloat(formData.max_price) : null,
+        // Pricing now 100% defined by packages (min/max auto-calculated from package prices)
+        price_range: null,
+        price: null,
+        max_price: null,
         images: formData.images.length > 0 ? formData.images : [],
         features: formData.features.filter(f => f.trim()),
         is_active: formData.is_active,
@@ -752,6 +641,34 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         packages: serviceData.packages.length,
         addons: serviceData.addons.length,
         pricingRules: serviceData.pricingRules.length
+      });
+
+      // 🔍 DETAILED LOGGING: Inspect package items structure being sent to backend
+      console.log('🔍 [ITEMIZED PRICE DEBUG] Full packages array being sent to backend:');
+      serviceData.packages.forEach((pkg: any, idx: number) => {
+        console.log(`  Package ${idx + 1}:`, {
+          name: pkg.name,
+          price: pkg.price,
+          tier: pkg.tier,
+          itemCount: pkg.items?.length || 0
+        });
+        
+        if (pkg.items && pkg.items.length > 0) {
+          console.log(`  Items in package "${pkg.name}":`);
+          pkg.items.forEach((item: any, itemIdx: number) => {
+            console.log(`    Item ${itemIdx + 1}:`, {
+              name: item.name,
+              unit_price: item.unit_price,
+              unitPrice: item.unitPrice,
+              price: item.price,
+              item_price: item.item_price,
+              quantity: item.quantity,
+              unit: item.unit,
+              description: item.description,
+              ALL_KEYS: Object.keys(item)
+            });
+          });
+        }
       });
 
       console.log('📤 [AddServiceForm] Calling onSubmit with data:', serviceData);
@@ -826,24 +743,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   };
 
   // Helper functions
-  const addFeature = () => {
-    setFormData(prev => ({ ...prev, features: [...prev.features, ''] }));
-  };
-
-  const updateFeature = (index: number, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      features: prev.features.map((feature, i) => i === index ? value : feature)
-    }));
-  };
-
-  const removeFeature = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      features: prev.features.filter((_, i) => i !== index)
-    }));
-  };
-
+  // Helper functions still in use
   const addTag = (tag: string) => {
     if (tag && !formData.tags.includes(tag)) {
       setFormData(prev => ({ ...prev, tags: [...prev.tags, tag] }));
@@ -862,40 +762,6 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index)
     }));
-  };
-
-  // Multi-select helpers for arrays
-  const toggleArrayItem = (array: string[], item: string): string[] => {
-    return array.includes(item)
-      ? array.filter(i => i !== item)
-      : [...array, item];
-  };
-
-  const handleMultiSelect = (field: keyof FormData, value: string) => {
-    setFormData(prev => {
-      const currentArray = prev[field] as string[];
-      return {
-        ...prev,
-        [field]: toggleArrayItem(currentArray, value)
-      };
-    });
-  };
-
-  // Category-specific multi-select handlers
-  const handleCateringOption = (field: keyof FormData['catering_options'], value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      catering_options: {
-        ...prev.catering_options!,
-        [field]: toggleArrayItem(prev.catering_options![field], value)
-      }
-    }));
-  };
-
-  // Helper function to get display name from category name
-  const getCategoryDisplayName = (categoryName: string): string => {
-    const category = categories.find(cat => cat.name === categoryName);
-    return category ? category.display_name : categoryName;
   };
 
   // Handle drag and drop
@@ -934,6 +800,33 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
       if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
       }
+    }
+  };
+
+  // Helper: package stats and formatting
+  const getPackagesData = () => {
+    try {
+      return (window.__tempPackageData?.packages && window.__tempPackageData.packages.length > 0)
+        ? window.__tempPackageData.packages
+        : packages || [];
+    } catch (err) {
+      return packages || [];
+    }
+  };
+
+  const getPackageStats = () => {
+    const pkgs = getPackagesData();
+    if (!pkgs || pkgs.length === 0) return { min: 0, max: 0, total: 0 };
+    const prices = pkgs.map((p: any) => Number(p.price || 0));
+    const total = prices.reduce((a: number, b: number) => a + b, 0);
+    return { min: Math.min(...prices), max: Math.max(...prices), total };
+  };
+
+  const formatCurrency = (value: number) => {
+    try {
+      return `₱${value.toLocaleString()}`;
+    } catch (err) {
+      return `₱${value}`;
     }
   };
 
@@ -1261,7 +1154,7 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                     </div>
 
                     <div className="space-y-8">
-                      {/* ✅ NEW: Pricing Mode Selector */}
+                      {/* ✅ Pricing Mode Selector */}
                       <PricingModeSelector
                         value={pricingMode}
                         onChange={(mode) => {
@@ -1276,178 +1169,29 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                         <strong>🐛 DEBUG:</strong> Current pricingMode = <code className="bg-yellow-200 px-2 py-1 rounded">{pricingMode}</code>
                       </div>
 
-                      {/* Conditional Pricing UI based on selected mode */}
-                      {pricingMode === 'itemized' ? (
-                        /* ITEMIZED PRICING: Package Builder UI */
-                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-2xl border border-purple-100">
-                          <div className="text-center mb-6">
-                            <h4 className="text-xl font-semibold text-gray-900 mb-2">📦 Package Builder</h4>
-                            <p className="text-gray-600">Create itemized packages for your service</p>
-                          </div>
-                          <PackageBuilder
-                            packages={packages}
-                            onChange={(pkgs: PackageBuilderItem[]) => {
-                              setPackages(pkgs);
-                            }}
-                            category={formData.category}
-                          />
-                        </div>
-                      ) : pricingMode === 'simple' && !showCustomPricing ? (
-                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
-                          {/* Header with Toggle */}
-                          <div className="flex items-center justify-between mb-3">
-                            <label className="flex items-center gap-2">
-                              <DollarSign className="h-5 w-5 text-green-600" />
-                              <span className="text-lg font-semibold text-gray-800">Recommended Price Range *</span>
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowCustomPricing(true);
-                                // Clear price_range when switching to custom pricing
-                                setFormData(prev => ({ ...prev, price_range: '' }));
-                              }}
-                              className="px-4 py-2 bg-white text-blue-600 border-2 border-blue-200 hover:border-blue-400 rounded-lg font-medium transition-all flex items-center gap-2 text-sm shadow-sm hover:shadow-md"
-                            >
-                              <DollarSign className="h-4 w-4" />
-                              Set Custom Pricing
-                            </button>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-green-200">
-                            💰 Select the price range that best fits your service. This helps couples find options within their budget.
-                          </p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {PRICE_RANGES.map(range => (
-                              <label key={range.value} className="relative cursor-pointer group">
-                                <input
-                                  type="radio"
-                                  name="price_range"
-                                  value={range.value}
-                                  checked={formData.price_range === range.value}
-                                  onChange={(e) => setFormData(prev => ({ ...prev, price_range: e.target.value }))}
-                                  className="sr-only"
-                                  aria-label={`${range.label} - ${range.value}`}
-                                />
-                                <div className={`p-5 rounded-2xl border-2 transition-all duration-300 transform ${
-                                  formData.price_range === range.value
-                                    ? 'border-green-500 bg-green-50 shadow-xl scale-[1.02] ring-2 ring-green-200'
-                                    : 'border-gray-200 bg-white/80 hover:border-green-300 hover:shadow-lg hover:scale-[1.01] group-hover:bg-green-50/30'
-                                }`}>
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-3 mb-2">
-                                        <div className="inline-flex px-3 py-1 rounded-full text-sm font-semibold shadow-sm bg-green-100 text-green-800">
-                                          {range.label}
-                                        </div>
-                                      </div>
-                                      <div className="text-lg font-bold text-gray-900 mb-1">
-                                        {range.value}
-                                      </div>
-                                      <div className="text-sm text-gray-600">
-                                        {range.description}
-                                      </div>
-                                    </div>
-                                    <div className="flex-shrink-0 ml-3">
-                                      {formData.price_range === range.value ? (
-                                        <div className="flex items-center justify-center w-8 h-8 bg-green-500 rounded-full">
-                                          <CheckCircle2 className="h-5 w-5 text-white" />
-                                        </div>
-                                      ) : (
-                                        <div className="w-8 h-8 border-2 border-gray-300 rounded-full group-hover:border-green-300 transition-colors"></div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </label>
-                            ))}
-                          </div>
-                          {errors.price_range && (
-                            <p className="mt-3 text-sm text-red-600 flex items-center gap-1 bg-red-50 p-3 rounded-lg border border-red-200">
-                              <AlertCircle size={16} />
-                              {errors.price_range}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        /* OPTION 2: Custom Price Range */
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
-                          {/* Header with Toggle */}
-                          <div className="flex items-center justify-between mb-3">
-                            <label className="flex items-center gap-2">
-                              <span className="p-1 bg-blue-600 text-white rounded-full text-sm">₱</span>
-                              <span className="text-lg font-semibold text-gray-800">Custom Price Range</span>
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowCustomPricing(false);
-                                // Clear custom pricing when switching to recommended range
-                                setFormData(prev => ({ 
-                                  ...prev, 
-                                  price: '',
-                                  max_price: '',
-                                  price_range: '₱10,000 - ₱25,000' // Reset to default
-                                }));
-                              }}
-                              className="px-4 py-2 bg-white text-green-600 border-2 border-green-200 hover:border-green-400 rounded-lg font-medium transition-all flex items-center gap-2 text-sm shadow-sm hover:shadow-md"
-                            >
-                              <CheckCircle2 className="h-4 w-4" />
-                              Use Recommended Range
-                            </button>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-blue-200">
-                            💡 Set your exact minimum and maximum prices. This will override the general price range options.
-                          </p>
-                          <div className="bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-white">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {/* Minimum Price */}
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-                                  Minimum Price *
-                                  <span className="text-xs text-gray-500">(₱)</span>
-                                </label>
-                                <div className="relative">
-                                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">₱</span>
-                                  <input
-                                    type="number"
-                                    value={formData.price}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                                    className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base bg-white"
-                                    placeholder="10,000"
-                                    min="0"
-                                    step="1000"
-                                  />
-                                </div>
-                              </div>
-                              
-                              {/* Maximum Price */}
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-                                  Maximum Price
-                                  <span className="text-xs text-gray-500">(₱)</span>
-                                </label>
-                                <div className="relative">
-                                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">₱</span>
-                                  <input
-                                    type="number"
-                                    value={formData.max_price || ''}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, max_price: e.target.value }))}
-                                    className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base bg-white"
-                                    placeholder="25,000"
-                                    min="0"
-                                    step="1000"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      {/* ✅ PACKAGE BUILDER - Packages define exact pricing with min/max auto-calculated */}
+                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-2xl border border-purple-100">
+                      <div className="mb-6">
+                        <h4 className="text-xl font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                          📦 Package Builder
+                          <span className="text-sm font-normal text-gray-600">(Required)</span>
+                        </h4>
+                        <p className="text-gray-600 text-sm">
+                          Create detailed itemized packages with automatic price calculation. 
+                          Your package prices will determine the min/max pricing for this service.
+                        </p>
+                      </div>
+                      <PackageBuilder
+                        packages={packages}
+                        onChange={(pkgs: PackageBuilderItem[]) => {
+                          console.log('📦 [AddServiceForm] Package data updated:', pkgs.length, 'packages');
+                          setPackages(pkgs);
+                        }}
+                        category={formData.category}
+                      />                      </div>
 
-                    </div>
-
-                    {/* Service Options */}
-                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-2xl border border-yellow-100">
+                      {/* Service Options */}
+                      <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-2xl border border-yellow-100">
                       <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                         <span className="p-1 bg-yellow-600 text-white rounded-full text-sm">⚙️</span>
                         Service Options
@@ -1518,102 +1262,14 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                         </div>
                       </div>
                     </div>
+                    </div>
                   </motion.div>
                 )}
 
-                {/* Step 3: Service Items & Equipment */}
+                {/* Step 3: DSS Details (Dynamic Service System) - RENUMBERED FROM STEP 4 */}
                 {currentStep === 3 && (
                   <motion.div
                     key="step3"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="space-y-6"
-                  >
-                    <div className="text-center mb-6">
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">Service Items & Equipment</h3>
-                      <p className="text-gray-600">List what's included in your service</p>
-                    </div>
-
-                    {/* Service Items & Equipment List */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-gray-900">Service Items & Equipment</h4>
-                        <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
-                          � These will auto-populate your quotes
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-4">
-                        List all items, equipment, or materials that will be provided/borrowed during your service. Each item will become a line item in your quotes with individual pricing.
-                      </p>
-                      <div className="space-y-3">
-                        {formData.features.map((item, index) => (
-                          <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                            <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
-                            <input
-                              type="text"
-                              value={item}
-                              onChange={(e) => updateFeature(index, e.target.value)}
-                              className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white"
-                              placeholder="e.g., DSLR Camera with 24-70mm lens, Professional lighting kit, Wireless microphones (2 units)"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeFeature(index)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Remove item"
-                              aria-label={`Remove item: ${item}`}
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={addFeature}
-                          className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-rose-300 hover:text-rose-600 transition-all w-full justify-center"
-                        >
-                          <Plus size={18} />
-                          Add Service Item
-                        </button>
-                      </div>
-                      
-                      {/* Helpful examples based on category */}
-                      {formData.category && (
-                        <div className="mt-4 p-4 bg-gradient-to-r from-rose-50 to-pink-50 rounded-lg border border-rose-200">
-                          <h5 className="font-medium text-rose-900 mb-2 flex items-center gap-2">
-                            <Sparkles className="h-4 w-4" />
-                            Example items for {getCategoryDisplayName(formData.category)}:
-                          </h5>
-                          <div className="text-sm text-rose-700 space-y-1">
-                            {getCategoryExamples(formData.category).map((example, index) => (
-                              <div key={index} className="flex items-start gap-2">
-                                <span className="text-rose-400 mt-0.5">•</span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (!formData.features.includes(example)) {
-                                      setFormData(prev => ({ ...prev, features: [...prev.features, example] }));
-                                    }
-                                  }}
-                                  className="text-left hover:text-rose-800 hover:underline cursor-pointer"
-                                  title="Click to add this item"
-                                >
-                                  {example}
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Step 4: DSS Details (Dynamic Service System) */}
-                {currentStep === 4 && (
-                  <motion.div
-                    key="step4"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
@@ -1657,52 +1313,6 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                           <AlertCircle className="h-3 w-3" />
                           Update this in your <span className="font-semibold text-purple-600">Vendor Profile</span> to change it here
                         </p>
-                      </div>
-
-                      {/* Service Tier */}
-                      <div className="bg-gradient-to-r from-amber-50 to-yellow-50 p-6 rounded-2xl border border-amber-100">
-                        <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                          <Sparkles className="h-5 w-5 text-amber-600" />
-                          Service Tier
-                        </label>
-                        <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-amber-200">
-                          💎 Select your service level. This helps clients find services that match their expectations.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {[
-                            { value: 'basic' as const, label: 'Basic', icon: '⚡', description: 'Essential services with quality results', color: 'blue' },
-                            { value: 'standard' as const, label: 'Standard', icon: '✨', description: 'Enhanced services with extra features', color: 'purple' },
-                            { value: 'premium' as const, label: 'Premium', icon: '💎', description: 'Top-tier services with premium experience', color: 'amber' }
-                          ].map((tier) => (
-                            <label key={tier.value} className="relative cursor-pointer group">
-                              <input
-                                type="radio"
-                                name="service_tier"
-                                value={tier.value}
-                                checked={formData.service_tier === tier.value}
-                                onChange={(e) => setFormData(prev => ({ ...prev, service_tier: e.target.value as 'premium' | 'standard' | 'basic' }))}
-                                className="sr-only"
-                                aria-label={tier.label}
-                              />
-                              <div className={`p-5 rounded-2xl border-2 transition-all duration-300 transform ${
-                                formData.service_tier === tier.value
-                                  ? `border-${tier.color}-500 bg-${tier.color}-50 shadow-xl scale-[1.02] ring-2 ring-${tier.color}-200`
-                                  : 'border-gray-200 bg-white/80 hover:border-amber-300 hover:shadow-lg hover:scale-[1.01]'
-                              }`}>
-                                <div className="text-center">
-                                  <div className="text-3xl mb-2">{tier.icon}</div>
-                                  <div className="text-lg font-bold text-gray-900 mb-1">{tier.label}</div>
-                                  <div className="text-sm text-gray-600">{tier.description}</div>
-                                </div>
-                                {formData.service_tier === tier.value && (
-                                  <div className="absolute -top-2 -right-2 bg-amber-500 text-white rounded-full p-1">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                  </div>
-                                )}
-                              </div>
-                            </label>
-                          ))}
-                        </div>
                       </div>
 
                       {/* Wedding Styles - Enhanced with validation and tooltips */}
@@ -2061,8 +1671,8 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                   </motion.div>
                 )}
 
-                {/* Step 5: Images & Tags */}
-                {currentStep === 5 && (
+                {/* Step 4: Images & Tags - RENUMBERED FROM STEP 5 */}
+                {currentStep === 4 && (
                   <motion.div
                     key="step5"
                     initial={{ opacity: 0, x: 20 }}
@@ -2199,10 +1809,10 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                   </motion.div>
                 )}
 
-                {/* Step 6: Category-Specific Fields (Dynamic) */}
-                {currentStep === 6 && (
+                {/* Step 5: Category-Specific Fields (Dynamic) - RENUMBERED FROM STEP 6 */}
+                {currentStep === 5 && (
                   <motion.div
-                    key="step6"
+                    key="step5"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
@@ -2252,6 +1862,8 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                                 placeholder={field.help_text || `Enter ${field.field_label.toLowerCase()}`}
                               />
                             )}
+
+
 
                             {field.field_type === 'number' && (
                               <input
@@ -2408,22 +2020,15 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+            className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-rose-500 to-pink-600 p-6 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-white/20 rounded-full backdrop-blur-sm">
-                    <AlertTriangle className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold">Confirm Service Details</h3>
-                    <p className="text-white/90 text-sm mt-1">
-                      Please review your service information before publishing
-                    </p>
-                  </div>
+                  <div className="text-lg font-bold">Confirm Service Details</div>
+                  <div className="text-sm opacity-80">Review everything before publishing</div>
                 </div>
                 <button
                   onClick={() => setShowConfirmation(false)}
@@ -2438,100 +2043,312 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
 
             {/* Content */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-              <div className="space-y-4">
-                {/* Service Name */}
-                <div className="bg-gradient-to-r from-rose-50 to-pink-50 p-4 rounded-xl border border-rose-200">
-                  <p className="text-sm font-medium text-gray-600 mb-1">Service Name</p>
-                  <p className="text-lg font-bold text-gray-900">{formData.title}</p>
-                </div>
-
-                {/* Category */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
-                    <p className="text-sm font-medium text-gray-600 mb-1">Category</p>
-                    <p className="font-semibold text-gray-900">{formData.category}</p>
+              <div className="space-y-6">
+                {/* Title & Category */}
+                <div className="flex items-start gap-4">
+                  <div className="w-24 h-24 bg-gray-100 rounded-xl overflow-hidden flex items-center justify-center">
+                    {formData.images && formData.images[0] ? (
+                      <img src={formData.images[0]} alt={formData.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-gray-400">No image</div>
+                    )}
                   </div>
-                  {formData.subcategory && (
-                    <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-200">
-                      <p className="text-sm font-medium text-gray-600 mb-1">Subcategory</p>
-                      <p className="font-semibold text-gray-900">{formData.subcategory}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Location */}
-                <div className="bg-green-50 p-4 rounded-xl border border-green-200">
-                  <p className="text-sm font-medium text-gray-600 mb-1 flex items-center gap-1">
-                    <MapPin size={14} />
-                    Location
-                  </p>
-                  <p className="font-semibold text-gray-900">{formData.location}</p>
-                </div>
-
-                {/* Pricing */}
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
-                  <p className="text-sm font-medium text-gray-600 mb-2">Pricing</p>
-                  {showCustomPricing ? (
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-gray-900 text-lg">
-                        ₱{parseFloat(formData.price || '0').toLocaleString()}
-                      </span>
-                      {formData.max_price && (
-                        <>
-                          <span className="text-gray-500">-</span>
-                          <span className="font-bold text-gray-900 text-lg">
-                            ₱{parseFloat(formData.max_price).toLocaleString()}
-                          </span>
-                        </>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-semibold text-gray-900">{formData.title}</h3>
+                    <p className="text-sm text-gray-600">{formData.category}{formData.subcategory ? ` • ${formData.subcategory}` : ''}</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      {formData.featured && (
+                        <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700 font-medium">Featured</span>
                       )}
+                      {!formData.is_active && (
+                        <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600 font-medium">Not active</span>
+                      )}
+                      <span className="text-sm text-gray-500">Tier: {formData.service_tier}</span>
                     </div>
-                  ) : (
-                    <p className="font-semibold text-gray-900">{formData.price_range}</p>
-                  )}
+                    <p className="mt-3 text-gray-700 text-sm">{formData.description}</p>
+                  </div>
                 </div>
 
-                {/* Images */}
-                <div className="bg-purple-50 p-4 rounded-xl border border-purple-200">
-                  <p className="text-sm font-medium text-gray-600 mb-2 flex items-center gap-1">
-                    <Camera size={14} />
-                    Images
-                  </p>
-                  <p className="font-semibold text-gray-900">
-                    {formData.images.length} {formData.images.length === 1 ? 'image' : 'images'} uploaded
-                  </p>
-                </div>
-
-                {/* Service Items */}
-                {formData.features.length > 0 && (
-                  <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
-                    <p className="text-sm font-medium text-gray-600 mb-2">Service Items & Equipment</p>
-                    <p className="font-semibold text-gray-900">
-                      {formData.features.length} {formData.features.length === 1 ? 'item' : 'items'} included
-                    </p>
+                {/* Images Gallery */}
+                {formData.images && formData.images.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2">
+                    {formData.images.map((src, i) => (
+                      <div key={i} className="w-full h-20 bg-gray-50 rounded-lg overflow-hidden border">
+                        <img src={src} className="w-full h-full object-cover" alt={`image-${i}`} />
+                      </div>
+                    ))}
                   </div>
                 )}
 
-                {/* Description Preview */}
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                  <p className="text-sm font-medium text-gray-600 mb-2">Description</p>
-                  <p className="text-sm text-gray-700 line-clamp-3">{formData.description}</p>
+                {/* Location & Contact */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white p-4 rounded-xl border">
+                    <p className="text-xs text-gray-500">Location</p>
+                    <p className="font-semibold text-gray-900 mt-1">{formData.location || 'Not specified'}</p>
+                    {formData.locationData?.city && (
+                      <p className="text-sm text-gray-500">{formData.locationData.city}{formData.locationData.state ? `, ${formData.locationData.state}` : ''}</p>
+                    )}
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border">
+                    <p className="text-xs text-gray-500">Contact</p>
+                    <p className="font-semibold text-gray-900 mt-1">{formData.contact_info?.phone || '—'}</p>
+                    <p className="text-sm text-gray-600">{formData.contact_info?.email || '—'}</p>
+                    {formData.contact_info?.website && (
+                      <a href={formData.contact_info.website} className="text-sm text-rose-600 underline mt-1 block" target="_blank" rel="noreferrer">Visit website</a>
+                    )}
+                  </div>
                 </div>
 
-                {/* Status */}
-                <div className="flex gap-4">
-                  {formData.featured && (
-                    <div className="flex-1 bg-yellow-50 p-3 rounded-xl border border-yellow-200 flex items-center gap-2">
-                      <Star className="h-5 w-5 text-yellow-600" />
-                      <span className="text-sm font-semibold text-yellow-900">Featured Service</span>
-                    </div>
-                  )}
-                  {formData.is_active && (
-                    <div className="flex-1 bg-green-50 p-3 rounded-xl border border-green-200 flex items-center gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
-                      <span className="text-sm font-semibold text-green-900">Available for Booking</span>
+                {/* Packages Summary */}
+                <div className="bg-white p-4 rounded-xl border">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold text-gray-900">Packages & Itemization</h4>
+                    <div className="text-sm text-gray-500">{getPackagesData().length} package(s)</div>
+                  </div>
+
+                  {getPackagesData().length === 0 ? (
+                    <div className="text-sm text-gray-600">No packages created. PackageBuilder will be required to define pricing.</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {getPackagesData().map((pkg: any, idx: number) => {
+                        const isExpanded = expandedPackages[idx] ?? true; // Default expanded
+                        const hasItems = pkg.items && pkg.items.length > 0;
+                        const toggleExpand = () => {
+                          setExpandedPackages(prev => ({ ...prev, [idx]: !isExpanded }));
+                        };
+
+                        return (
+                          <div key={pkg.id || idx} className="p-3 rounded-lg border bg-gray-50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div>
+                                  <div className="font-semibold text-gray-900">{pkg.name || pkg.item_name}</div>
+                                  {pkg.tier && <div className="text-xs text-gray-500">Tier: {pkg.tier}</div>}
+                                </div>
+                                {hasItems && (
+                                  <button
+                                    onClick={toggleExpand}
+                                    className="p-1 hover:bg-gray-200 rounded transition-colors"
+                                    title={isExpanded ? 'Collapse items' : 'Expand items'}
+                                    aria-label={isExpanded ? 'Collapse items' : 'Expand items'}
+                                  >
+                                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                  </button>
+                                )}
+                              </div>
+                              <div className="font-semibold text-gray-900">{formatCurrency(Number(pkg.price || 0))}</div>
+                            </div>
+
+                            {hasItems && isExpanded && (
+                              <div className="mt-3 grid gap-2 pl-2 border-l-2 border-rose-200">
+                                {pkg.items.map((it: any, i: number) => {
+                                  // Try multiple possible field names for price
+                                  const unitPrice = it.unit_price || it.unitPrice || it.price || it.item_price || 0;
+                                  const qty = it.quantity || it.qty || 1;
+                                  const unitName = it.unit || 'item';
+                                  const lineTotal = qty * unitPrice;
+                                  
+                                  return (
+                                    <div key={i} className="flex items-center justify-between text-sm">
+                                      <div>
+                                        <div className="font-medium">{it.name || it.item_name}</div>
+                                        <div className="text-xs text-gray-500">{it.description || ''}</div>
+                                      </div>
+                                      <div className="text-right text-sm text-gray-700">
+                                        <div>{qty} {unitName} × {formatCurrency(unitPrice)}</div>
+                                        <div className="font-medium">{formatCurrency(lineTotal)}</div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Pricing summary */}
+                      <div className="mt-3 p-3 rounded-lg bg-white border">
+                        <div className="flex items-center justify-between text-sm text-gray-700">
+                          <div>Min Package Price</div>
+                          <div>{formatCurrency(getPackageStats().min)}</div>
+                        </div>
+                        <div className="flex items-center justify-between text-sm text-gray-700 mt-2">
+                          <div>Max Package Price</div>
+                          <div>{formatCurrency(getPackageStats().max)}</div>
+                        </div>
+                        <div className="flex items-center justify-between text-sm font-semibold text-gray-900 mt-2">
+                          <div>Total (sum of package prices)</div>
+                          <div>{formatCurrency(getPackageStats().total)}</div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
+
+                {/* Features, Tags, and Options */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white p-4 rounded-xl border">
+                    <p className="text-xs text-gray-500">Features</p>
+                    {formData.features && formData.features.length > 0 ? (
+                      <ul className="mt-2 list-disc pl-5 text-sm text-gray-700">
+                        {formData.features.map((f, i) => <li key={i}>{f}</li>)}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-500 mt-2">No features listed.</p>
+                    )}
+                  </div>
+
+                  <div className="bg-white p-4 rounded-xl border">
+                    <p className="text-xs text-gray-500">Tags & Options</p>
+                    <div className="mt-2 text-sm text-gray-700">
+                      {formData.tags && formData.tags.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {formData.tags.map((t, i) => (
+                            <span key={i} className="px-2 py-1 bg-gray-100 rounded-full text-xs">{t}</span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No tags added.</p>
+                      )}
+
+                      <div className="mt-3 text-sm">
+                        <div>Availability: {formData.availability.weekdays ? 'Weekdays' : ''}{formData.availability.weekends ? ' • Weekends' : ''}</div>
+                        <div>Insurance: {formData.insurance ? 'Yes' : 'No'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Category-specific preview (ALL categories) */}
+                <div className="bg-gray-50 p-4 rounded-xl border">
+                  <p className="text-xs text-gray-500 font-semibold mb-3">Category-Specific Details</p>
+                  <div className="mt-3 text-sm text-gray-700 space-y-2">
+                    {/* Photography */}
+                    {formData.category === 'Photography' && (
+                      <>
+                        {(formData as any).photography_options?.coverage_hours && (
+                          <div className="flex justify-between"><span className="text-gray-600">Coverage Hours:</span><span className="font-medium">{(formData as any).photography_options.coverage_hours}</span></div>
+                        )}
+                        {(formData as any).photography_options?.number_of_photographers && (
+                          <div className="flex justify-between"><span className="text-gray-600">Photographers:</span><span className="font-medium">{(formData as any).photography_options.number_of_photographers}</span></div>
+                        )}
+                        {(formData as any).photography_options?.photo_output && (
+                          <div className="flex justify-between"><span className="text-gray-600">Photo Output:</span><span className="font-medium">{(formData as any).photography_options.photo_output}</span></div>
+                        )}
+                        {(formData as any).photography_options?.video_output && (
+                          <div className="flex justify-between"><span className="text-gray-600">Video Output:</span><span className="font-medium">{(formData as any).photography_options.video_output}</span></div>
+                        )}
+                        {(formData as any).photography_options?.turnaround_time && (
+                          <div className="flex justify-between"><span className="text-gray-600">Turnaround Time:</span><span className="font-medium">{(formData as any).photography_options.turnaround_time}</span></div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Catering */}
+                    {formData.category === 'Catering' && (
+                      <>
+                        {formData.catering_options?.cuisine_types && formData.catering_options.cuisine_types.length > 0 && (
+                          <div><span className="text-gray-600">Cuisines:</span> <span className="font-medium">{formData.catering_options.cuisine_types.join(', ')}</span></div>
+                        )}
+                        {formData.catering_options?.service_style && (
+                          <div className="flex justify-between"><span className="text-gray-600">Service Style:</span><span className="font-medium">{formData.catering_options.service_style}</span></div>
+                        )}
+                        {(formData as any).catering_options?.guest_capacity && (
+                          <div className="flex justify-between"><span className="text-gray-600">Guest Capacity:</span><span className="font-medium">{(formData as any).catering_options.guest_capacity.min} - {(formData as any).catering_options.guest_capacity.max} persons</span></div>
+                        )}
+                        {(formData as any).catering_options?.dietary_options && (formData as any).catering_options.dietary_options.length > 0 && (
+                          <div><span className="text-gray-600">Dietary Options:</span> <span className="font-medium">{(formData as any).catering_options.dietary_options.join(', ')}</span></div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Venue */}
+                    {formData.category === 'Venue' && (
+                      <>
+                        {formData.venue_capacity && (formData.venue_capacity.min || formData.venue_capacity.max) && (
+                          <div className="flex justify-between"><span className="text-gray-600">Capacity:</span><span className="font-medium">{formData.venue_capacity.min || '—'} - {formData.venue_capacity.max || '—'} persons</span></div>
+                        )}
+                        {(formData as any).venue_options?.venue_type && (
+                          <div className="flex justify-between"><span className="text-gray-600">Venue Type:</span><span className="font-medium">{(formData as any).venue_options.venue_type}</span></div>
+                        )}
+                        {(formData as any).venue_options?.indoor_outdoor && (
+                          <div className="flex justify-between"><span className="text-gray-600">Setting:</span><span className="font-medium">{(formData as any).venue_options.indoor_outdoor}</span></div>
+                        )}
+                        {(formData as any).venue_options?.parking_capacity && (
+                          <div className="flex justify-between"><span className="text-gray-600">Parking:</span><span className="font-medium">{(formData as any).venue_options.parking_capacity} spaces</span></div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Music/DJ */}
+                    {formData.category === 'Music/DJ' && (
+                      <>
+                        {(formData as any).music_options?.performance_duration && (
+                          <div className="flex justify-between"><span className="text-gray-600">Performance Duration:</span><span className="font-medium">{(formData as any).music_options.performance_duration}</span></div>
+                        )}
+                        {(formData as any).music_options?.music_genres && (formData as any).music_options.music_genres.length > 0 && (
+                          <div><span className="text-gray-600">Music Genres:</span> <span className="font-medium">{(formData as any).music_options.music_genres.join(', ')}</span></div>
+                        )}
+                        {(formData as any).music_options?.sound_system && (
+                          <div className="flex justify-between"><span className="text-gray-600">Sound System:</span><span className="font-medium">{(formData as any).music_options.sound_system}</span></div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Flowers/Decor */}
+                    {formData.category === 'Flowers/Decor' && (
+                      <>
+                        {(formData as any).floral_options?.arrangement_style && (
+                          <div className="flex justify-between"><span className="text-gray-600">Arrangement Style:</span><span className="font-medium">{(formData as any).floral_options.arrangement_style}</span></div>
+                        )}
+                        {(formData as any).floral_options?.flower_types && (formData as any).floral_options.flower_types.length > 0 && (
+                          <div><span className="text-gray-600">Flower Types:</span> <span className="font-medium">{(formData as any).floral_options.flower_types.join(', ')}</span></div>
+                        )}
+                        {(formData as any).floral_options?.setup_teardown && (
+                          <div className="flex justify-between"><span className="text-gray-600">Setup/Teardown:</span><span className="font-medium">{(formData as any).floral_options.setup_teardown}</span></div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Default fallback */}
+                    {!['Photography', 'Catering', 'Venue', 'Music/DJ', 'Flowers/Decor'].includes(formData.category) && (
+                      <div className="text-gray-500">No category-specific details configured.</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Internal notes / metadata */}
+                <div className="bg-white p-4 rounded-xl border">
+                  <p className="text-xs text-gray-500 font-semibold mb-3">Service Metadata</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Vendor:</span>
+                      <span className="font-medium">{vendorProfile?.business_name || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Contact Email:</span>
+                      <span className="font-medium">{vendorProfile?.contact_email || vendorProfile?.email || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Years of Service:</span>
+                      <span className="font-medium">{formData.years_of_service || vendorProfile?.years_experience || 0} years</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Service Tier:</span>
+                      <span className="font-medium capitalize">{formData.service_tier || 'standard'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Availability:</span>
+                      <span className="font-medium">{formData.is_active ? '✅ Active & Available' : '⚠️ Not available'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Insurance Covered:</span>
+                      <span className="font-medium">{formData.insurance ? '✅ Yes' : '❌ No'}</span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
@@ -2544,23 +2361,27 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                 >
                   ← Go Back & Edit
                 </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="px-8 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-all font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      {editingService ? 'Updating...' : 'Creating...'}
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-5 w-5" />
-                      {editingService ? 'Confirm & Update' : 'Confirm & Publish'}
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-gray-600">Estimated range:</div>
+                  <div className="font-semibold text-gray-900">{formatCurrency(getPackageStats().min)} - {formatCurrency(getPackageStats().max)}</div>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className="px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 transition-all font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        {editingService ? 'Updating...' : 'Creating...'}
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-5 w-5" />
+                        {editingService ? 'Confirm & Update' : 'Confirm & Publish'}
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>

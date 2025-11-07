@@ -468,6 +468,21 @@ export const VendorServices: React.FC = () => {
         ...serviceData,
         vendor_id: correctVendorId, // Use user ID format that matches vendors.id
       };
+      
+      // ✅ DEBUG: Log itemization data being sent
+      console.log('📦 [VendorServices] Payload itemization check:', {
+        hasPackages: !!payload.packages,
+        packagesCount: payload.packages?.length || 0,
+        hasAddons: !!payload.addons,
+        addonsCount: payload.addons?.length || 0,
+        hasPricingRules: !!payload.pricingRules,
+        pricingRulesCount: payload.pricingRules?.length || 0
+      });
+      
+      if (payload.packages && payload.packages.length > 0) {
+        console.log('📦 [VendorServices] First package structure:', payload.packages[0]);
+      }
+      
       // Debug each field length to identify the problematic one
       Object.keys(payload).forEach(key => {
         const value = payload[key];

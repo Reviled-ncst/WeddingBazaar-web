@@ -369,6 +369,22 @@ router.post('/', async (req, res) => {
     console.log('   category:', req.body.category);
     console.log('   service_tier:', req.body.service_tier);
     
+    // 🔍 ENHANCED LOGGING: Check all critical fields
+    console.log('🔍 [DATA CHECK] DSS Fields:');
+    console.log('   wedding_styles:', req.body.wedding_styles);
+    console.log('   cultural_specialties:', req.body.cultural_specialties);
+    console.log('   availability:', req.body.availability);
+    console.log('   years_in_business:', req.body.years_in_business);
+    
+    console.log('🔍 [DATA CHECK] Itemization:');
+    console.log('   packages:', req.body.packages ? `Array(${req.body.packages.length})` : 'undefined');
+    console.log('   addons:', req.body.addons ? `Array(${req.body.addons.length})` : 'undefined');
+    console.log('   pricingRules:', req.body.pricingRules ? `Array(${req.body.pricingRules.length})` : 'undefined');
+    
+    if (req.body.packages && Array.isArray(req.body.packages) && req.body.packages.length > 0) {
+      console.log('📦 [PACKAGES RECEIVED]:', JSON.stringify(req.body.packages, null, 2));
+    }
+    
     // ✅ LOG ITEMIZATION DATA RECEIVED
     console.log('📦 [ITEMIZATION CHECK] Packages received:', req.body.packages ? `${req.body.packages.length} packages` : 'NONE');
     console.log('🎁 [ITEMIZATION CHECK] Addons received:', req.body.addons ? `${req.body.addons.length} addons` : 'NONE');

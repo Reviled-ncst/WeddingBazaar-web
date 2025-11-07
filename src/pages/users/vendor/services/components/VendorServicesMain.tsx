@@ -409,6 +409,12 @@ export const VendorServicesMain: React.FC = () => {
             onSubmit={handleSubmit}
             editingService={editingService as unknown as NonNullable<React.ComponentProps<typeof AddServiceForm>['editingService']>}
             vendorId={servicesVendorId || ''}
+            vendorProfile={{
+              phone: user?.phone,
+              email: user?.email,
+              // Note: years_experience should be fetched from vendor profile API or passed via context
+              // For now, it will default to 0 if not available in form initialization
+            }}
           />
         )}
       </div>

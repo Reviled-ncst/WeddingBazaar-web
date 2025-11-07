@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { useAuth } from '../../../../shared/contexts/HybridAuthContext';
@@ -52,6 +53,11 @@ const navigationItems: NavItem[] = [
     label: 'Bookings',
     href: '/admin/bookings',
     icon: Calendar,
+  },
+  {
+    label: 'Reports',
+    href: '/admin/reports',
+    icon: AlertTriangle,
   },
   {
     label: 'Document Verification',

@@ -32,6 +32,7 @@ const ServiceHighlightDemo = lazy(() => import('../pages/shared/service-demo').t
 const AdminDashboard = lazy(() => import('../pages/users/admin/dashboard').then(m => ({ default: m.AdminDashboard })));
 const UserManagement = lazy(() => import('../pages/users/admin/users').then(m => ({ default: m.UserManagement })));
 const AdminBookings = lazy(() => import('../pages/users/admin/bookings').then(m => ({ default: m.AdminBookings })));
+const AdminReports = lazy(() => import('../pages/users/admin/reports').then(m => ({ default: m.AdminReports })));
 const AdminAnalytics = lazy(() => import('../pages/users/admin/analytics').then(m => ({ default: m.AdminAnalytics })));
 const AdminDatabase = lazy(() => import('../pages/users/admin/database').then(m => ({ default: m.AdminDatabase })));
 const AdminFinances = lazy(() => import('../pages/users/admin/finances').then(m => ({ default: m.AdminFinances })));
@@ -426,6 +427,12 @@ export const AppRouter: React.FC = () => {
             <Route path="/admin/bookings" element={
               <ProtectedRoute requireAuth={true}>
                 <AdminBookings />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admin/reports" element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminReports />
               </ProtectedRoute>
             } />
             
