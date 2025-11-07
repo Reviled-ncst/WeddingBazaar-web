@@ -46,30 +46,23 @@ const MapClickHandler: React.FC<{
 export const LocationPicker: React.FC<LocationPickerProps> = ({
   value,
   onChange,
-  placeholder = "Enter venue or location",
+  placeholder = "Enter venue or location in Dasmariñas, Cavite",
   className
 }) => {
-  const [position, setPosition] = useState<[number, number] | null>(null);
+  // ✅ ENHANCEMENT: Always default to Dasmariñas, Cavite (Wedding Bazaar primary location)
+  const DASMARINAS_CENTER: [number, number] = [14.3294, 120.9367]; // Dasmariñas City Hall coordinates
+  
+  const [position, setPosition] = useState<[number, number] | null>(DASMARINAS_CENTER);
   const [searchResults, setSearchResults] = useState<LocationData[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Initialize with Dasmariñas location (no geolocation request by default)
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setPosition([position.coords.latitude, position.coords.longitude]);
-        },
-        () => {
-          // Default to Dasmariñas, Cavite instead of Manila
-          setPosition([14.3294, 120.9367]); // Dasmariñas City, Cavite
-        }
-      );
-    } else {
-      // Default to Dasmariñas, Cavite instead of Manila
-      setPosition([14.3294, 120.9367]); // Dasmariñas City, Cavite
-    }
+    // Map always starts centered on Dasmariñas
+    // User can click "Use current location" button if they want their GPS location
+    setPosition(DASMARINAS_CENTER);
   }, []);
 
   const searchLocation = async (query: string) => {
@@ -219,13 +212,13 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           <div className="text-gray-500">Searching locations...</div>
         </div>
       )}
-      {/* Map Preview (always visible) */}
+      {/* Map Preview (always visible) - Focused on Dasmariñas */}
       {position && (
         <div className="mt-4 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
           <MapContainer
             center={position}
-            zoom={13}
-            style={{ height: '250px', width: '100%' }}
+            zoom={14}
+            style={{ height: '300px', width: '100%' }}
             className="rounded-lg"
           >
             <TileLayer
@@ -235,6 +228,9 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             <Marker position={position} />
             <MapClickHandler onLocationSelect={handleMapLocationSelect} />
           </MapContainer>
+          <div className="px-3 py-2 bg-rose-50 border-t border-rose-100 text-xs text-rose-700">
+            📍 Map centered on Dasmariñas, Cavite. Click map to select location or search above.
+          </div>
         </div>
       )}
     </div>
