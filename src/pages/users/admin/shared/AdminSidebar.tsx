@@ -49,7 +49,7 @@ const navigationSections: NavSection[] = [
     items: [
       {
         label: 'Dashboard',
-        href: '/admin',
+        href: '/admin/dashboard',
         icon: LayoutDashboard,
         description: 'Main dashboard & analytics',
       },
@@ -77,11 +77,9 @@ const navigationSections: NavSection[] = [
         description: 'Vendor management',
       },
       {
-        label: 'Document Verification',
+        label: 'Documents',
         href: '/admin/documents',
         icon: FileCheck,
-        badge: 5,
-        badgeVariant: 'warning',
         description: 'Verify vendor documents',
       },
     ],
@@ -110,7 +108,7 @@ const navigationSections: NavSection[] = [
     ],
   },
   {
-    title: 'Business Intelligence',
+    title: 'Analytics & Finance',
     items: [
       {
         label: 'Analytics',
@@ -123,12 +121,6 @@ const navigationSections: NavSection[] = [
         href: '/admin/finances',
         icon: DollarSign,
         description: 'Financial overview',
-      },
-      {
-        label: 'Performance',
-        href: '/admin/performance',
-        icon: TrendingUp,
-        description: 'Performance metrics',
       },
     ],
   },
@@ -146,6 +138,12 @@ const navigationSections: NavSection[] = [
         href: '/admin/database',
         icon: Database,
         description: 'Database management',
+      },
+      {
+        label: 'Content',
+        href: '/admin/content',
+        icon: FileText,
+        description: 'Content moderation',
       },
       {
         label: 'Settings',

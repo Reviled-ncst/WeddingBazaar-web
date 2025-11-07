@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import {
   Users,
   Store,
@@ -8,16 +9,12 @@ import {
   Activity,
   AlertCircle,
   CheckCircle,
+  ArrowUpRight,
+  ArrowDownRight,
+  Clock,
+  Heart,
 } from 'lucide-react';
-import {
-  AdminLayout,
-  StatCard,
-  DataTable,
-  Badge,
-  Button,
-  Alert,
-  Tabs,
-} from '../shared';
+import { AdminLayout } from '../shared';
 
 interface PlatformStats {
   totalUsers: number;

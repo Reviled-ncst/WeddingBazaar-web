@@ -404,6 +404,24 @@ export const VendorServices: React.FC = () => {
         console.log('✅ [VendorServices] API response:', result);
         console.log('✅ [VendorServices] Services found:', result.services?.length || 0);
         
+        // 🔍 Log first service with full data for debugging
+        if (result.services && result.services.length > 0) {
+          const firstService = result.services[0];
+          console.log('🔍 [VendorServices] First service full data:', {
+            id: firstService.id,
+            name: firstService.name || firstService.title,
+            packages: firstService.packages,
+            packageCount: firstService.packages?.length || 0,
+            price: firstService.price,
+            price_range: firstService.price_range,
+            has_itemization: firstService.has_itemization
+          });
+          
+          if (firstService.packages && firstService.packages.length > 0) {
+            console.log('📦 [VendorServices] First service packages:', firstService.packages);
+          }
+        }
+        
         if (result.success && Array.isArray(result.services)) {
           setServices(result.services);
           console.log('✅ [VendorServices] Services loaded successfully:', result.services.length);
@@ -1544,20 +1562,33 @@ export const VendorServices: React.FC = () => {
                         <div className="h-7 flex items-center">
                           <div className="text-xl font-bold text-rose-600">
                             {(() => {
+                              console.log(`💰 [Price Display] Service ${service.id}:`, {
+                                packages: service.packages?.length || 0,
+                                packageData: service.packages,
+                                price_range: service.price_range,
+                                price: service.price
+                              });
+                              
                               // Show package-based pricing if available
                               if (service.packages && service.packages.length > 0) {
                                 const prices = service.packages.map(p => p.base_price || 0).filter(p => p > 0);
+                                console.log(`💰 [Price Display] Package prices:`, prices);
+                                
                                 if (prices.length > 0) {
                                   const min = Math.min(...prices);
                                   const max = Math.max(...prices);
+                                  console.log(`💰 [Price Display] Range: ${min} - ${max}`);
+                                  
                                   if (min === max) {
                                     return `₱${min.toLocaleString()}`;
                                   }
                                   return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
                                 }
                               }
+                              
                               // Fallback to legacy pricing
-                              return service.price_range || service.price || 'Contact for pricing';
+                              console.log(`⚠️ [Price Display] Using fallback pricing`);
+                              return service.price_range || (service.price ? `₱${typeof service.price === 'number' ? service.price.toLocaleString() : service.price}` : null) || 'Contact for pricing';
                             })()}
                           </div>
                         </div>
