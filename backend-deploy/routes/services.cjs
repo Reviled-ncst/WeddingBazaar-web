@@ -203,11 +203,11 @@ router.get('/vendor/:vendorId', async (req, res) => {
       if (packages.length > 0) {
         const packageIds = packages.map(p => p.id);
         
-        // Only query if we have package IDs
+        // Only query if we have package IDs (defensive check to prevent 500 error)
         if (packageIds.length > 0) {
           const items = await sql`
             SELECT * FROM package_items
-            WHERE package_id IN ${sql(packageIds)}
+            WHERE package_id = ANY(${packageIds})
             ORDER BY package_id, item_type, display_order
           `;
           
@@ -220,6 +220,8 @@ router.get('/vendor/:vendorId', async (req, res) => {
           });
           
           console.log(`  📦 Found ${items.length} package items across ${Object.keys(packageItems).length} packages`);
+        } else {
+          console.log(`  ⚠️ No package IDs found, skipping package_items query`);
         }
       }
       
@@ -810,6 +812,33 @@ router.post('/', async (req, res) => {
     `;
 
     console.log('✅ [POST /api/services] Service created successfully:', result[0]);
+    
+    // 🔍 LOG ALL DATA SENT TO DATABASE
+    console.log('📊 [DATABASE INSERT] Complete data sent to services table:');
+    console.log('   id:', serviceId);
+    console.log('   vendor_id:', actualVendorId);
+    console.log('   title:', finalTitle);
+    console.log('   description:', description || '');
+    console.log('   category:', category);
+    console.log('   price:', price ? parseFloat(price) : null);
+    console.log('   price_range:', price_range || null);
+    console.log('   max_price:', max_price ? parseFloat(max_price) : null);
+    console.log('   location:', location || '');
+    console.log('   location_data:', location_data || null);
+    console.log('   location_coordinates:', location_coordinates || null);
+    console.log('   location_details:', location_details || null);
+    console.log('   images:', Array.isArray(images) ? images : []);
+    console.log('   features:', Array.isArray(features) ? features : []);
+    console.log('   featured:', Boolean(featured));
+    console.log('   is_active:', Boolean(is_active));
+    console.log('   contact_info:', contact_info || null);
+    console.log('   tags:', Array.isArray(tags) ? tags : null);
+    console.log('   keywords:', keywords || null);
+    console.log('   years_in_business:', years_in_business ? parseInt(years_in_business) : null);
+    console.log('   service_tier:', normalizedServiceTier);
+    console.log('   wedding_styles:', Array.isArray(wedding_styles) ? wedding_styles : null);
+    console.log('   cultural_specialties:', Array.isArray(cultural_specialties) ? cultural_specialties : null);
+    console.log('   availability:', availability ? (typeof availability === 'string' ? availability : JSON.stringify(availability)) : null);
 
     // ✅ HANDLE ITEMIZATION DATA - Create packages, items, add-ons, and pricing rules
     const itemizationData = {
@@ -822,8 +851,19 @@ router.post('/', async (req, res) => {
       // 1. Create packages (if provided)
       if (req.body.packages && Array.isArray(req.body.packages) && req.body.packages.length > 0) {
         console.log(`📦 [Itemization] Creating ${req.body.packages.length} packages...`);
+        console.log('📦 [FULL PACKAGES DATA]:', JSON.stringify(req.body.packages, null, 2));
         
         for (const pkg of req.body.packages) {
+          console.log('📦 [PACKAGE INSERT] Sending package to database:', {
+            service_id: serviceId,
+            package_name: pkg.name,
+            package_description: pkg.description || '',
+            base_price: pkg.price ? parseFloat(pkg.price) : 0,
+            tier: pkg.tier || 'standard',
+            is_default: pkg.is_default || false,
+            is_active: pkg.is_active !== false
+          });
+          
           const packageResult = await sql`
             INSERT INTO service_packages (
               service_id, package_name, package_description, base_price, tier,
@@ -843,11 +883,15 @@ router.post('/', async (req, res) => {
           `;
           
           const createdPackage = packageResult[0];
-          console.log(`✅ Package created: ${createdPackage.name} (ID: ${createdPackage.id})`);
+          console.log(`✅ Package created successfully:`, createdPackage);
+          console.log(`   - ID: ${createdPackage.id}`);
+          console.log(`   - Name: ${createdPackage.package_name}`);
+          console.log(`   - Price: ₱${createdPackage.base_price}`);
           
           // 2. Create package items for this package
           if (pkg.items && Array.isArray(pkg.items) && pkg.items.length > 0) {
             console.log(`📦 [Itemization] Creating ${pkg.items.length} items for package ${createdPackage.package_name}...`);
+            console.log('📦 [FULL ITEMS DATA]:', JSON.stringify(pkg.items, null, 2));
             
             for (let i = 0; i < pkg.items.length; i++) {
               const item = pkg.items[i];
@@ -867,7 +911,17 @@ router.post('/', async (req, res) => {
               };
               const validItemType = itemTypeMap[item.category?.toLowerCase()] || 'base';
               
-              console.log(`📦 [Item] Mapping category "${item.category}" → item_type "${validItemType}"`);
+              console.log(`📦 [ITEM INSERT #${i+1}] Sending item to database:`, {
+                package_id: createdPackage.id,
+                item_type: validItemType,
+                item_name: item.name,
+                quantity: item.quantity || 1,
+                unit_type: item.unit || 'pcs',
+                unit_price: item.unit_price || 0,
+                item_description: item.description || '',
+                display_order: i + 1,
+                original_category: item.category
+              });
               
               await sql`
                 INSERT INTO package_items (
@@ -887,12 +941,14 @@ router.post('/', async (req, res) => {
                   NOW()
                 )
               `;
+              console.log(`✅ Item #${i+1} inserted: ${item.name} (${validItemType})`);
             }
-            console.log(`✅ ${pkg.items.length} items created for package ${createdPackage.package_name}`);
+            console.log(`✅ All ${pkg.items.length} items created for package ${createdPackage.package_name}`);
           }
           
           itemizationData.packages.push(createdPackage);
         }
+        console.log(`✅ [Itemization] All packages and items created successfully`);
       }
       
       // 3. Create add-ons (if provided)
