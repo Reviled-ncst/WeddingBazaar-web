@@ -5,13 +5,10 @@ import {
   Search, 
   ChevronDown,
   FileText,
-  User,
-  Calendar,
   AlertCircle,
   CheckCircle,
   XCircle,
   Clock,
-  MessageSquare,
   Eye,
   Edit,
   Trash2
@@ -57,8 +54,13 @@ export const AdminReports: React.FC = () => {
   });
 
   // Update form
-  const [updateForm, setUpdateForm] = useState({
-    status: '',
+  const [updateForm, setUpdateForm] = useState<{
+    status: 'open' | 'in_review' | 'resolved' | 'dismissed';
+    admin_notes: string;
+    admin_response: string;
+    reviewed_by: string;
+  }>({
+    status: 'open',
     admin_notes: '',
     admin_response: '',
     reviewed_by: ''
@@ -66,6 +68,7 @@ export const AdminReports: React.FC = () => {
 
   useEffect(() => {
     loadReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const loadReports = async () => {
@@ -123,9 +126,9 @@ export const AdminReports: React.FC = () => {
     }
   };
 
-  const handleUpdatePriority = async (reportId: string, priority: 'low' | 'medium' | 'high' | 'urgent') => {
+  const handleUpdatePriority = async (reportId: string, priority: string) => {
     try {
-      await bookingReportsService.updateReportPriority(reportId, priority);
+      await bookingReportsService.updateReportPriority(reportId, priority as 'low' | 'medium' | 'high' | 'urgent');
       await loadReports();
     } catch (error) {
       console.error('Error updating priority:', error);
@@ -246,6 +249,7 @@ export const AdminReports: React.FC = () => {
               <select
                 value={filters.status || ''}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
+                title="Filter by Status"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
               >
                 <option value="">All Statuses</option>
@@ -261,6 +265,7 @@ export const AdminReports: React.FC = () => {
               <select
                 value={filters.priority || ''}
                 onChange={(e) => handleFilterChange('priority', e.target.value)}
+                title="Filter by Priority"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
               >
                 <option value="">All Priorities</option>
@@ -276,6 +281,7 @@ export const AdminReports: React.FC = () => {
               <select
                 value={filters.reporter_type || ''}
                 onChange={(e) => handleFilterChange('reporter_type', e.target.value)}
+                title="Filter by Reporter Type"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
               >
                 <option value="">All Types</option>
@@ -289,6 +295,7 @@ export const AdminReports: React.FC = () => {
               <select
                 value={filters.report_type || ''}
                 onChange={(e) => handleFilterChange('report_type', e.target.value)}
+                title="Filter by Report Type"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
               >
                 <option value="">All Types</option>
@@ -374,7 +381,8 @@ export const AdminReports: React.FC = () => {
                       <td className="px-6 py-4">
                         <select
                           value={report.priority}
-                          onChange={(e) => handleUpdatePriority(report.id, e.target.value as any)}
+                          onChange={(e) => handleUpdatePriority(report.id, e.target.value)}
+                          title="Change Priority"
                           className={`text-xs font-medium px-2 py-1 rounded-lg border cursor-pointer ${PRIORITY_COLORS[report.priority]}`}
                         >
                           <option value="low">Low</option>
@@ -452,6 +460,7 @@ export const AdminReports: React.FC = () => {
                 <h2 className="text-2xl font-bold text-slate-900">Report Details</h2>
                 <button
                   onClick={() => setShowDetailsModal(false)}
+                  title="Close Modal"
                   className="text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   <XCircle className="w-6 h-6" />
@@ -606,7 +615,8 @@ export const AdminReports: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Status *</label>
                 <select
                   value={updateForm.status}
-                  onChange={(e) => setUpdateForm(prev => ({ ...prev, status: e.target.value }))}
+                  onChange={(e) => setUpdateForm(prev => ({ ...prev, status: e.target.value as typeof updateForm.status }))}
+                  title="Select Status"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                 >
                   <option value="open">Open</option>
