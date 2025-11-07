@@ -17,6 +17,8 @@ import {
   TrendingUp,
   X
 } from 'lucide-react';
+import { useNotification } from '../../../../shared/hooks/useNotification';
+import { NotificationModal } from '../../../../shared/components/modals';
 
 interface VendorDocument {
   id: string;
@@ -61,6 +63,7 @@ const statusIcons = {
 };
 
 export const DocumentVerification: React.FC = () => {
+  const { notification, showNotification, hideNotification } = useNotification();
   const [documents, setDocuments] = useState<VendorDocument[]>([]);
   const [stats, setStats] = useState<Stats>({
     total: 0,
@@ -228,16 +231,31 @@ export const DocumentVerification: React.FC = () => {
       });
 
       if (response.ok) {
-        alert('✅ Document approved successfully!');
+        showNotification({
+          title: 'Document Approved',
+          message: 'Document approved successfully!',
+          type: 'success',
+          customIcon: CheckCircle
+        });
         setSelectedDocument(null);
         setAdminNotes('');
         loadData();
       } else {
-        alert('❌ Failed to approve document');
+        showNotification({
+          title: 'Approval Failed',
+          message: 'Failed to approve document. Please try again.',
+          type: 'error',
+          customIcon: XCircle
+        });
       }
     } catch (error) {
       console.error('Failed to approve:', error);
-      alert('❌ Failed to approve document');
+      showNotification({
+        title: 'Approval Failed',
+        message: 'Failed to approve document. Please try again.',
+        type: 'error',
+        customIcon: XCircle
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -245,7 +263,12 @@ export const DocumentVerification: React.FC = () => {
 
   const handleReject = async (docId: string, reason: string) => {
     if (!reason.trim()) {
-      alert('Please provide a rejection reason');
+      showNotification({
+        title: 'Rejection Reason Required',
+        message: 'Please provide a rejection reason before rejecting the document.',
+        type: 'warning',
+        customIcon: AlertTriangle
+      });
       return;
     }
 
@@ -264,18 +287,33 @@ export const DocumentVerification: React.FC = () => {
       });
 
       if (response.ok) {
-        alert('❌ Document rejected');
+        showNotification({
+          title: 'Document Rejected',
+          message: 'Document has been rejected and vendor will be notified.',
+          type: 'info',
+          customIcon: XCircle
+        });
         setShowRejectModal(false);
         setSelectedDocument(null);
         setRejectionReason('');
         setAdminNotes('');
         loadData();
       } else {
-        alert('❌ Failed to reject document');
+        showNotification({
+          title: 'Rejection Failed',
+          message: 'Failed to reject document. Please try again.',
+          type: 'error',
+          customIcon: XCircle
+        });
       }
     } catch (error) {
       console.error('Failed to reject:', error);
-      alert('❌ Failed to reject document');
+      showNotification({
+        title: 'Rejection Failed',
+        message: 'Failed to reject document. Please try again.',
+        type: 'error',
+        customIcon: XCircle
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -730,6 +768,21 @@ export const DocumentVerification: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        confirmText={notification.confirmText}
+        showCancel={notification.showCancel}
+        onConfirm={notification.onConfirm}
+        customIcon={notification.customIcon}
+        iconColor={notification.iconColor}
+        size={notification.size}
+      />
     </AdminLayout>
   );
 };
