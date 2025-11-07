@@ -7,3 +7,5 @@ export { RegisterModal } from './RegisterModal';
 export { TermsOfServiceModal } from './TermsOfServiceModal';
 export { PrivacyPolicyModal } from './PrivacyPolicyModal';
 export { ConfirmationModal } from './ConfirmationModal';
+export { default as NotificationModal } from './NotificationModal';
+export type { NotificationType } from './NotificationModal';

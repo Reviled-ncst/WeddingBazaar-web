@@ -38,6 +38,8 @@ import { UpgradePrompt } from '../../../../shared/components/subscription/Upgrad
 import { AddServiceForm } from './components/AddServiceForm';
 import { useVendorProfile } from '../../../../hooks/useVendorData';
 import { cn } from '../../../../utils/cn';
+import { useNotification } from '../../../../shared/hooks/useNotification';
+import { NotificationModal } from '../../../../shared/components/modals';
 
 // Service interface based on the actual API response
 interface Service {
@@ -136,6 +138,15 @@ export const VendorServices: React.FC = () => {
   // Auth context to get the logged-in vendor
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Notification hook for replacing alerts
+  const {
+    notification,
+    showSuccess,
+    showError,
+    showInfo,
+    hideNotification
+  } = useNotification();
 
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -550,9 +561,12 @@ export const VendorServices: React.FC = () => {
 
       const result = await response.json();
       if (result.softDelete) {
-        alert('✅ Service deleted successfully!\n\nNote: The service was preserved in our records due to existing bookings, but it\'s no longer visible to customers.');
+        showSuccess(
+          'The service was preserved in our records due to existing bookings, but it\'s no longer visible to customers.',
+          '✅ Service Deleted Successfully'
+        );
       } else {
-        alert('✅ Service deleted successfully and completely removed!');
+        showSuccess('The service has been completely removed from the system.', '✅ Service Deleted Successfully');
       }
 
       await fetchServices();
@@ -1539,8 +1553,8 @@ export const VendorServices: React.FC = () => {
                                 toast.style.opacity = '0';
                                 setTimeout(() => document.body.removeChild(toast), 300);
                               }, 2000);
-                            } catch (err) {
-                              alert('Secure service link copied: ' + url);
+                            } catch {
+                              showInfo('Secure service link: ' + url, 'Link Copied');
                             }
                           }}
                           className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all duration-200 text-xs font-semibold shadow-sm hover:shadow-md"
@@ -2160,6 +2174,18 @@ export const VendorServices: React.FC = () => {
         onClose={hideUpgradePrompt}
         message={upgradePrompt.message}
         requiredTier={upgradePrompt.requiredTier}
+      />
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        confirmText={notification.confirmText}
+        showCancel={notification.showCancel}
+        onConfirm={notification.onConfirm}
       />
     </div>
   );

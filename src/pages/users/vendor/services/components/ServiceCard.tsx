@@ -25,6 +25,8 @@ import {
 import { cn } from '../../../../../utils/cn';
 import type { Service } from '../services/vendorServicesAPI';
 import { getDisplayPrice, getDisplayImage } from '../utils/serviceDataNormalizer';
+import { useNotification } from '../../../../../shared/hooks/useNotification';
+import { NotificationModal } from '../../../../../shared/components/modals';
 
 interface ServiceCardProps {
   service: Service;
@@ -47,6 +49,9 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   const [isToggling, setIsToggling] = React.useState(false);
   const [showItemization, setShowItemization] = React.useState(false);
   
+  // Notification system
+  const { notification, showSuccess, hideNotification } = useNotification();
+  
   // Check if service has itemization data
   const hasItemization = (service as any).packages?.length > 0 || 
                          (service as any).addons?.length > 0 || 
@@ -65,14 +70,18 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (onShare) {
       onShare(service);
     } else {
       // Default share behavior
       const shareUrl = window.location.origin + `/services/${service.id}`;
-      navigator.clipboard.writeText(shareUrl);
-      alert('Service link copied to clipboard!');
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        showSuccess('Service link copied to clipboard!', 'Link Copied');
+      } catch {
+        showSuccess(`Link: ${shareUrl}`, 'Service Link');
+      }
     }
   };
 
@@ -350,6 +359,18 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           </div>
         )}
       </div>
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        confirmText={notification.confirmText}
+        showCancel={notification.showCancel}
+        onConfirm={notification.onConfirm}
+      />
     </motion.div>
   );
 };

@@ -25,6 +25,8 @@ import categoryService from '../../../../../services/api/categoryService';
 import type { Category, CategoryField } from '../../../../../services/api/categoryService';
 import { AvailabilityCalendar } from './AvailabilityCalendar';
 import { analytics } from '../../../../../utils/analytics';
+import { useNotification } from '../../../../../shared/hooks/useNotification';
+import { NotificationModal } from '../../../../../shared/components/modals';
 
 // Service interface based on the actual database schema
 interface Service {
@@ -346,6 +348,9 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   vendorProfile,
   isLoading = false
 }) => {
+  // Notification system
+  const { notification, showError, hideNotification } = useNotification();
+
   const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
@@ -800,7 +805,10 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
       
       // Show user-friendly error message
       const errorMessage = error instanceof Error ? error.message : 'Failed to upload image';
-      alert(`❌ Image Upload Failed\n\n${errorMessage}\n\nPlease try again or check your internet connection.`);
+      showError(
+        `${errorMessage}\n\nPlease try again or check your internet connection.`,
+        '❌ Image Upload Failed'
+      );
       
       // Don't add placeholder images - let user retry
     } finally {
@@ -2519,6 +2527,18 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
           </motion.div>
         </motion.div>
       )}
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        confirmText={notification.confirmText}
+        showCancel={notification.showCancel}
+        onConfirm={notification.onConfirm}
+      />
     </AnimatePresence>
   );
 };
