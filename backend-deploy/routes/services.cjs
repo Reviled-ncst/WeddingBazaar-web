@@ -719,6 +719,24 @@ router.post('/', async (req, res) => {
             
             for (let i = 0; i < pkg.items.length; i++) {
               const item = pkg.items[i];
+              
+              // ✅ Map frontend category to valid item_type constraint values
+              // Database CHECK constraint: item_type IN ('package', 'per_pax', 'addon', 'base')
+              const itemTypeMap = {
+                'personnel': 'base',
+                'equipment': 'base',
+                'deliverables': 'base',
+                'deliverable': 'base',
+                'other': 'base',
+                'package': 'package',
+                'per_pax': 'per_pax',
+                'addon': 'addon',
+                'base': 'base'
+              };
+              const validItemType = itemTypeMap[item.category?.toLowerCase()] || 'base';
+              
+              console.log(`📦 [Item] Mapping category "${item.category}" → item_type "${validItemType}"`);
+              
               await sql`
                 INSERT INTO package_items (
                   package_id, item_type, item_name, 
@@ -726,7 +744,7 @@ router.post('/', async (req, res) => {
                   created_at, updated_at
                 ) VALUES (
                   ${createdPackage.id},
-                  ${item.category || 'other'},
+                  ${validItemType},
                   ${item.name},
                   ${item.quantity || 1},
                   ${item.unit || 'pcs'},
