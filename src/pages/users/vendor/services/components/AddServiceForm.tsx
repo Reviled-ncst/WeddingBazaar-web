@@ -27,6 +27,11 @@ import { AvailabilityCalendar } from './AvailabilityCalendar';
 import { analytics } from '../../../../../utils/analytics';
 import { useNotification } from '../../../../../shared/hooks/useNotification';
 import { NotificationModal } from '../../../../../shared/components/modals';
+import { PricingModeSelector, type PricingModeValue } from './pricing/PricingModeSelector';
+import { 
+  PackageBuilder, 
+  type PackageItem as PackageBuilderItem 
+} from './pricing/PackageBuilder';
 
 // Service interface based on the actual database schema
 interface Service {
@@ -411,6 +416,10 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
   const [showCalendar, setShowCalendar] = useState(false);
   const [showCustomPricing, setShowCustomPricing] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // ✅ NEW: Pricing mode state for itemization
+  const [pricingMode, setPricingMode] = useState<PricingModeValue>('simple');
+  const [packages, setPackages] = useState<PackageBuilderItem[]>([]);
 
   // Dynamic categories state
   const [categories, setCategories] = useState<Category[]>([]);
@@ -1248,12 +1257,34 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                   >
                     <div className="text-center mb-6">
                       <h3 className="text-xl font-semibold text-gray-900 mb-2">Pricing & Availability</h3>
-                      <p className="text-gray-600">Set your pricing and availability</p>
+                      <p className="text-gray-600">Choose your pricing structure and set availability</p>
                     </div>
 
                     <div className="space-y-8">
-                      {/* PRICING SECTION WITH INTEGRATED TOGGLE */}
-                      {!showCustomPricing ? (
+                      {/* ✅ NEW: Pricing Mode Selector */}
+                      <PricingModeSelector
+                        value={pricingMode}
+                        onChange={setPricingMode}
+                        category={formData.category}
+                      />
+
+                      {/* Conditional Pricing UI based on selected mode */}
+                      {pricingMode === 'itemized' ? (
+                        /* ITEMIZED PRICING: Package Builder UI */
+                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-2xl border border-purple-100">
+                          <div className="text-center mb-6">
+                            <h4 className="text-xl font-semibold text-gray-900 mb-2">📦 Package Builder</h4>
+                            <p className="text-gray-600">Create itemized packages for your service</p>
+                          </div>
+                          <PackageBuilder
+                            packages={packages}
+                            onChange={(pkgs: PackageBuilderItem[]) => {
+                              setPackages(pkgs);
+                            }}
+                            category={formData.category}
+                          />
+                        </div>
+                      ) : pricingMode === 'simple' && !showCustomPricing ? (
                         <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
                           {/* Header with Toggle */}
                           <div className="flex items-center justify-between mb-3">
