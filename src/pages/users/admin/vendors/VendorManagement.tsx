@@ -216,81 +216,81 @@ export const VendorManagement: React.FC = () => {
         { label: 'Vendor Management' }
       ]}
     >
-      {/* Stats Cards - Wedding Theme Glassmorphism */}
+      {/* Stats Cards - Dark Theme with Gradients */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Total Vendors Card */}
         <div className="relative group">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-200/40 to-pink-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
-          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-slate-800/90 rounded-2xl p-6 border border-slate-700/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg">
                 <Store className="w-6 h-6 text-white" />
               </div>
-              <div className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+              <div className="px-3 py-1 bg-purple-500/20 border border-purple-500/30 text-purple-300 rounded-full text-xs font-semibold">
                 All
               </div>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.total}</h3>
-            <p className="text-sm text-gray-600 font-medium">Total Vendors</p>
+            <h3 className="text-3xl font-bold text-white mb-1">{stats.total}</h3>
+            <p className="text-sm text-slate-400 font-medium">Total Vendors</p>
           </div>
         </div>
 
         {/* Active Vendors Card */}
         <div className="relative group">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-200/40 to-emerald-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
-          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-slate-800/90 rounded-2xl p-6 border border-slate-700/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl shadow-lg">
                 <CheckCircle className="w-6 h-6 text-white" />
               </div>
-              <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+              <div className="px-3 py-1 bg-green-500/20 border border-green-500/30 text-green-300 rounded-full text-xs font-semibold">
                 Active
               </div>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.active}</h3>
-            <p className="text-sm text-gray-600 font-medium">Active Vendors</p>
+            <h3 className="text-3xl font-bold text-white mb-1">{stats.active}</h3>
+            <p className="text-sm text-slate-400 font-medium">Active Vendors</p>
           </div>
         </div>
 
         {/* Total Revenue Card */}
         <div className="relative group">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-200/40 to-cyan-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
-          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-slate-800/90 rounded-2xl p-6 border border-slate-700/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
                 <DollarSign className="w-6 h-6 text-white" />
               </div>
-              <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+              <div className="px-3 py-1 bg-blue-500/20 border border-blue-500/30 text-blue-300 rounded-full text-xs font-semibold">
                 PHP
               </div>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">₱{stats.totalRevenue.toLocaleString()}</h3>
-            <p className="text-sm text-gray-600 font-medium">Total Revenue</p>
+            <h3 className="text-3xl font-bold text-white mb-1">₱{stats.totalRevenue.toLocaleString()}</h3>
+            <p className="text-sm text-slate-400 font-medium">Total Revenue</p>
           </div>
         </div>
 
         {/* Avg Rating Card */}
         <div className="relative group">
-          <div className="absolute inset-0 bg-gradient-to-br from-yellow-200/40 to-amber-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
-          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 to-amber-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-slate-800/90 rounded-2xl p-6 border border-slate-700/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-xl shadow-lg">
                 <Star className="w-6 h-6 text-white" />
               </div>
-              <div className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">
+              <div className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 rounded-full text-xs font-semibold">
                 Rating
               </div>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.avgRating.toFixed(1)}</h3>
-            <p className="text-sm text-gray-600 font-medium">Avg Rating</p>
+            <h3 className="text-3xl font-bold text-white mb-1">{stats.avgRating.toFixed(1)}</h3>
+            <p className="text-sm text-slate-400 font-medium">Avg Rating</p>
           </div>
         </div>
       </div>
 
-      {/* Filters - Wedding Theme Glassmorphism */}
+      {/* Filters - Dark Theme */}
       <div className="relative group mb-6">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-100/30 to-pink-100/30 rounded-2xl blur-xl"></div>
-        <div className="relative backdrop-blur-xl bg-white/80 rounded-2xl shadow-xl border border-white/60 p-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl blur-xl"></div>
+        <div className="relative backdrop-blur-xl bg-slate-800/90 rounded-2xl shadow-xl border border-slate-700/50 p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -300,7 +300,7 @@ export const VendorManagement: React.FC = () => {
                   placeholder="Search vendors..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-white/50 backdrop-blur-sm border-2 border-purple-200/50 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition-all placeholder:text-gray-400"
+                  className="w-full pl-12 pr-4 py-3 bg-slate-900/50 backdrop-blur-sm border-2 border-slate-700/50 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition-all placeholder:text-slate-500 text-white"
                 />
               </div>
             </div>
@@ -308,7 +308,7 @@ export const VendorManagement: React.FC = () => {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-4 py-3 bg-white/50 backdrop-blur-sm border-2 border-purple-200/50 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition-all"
+                className="px-4 py-3 bg-slate-900/50 backdrop-blur-sm border-2 border-slate-700/50 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition-all text-white"
                 aria-label="Filter vendors by status"
               >
                 <option value="all">All Status</option>
@@ -316,9 +316,9 @@ export const VendorManagement: React.FC = () => {
                 <option value="pending">Pending</option>
                 <option value="suspended">Suspended</option>
               </select>
-              <button className="px-4 py-3 bg-white/60 backdrop-blur-sm border-2 border-purple-200/50 rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2">
-                <Filter className="w-4 h-4 text-purple-600" />
-                <span className="hidden md:inline text-gray-700">Filters</span>
+              <button className="px-4 py-3 bg-slate-700/60 backdrop-blur-sm border-2 border-slate-600/50 rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2">
+                <Filter className="w-4 h-4 text-purple-400" />
+                <span className="hidden md:inline text-slate-300">Filters</span>
               </button>
             </div>
           </div>

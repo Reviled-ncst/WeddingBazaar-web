@@ -35,7 +35,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const shouldShowHeader = showHeader && !showSidebar;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Admin Header - Only show if no sidebar */}
       {shouldShowHeader && <AdminHeader />}
 
@@ -52,7 +52,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         className={cn(
           'transition-all duration-300',
           shouldShowHeader && 'pt-16',
-          showSidebar && (sidebarCollapsed ? 'ml-20' : 'ml-64')
+          showSidebar && (sidebarCollapsed ? 'ml-20' : 'ml-72')
         )}
       >
         {/* Page Header */}

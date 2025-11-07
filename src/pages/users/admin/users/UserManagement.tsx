@@ -366,73 +366,73 @@ export const UserManagement: React.FC = () => {
         { label: 'User Management' }
       ]}
     >
-      {/* Stats Cards - Wedding Theme Glassmorphism */}
+      {/* Stats Cards - Dark Theme with Pink/Purple Gradients */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Total Users Card */}
         <div className="relative group">
-          <div className="absolute inset-0 bg-gradient-to-br from-pink-200/40 to-purple-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
-          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+          <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-slate-800/90 rounded-2xl p-6 border border-slate-700/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl shadow-lg">
                 <Users className="w-6 h-6 text-white" />
               </div>
-              <div className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs font-semibold">
+              <div className="px-3 py-1 bg-pink-500/20 border border-pink-500/30 text-pink-300 rounded-full text-xs font-semibold">
                 All
               </div>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.total}</h3>
-            <p className="text-sm text-gray-600 font-medium">Total Users</p>
+            <h3 className="text-3xl font-bold text-white mb-1">{stats.total}</h3>
+            <p className="text-sm text-slate-400 font-medium">Total Users</p>
           </div>
         </div>
 
         {/* Active Users Card */}
         <div className="relative group">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-200/40 to-emerald-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
-          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-slate-800/90 rounded-2xl p-6 border border-slate-700/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl shadow-lg">
                 <CheckCircle className="w-6 h-6 text-white" />
               </div>
-              <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+              <div className="px-3 py-1 bg-green-500/20 border border-green-500/30 text-green-300 rounded-full text-xs font-semibold">
                 Online
               </div>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.active}</h3>
-            <p className="text-sm text-gray-600 font-medium">Active Users</p>
+            <h3 className="text-3xl font-bold text-white mb-1">{stats.active}</h3>
+            <p className="text-sm text-slate-400 font-medium">Active Users</p>
           </div>
         </div>
 
         {/* Inactive Users Card */}
         <div className="relative group">
-          <div className="absolute inset-0 bg-gradient-to-br from-yellow-200/40 to-amber-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
-          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 to-amber-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-slate-800/90 rounded-2xl p-6 border border-slate-700/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-xl shadow-lg">
                 <Clock className="w-6 h-6 text-white" />
               </div>
-              <div className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">
+              <div className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 rounded-full text-xs font-semibold">
                 Idle
               </div>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.inactive}</h3>
-            <p className="text-sm text-gray-600 font-medium">Inactive Users</p>
+            <h3 className="text-3xl font-bold text-white mb-1">{stats.inactive}</h3>
+            <p className="text-sm text-slate-400 font-medium">Inactive Users</p>
           </div>
         </div>
 
         {/* Suspended Users Card */}
         <div className="relative group">
-          <div className="absolute inset-0 bg-gradient-to-br from-red-200/40 to-rose-200/40 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
-          <div className="relative backdrop-blur-xl bg-white/70 rounded-2xl p-6 border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-500/20 to-rose-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-slate-800/90 rounded-2xl p-6 border border-slate-700/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-gradient-to-br from-red-500 to-rose-500 rounded-xl shadow-lg">
                 <XCircle className="w-6 h-6 text-white" />
               </div>
-              <div className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
+              <div className="px-3 py-1 bg-red-500/20 border border-red-500/30 text-red-300 rounded-full text-xs font-semibold">
                 Blocked
               </div>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.suspended}</h3>
-            <p className="text-sm text-gray-600 font-medium">Suspended Users</p>
+            <h3 className="text-3xl font-bold text-white mb-1">{stats.suspended}</h3>
+            <p className="text-sm text-slate-400 font-medium">Suspended Users</p>
           </div>
         </div>
       </div>
@@ -457,10 +457,10 @@ export const UserManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Filters - Wedding Theme Glassmorphism */}
+      {/* Filters - Dark Theme */}
       <div className="relative group mb-6">
-        <div className="absolute inset-0 bg-gradient-to-br from-pink-100/30 to-purple-100/30 rounded-2xl blur-xl"></div>
-        <div className="relative backdrop-blur-xl bg-white/80 rounded-2xl shadow-xl border border-white/60 p-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-purple-500/10 rounded-2xl blur-xl"></div>
+        <div className="relative backdrop-blur-xl bg-slate-800/90 rounded-2xl shadow-xl border border-slate-700/50 p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -470,7 +470,7 @@ export const UserManagement: React.FC = () => {
                   placeholder="Search by name, email, or phone..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-white/50 backdrop-blur-sm border-2 border-pink-200/50 rounded-xl focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all placeholder:text-gray-400"
+                  className="w-full pl-12 pr-4 py-3 bg-slate-900/50 backdrop-blur-sm border-2 border-slate-700/50 rounded-xl focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all placeholder:text-slate-500 text-white"
                 />
               </div>
             </div>
@@ -478,7 +478,7 @@ export const UserManagement: React.FC = () => {
               <select
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value)}
-                className="px-4 py-3 bg-white/50 backdrop-blur-sm border-2 border-pink-200/50 rounded-xl focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all"
+                className="px-4 py-3 bg-slate-900/50 backdrop-blur-sm border-2 border-slate-700/50 rounded-xl focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all text-white"
                 aria-label="Filter users by role"
               >
                 <option value="all">All Roles</option>
@@ -489,7 +489,7 @@ export const UserManagement: React.FC = () => {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-4 py-3 bg-white/50 backdrop-blur-sm border-2 border-pink-200/50 rounded-xl focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all"
+                className="px-4 py-3 bg-slate-900/50 backdrop-blur-sm border-2 border-slate-700/50 rounded-xl focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all text-white"
                 aria-label="Filter users by status"
               >
                 <option value="all">All Status</option>
@@ -506,9 +506,9 @@ export const UserManagement: React.FC = () => {
                 <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                 <span className="hidden md:inline">Refresh</span>
               </button>
-              <button className="px-4 py-3 bg-white/60 backdrop-blur-sm border-2 border-pink-200/50 rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2">
-                <Filter className="w-4 h-4 text-pink-600" />
-                <span className="hidden md:inline text-gray-700">Filters</span>
+              <button className="px-4 py-3 bg-slate-700/60 backdrop-blur-sm border-2 border-slate-600/50 rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2">
+                <Filter className="w-4 h-4 text-pink-400" />
+                <span className="hidden md:inline text-slate-300">Filters</span>
               </button>
               <button className="px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2">
                 <UserPlus className="w-4 h-4" />
@@ -518,10 +518,10 @@ export const UserManagement: React.FC = () => {
           </div>
           
           {/* Results count */}
-          <div className="mt-4 pt-4 border-t border-pink-200/30">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-semibold text-pink-600">{filteredUsers.length}</span> of{' '}
-              <span className="font-semibold text-pink-600">{users.length}</span> users
+          <div className="mt-4 pt-4 border-t border-slate-700/30">
+            <p className="text-sm text-slate-400">
+              Showing <span className="font-semibold text-pink-400">{filteredUsers.length}</span> of{' '}
+              <span className="font-semibold text-pink-400">{users.length}</span> users
               {(searchQuery || filterRole !== 'all' || filterStatus !== 'all') && (
                 <button
                   onClick={() => {
@@ -529,7 +529,7 @@ export const UserManagement: React.FC = () => {
                     setFilterRole('all');
                     setFilterStatus('all');
                   }}
-                  className="ml-3 text-pink-600 hover:text-pink-700 font-medium underline"
+                  className="ml-3 text-pink-400 hover:text-pink-300 font-medium underline"
                 >
                   Clear filters
                 </button>

@@ -610,20 +610,8 @@ export const VendorServices: React.FC = () => {
     setIsCreating(true);
   };
 
-  // Delete service with confirmation
+  // Delete service without confirmation (confirmation in button click handler)
   const deleteService = async (serviceId: string) => {
-    const confirmed = confirm(
-      '⚠️ Delete Service Confirmation\\n\\n' +
-      'Are you sure you want to delete this service?\\n\\n' +
-      '• If this service has existing bookings, it will be hidden from customers but preserved in our records\\n' +
-      '• If no bookings exist, it will be completely removed\\n\\n' +
-      'Continue with deletion?'
-    );
-    
-    if (!confirmed) {
-      return;
-    }
-
     try {
       const response = await fetch(`${apiUrl}/api/services/${serviceId}`, {
         method: 'DELETE',
