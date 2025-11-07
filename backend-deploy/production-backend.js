@@ -229,9 +229,9 @@ app.use('/api/wallet', walletRoutes); // Vendor wallet and earnings system
 app.use('/api/coordinator', coordinatorRoutes); // Coordinator feature modules (weddings, milestones, vendors, clients, commissions)
 app.use('/api/booking-reports', bookingReportsRoutes); // Booking reports system (vendor & couple)
 
-// Admin routes - New modular user management system
-app.use('/api/admin', adminUserRoutes); // User management, stats, etc.
-// app.use('/api/admin/legacy', adminRoutes); // Old admin routes (vendor mappings)
+// Admin routes - Dashboard stats, vendor mappings, documents
+app.use('/api/admin', adminRoutes); // Main admin routes (dashboard/stats, fix-vendor-mappings, documents, etc.)
+app.use('/api/admin/users', adminUserRoutes); // User management routes
 
 // DSS routes - Intelligent recommendation system
 app.use('/api/dss', dssRoutes); // Decision Support System endpoints
