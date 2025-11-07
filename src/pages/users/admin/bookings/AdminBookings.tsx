@@ -600,10 +600,24 @@ export const AdminBookings: React.FC = () => {
             </button>
           </div>
         ) : bookings.length === 0 ? (
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-12 text-center border border-white/20 shadow-lg">
-            <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">No Bookings Found</h3>
-            <p className="text-gray-600">There are no bookings in the system yet.</p>
+          <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl p-16 text-center border-2 border-dashed border-pink-200 shadow-lg">
+            <div className="max-w-md mx-auto">
+              <div className="relative mb-6">
+                <Calendar className="w-20 h-20 text-pink-300 mx-auto" />
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-purple-500" />
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-3">
+                No Bookings Yet
+              </h3>
+              <p className="text-gray-600 text-lg mb-2">
+                The system doesn't have any bookings at the moment.
+              </p>
+              <p className="text-gray-500 text-sm">
+                Bookings will appear here once couples start requesting services from vendors.
+              </p>
+            </div>
           </div>
         ) : (
           <>
