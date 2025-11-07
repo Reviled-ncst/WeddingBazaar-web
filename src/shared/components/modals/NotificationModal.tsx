@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
 
@@ -12,6 +13,9 @@ interface NotificationModalProps {
   confirmText?: string;
   showCancel?: boolean;
   onConfirm?: () => void;
+  customIcon?: LucideIcon;
+  iconColor?: string;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 const NotificationModal: React.FC<NotificationModalProps> = ({
@@ -22,7 +26,10 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
   type = 'info',
   confirmText = 'OK',
   showCancel = false,
-  onConfirm
+  onConfirm,
+  customIcon: CustomIcon,
+  iconColor,
+  size = 'md'
 }) => {
   if (!isOpen) return null;
 
@@ -34,16 +41,32 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
   };
 
   const getIcon = () => {
+    const sizeClass = size === 'sm' ? 'w-10 h-10' : size === 'lg' ? 'w-16 h-16' : 'w-12 h-12';
+    
+    if (CustomIcon) {
+      return <CustomIcon className={`${sizeClass} ${iconColor || getIconColor()}`} />;
+    }
+    
     switch (type) {
       case 'success':
-        return <CheckCircle className="w-12 h-12 text-green-500" />;
+        return <CheckCircle className={`${sizeClass} text-green-500`} />;
       case 'error':
-        return <AlertCircle className="w-12 h-12 text-red-500" />;
+        return <AlertCircle className={`${sizeClass} text-red-500`} />;
       case 'warning':
-        return <AlertTriangle className="w-12 h-12 text-yellow-500" />;
+        return <AlertTriangle className={`${sizeClass} text-yellow-500`} />;
       case 'info':
       default:
-        return <Info className="w-12 h-12 text-blue-500" />;
+        return <Info className={`${sizeClass} text-blue-500`} />;
+    }
+  };
+
+  const getIconColor = () => {
+    switch (type) {
+      case 'success': return 'text-green-500';
+      case 'error': return 'text-red-500';
+      case 'warning': return 'text-yellow-500';
+      case 'info':
+      default: return 'text-blue-500';
     }
   };
 
@@ -75,9 +98,18 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
     }
   };
 
+  const getSizeClass = () => {
+    switch (size) {
+      case 'sm': return 'max-w-sm';
+      case 'lg': return 'max-w-lg';
+      case 'md':
+      default: return 'max-w-md';
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-50 animate-fadeIn">
-      <div className={`relative w-full max-w-md rounded-2xl shadow-2xl border-2 ${getColorClasses()} animate-scaleIn`}>
+      <div className={`relative w-full ${getSizeClass()} rounded-2xl shadow-2xl border-2 ${getColorClasses()} animate-scaleIn`}>
         {/* Close button */}
         <button
           onClick={onClose}
