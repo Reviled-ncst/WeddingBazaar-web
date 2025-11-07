@@ -3,12 +3,12 @@ const { sql } = require('../config/database.cjs');
 
 const router = express.Router();
 
-// Get all services with optional filters - SIMPLIFIED VENDOR ENRICHMENT
+// Get all services with optional filters - SIMPLIFIED VENDOR ENRICHMENT + ITEMIZATION SUPPORT
 router.get('/', async (req, res) => {
   console.log('🛠️ Getting services with basic vendor enrichment:', req.query);
   
   try {
-    const { vendorId, category, limit = 50, offset = 0 } = req.query;
+    const { vendorId, category, limit = 50, offset = 0, include_itemization } = req.query;
     
     // Step 1: Get services
     let servicesQuery = `SELECT * FROM services WHERE is_active = true`;
@@ -103,6 +103,70 @@ router.get('/', async (req, res) => {
         vendor_business_name: services[0].vendor_business_name,
         vendor_rating: services[0].vendor_rating
       });
+    }
+    
+    // Step 3: 🎉 NEW - Optionally include itemization data (packages, items, add-ons)
+    if (include_itemization === 'true' && services.length > 0) {
+      console.log('📦 [Itemization] Including itemization data for', services.length, 'services');
+      
+      for (const service of services) {
+        // 1. Get packages for this service
+        const packages = await sql`
+          SELECT * FROM service_packages
+          WHERE service_id = ${service.id}
+          ORDER BY is_default DESC, base_price ASC
+        `;
+        
+        // 2. Get all package items (if packages exist) and attach to each package
+        if (packages.length > 0) {
+          const packageIds = packages.map(p => p.id);
+          
+          if (packageIds.length > 0) {
+            const items = await sql`
+              SELECT * FROM package_items
+              WHERE package_id = ANY(${packageIds})
+              ORDER BY package_id, item_type, display_order
+            `;
+            
+            // Group items by package_id and attach to each package
+            const packageItemsMap = {};
+            items.forEach(item => {
+              if (!packageItemsMap[item.package_id]) {
+                packageItemsMap[item.package_id] = [];
+              }
+              packageItemsMap[item.package_id].push(item);
+            });
+            
+            // Attach items array to each package
+            packages.forEach(pkg => {
+              pkg.items = packageItemsMap[pkg.id] || [];
+            });
+          }
+        }
+        
+        // 3. Get add-ons for this service
+        const addons = await sql`
+          SELECT * FROM service_addons
+          WHERE service_id = ${service.id}
+          AND is_available = true
+          ORDER BY addon_price ASC
+        `;
+        
+        // 4. Get pricing rules for this service
+        const pricingRules = await sql`
+          SELECT * FROM service_pricing_rules
+          WHERE service_id = ${service.id}
+          ORDER BY created_at DESC
+        `;
+        
+        // Attach itemization data to service
+        service.packages = packages;
+        service.addons = addons;
+        service.pricing_rules = pricingRules;
+        service.has_itemization = packages.length > 0;
+      }
+      
+      console.log('✅ [Itemization] Enriched services with itemization data');
     }
     
     res.json({
