@@ -1011,9 +1011,23 @@ router.post('/', async (req, res) => {
       console.log(`✅ [Itemization] Complete: ${itemizationData.packages.length} packages, ${itemizationData.addons.length} add-ons, ${itemizationData.pricingRules.length} rules`);
       
     } catch (itemizationError) {
-      console.error('⚠️  [Itemization] Error creating itemization data:', itemizationError);
-      // Don't fail the entire request if itemization fails
-      // Service was created successfully, just log the error
+      console.error('❌ [ITEMIZATION FAILED] Error creating packages:', itemizationError);
+      console.error('❌ [ITEMIZATION FAILED] Error message:', itemizationError.message);
+      console.error('❌ [ITEMIZATION FAILED] Error code:', itemizationError.code);
+      console.error('❌ [ITEMIZATION FAILED] Error constraint:', itemizationError.constraint);
+      console.error('❌ [ITEMIZATION FAILED] Stack trace:', itemizationError.stack);
+      
+      // FAIL the entire request so user knows something went wrong
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create service packages',
+        message: itemizationError.message,
+        code: itemizationError.code,
+        constraint: itemizationError.constraint,
+        hint: 'Package creation failed. Check the error details above.',
+        packages_received: req.body.packages ? req.body.packages.length : 0,
+        packages_created: itemizationData.packages.length
+      });
     }
 
     res.status(201).json({
