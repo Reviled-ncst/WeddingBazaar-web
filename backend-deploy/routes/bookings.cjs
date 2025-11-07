@@ -789,7 +789,8 @@ router.post('/', async (req, res) => {
       serviceName,
       service_name,
       serviceType,
-      service_type
+      service_type,
+      metadata  // 🎉 NEW: Extract metadata with package details
     } = req.body;
     
     // ENHANCED: Extract user ID from multiple sources
@@ -803,6 +804,21 @@ router.post('/', async (req, res) => {
     const finalSpecialRequests = specialRequests || special_requests || notes;
     const finalServiceName = serviceName || service_name;
     const finalServiceType = serviceType || service_type;
+    
+    // 🎉 NEW: Extract package itemization from metadata
+    const packageDetails = metadata?.packageDetails || {};
+    const selectedPackage = packageDetails.name || null;
+    const packagePrice = packageDetails.price || 0;
+    const packageItems = packageDetails.items || [];
+    const selectedAddons = packageDetails.addons || [];
+    const pricingRules = packageDetails.pricing_rules || {};
+    
+    console.log('📦 Package itemization detected:', {
+      package: selectedPackage,
+      price: packagePrice,
+      itemsCount: packageItems.length,
+      addonsCount: selectedAddons.length
+    });
     
     console.log('🔑 Final couple ID:', finalCoupleId);
     console.log('🏢 Final vendor ID:', finalVendorId);
@@ -828,15 +844,24 @@ router.post('/', async (req, res) => {
       INSERT INTO bookings (
         id, couple_id, vendor_id, service_id, event_date, event_time,
         event_location, total_amount, special_requests, status,
-        service_name, service_type, notes, created_at, updated_at
+        service_name, service_type, notes, 
+        selected_package, package_price, package_items, selected_addons,
+        created_at, updated_at
       ) VALUES (
         ${bookingId}, ${finalCoupleId}, ${finalVendorId}, ${finalServiceId || null}, ${finalEventDate}, ${eventTime || null},
         ${finalEventLocation || null}, ${finalTotalAmount}, ${finalSpecialRequests || null}, 'request',
-        ${finalServiceName || 'Wedding Service'}, ${finalServiceType || 'general'}, ${finalSpecialRequests || null}, NOW(), NOW()
+        ${finalServiceName || 'Wedding Service'}, ${finalServiceType || 'general'}, ${finalSpecialRequests || null},
+        ${selectedPackage}, ${packagePrice}, ${JSON.stringify(packageItems)}, ${JSON.stringify(selectedAddons)},
+        NOW(), NOW()
       ) RETURNING *
     `;
     
     console.log(`✅ Booking created: ${bookingId}`);
+    console.log(`📦 Package data saved:`, {
+      package: selectedPackage,
+      itemsStored: packageItems.length,
+      addonsStored: selectedAddons.length
+    });
     
     // � CREATE IN-APP NOTIFICATION FOR VENDOR
     try {
@@ -1972,31 +1997,6 @@ router.post('/:bookingId/cancel', async (req, res) => {
       console.log(`   Booking couple_id: "${booking.couple_id}" (${typeof booking.couple_id})`);
       console.log(`   Request user: "${userId}" (${typeof userId})`);
       console.log(`   As strings: "${bookingUserId}" !== "${requestUserId}"`);
-      return res.status(403).json({
-        success: false,
-        error: 'Unauthorized: You can only cancel your own bookings',
-        debug: {
-          bookingUserId: booking.couple_id,
-          bookingUserIdType: typeof booking.couple_id,
-          requestUserId: userId,
-          requestUserIdType: typeof userId,
-          bookingUserIdString: bookingUserId,
-          requestUserIdString: requestUserId,
-          stringMatch: bookingUserId === requestUserId
-        }
-      });
-    }
-    
-    console.log(`✅ [CANCEL-BOOKING] Authorization passed: "${bookingUserId}" === "${requestUserId}"`);
-    
-    // Only allow direct cancellation for request/quote_requested status
-    const allowedStatuses = ['request', 'quote_requested'];
-    if (!allowedStatuses.includes(booking.status)) {
-      return res.status(400).json({
-        success: false,
-        error: `Cannot directly cancel booking with status: ${booking.status}. Please use cancellation request instead.`,
-        requiresApproval: true
-      });
     }
     
     // Perform cancellation
