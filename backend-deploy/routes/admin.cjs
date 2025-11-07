@@ -624,6 +624,4 @@ function formatTimestamp(timestamp) {
   return then.toLocaleDateString();
 }
 
-/**
-
 module.exports = router;
