@@ -472,11 +472,12 @@ router.get('/:vendorId/services', async (req, res) => {
         if (packages.length > 0) {
           const packageIds = packages.map(p => p.id);
           
-          // Only query if we have package IDs
+          // Only query if we have package IDs (defensive check to prevent 500 error)
           if (packageIds.length > 0) {
+            // ✅ Use ANY() for Neon PostgreSQL compatibility
             const items = await sql`
               SELECT * FROM package_items
-              WHERE package_id IN ${sql(packageIds)}
+              WHERE package_id = ANY(${packageIds})
               ORDER BY package_id, item_type, display_order
             `;
             
@@ -487,6 +488,10 @@ router.get('/:vendorId/services', async (req, res) => {
               }
               packageItems[item.package_id].push(item);
             });
+            
+            console.log(`  📦 Found ${items.length} package items across ${Object.keys(packageItems).length} packages`);
+          } else {
+            console.log(`  ⚠️ No package IDs found, skipping package_items query`);
           }
         }
         
