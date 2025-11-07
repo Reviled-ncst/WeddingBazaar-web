@@ -199,6 +199,7 @@ interface VendorProfile {
   contact_email?: string;
   contact_website?: string;
   website_url?: string;
+  yearsInBusiness?: number; // ✅ NEW: Auto-fill years in business
 }
 
 interface AddServiceFormProps {
@@ -559,7 +560,7 @@ export const AddServiceForm: React.FC<AddServiceFormProps> = ({
         tags: [],
         keywords: '',
         // DSS fields
-        years_in_business: '',
+        years_in_business: vendorProfile?.yearsInBusiness?.toString() || '0', // ✅ AUTO-FILL from vendor profile
         service_tier: 'basic',
         wedding_styles: [],
         cultural_specialties: [],
@@ -1580,24 +1581,35 @@ Example: 'Our wedding photography captures the authentic emotions and intimate m
                     </div>
 
                     <div className="space-y-8">
-                      {/* Years in Business */}
+                      {/* Years in Business - AUTO-FILLED FROM VENDOR PROFILE (READ-ONLY) */}
                       <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-6 rounded-2xl border border-purple-100">
                         <label className="block text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
                           <Star className="h-5 w-5 text-purple-600" />
                           Years in Business
+                          <span className="text-xs font-normal text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
+                            From Profile
+                          </span>
                         </label>
                         <p className="text-sm text-gray-600 mb-4 bg-white/50 p-3 rounded-lg border border-purple-200">
-                          ⭐ How long have you been providing wedding services? This builds trust with clients.
+                          ⭐ This is auto-filled from your vendor profile. To update, go to your Profile settings.
                         </p>
-                        <input
-                          type="number"
-                          value={formData.years_in_business}
-                          onChange={(e) => setFormData(prev => ({ ...prev, years_in_business: e.target.value }))}
-                          className="w-full px-5 py-4 border-2 border-white bg-white/70 backdrop-blur-sm rounded-xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-lg"
-                          placeholder="e.g., 5"
-                          min="0"
-                          max="100"
-                        />
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={formData.years_in_business}
+                            readOnly
+                            disabled
+                            className="w-full px-5 py-4 border-2 border-purple-200 bg-gray-100 rounded-xl text-lg font-semibold text-gray-700 cursor-not-allowed"
+                            placeholder="0"
+                          />
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-purple-600 font-medium">
+                            {formData.years_in_business || '0'} {parseInt(formData.years_in_business || '0') === 1 ? 'year' : 'years'}
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          Update this in your <span className="font-semibold text-purple-600">Vendor Profile</span> to change it here
+                        </p>
                       </div>
 
                       {/* Service Tier */}
