@@ -46,7 +46,7 @@ const MapClickHandler: React.FC<{
 export const LocationPicker: React.FC<LocationPickerProps> = ({
   value,
   onChange,
-  placeholder = "Enter venue or location in Dasmariñas, Cavite",
+  placeholder = "Search locations in Cavite (e.g., Dasmariñas, Imus, Bacoor)",
   className
 }) => {
   // ✅ ENHANCEMENT: Always default to Dasmariñas, Cavite (Wedding Bazaar primary location)
@@ -72,8 +72,22 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     }
     setIsSearching(true);
     try {
+      // ✅ STRICT CAVITE-ONLY SEARCH: Force Philippines country code and Cavite province
+      const searchQuery = `${query}, Cavite, Philippines`;
+      
+      // Viewbox for Cavite province (approximate bounds)
+      // Southwest: 14.1°N, 120.8°E | Northeast: 14.5°N, 121.1°E
+      const viewbox = '120.8,14.1,121.1,14.5'; // lon_min,lat_min,lon_max,lat_max
+      
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
+        `https://nominatim.openstreetmap.org/search?` +
+        `format=json` +
+        `&q=${encodeURIComponent(searchQuery)}` +
+        `&countrycodes=ph` + // ✅ STRICT: Only Philippines results
+        `&viewbox=${viewbox}` +
+        `&bounded=1` + // ✅ STRICT: Must be within viewbox
+        `&limit=10` +
+        `&addressdetails=1`,
         {
           headers: {
             'User-Agent': 'WeddingBazaar/1.0'
@@ -81,15 +95,45 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         }
       );
       const data = await response.json();
-      const results: LocationData[] = data.map((item: any) => ({
-        address: item.display_name,
-        lat: parseFloat(item.lat),
-        lng: parseFloat(item.lon),
-        city: item.address?.city || item.address?.town || item.address?.village,
-        state: item.address?.state,
-        country: item.address?.country
-      }));
-      setSearchResults(results);
+      
+      // ✅ STRICT FILTER: Only accept results that are definitely in Cavite, Philippines
+      const caviteResults: LocationData[] = data
+        .filter((item: any) => {
+          // Check coordinates are within Cavite bounds
+          const lat = parseFloat(item.lat);
+          const lng = parseFloat(item.lon);
+          const inBounds = lat >= 14.1 && lat <= 14.5 && lng >= 120.8 && lng <= 121.1;
+          
+          if (!inBounds) return false;
+          
+          // Check address fields for Cavite
+          const state = item.address?.state?.toLowerCase() || '';
+          const province = item.address?.province?.toLowerCase() || '';
+          const county = item.address?.county?.toLowerCase() || '';
+          const country = item.address?.country?.toLowerCase() || '';
+          const displayName = item.display_name?.toLowerCase() || '';
+          
+          // Must be in Philippines
+          if (!country.includes('philippines') && !country.includes('pilipinas')) {
+            return false;
+          }
+          
+          // Must be in Cavite
+          return state.includes('cavite') || 
+                 province.includes('cavite') || 
+                 county.includes('cavite') ||
+                 displayName.includes('cavite');
+        })
+        .map((item: any) => ({
+          address: item.display_name,
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon),
+          city: item.address?.city || item.address?.town || item.address?.village || item.address?.municipality,
+          state: 'Cavite',
+          country: 'Philippines'
+        }));
+      
+      setSearchResults(caviteResults);
     } catch (error) {
       setSearchResults([]);
     } finally {
