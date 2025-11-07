@@ -25,11 +25,8 @@ import { getBudgetRangeDisplay } from '../../../../utils/currencyConverter';
 /**
  * Admin Bookings Management
  * 
- * Environment Configuration:
- * - VITE_USE_MOCK_BOOKINGS=true  -> Use mock/sample data (75 bookings)
- * - VITE_USE_MOCK_BOOKINGS=false -> Use real API data from backend
- * 
- * If not set or API fails, falls back to mock data automatically.
+ * Uses real API data from backend only.
+ * No mock data - all bookings come from the database.
  */
 
 // Booking interface - aligned with database schema (enhanced with rich data)
@@ -76,48 +73,6 @@ interface AdminBooking {
   hasAmounts?: boolean; // Flag to indicate if financial amounts are set
 }
 
-// Sample data for development
-const generateSampleBookings = (): AdminBooking[] => {
-  const statuses: AdminBooking['status'][] = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'refunded'];
-  const paymentStatuses: AdminBooking['paymentStatus'][] = ['pending', 'partial', 'paid', 'refunded', 'failed'];
-  const categories = ['Photography', 'Catering', 'Venues', 'Music & DJ', 'Planning', 'Flowers', 'Beauty', 'Transportation'];
-  const vendors = ['Perfect Weddings Co.', 'Elegant Events', 'Dream Catchers', 'Blissful Moments', 'Royal Affairs'];
-  const clients = ['John & Sarah Smith', 'Mike & Emily Johnson', 'David & Lisa Brown', 'Tom & Anna Wilson'];
-
-  return Array.from({ length: 75 }, (_, i) => ({
-    id: `booking-${i + 1}`,
-    bookingReference: `WB${String(10000 + i).slice(-4)}`,
-    userId: `user-${Math.floor(Math.random() * 50) + 1}`,
-    vendorId: `vendor-${Math.floor(Math.random() * 20) + 1}`,
-    serviceId: `service-${Math.floor(Math.random() * 100) + 1}`,
-    userName: clients[Math.floor(Math.random() * clients.length)],
-    vendorName: vendors[Math.floor(Math.random() * vendors.length)],
-    serviceName: `${categories[Math.floor(Math.random() * categories.length)]} Service`,
-    serviceCategory: categories[Math.floor(Math.random() * categories.length)],
-    status: statuses[Math.floor(Math.random() * statuses.length)],
-    bookingDate: new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)).toISOString(),
-    eventDate: new Date(Date.now() + Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000)).toISOString(),
-    duration: Math.floor(Math.random() * 8) + 1,
-    totalAmount: Math.floor(Math.random() * 5000) + 500,
-    paidAmount: Math.floor(Math.random() * 3000),
-    commission: Math.floor(Math.random() * 500) + 50,
-    paymentStatus: paymentStatuses[Math.floor(Math.random() * paymentStatuses.length)],
-    paymentMethod: Math.random() > 0.5 ? 'Credit Card' : 'Bank Transfer',
-    notes: Math.random() > 0.7 ? 'Special requirements noted' : undefined,
-    cancellationReason: statuses[Math.floor(Math.random() * statuses.length)] === 'cancelled' ? 'Client request' : undefined,
-    createdAt: new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)).toISOString(),
-    updatedAt: new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)).toISOString(),
-    clientContact: {
-      email: `client${i + 1}@example.com`,
-      phone: `+1 (555) ${String(Math.floor(Math.random() * 900) + 100)}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
-    },
-    vendorContact: {
-      email: `vendor${Math.floor(Math.random() * 20) + 1}@example.com`,
-      phone: `+1 (555) ${String(Math.floor(Math.random() * 900) + 100)}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
-    },
-  }));
-};
-
 export const AdminBookings: React.FC = () => {
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,23 +84,13 @@ export const AdminBookings: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(12);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load bookings data
+  // Load bookings data - REAL API DATA ONLY
   useEffect(() => {
     const loadBookings = async () => {
       setLoading(true);
-      
-      // Check if we should use mock data
-      const useMockData = import.meta.env.VITE_USE_MOCK_BOOKINGS === 'true';
-      
-      if (useMockData) {
-        console.log('📊 [AdminBookings] Using mock data (VITE_USE_MOCK_BOOKINGS=true)');
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setBookings(generateSampleBookings());
-        setLoading(false);
-        return;
-      }
+      setError(null);
       
       try {
         console.log('🌐 [AdminBookings] Fetching real data from API...');
@@ -217,12 +162,16 @@ export const AdminBookings: React.FC = () => {
           
           setBookings(mappedBookings);
         } else {
-          console.warn(`⚠️ [AdminBookings] API returned ${response.status}, falling back to mock data`);
-          setBookings(generateSampleBookings());
+          const errorMsg = `API returned ${response.status}: ${response.statusText}`;
+          console.error(`❌ [AdminBookings] ${errorMsg}`);
+          setError(errorMsg);
+          setBookings([]); // Set empty array instead of mock data
         }
       } catch (error) {
-        console.error('❌ [AdminBookings] API request failed, falling back to mock data:', error);
-        setBookings(generateSampleBookings());
+        const errorMsg = error instanceof Error ? error.message : 'Failed to load bookings';
+        console.error('❌ [AdminBookings] API request failed:', error);
+        setError(errorMsg);
+        setBookings([]); // Set empty array instead of mock data
       } finally {
         setLoading(false);
       }
@@ -636,6 +585,25 @@ export const AdminBookings: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-red-900 mb-2">Failed to Load Bookings</h3>
+            <p className="text-red-700 mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors inline-flex items-center gap-2"
+            >
+              <RefreshCcw className="w-4 h-4" />
+              Retry
+            </button>
+          </div>
+        ) : bookings.length === 0 ? (
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-12 text-center border border-white/20 shadow-lg">
+            <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-900 mb-2">No Bookings Found</h3>
+            <p className="text-gray-600">There are no bookings in the system yet.</p>
           </div>
         ) : (
           <>
