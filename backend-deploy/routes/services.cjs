@@ -682,7 +682,7 @@ router.post('/', async (req, res) => {
         ${normalizedServiceTier},
         ${Array.isArray(wedding_styles) ? wedding_styles : null},
         ${Array.isArray(cultural_specialties) ? cultural_specialties : null},
-        ${availability || null},
+        ${availability ? (typeof availability === 'string' ? availability : JSON.stringify(availability)) : null},
         NOW(),
         NOW()
       )
