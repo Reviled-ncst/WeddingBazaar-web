@@ -593,19 +593,17 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // ✅ FIX: Resolve user_id to actual vendor_id from vendors table
-    // Frontend sends user.id (2-2025-XXX), but we need vendors.id (UUID)
+    // ✅ CRITICAL FIX: Services table uses user_id (2-2025-XXX) NOT vendors.id (VEN-XXXXX)
+    // The services.vendor_id column stores user IDs, not vendor table IDs
     const userIdFromFrontend = vendor_id || vendorId;
     const finalTitle = title || name;
 
     console.log('🔑 [Service Creation] User ID from frontend:', userIdFromFrontend);
 
-    // Look up the actual vendor record in vendors table
-    let actualVendorId;
+    // Verify user exists and is a vendor (but use user_id directly for services table)
     try {
-      // First verify user exists and is a vendor
       const userCheck = await sql`
-        SELECT id, user_type FROM users WHERE id = ${userIdFromFrontend} LIMIT 1
+        SELECT id, user_type, role FROM users WHERE id = ${userIdFromFrontend} LIMIT 1
       `;
       
       if (userCheck.length === 0) {
@@ -618,35 +616,25 @@ router.post('/', async (req, res) => {
         });
       }
       
-      if (userCheck[0].user_type !== 'vendor') {
-        console.log(`❌ [Vendor Check] User is not a vendor: ${userIdFromFrontend}, type: ${userCheck[0].user_type}`);
+      // Check both user_type and role for vendor status
+      const isVendor = userCheck[0].user_type === 'vendor' || userCheck[0].role === 'vendor';
+      
+      if (!isVendor) {
+        console.log(`❌ [Vendor Check] User is not a vendor: ${userIdFromFrontend}, type: ${userCheck[0].user_type}, role: ${userCheck[0].role}`);
         return res.status(403).json({
           success: false,
           error: 'Not authorized',
           message: 'Only vendors can create services',
-          user_type: userCheck[0].user_type
+          user_type: userCheck[0].user_type,
+          role: userCheck[0].role
         });
       }
       
       console.log(`✅ [Vendor Check] User is valid vendor: ${userIdFromFrontend}`);
       
-      // Now look up the vendor record to get the actual vendor.id
-      const vendorRecord = await sql`
-        SELECT id FROM vendors WHERE user_id = ${userIdFromFrontend} LIMIT 1
-      `;
-      
-      if (vendorRecord.length === 0) {
-        console.log(`❌ [Vendor Lookup] No vendor record found for user: ${userIdFromFrontend}`);
-        return res.status(400).json({
-          success: false,
-          error: 'Vendor profile not found',
-          message: 'Please complete your vendor profile first',
-          user_id: userIdFromFrontend
-        });
-      }
-      
-      actualVendorId = vendorRecord[0].id;
-      console.log(`✅ [Vendor Lookup] Found vendor record: ${actualVendorId} for user: ${userIdFromFrontend}`);
+      // ✅ Use the user_id directly for services table (no need to look up vendors.id)
+      const actualVendorId = userIdFromFrontend;
+      console.log(`✅ [Service Creation] Using user_id for services.vendor_id: ${actualVendorId}`);
       
     } catch (vendorError) {
       console.error('❌ [Vendor Check] Error checking user/vendor:', vendorError);
@@ -675,9 +663,9 @@ router.post('/', async (req, res) => {
         console.log('⚠️ [Document Check] Documents table not found, skipping verification');
         // Allow service creation without document check (temporary)
       } else {
-        // Get vendor profile to check vendor_type
+        // Get vendor profile to check vendor_type and UUID for documents
         const vendorProfile = await sql`
-          SELECT vp.vendor_type, v.id as vendor_id
+          SELECT vp.vendor_type, vp.id as vendor_profile_uuid, v.id as vendor_id
           FROM vendor_profiles vp
           LEFT JOIN vendors v ON v.user_id = vp.user_id
           WHERE vp.user_id = ${actualVendorId}
@@ -694,17 +682,20 @@ router.post('/', async (req, res) => {
         }
         
         const vendorType = vendorProfile[0].vendor_type || 'business';
-        const vendorTableId = vendorProfile[0].vendor_id;
+        const vendorProfileUUID = vendorProfile[0].vendor_profile_uuid; // vendor_profiles.id (UUID)
+        const vendorTableId = vendorProfile[0].vendor_id; // vendors.id (VEN-XXXXX)
         
         console.log(`📋 [Document Check] Vendor type: ${vendorType}`);
+        console.log(`📋 [Document Check] vendor_profile UUID: ${vendorProfileUUID}`);
+        console.log(`📋 [Document Check] vendor table ID: ${vendorTableId}`);
         
-        // Get approved documents for this vendor (try both table names)
+        // Get approved documents for this vendor (vendor_documents uses vendor_profiles.id UUID)
         let approvedDocs;
         try {
           approvedDocs = await sql`
             SELECT DISTINCT document_type 
             FROM vendor_documents 
-            WHERE vendor_id = ${vendorTableId}
+            WHERE vendor_id = ${vendorProfileUUID}
             AND verification_status = 'approved'
           `;
         } catch (e) {
