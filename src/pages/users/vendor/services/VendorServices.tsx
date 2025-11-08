@@ -39,7 +39,7 @@ import { AddServiceForm } from './components/AddServiceForm';
 import { useVendorProfile } from '../../../../hooks/useVendorData';
 import { cn } from '../../../../utils/cn';
 import { useNotification } from '../../../../shared/hooks/useNotification';
-import { NotificationModal } from '../../../../shared/components/modals';
+import { NotificationModal, ConfirmationModal } from '../../../../shared/components/modals';
 
 // Service interface based on the actual API response
 interface Service {
@@ -166,6 +166,17 @@ export const VendorServices: React.FC = () => {
   
   // FIXED: Track Firebase email verification status directly (same as VendorProfile.tsx)
   const [firebaseEmailVerified, setFirebaseEmailVerified] = useState(false);
+
+  // Delete confirmation modal state
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+    isOpen: boolean;
+    serviceId: string | null;
+    serviceName: string;
+  }>({
+    isOpen: false,
+    serviceId: null,
+    serviceName: ''
+  });
 
   // Get API base URL (moved up before useEffect)
   const apiUrl = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
@@ -532,19 +543,23 @@ export const VendorServices: React.FC = () => {
     setIsCreating(true);
   };
 
-  // Delete service with confirmation
-  const deleteService = async (serviceId: string) => {
-    const confirmed = confirm(
-      '⚠️ Delete Service Confirmation\\n\\n' +
-      'Are you sure you want to delete this service?\\n\\n' +
-      '• If this service has existing bookings, it will be hidden from customers but preserved in our records\\n' +
-      '• If no bookings exist, it will be completely removed\\n\\n' +
-      'Continue with deletion?'
-    );
+  // Open delete confirmation modal
+  const confirmDeleteService = (service: Service) => {
+    setDeleteConfirmModal({
+      isOpen: true,
+      serviceId: service.id,
+      serviceName: service.title || 'this service'
+    });
+  };
+
+  // Delete service after confirmation
+  const deleteService = async () => {
+    const { serviceId } = deleteConfirmModal;
     
-    if (!confirmed) {
-      return;
-    }
+    if (!serviceId) return;
+
+    // Close modal immediately
+    setDeleteConfirmModal({ isOpen: false, serviceId: null, serviceName: '' });
 
     try {
       const response = await fetch(`${apiUrl}/api/services/${serviceId}`, {
@@ -556,6 +571,17 @@ export const VendorServices: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        
+        // Handle foreign key constraint error gracefully
+        if (errorData.message && errorData.message.includes('violates foreign key constraint')) {
+          showError(
+            'This service cannot be deleted because it has existing bookings or dependencies. ' +
+            'You can mark it as inactive instead to hide it from customers.',
+            '⚠️ Cannot Delete Service'
+          );
+          return;
+        }
+        
         throw new Error(errorData.message || 'Failed to delete service');
       }
 
@@ -574,7 +600,7 @@ export const VendorServices: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete service';
       console.error('❌ Error deleting service:', errorMessage);
-      setError(errorMessage);
+      showError(errorMessage, '❌ Delete Failed');
     }
   };
 
@@ -1946,62 +1972,7 @@ export const VendorServices: React.FC = () => {
                         </button>
                         
                         <button
-                          onClick={() => {
-                            // Enhanced delete confirmation with better UX
-                            const confirmDelete = () => {
-                              const modalHtml = `
-                                <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                                  <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6">
-                                    <div class="text-center">
-                                      <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                        </svg>
-                                      </div>
-                                      <h3 class="text-xl font-bold text-gray-900 mb-2">Delete Service?</h3>
-                                      <p class="text-gray-600 mb-6">
-                                        Are you sure you want to delete "<strong>${service.title || service.name}</strong>"? This action cannot be undone.
-                                      </p>
-                                      <div class="flex gap-3 justify-center">
-                                        <button 
-                                          onclick="this.closest('.fixed').remove()" 
-                                          class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium"
-                                        >
-                                          Cancel
-                                        </button>
-                                        <button 
-                                          onclick="
-                                            this.innerHTML = 'Deleting...';
-                                            this.disabled = true;
-                                            // Call the actual delete function
-                                            window.deleteServiceConfirmed('${service.id}');
-                                            this.closest('.fixed').remove();
-                                          " 
-                                          class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-medium"
-                                        >
-                                          Delete Service
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              `;
-                              
-                              const modalElement = document.createElement('div');
-                              modalElement.innerHTML = modalHtml;
-                              const modalEl = modalElement.firstElementChild;
-                              if (modalEl) {
-                                document.body.appendChild(modalEl);
-                              }
-                            };
-                            
-                            // Set up the global delete function
-                            (window as any).deleteServiceConfirmed = (serviceId: string) => {
-                              deleteService(serviceId);
-                            };
-                            
-                            confirmDelete();
-                          }}
+                          onClick={() => confirmDeleteService(service)}
                           className="flex-1 flex items-center justify-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl transition-all duration-200 text-xs font-semibold shadow-sm hover:shadow-md"
                           title="Delete service (with confirmation)"
                         >
@@ -2186,6 +2157,20 @@ export const VendorServices: React.FC = () => {
         confirmText={notification.confirmText}
         showCancel={notification.showCancel}
         onConfirm={notification.onConfirm}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteConfirmModal.isOpen}
+        onClose={() => setDeleteConfirmModal({ isOpen: false, serviceId: null, serviceName: '' })}
+        title="🗑️ Delete Service"
+        message={`Are you sure you want to delete "${deleteConfirmModal.serviceName}"?\n\n⚠️ Note: If this service has existing bookings, it cannot be deleted due to database constraints. You can mark it as inactive instead to hide it from customers.`}
+        type="warning"
+        icon="alert"
+        confirmText="Delete Service"
+        onConfirm={deleteService}
+        showCancel={true}
+        cancelText="Cancel"
       />
     </div>
   );

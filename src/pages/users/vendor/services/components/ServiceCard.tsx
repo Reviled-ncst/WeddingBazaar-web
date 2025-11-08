@@ -148,65 +148,72 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         </div>
 
         {/* Quick Actions Overlay */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: showActions ? 1 : 0 }}
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center gap-2"
-        >
-          <button
-            onClick={() => onEdit(service)}
-            className="bg-white text-gray-800 p-3 rounded-full hover:bg-pink-50 hover:text-pink-600 transition-all shadow-lg"
-            title="Edit Service"
-          >
-            <Edit className="w-5 h-5" />
-          </button>
-          
-          <button
-            onClick={handleToggleStatus}
-            disabled={isToggling}
-            className={cn(
-              'bg-white p-3 rounded-full transition-all shadow-lg',
-              isToggling ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-50',
-              isActive ? 'text-gray-800 hover:text-green-600' : 'text-gray-800 hover:text-blue-600'
-            )}
-            title={isActive ? 'Deactivate Service' : 'Activate Service'}
-          >
-            {isActive ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-          </button>
+        <AnimatePresence>
+          {showActions && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center gap-3 z-10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => onEdit(service)}
+                className="bg-white text-gray-800 p-3 rounded-full hover:bg-pink-50 hover:text-pink-600 hover:scale-110 transition-all shadow-lg"
+                title="Edit Service"
+              >
+                <Edit className="w-5 h-5" />
+              </button>
+              
+              <button
+                onClick={handleToggleStatus}
+                disabled={isToggling}
+                className={cn(
+                  'bg-white p-3 rounded-full transition-all shadow-lg hover:scale-110',
+                  isToggling ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-50',
+                  isActive ? 'text-gray-800 hover:text-green-600' : 'text-gray-800 hover:text-blue-600'
+                )}
+                title={isActive ? 'Deactivate Service' : 'Activate Service'}
+              >
+                {isActive ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
 
-          <button
-            onClick={handleShare}
-            className="bg-white text-gray-800 p-3 rounded-full hover:bg-blue-50 hover:text-blue-600 transition-all shadow-lg"
-            title="Share Service"
-          >
-            <Share2 className="w-5 h-5" />
-          </button>
-          
-          <button
-            onClick={() => onDelete(service.id)}
-            className="bg-white text-gray-800 p-3 rounded-full hover:bg-red-50 hover:text-red-600 transition-all shadow-lg"
-            title="Delete Service"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
-        </motion.div>
+              <button
+                onClick={handleShare}
+                className="bg-white text-gray-800 p-3 rounded-full hover:bg-blue-50 hover:text-blue-600 hover:scale-110 transition-all shadow-lg"
+                title="Share Service"
+              >
+                <Share2 className="w-5 h-5" />
+              </button>
+              
+              <button
+                onClick={() => onDelete(service.id)}
+                className="bg-white text-gray-800 p-3 rounded-full hover:bg-red-50 hover:text-red-600 hover:scale-110 transition-all shadow-lg"
+                title="Delete Service"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Service Info */}
-      <div className="p-4">
+      <div className="p-4 relative z-10">
         {/* Title and Category */}
         <div className="mb-3">
-          <h3 className="text-lg font-bold text-gray-800 mb-1 line-clamp-1">
+          <h3 className="text-lg font-bold text-gray-800 mb-1 line-clamp-1 break-words">
             {service.name || service.title}
           </h3>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span className="px-2 py-1 bg-pink-100 text-pink-600 rounded-lg font-medium">
+          <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
+            <span className="px-2 py-1 bg-pink-100 text-pink-600 rounded-lg font-medium text-xs whitespace-nowrap">
               {service.category}
             </span>
             {service.location && (
-              <div className="flex items-center gap-1">
-                <MapPin className="w-3 h-3" />
-                <span className="text-xs">{service.location}</span>
+              <div className="flex items-center gap-1 max-w-[200px]">
+                <MapPin className="w-3 h-3 flex-shrink-0" />
+                <span className="text-xs truncate">{service.location}</span>
               </div>
             )}
           </div>
@@ -214,7 +221,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 
         {/* Description */}
         {service.description && (
-          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+          <p className="text-sm text-gray-600 mb-3 line-clamp-2 break-words">
             {service.description}
           </p>
         )}

@@ -199,7 +199,7 @@ export const DocumentApprovalPage: React.FC = () => {
         // In production, this would call the real API
         const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://weddingbazaar-web.onrender.com';
         
-        // Try to fetch from real API first, fall back to mock data
+        // Fetch from real API only
         try {
           console.log('🔍 Fetching documents from:', `${API_BASE_URL}/api/admin/documents/pending`);
           const response = await fetch(`${API_BASE_URL}/api/admin/documents/pending`);
@@ -208,91 +208,15 @@ export const DocumentApprovalPage: React.FC = () => {
           if (response.ok) {
             const data = await response.json();
             console.log('📊 API Response data:', data);
-            
-            if (data.documents && data.documents.length > 0) {
-              console.log(`✅ Using real data: ${data.documents.length} documents`);
-              setDocuments(data.documents);
-            } else {
-              console.log('⚠️ No documents in API response, using mock data');
-              throw new Error('No documents in response');
-            }
+            setDocuments(data.documents || []);
+            console.log(`✅ Loaded ${data.documents?.length || 0} documents from API`);
           } else {
-            console.log('❌ API request failed with status:', response.status);
-            throw new Error('API not available');
+            console.error('❌ API request failed with status:', response.status);
+            setDocuments([]);
           }
         } catch (apiError) {
-          console.log('🎭 Using mock data - API error:', apiError);
-          // Use mock data
-          const mockDocuments: VendorDocument[] = [
-            {
-              id: '1',
-              vendorId: 'vendor-1',
-              vendorName: 'John Smith',
-              businessName: 'Perfect Weddings Co.',
-              documentType: 'Business License',
-              documentUrl: 'https://example.com/doc1.pdf',
-              fileName: 'business-license-2024.pdf',
-              uploadedAt: '2024-10-15T10:30:00Z',
-              verificationStatus: 'pending',
-              fileSize: 2048576,
-              mimeType: 'application/pdf'
-            },
-            {
-              id: '2',
-              vendorId: 'vendor-2',
-              vendorName: 'Sarah Johnson',
-              businessName: 'Elegant Flowers Studio',
-              documentType: 'Insurance Certificate',
-              documentUrl: 'https://example.com/doc2.pdf',
-              fileName: 'insurance-cert-2024.pdf',
-              uploadedAt: '2024-10-14T15:45:00Z',
-              verificationStatus: 'approved',
-              verifiedAt: '2024-10-15T09:20:00Z',
-              fileSize: 1536000,
-              mimeType: 'application/pdf'
-            },
-            {
-              id: '3',
-              vendorId: 'vendor-3',
-              vendorName: 'Mike Wilson',
-              businessName: 'Soundwave Entertainment',
-              documentType: 'Tax Registration',
-              documentUrl: 'https://example.com/doc3.pdf',
-              fileName: 'tax-registration.pdf',
-              uploadedAt: '2024-10-13T12:15:00Z',
-              verificationStatus: 'rejected',
-              rejectionReason: 'Document is expired. Please upload a current tax registration certificate.',
-              fileSize: 945000,
-              mimeType: 'application/pdf'
-            },
-            {
-              id: '4',
-              vendorId: 'vendor-4',
-              vendorName: 'Lisa Chen',
-              businessName: 'Memories Photography',
-              documentType: 'Professional License',
-              documentUrl: 'https://example.com/doc4.pdf',
-              fileName: 'photography-license.pdf',
-              uploadedAt: '2024-10-16T08:15:00Z',
-              verificationStatus: 'pending',
-              fileSize: 1234567,
-              mimeType: 'application/pdf'
-            },
-            {
-              id: '5',
-              vendorId: 'vendor-5',
-              vendorName: 'David Brown',
-              businessName: 'Gourmet Catering Co.',
-              documentType: 'Food Safety Certificate',
-              documentUrl: 'https://example.com/doc5.pdf',
-              fileName: 'food-safety-cert.pdf',
-              uploadedAt: '2024-10-16T11:30:00Z',
-              verificationStatus: 'pending',
-              fileSize: 987654,
-              mimeType: 'application/pdf'
-            }
-          ];
-          setDocuments(mockDocuments);
+          console.error('❌ Error fetching documents:', apiError);
+          setDocuments([]);
         }
       } catch (error) {
         console.error('Error fetching documents:', error);

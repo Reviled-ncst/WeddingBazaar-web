@@ -405,4 +405,506 @@ router.post('/documents/:documentId/reject', async (req, res) => {
   }
 });
 
+/**
+ * Admin endpoint to get comprehensive dashboard statistics
+ */
+router.get('/dashboard/stats', async (req, res) => {
+  try {
+    console.log('📊 [Admin] Getting comprehensive dashboard statistics');
+    
+    // Get all counts and statistics in parallel
+    const [
+      usersCount,
+      vendorsCount,
+      bookingsCount,
+      completedBookingsRevenue,
+      activeUsersCount,
+      pendingVerifications,
+      recentBookings,
+      bookingsByStatus
+    ] = await Promise.all([
+      // Total users (all users in system)
+      sql`SELECT COUNT(*) as count FROM users`,
+      
+      // Total vendors (count of vendor profiles)
+      sql`SELECT COUNT(*) as count FROM vendor_profiles WHERE user_id IS NOT NULL`,
+      
+      // Total bookings
+      sql`SELECT COUNT(*) as count FROM bookings`,
+      
+      // Total revenue from completed bookings
+      sql`
+        SELECT 
+          COALESCE(SUM(amount), 0) as total_revenue,
+          COUNT(*) as completed_count
+        FROM bookings 
+        WHERE status IN ('completed', 'fully_paid', 'paid_in_full')
+      `,
+      
+      // Active users (logged in within last 24 hours)
+      sql`
+        SELECT COUNT(*) as count 
+        FROM users 
+        WHERE last_login >= NOW() - INTERVAL '24 hours'
+      `,
+      
+      // Pending vendor verifications
+      sql`
+        SELECT COUNT(*) as count 
+        FROM vendor_profiles 
+        WHERE verification_status = 'pending'
+      `,
+      
+      // Recent bookings (last 5)
+      sql`
+        SELECT 
+          b.id,
+          b.status,
+          b.amount,
+          b.created_at,
+          u.first_name || ' ' || u.last_name as customer_name,
+          u.email as customer_email,
+          vp.business_name as vendor_name
+        FROM bookings b
+        LEFT JOIN users u ON b.user_id = u.id
+        LEFT JOIN vendor_profiles vp ON b.vendor_id::text = vp.user_id::text
+        ORDER BY b.created_at DESC
+        LIMIT 5
+      `,
+      
+      // Bookings by status
+      sql`
+        SELECT 
+          status,
+          COUNT(*) as count
+        FROM bookings
+        GROUP BY status
+      `
+    ]);
+    
+    // Debug logging
+    console.log('🔍 [Admin] Raw query results:');
+    console.log('  Users count result:', usersCount);
+    console.log('  Vendors count result:', vendorsCount);
+    console.log('  Bookings count result:', bookingsCount);
+    console.log('  Active users result:', activeUsersCount);
+    
+    const stats = {
+      totalUsers: parseInt(usersCount[0]?.count || 0),
+      totalVendors: parseInt(vendorsCount[0]?.count || 0),
+      totalBookings: parseInt(bookingsCount[0]?.count || 0),
+      totalRevenue: parseFloat(completedBookingsRevenue[0]?.total_revenue || 0),
+      completedBookings: parseInt(completedBookingsRevenue[0]?.completed_count || 0),
+      activeUsers: parseInt(activeUsersCount[0]?.count || 0),
+      pendingVerifications: parseInt(pendingVerifications[0]?.count || 0),
+      recentBookings: recentBookings.map(booking => ({
+        id: booking.id,
+        status: booking.status,
+        amount: parseFloat(booking.amount || 0),
+        createdAt: booking.created_at,
+        customerName: booking.customer_name || 'Unknown',
+        customerEmail: booking.customer_email || 'Unknown',
+        vendorName: booking.vendor_name || 'Unknown'
+      })),
+      bookingsByStatus: bookingsByStatus.reduce((acc, item) => {
+        acc[item.status] = parseInt(item.count);
+        return acc;
+      }, {}),
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('📈 [Admin] Dashboard stats:', stats);
+    
+    res.json({
+      success: true,
+      stats: stats
+    });
+    
+  } catch (error) {
+    console.error('❌ [Admin] Dashboard stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * Admin endpoint to get recent activities
+ */
+router.get('/dashboard/activities', async (req, res) => {
+  try {
+    console.log('📊 [Admin] Getting recent activities');
+    
+    const limit = parseInt(req.query.limit) || 10;
+    
+    // Get recent user registrations
+    const recentUsers = await sql`
+      SELECT 
+        id,
+        email,
+        role,
+        created_at,
+        'user_signup' as activity_type
+      FROM users
+      ORDER BY created_at DESC
+      LIMIT ${Math.floor(limit / 2)}
+    `;
+    
+    // Get recent bookings
+    const recentBookings = await sql`
+      SELECT 
+        b.id,
+        b.booking_reference,
+        b.status,
+        b.amount,
+        b.created_at,
+        'booking_created' as activity_type,
+        u.email as user_email
+      FROM bookings b
+      LEFT JOIN users u ON b.user_id = u.id
+      ORDER BY b.created_at DESC
+      LIMIT ${Math.floor(limit / 2)}
+    `;
+    
+    // Combine and sort all activities
+    const activities = [
+      ...recentUsers.map(user => ({
+        id: user.id,
+        type: 'user_signup',
+        description: `New user registration: ${user.email}`,
+        timestamp: user.created_at,
+        status: 'success'
+      })),
+      ...recentBookings.map(booking => ({
+        id: booking.id,
+        type: 'booking_created',
+        description: `New booking: ${booking.booking_reference || booking.id}`,
+        timestamp: booking.created_at,
+        status: 'success',
+        metadata: {
+          amount: booking.amount,
+          status: booking.status,
+          userEmail: booking.user_email
+        }
+      }))
+    ]
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    .slice(0, limit)
+    .map(activity => ({
+      ...activity,
+      timestamp: formatTimestamp(activity.timestamp)
+    }));
+    
+    console.log(`📈 [Admin] Retrieved ${activities.length} recent activities`);
+    
+    res.json({
+      success: true,
+      activities: activities,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [Admin] Activities error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * Admin endpoint to get all bookings
+ * GET /api/admin/bookings
+ */
+router.get('/bookings', async (req, res) => {
+  try {
+    console.log('📋 [Admin] Getting all bookings');
+    
+    const { status, limit, offset } = req.query;
+    
+    // Build query with optional filters
+    let query = sql`
+      SELECT 
+        b.id,
+        b.booking_reference,
+        b.couple_id,
+        b.vendor_id,
+        b.service_id,
+        b.status,
+        b.total_amount,
+        b.deposit_amount,
+        b.remaining_balance,
+        b.event_date,
+        b.event_time,
+        b.event_location,
+        b.guest_count,
+        b.budget_range,
+        b.process_stage,
+        b.progress_percentage,
+        b.next_action,
+        b.next_action_by,
+        b.special_requests,
+        b.notes,
+        b.preferred_contact_method,
+        b.created_at,
+        b.updated_at,
+        u.full_name as couple_name,
+        u.email as couple_email,
+        u.phone as couple_phone,
+        v.business_name as vendor_name,
+        v.email as vendor_email,
+        v.phone as vendor_phone,
+        s.name as service_name,
+        s.category as service_type
+      FROM bookings b
+      LEFT JOIN users u ON b.couple_id = u.id
+      LEFT JOIN vendors v ON b.vendor_id = v.id::text
+      LEFT JOIN services s ON b.service_id = s.id::text
+      ORDER BY b.created_at DESC
+    `;
+    
+    // Apply filters if provided
+    if (status) {
+      query = sql`
+        SELECT 
+          b.id,
+          b.booking_reference,
+          b.couple_id,
+          b.vendor_id,
+          b.service_id,
+          b.status,
+          b.total_amount,
+          b.deposit_amount,
+          b.remaining_balance,
+          b.event_date,
+          b.event_time,
+          b.event_location,
+          b.guest_count,
+          b.budget_range,
+          b.process_stage,
+          b.progress_percentage,
+          b.next_action,
+          b.next_action_by,
+          b.special_requests,
+          b.notes,
+          b.preferred_contact_method,
+          b.created_at,
+          b.updated_at,
+          u.full_name as couple_name,
+          u.email as couple_email,
+          u.phone as couple_phone,
+          v.business_name as vendor_name,
+          v.email as vendor_email,
+          v.phone as vendor_phone,
+          s.name as service_name,
+          s.category as service_type
+        FROM bookings b
+        LEFT JOIN users u ON b.couple_id = u.id
+        LEFT JOIN vendors v ON b.vendor_id = v.id::text
+        LEFT JOIN services s ON b.service_id = s.id::text
+        WHERE b.status = ${status}
+        ORDER BY b.created_at DESC
+      `;
+    }
+    
+    // Apply limit and offset if provided
+    if (limit) {
+      const limitNum = parseInt(limit);
+      const offsetNum = parseInt(offset || 0);
+      query = sql`${query} LIMIT ${limitNum} OFFSET ${offsetNum}`;
+    }
+    
+    const bookings = await query;
+    
+    console.log(`✅ [Admin] Retrieved ${bookings.length} bookings`);
+    
+    res.json({
+      success: true,
+      bookings: bookings,
+      count: bookings.length,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [Admin] Bookings retrieval error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * Admin endpoint to get all vendor documents
+ * GET /api/admin/documents
+ */
+router.get('/documents', async (req, res) => {
+  try {
+    console.log('📄 [Admin] Getting vendor documents');
+    
+    const { status } = req.query;
+    console.log('📄 [Admin] Status filter:', status);
+    
+    // NOTE: vendor_documents.vendor_id are UUIDs that don't match vendors.id (which are strings like "VEN-00009")
+    // So we'll query documents only and show placeholder vendor names until the vendor_id references are fixed
+    
+    // FIX: Execute sql query immediately instead of assigning to variable
+    let documents;
+    if (status && status !== 'all') {
+      console.log('📄 [Admin] Querying with status filter:', status);
+      documents = await sql`
+        SELECT 
+          id,
+          vendor_id,
+          document_type,
+          document_url,
+          file_name,
+          file_size,
+          mime_type,
+          verification_status,
+          verified_at,
+          verified_by,
+          rejection_reason,
+          uploaded_at,
+          created_at,
+          updated_at
+        FROM vendor_documents
+        WHERE verification_status = ${status}
+        ORDER BY uploaded_at DESC
+      `;
+    } else {
+      console.log('📄 [Admin] Querying all documents (no filter)');
+      documents = await sql`
+        SELECT 
+          id,
+          vendor_id,
+          document_type,
+          document_url,
+          file_name,
+          file_size,
+          mime_type,
+          verification_status,
+          verified_at,
+          verified_by,
+          rejection_reason,
+          uploaded_at,
+          created_at,
+          updated_at
+        FROM vendor_documents
+        ORDER BY uploaded_at DESC
+      `;
+    }
+    
+    console.log(`✅ [Admin] Retrieved ${documents.length} documents`);
+    console.log('⚠️ [Admin] Note: vendor_id references are invalid UUIDs, not matching vendors.id');
+    
+    // Return documents with placeholder vendor names (vendor_id mismatch issue)
+    res.json({
+      success: true,
+      documents: documents.map(doc => ({
+        id: doc.id,
+        vendorId: doc.vendor_id,
+        vendorName: `Vendor (${doc.vendor_id.substring(0, 8)}...)`,
+        businessName: 'Business (ID mismatch)',
+        businessType: 'Unknown',
+        documentType: doc.document_type,
+        documentUrl: doc.document_url,
+        fileName: doc.file_name,
+        fileSize: parseInt(doc.file_size) || 0,
+        mimeType: doc.mime_type,
+        verificationStatus: doc.verification_status,
+        verifiedAt: doc.verified_at,
+        verifiedBy: doc.verified_by,
+        rejectionReason: doc.rejection_reason,
+        uploadedAt: doc.uploaded_at
+      })),
+      count: documents.length,
+      timestamp: new Date().toISOString(),
+      note: 'vendor_id references are UUIDs that do not match current vendors table IDs'
+    });
+    
+  } catch (error) {
+    console.error('❌ [Admin] Documents retrieval error:', error);
+    console.error('❌ [Admin] Error stack:', error.stack);
+    console.error('❌ [Admin] Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail
+    });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      code: error.code,
+      detail: error.detail,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * Admin endpoint to get document statistics
+ * GET /api/admin/documents/stats
+ */
+router.get('/documents/stats', async (req, res) => {
+  try {
+    console.log('📊 [Admin] Getting document statistics');
+    
+    const [
+      totalCount,
+      pendingCount,
+      approvedCount,
+      rejectedCount
+    ] = await Promise.all([
+      sql`SELECT COUNT(*) as count FROM vendor_documents`,
+      sql`SELECT COUNT(*) as count FROM vendor_documents WHERE verification_status = 'pending'`,
+      sql`SELECT COUNT(*) as count FROM vendor_documents WHERE verification_status = 'approved'`,
+      sql`SELECT COUNT(*) as count FROM vendor_documents WHERE verification_status = 'rejected'`
+    ]);
+    
+    const stats = {
+      total: parseInt(totalCount[0]?.count || 0),
+      pending: parseInt(pendingCount[0]?.count || 0),
+      approved: parseInt(approvedCount[0]?.count || 0),
+      rejected: parseInt(rejectedCount[0]?.count || 0),
+      avgReviewTime: 0 // TODO: Calculate from actual data
+    };
+    
+    console.log('📈 [Admin] Document stats:', stats);
+    
+    res.json({
+      success: true,
+      stats: stats,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [Admin] Document stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Helper function to format timestamps
+function formatTimestamp(timestamp) {
+  const now = new Date();
+  const then = new Date(timestamp);
+  const diffMs = now - then;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  return then.toLocaleDateString();
+}
+
 module.exports = router;
