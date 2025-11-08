@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Eye, EyeOff, Mail, Lock, User, Heart, Phone, Building, CheckCircle, 
-  MapPin, Zap, Tag, PartyPopper, AlertCircle, Sparkles, Crown, Globe
+  Eye, EyeOff, Mail, Lock, Heart, Phone, Building, CheckCircle, 
+  MapPin, Zap, Tag, AlertCircle, PartyPopper
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from './Modal';
@@ -28,7 +28,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   // Core state
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [userType, setUserType] = useState<'couple' | 'vendor' | 'coordinator'>('couple');
+  const [userType, setUserType] = useState<'couple' | 'vendor'>('couple');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
@@ -87,14 +87,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     // Vendor Business Info (only if vendor)
     business_name: '',
     business_type: '',
-    vendor_type: 'business', // 'business' or 'freelancer' (coordinators are always 'business')
+    vendor_type: 'business', // 'business' or 'freelancer'
     location: '',
-    
-    // Coordinator-specific fields
-    years_experience: '',
-    team_size: '',
-    specialties: [] as string[],
-    service_areas: [] as string[],
     
     // Preferences
     agreeToTerms: false,
@@ -119,45 +113,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   ]);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
-  // Coordinator-specific categories
-  const coordinatorCategories = [
-    { value: 'Full-Service Wedding Planner', label: 'Full-Service Wedding Planner' },
-    { value: 'Day-of Coordinator', label: 'Day-of Coordinator' },
-    { value: 'Partial Planning Coordinator', label: 'Partial Planning Coordinator' },
-    { value: 'Destination Wedding Coordinator', label: 'Destination Wedding Coordinator' },
-    { value: 'Luxury Wedding Planner', label: 'Luxury Wedding Planner' },
-    { value: 'Budget Wedding Coordinator', label: 'Budget Wedding Coordinator' },
-    { value: 'Corporate Event Coordinator', label: 'Corporate Event Coordinator' },
-    { value: 'Venue Coordinator', label: 'Venue Coordinator' },
-    { value: 'Event Design & Planning', label: 'Event Design & Planning' },
-    { value: 'Wedding Consultant', label: 'Wedding Consultant' },
-    { value: 'Multi-Cultural Wedding Specialist', label: 'Multi-Cultural Wedding Specialist' },
-    { value: 'Other', label: 'Other Coordination Services' }
-  ];
 
-  // Coordinator specialties
-  const coordinatorSpecialties = [
-    'Cultural Weddings',
-    'Destination Weddings',
-    'Garden Weddings',
-    'Beach Weddings',
-    'Church Weddings',
-    'Intimate Weddings',
-    'Grand Celebrations',
-    'Theme Weddings',
-    'Eco-Friendly Events',
-    'Luxury Events'
-  ];
-
-  // Service areas
-  const serviceAreas = [
-    'Metro Manila',
-    'Luzon',
-    'Visayas',
-    'Mindanao',
-    'International',
-    'Nationwide'
-  ];
 
   // Reset form when modal opens (but preserve email verification state if it exists)
   useEffect(() => {
@@ -175,10 +131,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
           business_type: '',
           vendor_type: 'business',
           location: '',
-          years_experience: '',
-          team_size: '',
-          specialties: [],
-          service_areas: [],
           agreeToTerms: false,
           receiveUpdates: false,
         });
@@ -259,18 +211,10 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     else if (formData.password.length < 6) errors.password = 'Password must be at least 6 characters';
     if (formData.password !== formData.confirmPassword) errors.confirmPassword = 'Passwords do not match';
     
-    if (userType === 'vendor' || userType === 'coordinator') {
+    if (userType === 'vendor') {
       if (!formData.business_name.trim()) errors.business_name = 'Business name is required';
       if (!formData.business_type) errors.business_type = 'Business category is required';
       if (!formData.location.trim()) errors.location = 'Business location is required';
-    }
-    
-    // Coordinator-specific required fields
-    if (userType === 'coordinator') {
-      if (!formData.years_experience) errors.years_experience = 'Years of experience is required';
-      if (!formData.team_size) errors.team_size = 'Team size is required';
-      if (formData.specialties.length === 0) errors.specialties = 'At least one specialty is required';
-      if (formData.service_areas.length === 0) errors.service_areas = 'At least one service area is required';
     }
     
     if (!formData.agreeToTerms) errors.agreeToTerms = 'You must agree to the terms';
@@ -297,25 +241,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     }
   };
 
-  // Helper function to toggle multi-select items
-  const toggleMultiSelect = (field: 'specialties' | 'service_areas', value: string) => {
-    setFormData(prev => {
-      const current = prev[field];
-      const updated = current.includes(value)
-        ? current.filter(item => item !== value)
-        : [...current, value];
-      return { ...prev, [field]: updated };
-    });
-    
-    // Clear validation error for this field
-    if (validationErrors[field]) {
-      setValidationErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
+
 
   // Handle form submission - handles both Firebase and backend registration
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -358,19 +284,11 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         phone: formData.phone,
         password: formData.password,
         role: userType,
-        ...((userType === 'vendor' || userType === 'coordinator') && {
+        ...(userType === 'vendor' && {
           business_name: formData.business_name,
           business_type: formData.business_type,
           location: formData.location,
-          // 🎯 FIX: Include vendor_type (coordinators are always 'business')
-          vendor_type: userType === 'coordinator' ? 'business' : formData.vendor_type,
-        }),
-        // 🎯 FIX: Include coordinator-specific fields
-        ...(userType === 'coordinator' && {
-          years_experience: formData.years_experience,
-          team_size: formData.team_size,
-          specialties: formData.specialties,
-          service_areas: formData.service_areas,
+          vendor_type: formData.vendor_type as 'business' | 'freelancer',
         }),
         receiveUpdates: formData.receiveUpdates,
       });
@@ -487,36 +405,11 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     setError(null);
 
     try {
-      // 🎯 FIX: Pass coordinator-specific fields to registerWithGoogle
-      const additionalData = (userType === 'vendor' || userType === 'coordinator') ? {
+      const additionalData = userType === 'vendor' ? {
         businessName: formData.business_name,
         businessType: formData.business_type,
         location: formData.location,
-        // Coordinator-specific fields
-        ...(userType === 'coordinator' && {
-          yearsExperience: formData.years_experience ? parseInt(formData.years_experience) : undefined,
-          teamSize: formData.team_size ? parseInt(formData.team_size) : undefined,
-          specialties: formData.specialties,
-          serviceAreas: formData.service_areas,
-        })
       } : undefined;
-
-      // 🎯 DEBUG: Log coordinator data before sending
-      if (userType === 'coordinator') {
-        console.log('🎉 [RegisterModal] Sending coordinator data to registerWithGoogle:', {
-          userType,
-          additionalData,
-          formData: {
-            business_name: formData.business_name,
-            business_type: formData.business_type,
-            location: formData.location,
-            years_experience: formData.years_experience,
-            team_size: formData.team_size,
-            specialties: formData.specialties,
-            service_areas: formData.service_areas,
-          }
-        });
-      }
 
       await registerWithGoogle(userType, additionalData);
       setIsSuccess(true);
@@ -526,8 +419,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         onClose();
         if (userType === 'couple') {
           navigate('/individual');
-        } else if (userType === 'coordinator') {
-          navigate('/coordinator');
         } else {
           navigate('/vendor');
         }
@@ -832,7 +723,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
               {/* Minimalist User Type Selection */}
               <div className="space-y-3">
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Account Type</label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setUserType('couple')}
@@ -885,31 +776,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     </div>
                   </button>
                   
-                  <button
-                    type="button"
-                    onClick={() => setUserType('coordinator')}
-                    className={cn(
-                      "group relative p-5 rounded-xl border transition-all duration-300",
-                      userType === 'coordinator'
-                        ? "border-amber-500 bg-amber-50 shadow-sm"
-                        : "border-gray-200 bg-white hover:border-amber-300 hover:bg-amber-50/50"
-                    )}
-                  >
-                    <div className="flex flex-col items-center space-y-2">
-                      <div className={cn(
-                        "w-10 h-10 rounded-lg flex items-center justify-center transition-all",
-                        userType === 'coordinator' 
-                          ? "bg-amber-500 text-white" 
-                          : "bg-gray-100 text-gray-600 group-hover:bg-amber-100 group-hover:text-amber-600"
-                      )}>
-                        <PartyPopper className="h-5 w-5" />
-                      </div>
-                      <div className="text-center">
-                        <div className="font-medium text-sm">Coordinator</div>
-                        <div className="text-xs text-gray-500 mt-0.5">Manage weddings</div>
-                      </div>
-                    </div>
-                  </button>
+
                 </div>
               </div>
 
@@ -1094,7 +961,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
               </div>
 
               {/* Enhanced Vendor-specific fields */}
-              {(userType === 'vendor' || userType === 'coordinator') && (
+              {userType === 'vendor' && (
                 <div className={cn(
                   "p-6 rounded-2xl border shadow-lg animate-in slide-in-from-bottom duration-500",
                   userType === 'vendor' 
@@ -1109,15 +976,12 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                       "h-6 w-6 mr-3",
                       userType === 'vendor' ? "text-purple-500" : "text-amber-500"
                     )} />
-                    {userType === 'vendor' ? 'Business Information' : 'Coordination Business Information'}
+                    Business Information
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3">
                       <label className="block text-sm font-bold text-gray-700 flex items-center">
-                        <span className={cn(
-                          "w-2 h-2 rounded-full mr-2",
-                          userType === 'coordinator' ? "bg-amber-500" : "bg-purple-500"
-                        )}></span>
+                        <span className="w-2 h-2 rounded-full mr-2 bg-purple-500"></span>
                         Business Name *
                       </label>
                       <input
@@ -1129,11 +993,9 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                           "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
                           validationErrors.business_name
                             ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
-                            : userType === 'coordinator'
-                            ? "border-gray-200 focus:border-amber-400 focus:shadow-2xl focus:shadow-amber-500/20 focus:ring-4 focus:ring-amber-100"
                             : "border-gray-200 focus:border-purple-400 focus:shadow-2xl focus:shadow-purple-500/20 focus:ring-4 focus:ring-purple-100"
                         )}
-                        placeholder={userType === 'coordinator' ? "Dream Day Wedding Coordinators" : "Your Amazing Business Name"}
+                        placeholder="Your Amazing Business Name"
                       />
                       {validationErrors.business_name && (
                         <p className="text-red-500 text-sm mt-2 flex items-center">
@@ -1145,10 +1007,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
 
                     <div className="space-y-3">
                       <label className="block text-sm font-bold text-gray-700 flex items-center">
-                        <Tag className={cn(
-                          "w-4 h-4 mr-2",
-                          userType === 'coordinator' ? "text-amber-500" : "text-purple-500"
-                        )} />
+                        <Tag className="w-4 h-4 mr-2 text-purple-500" />
                         Business Category *
                       </label>
                       <select
@@ -1162,15 +1021,13 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                           loadingCategories && "opacity-50 cursor-wait",
                           validationErrors.business_type
                             ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
-                            : userType === 'coordinator'
-                            ? "border-gray-200 focus:border-amber-400 focus:shadow-2xl focus:shadow-amber-500/20 focus:ring-4 focus:ring-amber-100"
                             : "border-gray-200 focus:border-purple-400 focus:shadow-2xl focus:shadow-purple-500/20 focus:ring-4 focus:ring-purple-100"
                         )}
                       >
                         <option value="">
                           {loadingCategories ? 'Loading categories...' : 'Choose your specialty...'}
                         </option>
-                        {(userType === 'coordinator' ? coordinatorCategories : vendorCategories).map((category) => (
+                        {vendorCategories.map((category) => (
                           <option key={category.value} value={category.value}>
                             {category.label}
                           </option>
@@ -1186,10 +1043,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
 
                     <div className="space-y-3 md:col-span-2">
                       <label className="block text-sm font-bold text-gray-700 flex items-center">
-                        <MapPin className={cn(
-                          "w-4 h-4 mr-2",
-                          userType === 'coordinator' ? "text-amber-500" : "text-purple-500"
-                        )} />
+                        <MapPin className="w-4 h-4 mr-2 text-purple-500" />
                         Business Location *
                       </label>
                       <div className="relative">
@@ -1223,146 +1077,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                       )}
                     </div>
 
-                    {/* Coordinator-specific required fields */}
-                    {userType === 'coordinator' && (
-                      <>
-                        {/* Years of Experience */}
-                        <div className="space-y-3">
-                          <label className="block text-sm font-bold text-gray-700 flex items-center">
-                            <Sparkles className="w-4 h-4 mr-2 text-amber-500" />
-                            Years of Experience *
-                          </label>
-                          <select
-                            value={formData.years_experience}
-                            onChange={(e) => updateFormData('years_experience', e.target.value)}
-                            title="Select years of experience"
-                            className={cn(
-                              "w-full px-4 py-4 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg cursor-pointer",
-                              "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
-                              validationErrors.years_experience
-                                ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
-                                : "border-gray-200 focus:border-amber-400 focus:shadow-2xl focus:shadow-amber-500/20 focus:ring-4 focus:ring-amber-100"
-                            )}
-                          >
-                            <option value="">Select experience...</option>
-                            <option value="0-1">Less than 1 year</option>
-                            <option value="1-3">1-3 years</option>
-                            <option value="3-5">3-5 years</option>
-                            <option value="5-10">5-10 years</option>
-                            <option value="10+">10+ years</option>
-                          </select>
-                          {validationErrors.years_experience && (
-                            <p className="text-red-500 text-sm mt-2 flex items-center">
-                              <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                              {validationErrors.years_experience}
-                            </p>
-                          )}
-                        </div>
 
-                        {/* Team Size */}
-                        <div className="space-y-3">
-                          <label className="block text-sm font-bold text-gray-700 flex items-center">
-                            <User className="w-4 h-4 mr-2 text-amber-500" />
-                            Team Size *
-                          </label>
-                          <select
-                            value={formData.team_size}
-                            onChange={(e) => updateFormData('team_size', e.target.value)}
-                            title="Select team size"
-                            className={cn(
-                              "w-full px-4 py-4 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-lg cursor-pointer",
-                              "bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl",
-                              validationErrors.team_size
-                                ? "border-red-400 focus:border-red-500 bg-red-50/80 focus:ring-4 focus:ring-red-100"
-                                : "border-gray-200 focus:border-amber-400 focus:shadow-2xl focus:shadow-amber-500/20 focus:ring-4 focus:ring-amber-100"
-                            )}
-                          >
-                            <option value="">Select team size...</option>
-                            <option value="Solo">Solo (1 person)</option>
-                            <option value="2-5">Small Team (2-5 people)</option>
-                            <option value="6-10">Medium Team (6-10 people)</option>
-                            <option value="11-20">Large Team (11-20 people)</option>
-                            <option value="20+">Enterprise (20+ people)</option>
-                          </select>
-                          {validationErrors.team_size && (
-                            <p className="text-red-500 text-sm mt-2 flex items-center">
-                              <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                              {validationErrors.team_size}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Specialties - Multi-select */}
-                        <div className="space-y-3 md:col-span-2">
-                          <label className="block text-sm font-bold text-gray-700 flex items-center">
-                            <Crown className="w-4 h-4 mr-2 text-amber-500" />
-                            Wedding Specialties * (Select at least one)
-                          </label>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-white/90 rounded-xl border-2 border-gray-200">
-                            {coordinatorSpecialties.map((specialty) => (
-                              <label
-                                key={specialty}
-                                className={cn(
-                                  "flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all",
-                                  formData.specialties.includes(specialty)
-                                    ? "bg-amber-100 border-2 border-amber-500"
-                                    : "bg-gray-50 border-2 border-gray-200 hover:bg-amber-50 hover:border-amber-300"
-                                )}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={formData.specialties.includes(specialty)}
-                                  onChange={() => toggleMultiSelect('specialties', specialty)}
-                                  className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-                                />
-                                <span className="text-sm font-medium text-gray-700">{specialty}</span>
-                              </label>
-                            ))}
-                          </div>
-                          {validationErrors.specialties && (
-                            <p className="text-red-500 text-sm mt-2 flex items-center">
-                              <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                              {validationErrors.specialties}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Service Areas - Multi-select */}
-                        <div className="space-y-3 md:col-span-2">
-                          <label className="block text-sm font-bold text-gray-700 flex items-center">
-                            <Globe className="w-4 h-4 mr-2 text-amber-500" />
-                            Service Areas * (Select at least one)
-                          </label>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-white/90 rounded-xl border-2 border-gray-200">
-                            {serviceAreas.map((area) => (
-                              <label
-                                key={area}
-                                className={cn(
-                                  "flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all",
-                                  formData.service_areas.includes(area)
-                                    ? "bg-amber-100 border-2 border-amber-500"
-                                    : "bg-gray-50 border-2 border-gray-200 hover:bg-amber-50 hover:border-amber-300"
-                                )}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={formData.service_areas.includes(area)}
-                                  onChange={() => toggleMultiSelect('service_areas', area)}
-                                  className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-                                />
-                                <span className="text-sm font-medium text-gray-700">{area}</span>
-                              </label>
-                            ))}
-                          </div>
-                          {validationErrors.service_areas && (
-                            <p className="text-red-500 text-sm mt-2 flex items-center">
-                              <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                              {validationErrors.service_areas}
-                            </p>
-                          )}
-                        </div>
-                      </>
-                    )}
                   </div>
                 </div>
               )}
