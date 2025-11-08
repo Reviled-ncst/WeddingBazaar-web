@@ -508,6 +508,21 @@ export class OptimizedBookingApiService {
       special_requests: bookingData.special_requests,
       specialRequests: bookingData.special_requests, // Backend expects specialRequests
       
+      // 📦 PACKAGE/ITEMIZATION FIELDS (NEW - Nov 8, 2025)
+      package_id: bookingData.package_id,
+      packageId: bookingData.package_id, // Backend expects packageId
+      package_name: bookingData.package_name,
+      packageName: bookingData.package_name, // Backend expects packageName
+      package_price: bookingData.package_price,
+      packagePrice: bookingData.package_price, // Backend expects packagePrice
+      package_items: bookingData.package_items,
+      packageItems: bookingData.package_items, // Backend expects packageItems
+      selected_addons: bookingData.selected_addons,
+      selectedAddons: bookingData.selected_addons, // Backend expects selectedAddons
+      addon_total: bookingData.addon_total,
+      addonTotal: bookingData.addon_total, // Backend expects addonTotal
+      subtotal: bookingData.subtotal,
+      
       // Optimized metadata
       metadata: {
         source: 'optimized_api',
