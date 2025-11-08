@@ -362,12 +362,32 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     console.log('📤 [POST /api/services] Creating new service');
-    console.log('   Request body keys:', Object.keys(req.body));
-    console.log('   vendor_id:', req.body.vendor_id);
-    console.log('   vendorId:', req.body.vendorId);
-    console.log('   title:', req.body.title);
-    console.log('   category:', req.body.category);
-    console.log('   service_tier:', req.body.service_tier);
+    console.log('🔌 [Database] Testing connection...');
+    console.log('🔌 [Database] Connection string:', process.env.DATABASE_URL ? 'PRESENT' : 'MISSING');
+    
+    // Test database connection
+    try {
+      const testQuery = await sql`SELECT current_database(), current_schema(), version()`;
+      console.log('✅ [Database] Connection successful!', {
+        database: testQuery[0].current_database,
+        schema: testQuery[0].current_schema,
+        version: testQuery[0].version.substring(0, 50) + '...'
+      });
+    } catch (dbError) {
+      console.error('❌ [Database] Connection failed:', dbError.message);
+      return res.status(500).json({
+        success: false,
+        error: 'Database connection failed',
+        message: dbError.message
+      });
+    }
+    
+    console.log('📊 [Request] Body keys:', Object.keys(req.body));
+    console.log('📊 [Request] vendor_id:', req.body.vendor_id);
+    console.log('📊 [Request] vendorId:', req.body.vendorId);
+    console.log('📊 [Request] title:', req.body.title);
+    console.log('📊 [Request] category:', req.body.category);
+    console.log('📊 [Request] service_tier:', req.body.service_tier);
 
     const {
       vendor_id,
@@ -490,15 +510,76 @@ router.post('/', async (req, res) => {
       
       console.log(`📋 [Document Check] Vendor type: ${vendorType}`);
       
+      // ✅ VERIFY TABLE EXISTS BEFORE QUERYING
+      console.log(`🔍 [Document Check] Verifying vendor_documents table exists...`);
+      try {
+        const tableCheck = await sql`
+          SELECT table_name, table_schema 
+          FROM information_schema.tables 
+          WHERE table_name = 'vendor_documents'
+        `;
+        
+        if (tableCheck.length === 0) {
+          console.error(`❌ [Document Check] vendor_documents table NOT FOUND in database!`);
+          return res.status(500).json({
+            success: false,
+            error: 'Database schema error',
+            message: 'vendor_documents table does not exist. Please run database migrations.'
+          });
+        }
+        
+        console.log(`✅ [Document Check] vendor_documents table exists in schema: ${tableCheck[0].table_schema}`);
+        
+        // Check column structure
+        const columnCheck = await sql`
+          SELECT column_name, data_type 
+          FROM information_schema.columns 
+          WHERE table_name = 'vendor_documents'
+          ORDER BY ordinal_position
+        `;
+        console.log(`📋 [Document Check] vendor_documents columns:`, columnCheck.map(c => `${c.column_name}(${c.data_type})`).join(', '));
+        
+      } catch (tableCheckError) {
+        console.error(`❌ [Document Check] Error checking table:`, tableCheckError.message);
+        // Continue anyway - might be a permissions issue
+      }
+      
       // Get approved documents for this vendor
       // ✅ FIXED: Query vendor_documents table (correct table name)
       // vendor_id should match actualVendorId (string format like '2-2025-003')
-      const approvedDocs = await sql`
-        SELECT DISTINCT document_type 
-        FROM vendor_documents 
-        WHERE vendor_id = ${actualVendorId}
-        AND verification_status = 'approved'
-      `;
+      console.log(`🔍 [Document Check] About to query vendor_documents table`);
+      console.log(`🔍 [Document Check] Query parameters:`, {
+        table: 'vendor_documents',
+        vendor_id: actualVendorId,
+        verification_status: 'approved'
+      });
+      
+      let approvedDocs;
+      try {
+        console.log(`📡 [Document Check] Executing SQL query...`);
+        approvedDocs = await sql`
+          SELECT DISTINCT document_type 
+          FROM vendor_documents 
+          WHERE vendor_id = ${actualVendorId}
+          AND verification_status = 'approved'
+        `;
+        console.log(`✅ [Document Check] Query successful! Returned ${approvedDocs.length} documents`);
+      } catch (queryError) {
+        console.error(`❌ [Document Check] SQL Query Error:`, {
+          message: queryError.message,
+          code: queryError.code,
+          detail: queryError.detail,
+          hint: queryError.hint,
+          table: queryError.table,
+          schema: queryError.schema,
+          constraint: queryError.constraint,
+          file: queryError.file,
+          line: queryError.line,
+          routine: queryError.routine,
+          stack: queryError.stack
+        });
+        throw queryError; // Re-throw to be caught by outer catch
+      }
       
       const approvedTypes = approvedDocs.map(d => d.document_type);
       console.log(`📄 [Document Check] Approved documents: ${approvedTypes.join(', ')} for user_id: ${actualVendorId}`);
