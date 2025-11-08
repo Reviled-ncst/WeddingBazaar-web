@@ -10,88 +10,98 @@ const { sql } = require('../../config/database.cjs');
 /**
  * GET /api/admin/documents
  * Fetch all vendor documents with optional status filter
+ * NOTE: vendor_documents.vendor_id are UUIDs that don't match vendors.id (string IDs like "VEN-00009")
  */
 async function getDocuments(req, res) {
   try {
     const { status } = req.query;
     
-    console.log('📄 [Admin Documents] Fetching documents, status filter:', status);
+    console.log('📄 [Admin/Documents] Fetching documents, status filter:', status);
     
-    let query = `
-      SELECT 
-        vd.id,
-        vd.vendor_id,
-        vd.document_type,
-        vd.document_url,
-        vd.file_name,
-        vd.verification_status,
-        vd.uploaded_at,
-        vd.verified_at,
-        vd.verified_by,
-        vd.rejection_reason,
-        vd.file_size,
-        vd.mime_type,
-        vd.created_at,
-        vd.updated_at,
-        vp.business_name,
-        u.email,
-        u.phone,
-        vp.service_area as location,
-        u.first_name || ' ' || u.last_name as vendor_name
-      FROM vendor_documents vd
-      LEFT JOIN vendor_profiles vp ON vd.vendor_id = vp.id
-      LEFT JOIN users u ON vp.user_id = u.id
-    `;
+    // FIX: Use SQL tagged template (required for @neondatabase/serverless)
+    let result;
     
-    const params = [];
-    
-    // Add status filter if provided
     if (status && status !== 'all') {
-      query += ` WHERE vd.verification_status = $1`;
-      params.push(status);
+      console.log('📄 [Admin/Documents] Querying with status filter:', status);
+      result = await sql`
+        SELECT 
+          id,
+          vendor_id,
+          document_type,
+          document_url,
+          file_name,
+          file_size,
+          mime_type,
+          verification_status,
+          verified_at,
+          verified_by,
+          rejection_reason,
+          uploaded_at,
+          created_at,
+          updated_at
+        FROM vendor_documents
+        WHERE verification_status = ${status}
+        ORDER BY uploaded_at DESC
+      `;
+    } else {
+      console.log('📄 [Admin/Documents] Querying all documents (no filter)');
+      result = await sql`
+        SELECT 
+          id,
+          vendor_id,
+          document_type,
+          document_url,
+          file_name,
+          file_size,
+          mime_type,
+          verification_status,
+          verified_at,
+          verified_by,
+          rejection_reason,
+          uploaded_at,
+          created_at,
+          updated_at
+        FROM vendor_documents
+        ORDER BY uploaded_at DESC
+      `;
     }
     
-    query += ` ORDER BY vd.uploaded_at DESC`;
-    
-    const result = params.length > 0 
-      ? await sql(query, params)
-      : await sql(query);
-    
-    console.log(`✅ [Admin Documents] Found ${result.length} documents`);
+    console.log(`✅ [Admin/Documents] Found ${result.length} documents`);
     
     // Transform to match frontend interface
     const documents = result.map(doc => ({
       id: doc.id,
       vendorId: doc.vendor_id,
-      vendorName: doc.vendor_name || 'Unknown Vendor',
-      businessName: doc.business_name || 'Unknown Business',
+      vendorName: `Vendor (${doc.vendor_id.substring(0, 8)}...)`,
+      businessName: 'Business (ID mismatch)',
+      businessType: 'Unknown',
       documentType: doc.document_type,
       documentUrl: doc.document_url,
       fileName: doc.file_name,
-      uploadedAt: doc.uploaded_at,
+      fileSize: doc.file_size || 0,
+      mimeType: doc.mime_type,
       verificationStatus: doc.verification_status,
       verifiedAt: doc.verified_at,
       verifiedBy: doc.verified_by,
       rejectionReason: doc.rejection_reason,
-      fileSize: doc.file_size,
-      mimeType: doc.mime_type,
-      email: doc.email,
-      phone: doc.phone,
-      location: doc.location
+      uploadedAt: doc.uploaded_at
     }));
     
     res.json({
       success: true,
       documents,
-      count: documents.length
+      count: documents.length,
+      timestamp: new Date().toISOString(),
+      note: 'vendor_id references are UUIDs that do not match current vendors table IDs'
     });
     
   } catch (error) {
-    console.error('❌ [Admin Documents] Error fetching documents:', error);
+    console.error('❌ [Admin/Documents] Error fetching documents:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch documents',
-      details: error.message
+      details: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 }
