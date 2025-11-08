@@ -556,54 +556,70 @@ export function getValidServiceId(vendorId: string): string {
  * Used by IndividualBookings component
  */
 export function mapComprehensiveBookingToUI(booking: any): UIBooking {
-  // PRIORITY ORDER for amount extraction:
-  // 1. quoted_price (when vendor sends a quote)
-  // 2. final_price (after quote is accepted)
-  // 3. amount (generic amount field)
-  // 4. total_amount (fallback)
-  let totalAmount = Number(booking.quoted_price) || Number(booking.final_price) || Number(booking.amount) || Number(booking.total_amount) || 0;
-  // Extract amount from response_message if available (for quotes)
-  if (totalAmount === 0 && booking.response_message) {
-    const totalMatch = booking.response_message.match(/TOTAL:\s*₱([0-9,]+\.?\d*)/);
-    if (totalMatch) {
-      totalAmount = parseFloat(totalMatch[1].replace(/,/g, ''));
-    }
-  }
+  // 📦 NEW: Check for package pricing first (HIGHEST PRIORITY)
+  let totalAmount = 0;
+  const packagePrice = Number(booking.package_price) || 0;
+  const addonTotal = Number(booking.addon_total) || 0;
+  const subtotal = Number(booking.subtotal) || 0;
   
-  // ALWAYS apply fallback pricing if amount is 0 or null
-  if (totalAmount === 0) {
-    const serviceType = booking.service_type || booking.serviceType || '';
-    const guestCount = booking.guest_count || booking.guestCount || 100;
-    // Generate realistic Philippine wedding pricing
-    switch (serviceType) {
-      case 'Catering':
-        totalAmount = Math.max(guestCount * 800, 120000); // Min ₱800 per person
-        break;
-      case 'Photography':
-        totalAmount = 75000;
-        break;
-      case 'Videography':
-        totalAmount = 85000;
-        break;
-      case 'DJ':
-      case 'Music':
-        totalAmount = 35000;
-        break;
-      case 'Security & Guest Management':
-        totalAmount = 50000;
-        break;
-      case 'Decoration':
-      case 'Flowers':
-        totalAmount = 40000;
-        break;
-      case 'Wedding Planning':
-        totalAmount = 80000;
-        break;
-      case 'other':
-        totalAmount = 45000;
-        break;
-      default:
-        totalAmount = 45000;
+  // PRIORITY 1: Use subtotal (package + add-ons) if available
+  if (subtotal > 0) {
+    totalAmount = subtotal;
+    console.log(`✅ [mapComprehensiveBookingToUI] Using subtotal: ₱${totalAmount}`);
+  }
+  // PRIORITY 2: Calculate from package_price + addon_total
+  else if (packagePrice > 0) {
+    totalAmount = packagePrice + addonTotal;
+    console.log(`✅ [mapComprehensiveBookingToUI] Using package pricing: ₱${packagePrice} + ₱${addonTotal} = ₱${totalAmount}`);
+  }
+  // PRIORITY 3: Standard amount fields (when vendor sends a quote)
+  else {
+    totalAmount = Number(booking.quoted_price) || Number(booking.final_price) || Number(booking.amount) || Number(booking.total_amount) || 0;
+    
+    // Extract amount from response_message if available (for quotes)
+    if (totalAmount === 0 && booking.response_message) {
+      const totalMatch = booking.response_message.match(/TOTAL:\s*₱([0-9,]+\.?\d*)/);
+      if (totalMatch) {
+        totalAmount = parseFloat(totalMatch[1].replace(/,/g, ''));
+      }
+    }
+    
+    // PRIORITY 4: ONLY apply fallback pricing if amount is still 0 AND no package data
+    if (totalAmount === 0) {
+      const serviceType = booking.service_type || booking.serviceType || '';
+      const guestCount = booking.guest_count || booking.guestCount || 100;
+      // Generate realistic Philippine wedding pricing
+      switch (serviceType) {
+        case 'Catering':
+          totalAmount = Math.max(guestCount * 800, 120000); // Min ₱800 per person
+          break;
+        case 'Photography':
+          totalAmount = 75000;
+          break;
+        case 'Videography':
+          totalAmount = 85000;
+          break;
+        case 'DJ':
+        case 'Music':
+          totalAmount = 35000;
+          break;
+        case 'Security & Guest Management':
+          totalAmount = 50000;
+          break;
+        case 'Decoration':
+        case 'Flowers':
+          totalAmount = 40000;
+          break;
+        case 'Wedding Planning':
+          totalAmount = 80000;
+          break;
+        case 'other':
+          totalAmount = 45000;
+          break;
+        default:
+          totalAmount = 45000;
+      }
+      console.log(`⚠️ [mapComprehensiveBookingToUI] Using fallback pricing for ${serviceType}: ₱${totalAmount}`);
     }
   }
   
@@ -770,6 +786,32 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
   if (!serviceItems) {
   }
 
+  // 📦 Parse package/itemization fields (NEW - Nov 8, 2025)
+  let packageItems = undefined;
+  let selectedAddons = undefined;
+  
+  // Parse package_items JSON
+  if (booking.package_items) {
+    try {
+      packageItems = typeof booking.package_items === 'string' 
+        ? JSON.parse(booking.package_items)
+        : booking.package_items;
+    } catch (error) {
+      console.error('❌ [mapComprehensiveBookingToUI] Failed to parse package_items:', error);
+    }
+  }
+  
+  // Parse selected_addons JSON
+  if (booking.selected_addons) {
+    try {
+      selectedAddons = typeof booking.selected_addons === 'string'
+        ? JSON.parse(booking.selected_addons)
+        : booking.selected_addons;
+    } catch (error) {
+      console.error('❌ [mapComprehensiveBookingToUI] Failed to parse selected_addons:', error);
+    }
+  }
+
   const mapped = {
     id: booking.id?.toString() || '',
     vendorId: booking.vendor_id || booking.vendorId || '',
@@ -801,6 +843,15 @@ export function mapComprehensiveBookingToUI(booking: any): UIBooking {
     vendorNotes,
     quoteItemization,
     serviceItems,
+    
+    // 📦 Package/Itemization fields (NEW - Nov 8, 2025)
+    packageId: booking.package_id || booking.packageId,
+    packageName: booking.package_name || booking.packageName,
+    packagePrice: Number(booking.package_price) || undefined,
+    packageItems,
+    selectedAddons,
+    addonTotal: Number(booking.addon_total) || undefined,
+    subtotal: Number(booking.subtotal) || undefined,
     
     formatted: {
       totalAmount: formatPHP(totalAmount),

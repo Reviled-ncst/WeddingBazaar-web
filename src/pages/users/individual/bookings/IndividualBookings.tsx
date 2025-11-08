@@ -1259,6 +1259,15 @@ export const IndividualBookings: React.FC = () => {
                             <p className="text-sm text-gray-600">
                               {booking.vendorName || booking.vendorBusinessName || 'Wedding Vendor'}
                             </p>
+                            {/* Package Badge */}
+                            {booking.packageName && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <Package className="w-3 h-3 text-purple-600" />
+                                <span className="text-xs font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
+                                  {booking.packageName}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

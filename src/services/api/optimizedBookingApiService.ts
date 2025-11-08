@@ -526,6 +526,10 @@ export class OptimizedBookingApiService {
       addonTotal: bookingData.addon_total,
       subtotal: bookingData.subtotal, // From modal (number)
       
+      // 🔧 CRITICAL FIX: Map total_amount from modal to backend (Nov 8, 2025)
+      total_amount: bookingData.total_amount || bookingData.subtotal, // Fallback to subtotal if not provided
+      totalAmount: bookingData.total_amount || bookingData.subtotal,
+      
       // Optimized metadata
       metadata: {
         source: 'optimized_api',

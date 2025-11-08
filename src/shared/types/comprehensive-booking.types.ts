@@ -371,6 +371,10 @@ export interface BookingRequest {
   addon_total?: number;
   subtotal?: number;
   
+  // 🔧 CRITICAL FIX: Total amount field (Nov 8, 2025)
+  // This is the final total amount sent to backend (package + addons)
+  total_amount?: number;
+  
   // Additional information
   metadata?: Record<string, any>;
 }

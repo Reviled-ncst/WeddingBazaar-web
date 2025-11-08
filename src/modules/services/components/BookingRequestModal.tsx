@@ -262,13 +262,19 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
       );
       const packagePrice = selectedPackageDetails?.price || 0;
       const subtotal = packagePrice + addonTotal;
+      
+      // 🔧 CRITICAL FIX: totalAmount MUST be sent to backend for correct pricing
+      // totalAmount = subtotal (package + addons) - this is the final amount
+      const totalAmount = subtotal;
 
       console.log('💰 [BookingModal] Price breakdown:', {
         packagePrice,
         addonTotal,
         subtotal,
+        totalAmount,
         hasItems: selectedPackageDetails?.items?.length || 0,
-        hasAddons: selectedAddons.length
+        hasAddons: selectedAddons.length,
+        note: '✅ totalAmount = subtotal (package + addons) - sent to backend'
       });
 
       const bookingRequest: BookingRequest = {
@@ -292,6 +298,9 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
         selected_addons: selectedAddons,
         addon_total: addonTotal,
         subtotal: subtotal,
+        
+        // 🔧 CRITICAL FIX: Send totalAmount to backend (Nov 8, 2025)
+        total_amount: totalAmount,
         
         special_requests: formData.specialRequests || undefined,
         contact_person: formData.contactPerson,
