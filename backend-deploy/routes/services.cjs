@@ -600,6 +600,9 @@ router.post('/', async (req, res) => {
 
     console.log('🔑 [Service Creation] User ID from frontend:', userIdFromFrontend);
 
+    // ✅ CRITICAL FIX (Nov 8, 2025): Declare actualVendorId OUTSIDE try block for proper scope
+    let actualVendorId = userIdFromFrontend; // Will use user_id directly for services table
+    
     // Verify user exists and is a vendor (but use user_id directly for services table)
     try {
       const userCheck = await sql`
@@ -631,9 +634,6 @@ router.post('/', async (req, res) => {
       }
       
       console.log(`✅ [Vendor Check] User is valid vendor: ${userIdFromFrontend}`);
-      
-      // ✅ Use the user_id directly for services table (no need to look up vendors.id)
-      const actualVendorId = userIdFromFrontend;
       console.log(`✅ [Service Creation] Using user_id for services.vendor_id: ${actualVendorId}`);
       
     } catch (vendorError) {
