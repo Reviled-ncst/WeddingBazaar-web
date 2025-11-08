@@ -64,7 +64,6 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
     eventTime: '',
     eventLocation: '',
     guestCount: '',
-    budgetRange: '',
     selectedPackage: '',
     specialRequests: '',
     contactPerson: '',
@@ -75,61 +74,72 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
 
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
 
-  // Auto-computed pricing based on guest count
-  const estimatedQuote = useMemo(() => {
-    const guestCount = parseInt(formData.guestCount) || 0;
-    if (guestCount === 0) return null;
-
-    // Pricing calculation based on service category
-    const basePrices: Record<string, number> = {
-      'Photography': 15000,
-      'Catering': 25000,
-      'Venue': 50000,
-      'Music': 12000,
-      'Planning': 20000,
-      'Videography': 18000,
-      'Flowers': 10000,
-      'Decoration': 15000,
-      'default': 15000
-    };
-
-    const perGuestFees: Record<string, number> = {
-      'Catering': 500,
-      'Venue': 300,
-      'default': 150
-    };
-
-    const category = service.category || 'default';
-    const basePrice = basePrices[category] || basePrices['default'];
-    const perGuestFee = perGuestFees[category] || perGuestFees['default'];
-
-    const subtotal = basePrice + (perGuestFee * guestCount);
-    const tax = subtotal * 0.12; // 12% tax
-    const total = subtotal + tax;
-
-    return {
-      basePrice,
-      guestFee: perGuestFee,
-      totalGuests: guestCount,
-      subtotal,
-      tax,
-      total
-    };
-  }, [formData.guestCount, service.category]);
+  // Get selected package details from service (auto-populated from service modal)
+  // 🔧 FIX: Preserve FULL itemization data (items, add-ons, pricing rules)
+  const selectedPackageDetails = useMemo(() => {
+    // Check if service has selectedPackage from modal (passed from Services_Centralized)
+    const servicePackage = (service as any)?.selectedPackage;
+    
+    if (servicePackage) {
+      console.log('📦 [BookingModal] Package detected from service (FULL ITEMIZATION):', servicePackage);
+      console.log('🔍 [BookingModal] Package items array:', servicePackage.items);
+      console.log('🔍 [BookingModal] Package addons array:', servicePackage.addons);
+      console.log('🔍 [BookingModal] Items length:', servicePackage.items?.length || 0);
+      console.log('🔍 [BookingModal] Addons length:', servicePackage.addons?.length || 0);
+      
+      const packageDetails = {
+        name: servicePackage.package_name || servicePackage.name || '',
+        price: servicePackage.base_price || 0,
+        description: servicePackage.package_description || servicePackage.description || '',
+        // 🎉 NEW: Preserve full itemization data
+        items: servicePackage.items || [],
+        addons: servicePackage.addons || [],
+        pricing_rules: servicePackage.pricing_rules || []
+      };
+      
+      console.log('✅ [BookingModal] Final packageDetails created:', packageDetails);
+      console.log('✅ [BookingModal] Will show items?', packageDetails.items && packageDetails.items.length > 0);
+      console.log('✅ [BookingModal] Will show addons?', packageDetails.addons && packageDetails.addons.length > 0);
+      
+      return packageDetails;
+    }
+    
+    console.log('⚠️ [BookingModal] No package selected in service modal');
+    return null;
+  }, [service]);
 
   // Prefill user data - AUTO-FETCH from logged-in user
   useEffect(() => {
     if (isOpen && user) {
       setFormData(prev => ({
         ...prev,
-        contactPerson: user.first_name && user.last_name 
-          ? `${user.first_name} ${user.last_name}`.trim()
-          : user.full_name || user.email.split('@')[0],
+        contactPerson: user.firstName && user.lastName 
+          ? `${user.firstName} ${user.lastName}`.trim()
+          : (user as any).full_name || user.email?.split('@')[0] || '',
         contactPhone: user.phone || '',
-        contactEmail: user.email
+        contactEmail: user.email || ''
       }));
     }
   }, [isOpen, user]);
+
+  // Auto-populate selected package from service
+  useEffect(() => {
+    if (isOpen && (service as any)?.selectedPackage) {
+      const servicePackage = (service as any).selectedPackage;
+      console.log('📦 [BookingModal] Auto-populating package:', {
+        packageName: servicePackage.package_name || servicePackage.name,
+        packagePrice: servicePackage.base_price,
+        packageDescription: servicePackage.package_description
+      });
+      
+      setFormData(prev => ({
+        ...prev,
+        selectedPackage: servicePackage.package_name || servicePackage.name || ''
+      }));
+    } else {
+      console.log('⚠️ [BookingModal] Modal opened without package selection');
+    }
+  }, [isOpen, service]);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -155,7 +165,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
     const step1Complete = !!formData.eventDate;
     const step2Complete = !!formData.eventLocation;
     const step3Complete = !!formData.guestCount; // Only guests required (time is optional)
-    const step4Complete = !!formData.budgetRange;
+    const step4Complete = !!selectedPackageDetails; // Package must be selected from service modal
     const step5Complete = !!formData.contactPhone && !!formData.contactPerson;
     
     let completed = 0;
@@ -171,7 +181,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
       total: 5,
       percentage: Math.min(100, Math.round((completed / 5) * 100)) // Cap at 100%
     };
-  }, [formData]);
+  }, [formData, selectedPackageDetails]);
 
   const validateStep = (step: number): boolean => {
     const errors: {[key: string]: string} = {};
@@ -193,8 +203,10 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
         }
       }
     } else if (step === 4) {
-      // Step 4: Budget
-      if (!formData.budgetRange) errors.budgetRange = 'Budget range is required';
+      // Step 4: Package Selection (must be selected from service modal)
+      if (!selectedPackageDetails) {
+        errors.selectedPackage = 'Please select a package from the service details modal before booking';
+      }
     } else if (step === 5) {
       // Step 5: Contact Info
       if (!formData.contactPerson) errors.contactPerson = 'Name is required';
@@ -243,6 +255,22 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
         }
       }
 
+      // 🎉 Calculate addon totals and subtotal for itemization
+      const selectedAddons = []; // TODO: Add addon selection UI if needed in future
+      const addonTotal = selectedAddons.reduce((sum: number, addon: any) => 
+        sum + (addon.addon_price || 0), 0
+      );
+      const packagePrice = selectedPackageDetails?.price || 0;
+      const subtotal = packagePrice + addonTotal;
+
+      console.log('💰 [BookingModal] Price breakdown:', {
+        packagePrice,
+        addonTotal,
+        subtotal,
+        hasItems: selectedPackageDetails?.items?.length || 0,
+        hasAddons: selectedAddons.length
+      });
+
       const bookingRequest: BookingRequest = {
         vendor_id: service.vendorId || '',
         service_id: service.id || service.vendorId || '',
@@ -252,7 +280,19 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
         event_time: formData.eventTime || undefined,
         event_location: formData.eventLocation,
         guest_count: parseInt(formData.guestCount),
-        budget_range: formData.budgetRange,
+        
+        // ✅ PACKAGE DETAILS (name, price, ID)
+        selected_package: selectedPackageDetails?.name || formData.selectedPackage,
+        package_id: (service as any)?.selectedPackage?.id || null,
+        package_name: selectedPackageDetails?.name || formData.selectedPackage || null,
+        package_price: packagePrice,
+        
+        // 🎉 NEW: ITEMIZATION DATA (items, add-ons, totals)
+        package_items: selectedPackageDetails?.items || [],
+        selected_addons: selectedAddons,
+        addon_total: addonTotal,
+        subtotal: subtotal,
+        
         special_requests: formData.specialRequests || undefined,
         contact_person: formData.contactPerson,
         contact_phone: formData.contactPhone,
@@ -260,9 +300,26 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
         preferred_contact_method: formData.preferredContactMethod,
         metadata: {
           sourceModal: 'BookingRequestModal',
-          submissionTimestamp: new Date().toISOString()
+          submissionTimestamp: new Date().toISOString(),
+          packageDetails: selectedPackageDetails ? {
+            name: selectedPackageDetails.name,
+            price: selectedPackageDetails.price,
+            description: selectedPackageDetails.description,
+            // 🎉 NEW: Include full itemization in metadata
+            items: selectedPackageDetails.items,
+            addons: selectedPackageDetails.addons,
+            pricing_rules: selectedPackageDetails.pricing_rules
+          } : undefined
         }
       };
+
+      console.log('📤 [BookingModal] Sending booking request with itemization:', {
+        package_name: bookingRequest.selected_package,
+        package_price: bookingRequest.package_price,
+        item_count: bookingRequest.package_items?.length || 0,
+        addon_count: bookingRequest.selected_addons?.length || 0,
+        subtotal: bookingRequest.subtotal
+      });
 
       const createdBooking = await optimizedBookingApiService.createBookingRequest(bookingRequest, user?.id);
 
@@ -275,15 +332,8 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
         eventTime?: string;
         eventLocation?: string;
         guestCount?: number;
-        budgetRange?: string;
-        estimatedQuote?: {
-          basePrice: number;
-          guestFee: number;
-          totalGuests: number;
-          subtotal: number;
-          tax: number;
-          total: number;
-        };
+        selectedPackage?: string;
+        packagePrice?: number;
       } = {
         id: createdBooking.id || createdBooking.booking_id || 'pending',
         serviceName: service.name,
@@ -292,8 +342,8 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
         eventTime: formData.eventTime,
         eventLocation: formData.eventLocation,
         guestCount: parseInt(formData.guestCount) || undefined,
-        budgetRange: formData.budgetRange || undefined,
-        estimatedQuote: estimatedQuote || undefined
+        selectedPackage: selectedPackageDetails?.name || undefined,
+        packagePrice: selectedPackageDetails?.price || undefined
       };
 
       // Success! Show success modal using flushSync for immediate rendering
@@ -356,7 +406,8 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
         '\n🏢 Vendor:', service.vendorName || 'Service Provider',
         '\n📍 Location:', formData.eventLocation,
         '\n👥 Guests:', formData.guestCount || 'Not specified',
-        '\n💰 Budget:', formData.budgetRange || 'To be discussed',
+        '\n� Package:', selectedPackageDetails?.name || 'No package selected',
+        '\n💰 Package Price:', selectedPackageDetails?.price ? `₱${selectedPackageDetails.price.toLocaleString()}` : 'N/A',
         '\n🆔 Booking ID:', successData.id
       );
       
@@ -435,7 +486,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
               { num: 1, label: "Date", icon: "📅" },
               { num: 2, label: "Location", icon: "📍" },
               { num: 3, label: "Details", icon: "👥" },
-              { num: 4, label: "Budget", icon: "💰" },
+              { num: 4, label: "Package", icon: "�" },
               { num: 5, label: "Contact", icon: "📞" },
               { num: 6, label: "Review", icon: "✅" }
             ].map((stepInfo, index) => (
@@ -599,77 +650,83 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                 {formErrors.guestCount && (
                   <p className="mt-1 text-sm text-red-600">{formErrors.guestCount}</p>
                 )}
-
-                {/* Live Quote Preview */}
-                {estimatedQuote && (
-                  <div className="mt-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 animate-in fade-in duration-300">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Sparkles className="h-5 w-5 text-green-600" />
-                        <span className="text-sm font-semibold text-green-900">Estimated Total:</span>
-                      </div>
-                      <span className="text-xl font-bold text-green-900">
-                        ₱{estimatedQuote.total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                    <p className="text-xs text-green-700 mt-2">
-                      Based on {estimatedQuote.totalGuests} guests. Full breakdown shown after submission.
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           )}
 
-          {/* Step 4: Budget & Special Requests */}
+          {/* Step 4: Package Selection */}
           {submitStatus !== 'success' && currentStep === 4 && (
             <div className="space-y-5 animate-in slide-in-from-right duration-300">
               <div className="text-center mb-4">
-                <h3 className="text-2xl font-bold text-gray-800 mb-2">💰 Budget & Requirements</h3>
-                <p className="text-gray-600">Help us understand your needs</p>
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">� Select Package</h3>
+                <p className="text-gray-600">Choose the package that best fits your needs</p>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <DollarSign className="w-4 h-4 inline mr-2" />
-                  Budget Range *
-                </label>
-                <select
-                  value={formData.budgetRange}
-                  onChange={(e) => setFormData(prev => ({ ...prev, budgetRange: e.target.value }))}
-                  className={cn(
-                    "w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all",
-                    formErrors.budgetRange ? "border-red-300" : "border-gray-200"
-                  )}
-                  aria-label="Budget range"
-                  title="Select your budget range"
-                >
-                  <option value="">Select your budget</option>
-                  <option value="₱10,000-₱25,000">₱10,000 - ₱25,000</option>
-                  <option value="₱25,000-₱50,000">₱25,000 - ₱50,000</option>
-                  <option value="₱50,000-₱100,000">₱50,000 - ₱100,000</option>
-                  <option value="₱100,000-₱200,000">₱100,000 - ₱200,000</option>
-                  <option value="₱200,000+">₱200,000+</option>
-                </select>
-                {formErrors.budgetRange && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.budgetRange}</p>
-                )}
-              </div>
+              {selectedPackageDetails ? (
+                <div className="space-y-4">
+                  {/* Selected Package Display */}
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h4 className="text-lg font-bold text-purple-900 mb-1">{selectedPackageDetails.name}</h4>
+                        {selectedPackageDetails.description && (
+                          <p className="text-sm text-gray-600">{selectedPackageDetails.description}</p>
+                        )}
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className="text-2xl font-bold text-purple-600">
+                          ₱{selectedPackageDetails.price?.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">Package Price</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-4 p-3 bg-green-100 rounded-lg">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-sm font-semibold text-green-900">Package Selected ✓</span>
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <MessageSquare className="w-4 h-4 inline mr-2" />
-                  Special Requests (Optional)
-                </label>
-                <textarea
-                  value={formData.specialRequests}
-                  onChange={(e) => setFormData(prev => ({ ...prev, specialRequests: e.target.value }))}
-                  placeholder="Any specific requirements or questions?"
-                  rows={6}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all resize-none"
-                />
-                <p className="mt-1 text-xs text-gray-500">Tell us about any specific needs, preferences, or questions you have</p>
-              </div>
+                  {/* Special Requests */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <MessageSquare className="w-4 h-4 inline mr-2" />
+                      Special Requests (Optional)
+                    </label>
+                    <textarea
+                      value={formData.specialRequests}
+                      onChange={(e) => setFormData(prev => ({ ...prev, specialRequests: e.target.value }))}
+                      placeholder="Any specific requirements or questions about this package?"
+                      rows={6}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all resize-none"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Tell us about any specific needs or customizations for this package</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-6">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-yellow-900 mb-2">No Package Selected</p>
+                      <p className="text-xs text-yellow-700 mb-3">
+                        Please select a package from the service details modal before proceeding with the booking.
+                      </p>
+                      <p className="text-xs text-yellow-600">
+                        💡 Tip: Close this modal, click "View Details" on the service, and select a package from the available options.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formErrors.selectedPackage && (
+                <p className="text-sm text-red-600 flex items-center gap-2 bg-red-50 p-3 rounded-lg">
+                  <AlertCircle className="w-4 h-4" />
+                  {formErrors.selectedPackage}
+                </p>
+              )}
             </div>
           )}
 
@@ -821,26 +878,83 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                   </div>
                 </div>
 
-                {/* Budget & Requirements Card */}
+                {/* Budget & Requirements Card - ENHANCED WITH ITEMIZATION */}
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
                   <h4 className="font-bold text-green-900 mb-3 flex items-center gap-2">
                     <DollarSign className="w-5 h-5" />
-                    Budget & Requirements
+                    Package & Requirements
                   </h4>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Budget Range:</span>
-                      <span className="font-semibold text-gray-900">{formData.budgetRange}</span>
-                    </div>
-                    {estimatedQuote && (
-                      <div className="flex justify-between pt-2 border-t border-green-200">
-                        <span className="text-gray-600">Estimated Quote:</span>
-                        <span className="font-bold text-green-700">₱{estimatedQuote.total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
-                      </div>
+                    {selectedPackageDetails ? (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Selected Package:</span>
+                          <span className="font-semibold text-gray-900">{selectedPackageDetails.name}</span>
+                        </div>
+                        {selectedPackageDetails.description && (
+                          <div className="pt-2">
+                            <span className="text-gray-600 block mb-1">Description:</span>
+                            <p className="text-gray-700 text-xs bg-white/50 p-2 rounded italic">{selectedPackageDetails.description}</p>
+                          </div>
+                        )}
+                        
+                        {/* 🎉 NEW: Show Package Items (Itemization) */}
+                        {selectedPackageDetails.items && selectedPackageDetails.items.length > 0 && (
+                          <div className="pt-2 border-t border-green-200">
+                            <span className="text-gray-600 block mb-2 font-semibold">Package Includes:</span>
+                            <div className="space-y-1 bg-white/70 p-3 rounded-lg">
+                              {selectedPackageDetails.items.map((item: any, index: number) => (
+                                <div key={index} className="flex items-start gap-2 text-xs">
+                                  <span className="text-green-600 flex-shrink-0">✓</span>
+                                  <div className="flex-1">
+                                    <span className="font-medium text-gray-900">{item.item_name}</span>
+                                    {item.quantity && item.quantity > 1 && (
+                                      <span className="text-gray-600 ml-1">({item.quantity}x)</span>
+                                    )}
+                                    {item.item_description && (
+                                      <p className="text-gray-600 mt-0.5">{item.item_description}</p>
+                                    )}
+                                  </div>
+                                  {item.unit_price && (
+                                    <span className="text-gray-700 font-medium">₱{item.unit_price.toLocaleString()}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 🎉 NEW: Show Add-ons (if any) */}
+                        {selectedPackageDetails.addons && selectedPackageDetails.addons.length > 0 && (
+                          <div className="pt-2 border-t border-green-200">
+                            <span className="text-gray-600 block mb-2 font-semibold">Available Add-ons:</span>
+                            <div className="space-y-1 bg-white/70 p-3 rounded-lg">
+                              {selectedPackageDetails.addons.map((addon: any, index: number) => (
+                                <div key={index} className="flex items-start justify-between gap-2 text-xs">
+                                  <div className="flex-1">
+                                    <span className="font-medium text-gray-900">{addon.addon_name}</span>
+                                    {addon.addon_description && (
+                                      <p className="text-gray-600 mt-0.5">{addon.addon_description}</p>
+                                    )}
+                                  </div>
+                                  <span className="text-blue-700 font-semibold">+₱{addon.addon_price.toLocaleString()}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between pt-3 border-t-2 border-green-300 mt-2">
+                          <span className="text-gray-700 font-semibold">Total Package Price:</span>
+                          <span className="font-bold text-green-700 text-lg">₱{selectedPackageDetails.price?.toLocaleString()}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-yellow-600 text-xs">No package selected</div>
                     )}
                     {formData.specialRequests && (
-                      <div className="pt-2 border-t border-green-200">
-                        <span className="text-gray-600 block mb-1">Special Requests:</span>
+                      <div className="pt-3 border-t border-green-200">
+                        <span className="text-gray-600 block mb-1 font-semibold">Special Requests:</span>
                         <p className="text-gray-900 text-xs bg-white/50 p-2 rounded">{formData.specialRequests}</p>
                       </div>
                     )}
@@ -937,7 +1051,7 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 border-2 border-green-200 space-y-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Users className="w-5 h-5 text-green-600" />
-                  <h4 className="font-bold text-gray-800">Guest & Budget</h4>
+                  <h4 className="font-bold text-gray-800">Guest Count & Package</h4>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
@@ -945,17 +1059,25 @@ export const BookingRequestModal: React.FC<BookingRequestModalProps> = ({
                     <p className="text-xs text-gray-600 mb-1">Number of Guests</p>
                     <p className="font-semibold text-gray-900">{formData.guestCount} guests</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Budget Range</p>
-                    <p className="font-semibold text-gray-900">{formData.budgetRange}</p>
-                  </div>
-                  {estimatedQuote && (
-                    <div className="col-span-2 bg-white/50 rounded-lg p-3 border border-green-300">
-                      <p className="text-xs text-gray-600 mb-1">Estimated Total</p>
-                      <p className="text-2xl font-bold text-green-700">
-                        ₱{estimatedQuote.total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                      </p>
-                      <p className="text-xs text-gray-600 mt-1">Based on {estimatedQuote.totalGuests} guests (inclusive of tax)</p>
+                  {selectedPackageDetails ? (
+                    <>
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Selected Package</p>
+                        <p className="font-semibold text-gray-900">{selectedPackageDetails.name}</p>
+                      </div>
+                      <div className="col-span-2 bg-white/50 rounded-lg p-3 border border-green-300">
+                        <p className="text-xs text-gray-600 mb-1">Package Price</p>
+                        <p className="text-2xl font-bold text-green-700">
+                          ₱{selectedPackageDetails.price?.toLocaleString()}
+                        </p>
+                        {selectedPackageDetails.description && (
+                          <p className="text-xs text-gray-600 mt-2">{selectedPackageDetails.description}</p>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="col-span-2">
+                      <p className="text-sm text-yellow-600">No package selected</p>
                     </div>
                   )}
                 </div>

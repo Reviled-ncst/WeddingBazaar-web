@@ -272,6 +272,26 @@ export interface Booking {
     total: number;
   }>;
   
+  // Package information (NEW - supports itemized packages)
+  package_id?: string;
+  package_name?: string;
+  package_price?: number;
+  package_items?: Array<{
+    name: string;
+    description?: string;
+    quantity: number;
+    included: boolean;
+  }> | string; // Can be array or JSON string from database
+  selected_addons?: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    price: number;
+    quantity: number;
+  }> | string; // Can be array or JSON string from database
+  addon_total?: number;
+  subtotal?: number;
+  
   // Status and workflow
   status: BookingStatus;
   vendor_response?: string;
@@ -329,6 +349,27 @@ export interface BookingRequest {
   
   // Budget information
   budget_range?: string;
+  
+  // Package information (NEW - supports itemized packages)
+  selected_package?: string;
+  package_price?: number;
+  package_id?: string;
+  package_name?: string;
+  package_items?: Array<{
+    name: string;
+    description?: string;
+    quantity: number;
+    included: boolean;
+  }>;
+  selected_addons?: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    price: number;
+    quantity: number;
+  }>;
+  addon_total?: number;
+  subtotal?: number;
   
   // Additional information
   metadata?: Record<string, any>;
