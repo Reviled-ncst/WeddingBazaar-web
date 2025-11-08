@@ -28,7 +28,7 @@ import { createServiceShareUrl } from '../../../../shared/utils/slug-generator';
 import { ConfirmationModal } from '../../../../shared/components/modals/ConfirmationModal';
 import type { ServiceCategory } from '../../../../shared/types/comprehensive-booking.types';
 import type { Service as BookingService } from '../../../../modules/services/types';
-import { useNotification } from '../../../../shared/hooks/useNotification';
+import { useNotification } from '../../../../shared/hooks/useNotification.tsx';
 import { NotificationModal } from '../../../../shared/components/modals';
 
 // Debug flag - set to false in production for better performance
@@ -1642,6 +1642,20 @@ Best regards`;
         icon={confirmationConfig.icon}
       />
 
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        confirmText={notification.confirmText}
+        showCancel={notification.showCancel}
+        onConfirm={notification.onConfirm}
+        customIcon={MessageCircle}
+        iconColor="text-pink-500"
+      />
+
     </div>
   );
 }
@@ -2426,20 +2440,6 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
           </div>
         </motion.div>
       </motion.div>
-
-      {/* Notification Modal */}
-      <NotificationModal
-        isOpen={notification.isOpen}
-        onClose={hideNotification}
-        title={notification.title}
-        message={notification.message}
-        type={notification.type}
-        confirmText={notification.confirmText}
-        showCancel={notification.showCancel}
-        onConfirm={notification.onConfirm}
-        customIcon={MessageCircle}
-        iconColor="text-pink-500"
-      />
     </AnimatePresence>
   );
 }
