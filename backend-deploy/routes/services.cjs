@@ -491,15 +491,17 @@ router.post('/', async (req, res) => {
       console.log(`📋 [Document Check] Vendor type: ${vendorType}`);
       
       // Get approved documents for this vendor
+      // ⚠️ FIXED: Use actualVendorId (user_id) instead of vendorTableId (vendors.id)
+      // The documents table uses user_id format (e.g., '2-2025-003'), not vendors.id
       const approvedDocs = await sql`
         SELECT DISTINCT document_type 
         FROM documents 
-        WHERE vendor_id = ${vendorTableId}
+        WHERE vendor_id = ${actualVendorId}
         AND verification_status = 'approved'
       `;
       
       const approvedTypes = approvedDocs.map(d => d.document_type);
-      console.log(`📄 [Document Check] Approved documents: ${approvedTypes.join(', ')}`);
+      console.log(`📄 [Document Check] Approved documents: ${approvedTypes.join(', ')} for user_id: ${actualVendorId}`);
       
       // Check requirements based on vendor type
       let missingDocs = [];
