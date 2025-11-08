@@ -58,6 +58,18 @@ const convertToBookingService = (service: Service): BookingService => {
   };
 
   const mappedCategory = categoryMap[service.category] || 'other';
+  
+  // 🔧 FIX: Preserve selectedPackage from service modal
+  const selectedPackage = (service as any).selectedPackage;
+  const bookingPrice = (service as any).bookingPrice;
+  
+  console.log('🔄 [convertToBookingService] Converting service:', {
+    name: service.name,
+    hasSelectedPackage: !!selectedPackage,
+    packageName: selectedPackage?.package_name || selectedPackage?.name,
+    packagePrice: selectedPackage?.base_price,
+    bookingPrice
+  });
 
   return {
     id: service.id,
@@ -76,8 +88,11 @@ const convertToBookingService = (service: Service): BookingService => {
     reviewCount: service.reviewCount,
     vendorName: service.vendorName,
     vendorImage: service.vendorImage,
-    contactInfo: service.contactInfo
-  };
+    contactInfo: service.contactInfo,
+    // 🔧 FIX: Preserve selectedPackage property from service modal
+    selectedPackage,
+    bookingPrice
+  } as BookingService; // Type assertion to allow extra properties
 };
 
 // Local interface definitions to avoid module resolution issues
@@ -1979,11 +1994,11 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
               target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600';
             }}
           />
-          {/* Gallery Preview - Show additional images if available */}
+          {/* Gallery Preview - Show additional images at TOP */}
           {(service.gallery && service.gallery.length > 1) || (service.images && service.images.length > 1) && (
-            <div className="absolute bottom-2 right-2 flex gap-1">
+            <div className="absolute top-2 left-2 flex gap-1">
               {(service.gallery?.slice(1, 4) || service.images?.slice(1, 4) || []).map((img, idx) => (
-                <div key={idx} className="w-12 h-12 rounded-lg overflow-hidden border-2 border-white shadow-sm">
+                <div key={idx} className="w-12 h-12 rounded-lg overflow-hidden border-2 border-white shadow-lg">
                   <img
                     src={img}
                     alt={`${service.name} ${idx + 2}`}
@@ -1996,7 +2011,7 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
                 </div>
               ))}
               {((service.gallery?.length || service.images?.length || 1) > 4) && (
-                <div className="w-12 h-12 rounded-lg bg-black/60 backdrop-blur-sm border-2 border-white shadow-sm flex items-center justify-center">
+                <div className="w-12 h-12 rounded-lg bg-black/60 backdrop-blur-sm border-2 border-white shadow-lg flex items-center justify-center">
                   <span className="text-white text-xs font-bold">
                     +{((service.gallery?.length || service.images?.length || 1) - 3)}
                   </span>
@@ -2005,7 +2020,7 @@ function ServiceCard({ service, viewMode, index, onSelect, onMessage, onFavorite
             </div>
           )}
           {service.featured && (
-            <div className="absolute top-4 left-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+            <div className="absolute bottom-4 left-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
               Featured
             </div>
           )}
@@ -2248,12 +2263,13 @@ interface ServiceDetailModalProps {
 }
 
 function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, onMessage, onBookingRequest, onOpenGallery }: ServiceDetailModalProps) {
-  if (!service) return null;
-
-  // 🎉 NEW: State for selected package
-  const [selectedPackage, setSelectedPackage] = React.useState<ServicePackage | null>(
-    service.packages?.find(p => p.is_default) || service.packages?.[0] || null
+  // 🎉 NEW: State for selected package - MUST be before early return
+  const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(
+    service?.packages?.find(p => p.is_default) || service?.packages?.[0] || null
   );
+
+  // Early return AFTER hooks
+  if (!service) return null;
 
   // Calculate current price based on selected package or service price range
   const getCurrentPrice = () => {
@@ -2424,6 +2440,42 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
                 ))}
               </div>
             </div>
+
+            {/* 🎨 Gallery Section - MOVED TO TOP - Only show if gallery exists and has images */}
+            {service.gallery && service.gallery.length > 0 && (
+              <div className="mb-8">
+                <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Gallery ({service.gallery.length} photos)
+                </h4>
+                <div className="grid grid-cols-4 gap-3">
+                  {service.gallery.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className="relative aspect-square rounded-xl overflow-hidden group cursor-pointer border-2 border-transparent hover:border-pink-500 transition-all"
+                      onClick={() => onOpenGallery(service.gallery, idx)}
+                    >
+                      <img
+                        src={img}
+                        alt={`${service.name} gallery ${idx + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=300';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                        <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             
             {/* DSS Fields - Detailed View */}
             <div className="mb-8 bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl p-6">
@@ -2733,38 +2785,6 @@ function ServiceDetailModal({ service, onClose, onContact, onEmail, onWebsite, o
               </div>
             )}
 
-            <div className="mb-8">
-              <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                Gallery ({service.gallery.length} photos)
-              </h4>
-              <div className="grid grid-cols-4 gap-3">
-                {service.gallery.map((img, idx) => (
-                  <div
-                    key={idx}
-                    className="relative aspect-square rounded-xl overflow-hidden group cursor-pointer border-2 border-transparent hover:border-pink-500 transition-all"
-                    onClick={() => onOpenGallery(service.gallery, idx)}
-                  >
-                    <img
-                      src={img}
-                      alt={`${service.name} gallery ${idx + 1}`}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=300';
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                      <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                      </svg>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
             <div className="flex gap-4 justify-end">
               <button
                 onClick={handleBookingWithPackage}

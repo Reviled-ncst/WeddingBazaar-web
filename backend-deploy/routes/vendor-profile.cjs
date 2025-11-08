@@ -12,29 +12,53 @@ router.get('/:vendorId', async (req, res) => {
   try {
     const { vendorId } = req.params;
         
-    // Handle both UUID and string ID formats
+    // Handle both UUID and string ID formats (VEN-XXXXX, user ID, or UUID)
     let queryVendorId = vendorId;
+    let userIdForQuery = null;
     
-    // If it's not a UUID format, try to find matching vendor by user_id
+    // If it's not a UUID format, we need to resolve it to a vendor_profiles UUID
     if (!vendorId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-      console.log('🔍 Non-UUID vendor ID detected, looking up by user_id:', vendorId);
-      const userLookup = await sql`
-        SELECT vp.id as vendor_profile_id
-        FROM vendor_profiles vp
-        INNER JOIN users u ON vp.user_id = u.id
-        WHERE u.id = ${vendorId}
-      `;
+      console.log('🔍 Non-UUID vendor ID detected:', vendorId);
       
-      if (userLookup.length > 0) {
-        queryVendorId = userLookup[0].vendor_profile_id;
-        console.log('✅ Found vendor profile ID:', queryVendorId);
+      // STEP 1: Check if this is a VEN-XXXXX ID in the vendors table
+      if (vendorId.startsWith('VEN-')) {
+        console.log('🔍 VEN-XXXXX format detected, looking up in vendors table...');
+        const vendorLookup = await sql`
+          SELECT user_id
+          FROM vendors
+          WHERE id = ${vendorId}
+        `;
+        
+        if (vendorLookup.length > 0) {
+          userIdForQuery = vendorLookup[0].user_id;
+          console.log('✅ Found user_id from vendors table:', userIdForQuery);
+        } else {
+          console.log('❌ VEN-XXXXX ID not found in vendors table:', vendorId);
+        }
       } else {
-        console.log('❌ No vendor profile found for user ID:', vendorId);
+        // STEP 2: Assume it's a user ID (e.g., 2-2025-019)
+        userIdForQuery = vendorId;
+        console.log('🔍 Assuming user ID format:', userIdForQuery);
+      }
+      
+      // STEP 3: Look up the vendor_profiles UUID using the user_id
+      if (userIdForQuery) {
+        const profileLookup = await sql`
+          SELECT vp.id as vendor_profile_id
+          FROM vendor_profiles vp
+          WHERE vp.user_id = ${userIdForQuery}
+        `;
+        
+        if (profileLookup.length > 0) {
+          queryVendorId = profileLookup[0].vendor_profile_id;
+          console.log('✅ Found vendor_profile UUID:', queryVendorId);
+        } else {
+          console.log('❌ No vendor profile found for user_id:', userIdForQuery);
+        }
       }
     }
     
-    
-    console.log('🔍 Getting vendor profile for ID:', vendorId);
+    console.log('🔍 Final vendor profile ID for query:', queryVendorId);
     
     // Check if DATABASE_URL is available
     if (!process.env.DATABASE_URL) {

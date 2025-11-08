@@ -227,10 +227,10 @@ export const VendorServices: React.FC = () => {
     service: null
   });
   
-  // Fetch vendor ID from backend if user.vendorId is not available
+  // Fetch vendor ID from backend - ALWAYS fetch to get the correct vendor.id
   React.useEffect(() => {
     const fetchVendorId = async () => {
-      if (user?.role === 'vendor' && !user?.vendorId && user?.id) {
+      if (user?.role === 'vendor' && user?.id) {
         try {
           console.log('🔍 [VendorServices] Fetching vendor ID for user:', user.id);
           const response = await fetch(`${apiUrl}/api/vendors/user/${user.id}`);
@@ -239,13 +239,12 @@ export const VendorServices: React.FC = () => {
           if (data.success && data.vendor?.id) {
             console.log('✅ [VendorServices] Found vendor ID:', data.vendor.id);
             setActualVendorId(data.vendor.id);
+          } else {
+            console.error('❌ [VendorServices] No vendor profile found for user:', user.id);
           }
         } catch (error) {
           console.error('❌ [VendorServices] Error fetching vendor ID:', error);
         }
-      } else if (user?.vendorId) {
-        // User already has vendorId in session
-        setActualVendorId(user.vendorId);
       }
     };
     
@@ -527,18 +526,30 @@ export const VendorServices: React.FC = () => {
       
       const method = editingService ? 'PUT' : 'POST';
       
-      // ✅ CRITICAL FIX: Use the correct vendor_id format
-      // Database has TWO vendor tables:
-      // 1. vendors table: id = '2-2025-003' (user ID format) - LEGACY SYSTEM
-      // 2. vendor_profiles table: id = UUID, user_id = '2-2025-003' - NEW SYSTEM
+      // ✅ CRITICAL FIX: Use the ACTUAL vendor profile ID from the database
+      // The vendors table has inconsistent ID formats:
+      // - Old vendors: id = 'VEN-XXXXX' (e.g., VEN-00021)
+      // - New vendors: id = '2-YYYY-XXX' (e.g., 2-2025-002)
+      // - user_id always = '2-YYYY-XXX' format
       // 
-      // The services.vendor_id FK constraint references vendors.id ('2-2025-003')
-      // NOT vendor_profiles.id (UUID)
-      const correctVendorId = user?.id || vendorId; // Use user.id format ('2-2025-003')
+      // We MUST use the ACTUAL vendors.id, not the user.id!
+      // actualVendorId is fetched from /api/vendors/user/:userId and returns the REAL vendor.id
+      const correctVendorId = actualVendorId || vendorId || user?.id;
+      
+      console.log('🔍 [VendorServices] Vendor ID resolution:', {
+        userId: user?.id,
+        actualVendorId: actualVendorId,
+        vendorId: vendorId,
+        correctVendorId: correctVendorId
+      });
+      
+      if (!correctVendorId) {
+        throw new Error('Unable to determine vendor ID. Please refresh and try again.');
+      }
       
       const payload = {
         ...serviceData,
-        vendor_id: correctVendorId, // Use user ID format that matches vendors.id
+        vendor_id: correctVendorId, // Use ACTUAL vendor.id from database
       };
       
       // ✅ DEBUG: Log itemization data being sent

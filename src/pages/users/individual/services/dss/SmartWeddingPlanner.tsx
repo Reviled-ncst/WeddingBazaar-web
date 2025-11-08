@@ -451,6 +451,8 @@ export function SmartWeddingPlanner({
                           <button
                             key={style.id}
                             onClick={() => handlePreferenceChange('weddingStyle', style.id)}
+                            title={`Select ${style.name} style`}
+                            aria-label={`Select ${style.name} style`}
                             className={`p-4 rounded-xl border-2 transition-all ${
                               preferences.weddingStyle === style.id
                                 ? 'border-pink-500 bg-pink-50 shadow-md'
@@ -476,13 +478,17 @@ export function SmartWeddingPlanner({
                       </h3>
                       <p className="text-gray-600 mb-6">This helps us recommend packages within your range</p>
                       <div className="space-y-4">
+                        <label htmlFor="budget-slider" className="sr-only">Wedding Budget</label>
                         <input
+                          id="budget-slider"
                           type="range"
                           min="20000"
                           max="500000"
                           step="10000"
                           value={preferences.budget}
                           onChange={(e) => handlePreferenceChange('budget', Number(e.target.value))}
+                          title="Wedding Budget Slider"
+                          aria-label="Wedding Budget Slider"
                           className="w-full h-3 bg-gradient-to-r from-green-200 to-purple-200 rounded-lg appearance-none cursor-pointer"
                         />
                         <div className="text-center">
@@ -501,13 +507,17 @@ export function SmartWeddingPlanner({
                       </h3>
                       <p className="text-gray-600 mb-6">Guest count helps us recommend appropriate venue sizes and catering</p>
                       <div className="space-y-4">
+                        <label htmlFor="guest-count-slider" className="sr-only">Guest Count</label>
                         <input
+                          id="guest-count-slider"
                           type="range"
                           min="20"
                           max="500"
                           step="10"
                           value={preferences.guestCount}
                           onChange={(e) => handlePreferenceChange('guestCount', Number(e.target.value))}
+                          title="Guest Count Slider"
+                          aria-label="Guest Count Slider"
                           className="w-full h-3 bg-gradient-to-r from-blue-200 to-pink-200 rounded-lg appearance-none cursor-pointer"
                         />
                         <div className="text-center">
@@ -676,9 +686,13 @@ export function SmartWeddingPlanner({
                   <h3 className="text-xl font-bold text-gray-900">
                     Recommended Packages ({weddingPackages.length})
                   </h3>
+                  <label htmlFor="sort-packages" className="sr-only">Sort Packages By</label>
                   <select
+                    id="sort-packages"
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as 'match' | 'price' | 'savings')}
+                    title="Sort packages by"
+                    aria-label="Sort packages by"
                     className="px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500"
                   >
                     <option value="match">Best Match</option>

@@ -120,7 +120,9 @@ export const DocumentVerification: React.FC = () => {
       
       if (docsResponse.ok) {
         const docsData = await docsResponse.json();
+        console.log('📄 [DocumentVerification] Full API response:', docsData);
         console.log(`✅ [DocumentVerification] Loaded ${docsData.documents?.length || 0} documents (filter: ${filterStatus})`);
+        console.log('📋 [DocumentVerification] Documents array:', docsData.documents);
         setDocuments(docsData.documents || []);
       } else {
         console.error('❌ [DocumentVerification] Documents API failed:', docsResponse.status);
@@ -585,18 +587,63 @@ export const DocumentVerification: React.FC = () => {
                 {/* Document Preview */}
                 <div className="bg-gray-50 rounded-2xl p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Document Preview</h3>
-                  <div className="bg-white rounded-xl p-8 border-2 border-dashed border-gray-300 text-center">
-                    <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 mb-4">Document preview not available</p>
-                    <a
-                      href={selectedDocument.documentUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all"
-                    >
-                      <Download className="h-5 w-5" />
-                      Download Document
-                    </a>
+                  <div className="bg-white rounded-xl p-4 border-2 border-gray-200">
+                    {/* Image Preview */}
+                    {selectedDocument.mimeType?.startsWith('image/') ? (
+                      <div className="space-y-4">
+                        <img 
+                          src={selectedDocument.documentUrl} 
+                          alt={selectedDocument.fileName}
+                          className="w-full h-auto rounded-lg shadow-md"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                        <div className="hidden text-center py-8">
+                          <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-600 mb-4">Image preview unavailable</p>
+                        </div>
+                        <a
+                          href={selectedDocument.documentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium w-full justify-center"
+                        >
+                          <Eye className="h-4 w-4" />
+                          View Full Size
+                        </a>
+                      </div>
+                    ) : (
+                      /* Non-image files */
+                      <div className="text-center py-8">
+                        <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-900 font-semibold mb-2">{selectedDocument.fileName}</p>
+                        <p className="text-gray-600 mb-4 text-sm">
+                          {selectedDocument.mimeType || 'Document'} • {(selectedDocument.fileSize / 1024).toFixed(2)} KB
+                        </p>
+                        <div className="flex gap-3 justify-center">
+                          <a
+                            href={selectedDocument.documentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all font-medium"
+                          >
+                            <Eye className="h-5 w-5" />
+                            Open Document
+                          </a>
+                          <a
+                            href={selectedDocument.documentUrl}
+                            download={selectedDocument.fileName}
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg transition-all font-medium"
+                          >
+                            <Download className="h-5 w-5" />
+                            Download
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

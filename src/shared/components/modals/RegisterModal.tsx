@@ -344,11 +344,36 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         email: formData.email,
         phone: formData.phone,
         userType: userType,
-        ...(userType === 'vendor' && {
+        ...((userType === 'vendor' || userType === 'coordinator') && {
           business_name: formData.business_name,
           business_type: formData.business_type,
+          location: formData.location,
+          vendor_type: formData.vendor_type,
+        }),
+        ...(userType === 'coordinator' && {
+          years_experience: formData.years_experience,
+          team_size: formData.team_size,
+          specialties: formData.specialties,
+          service_areas: formData.service_areas,
         })
       });
+      
+      // 🚨 CRITICAL VALIDATION: Ensure vendor fields are not empty
+      if (userType === 'vendor' || userType === 'coordinator') {
+        if (!formData.business_name?.trim()) {
+          console.error('❌ VALIDATION FAILED: business_name is empty!');
+          throw new Error('Business name is required');
+        }
+        if (!formData.business_type?.trim()) {
+          console.error('❌ VALIDATION FAILED: business_type is empty!');
+          throw new Error('Business category is required');
+        }
+        if (!formData.location?.trim()) {
+          console.error('❌ VALIDATION FAILED: location is empty!');
+          throw new Error('Business location is required');
+        }
+        console.log('✅ Vendor field validation passed');
+      }
       
       // Register (will use Firebase if configured, otherwise backend)
       await register({
@@ -363,7 +388,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
           business_type: formData.business_type,
           location: formData.location,
           // 🎯 FIX: Include vendor_type (coordinators are always 'business')
-          vendor_type: userType === 'coordinator' ? 'business' : formData.vendor_type,
+          vendor_type: (userType === 'coordinator' ? 'business' : formData.vendor_type) as 'business' | 'freelancer',
         }),
         // 🎯 FIX: Include coordinator-specific fields
         ...(userType === 'coordinator' && {

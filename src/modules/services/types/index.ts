@@ -1,6 +1,65 @@
 // Import shared types from booking module for consistency
 import type { ServiceCategory } from '../../../shared/types/comprehensive-booking.types';
 
+// ✅ NEW: Package Item Interface (from database)
+export interface PackageItem {
+  id: string;
+  package_id: string;
+  item_type: 'inclusion' | 'feature' | 'deliverable';
+  item_name: string;
+  item_description?: string;
+  quantity?: number;
+  unit?: string;
+  is_optional: boolean;
+  display_order: number;
+}
+
+// ✅ NEW: Service Package Interface (from database)
+export interface ServicePackage {
+  id: string;
+  service_id: string;
+  package_name: string;
+  package_description?: string;
+  base_price: number;
+  is_default: boolean;
+  is_customizable: boolean;
+  min_guests?: number;
+  max_guests?: number;
+  duration_hours?: number;
+  advance_booking_days?: number;
+  cancellation_deadline_days?: number;
+  deposit_percentage?: number;
+  payment_terms?: string;
+  availability_status: 'available' | 'limited' | 'unavailable';
+  items?: PackageItem[];  // Attached by API
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ✅ NEW: Service Add-on Interface (from database)
+export interface ServiceAddon {
+  id: string;
+  service_id: string;
+  addon_name: string;
+  addon_description?: string;
+  addon_price: number;
+  addon_type: 'upgrade' | 'extra' | 'optional';
+  is_available: boolean;
+  max_quantity?: number;
+}
+
+// ✅ NEW: Pricing Rule Interface (from database)
+export interface PricingRule {
+  id: string;
+  service_id: string;
+  rule_name: string;
+  rule_type: 'per_guest' | 'per_hour' | 'flat_rate' | 'tiered';
+  price_per_unit?: number;
+  min_units?: number;
+  max_units?: number;
+  discount_percentage?: number;
+}
+
 // Enhanced Service interface to match database schema
 export interface Service {
   // Core identifiers
@@ -83,6 +142,12 @@ export interface Service {
   
   // Metadata
   metadata?: Record<string, any>;
+  
+  // ✅ NEW: Itemization data from API
+  packages?: ServicePackage[];     // Array of package options
+  addons?: ServiceAddon[];         // Available add-ons
+  pricing_rules?: PricingRule[];   // Dynamic pricing rules
+  has_itemization?: boolean;       // Flag indicating if service has packages
   
   // Timestamps
   createdAt?: string;

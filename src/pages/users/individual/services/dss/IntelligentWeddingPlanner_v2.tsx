@@ -394,7 +394,8 @@ export function IntelligentWeddingPlanner({
   // ==================== MATCHING ALGORITHM ====================
 
   // Calculate match score for a service based on preferences
-  const calculateServiceMatch = (service: Service): { score: number; reasons: string[] } => {
+  // 🔧 FIX: Wrap in useCallback to prevent infinite re-renders
+  const calculateServiceMatch = useCallback((service: Service): { score: number; reasons: string[] } => {
     let score = 0;
     const reasons: string[] = [];
     const maxScore = 100;
@@ -511,7 +512,7 @@ export function IntelligentWeddingPlanner({
     }
 
     return { score: Math.min(score, maxScore), reasons };
-  };
+  }, [preferences]); // 🔧 FIX: Add dependency array with preferences to prevent infinite loop
 
   // 🆕 Generate wedding packages using PRIORITY-BASED Enhanced Matching Engine
   const generateRecommendations = useMemo(() => {
@@ -563,13 +564,14 @@ export function IntelligentWeddingPlanner({
         };
       });
 
-      // Log package generation results
-      console.log('🎯 Priority-Based Package Generation Results:');
-      console.log(`   📦 Generated ${packages.length} packages`);
-      console.log(`   ✅ Required categories: ${preferences.mustHaveServices.join(', ')}`);
-      packages.forEach(pkg => {
-        console.log(`   📋 ${pkg.name}: ${pkg.services.length} services, ${pkg.matchPercentage}% fulfillment`);
-      });
+      // 🔧 FIX: Comment out excessive logging to prevent console spam
+      // Only log once when debugging is needed
+      // console.log('🎯 Priority-Based Package Generation Results:');
+      // console.log(`   📦 Generated ${packages.length} packages`);
+      // console.log(`   ✅ Required categories: ${preferences.mustHaveServices.join(', ')}`);
+      // packages.forEach(pkg => {
+      //   console.log(`   📋 ${pkg.name}: ${pkg.services.length} services, ${pkg.matchPercentage}% fulfillment`);
+      // });
 
       return packages.sort((a, b) => b.matchPercentage - a.matchPercentage);
       
@@ -623,7 +625,8 @@ export function IntelligentWeddingPlanner({
 
       return [];
     }
-  }, [showResults, preferences, services, calculateServiceMatch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showResults, preferences, services]); // 🔧 FIX: calculateServiceMatch excluded to break circular dependency (it already depends on preferences)
 
   // ==================== STEP COMPONENTS ====================
 
