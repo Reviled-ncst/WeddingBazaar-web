@@ -527,20 +527,18 @@ export const VendorServices: React.FC = () => {
       const method = editingService ? 'PUT' : 'POST';
       
       // ✅ CRITICAL FIX: Use the ACTUAL vendor profile ID from the database
-      // The vendors table has inconsistent ID formats:
-      // - Old vendors: id = 'VEN-XXXXX' (e.g., VEN-00021)
-      // - New vendors: id = '2-YYYY-XXX' (e.g., 2-2025-002)
-      // - user_id always = '2-YYYY-XXX' format
+      // ✅ CRITICAL FIX (Nov 8, 2025): Services table uses user_id format ('2-2025-XXX'), NOT vendor.id format ('VEN-XXXXX')
+      // The services.vendor_id column references the USER_ID, not the old vendors.id format
+      // Backend service creation endpoint now expects user_id format
       // 
-      // We MUST use the ACTUAL vendors.id, not the user.id!
-      // actualVendorId is fetched from /api/vendors/user/:userId and returns the REAL vendor.id
-      const correctVendorId = actualVendorId || vendorId || user?.id;
+      // ALWAYS use user.id for service creation, never use actualVendorId (which returns VEN-XXXXX format)
+      const correctVendorId = user?.id || vendorId;
       
-      console.log('🔍 [VendorServices] Vendor ID resolution:', {
+      console.log('🔍 [VendorServices] Vendor ID resolution for service creation:', {
         userId: user?.id,
-        actualVendorId: actualVendorId,
         vendorId: vendorId,
-        correctVendorId: correctVendorId
+        correctVendorId: correctVendorId,
+        note: 'Using user_id format for services.vendor_id (not VEN-XXXXX format)'
       });
       
       if (!correctVendorId) {
@@ -549,7 +547,7 @@ export const VendorServices: React.FC = () => {
       
       const payload = {
         ...serviceData,
-        vendor_id: correctVendorId, // Use ACTUAL vendor.id from database
+        vendor_id: correctVendorId, // ✅ Use user_id format ('2-2025-XXX'), not VEN-XXXXX
       };
       
       // ✅ DEBUG: Log itemization data being sent
