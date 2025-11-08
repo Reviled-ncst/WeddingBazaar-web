@@ -715,14 +715,8 @@ router.post('/', async (req, res) => {
       // This ensures service creation still works if subscription system has issues
     }
 
-    // Generate service ID (format: SRV-XXXXX)
-    const countResult = await sql`SELECT COUNT(*) as count FROM services`;
-    const serviceCount = parseInt(countResult[0].count) + 1;
-    const serviceId = `SRV-${serviceCount.toString().padStart(5, '0')}`;
-    
-    console.log('🆔 Generated service ID:', serviceId);
+    // ✅ FIX: Let PostgreSQL auto-generate UUID for service ID (prevents duplicate key errors)
     console.log('💾 [POST /api/services] Inserting service data:', {
-      id: serviceId,
       vendor_id: actualVendorId, // Use the resolved vendor ID
       title: finalTitle,
       category,
@@ -733,9 +727,10 @@ router.post('/', async (req, res) => {
     const normalizedServiceTier = service_tier ? service_tier.toLowerCase() : null;
     
     // ✅ COMPLETE FIX: Insert ALL fields that frontend sends (no data loss)
+    // ✅ REMOVED 'id' from INSERT - let PostgreSQL auto-generate UUID via gen_random_uuid()
     const result = await sql`
       INSERT INTO services (
-        id, vendor_id, title, description, category, 
+        vendor_id, title, description, category, 
         price, price_range, max_price, 
         location, location_data, location_coordinates, location_details,
         images, features,
@@ -744,7 +739,6 @@ router.post('/', async (req, res) => {
         years_in_business, service_tier, wedding_styles, cultural_specialties, availability,
         created_at, updated_at
       ) VALUES (
-        ${serviceId},
         ${actualVendorId},
         ${finalTitle},
         ${description || ''},
@@ -776,6 +770,10 @@ router.post('/', async (req, res) => {
 
     console.log('✅ [POST /api/services] Service created successfully:', result[0]);
 
+    // ✅ Get the auto-generated service ID
+    const createdServiceId = result[0].id;
+    console.log('🆔 Auto-generated service ID:', createdServiceId);
+
     // ✅ HANDLE ITEMIZATION DATA - Create packages, items, add-ons, and pricing rules
     const itemizationData = {
       packages: [],
@@ -794,7 +792,7 @@ router.post('/', async (req, res) => {
               service_id, name, description, price,
               is_default, is_active, created_at, updated_at
             ) VALUES (
-              ${serviceId},
+              ${createdServiceId},
               ${pkg.name},
               ${pkg.description || ''},
               ${pkg.price ? parseFloat(pkg.price) : 0},
@@ -850,7 +848,7 @@ router.post('/', async (req, res) => {
               service_id, name, description, price,
               is_active, created_at, updated_at
             ) VALUES (
-              ${serviceId},
+              ${createdServiceId},
               ${addon.name},
               ${addon.description || ''},
               ${addon.price ? parseFloat(addon.price) : 0},
@@ -877,7 +875,7 @@ router.post('/', async (req, res) => {
               price_per_unit, min_quantity, max_quantity,
               is_active, created_at, updated_at
             ) VALUES (
-              ${serviceId},
+              ${createdServiceId},
               ${rule.rule_type || 'fixed'},
               ${rule.rule_name || ''},
               ${rule.base_price ? parseFloat(rule.base_price) : 0},
