@@ -63,6 +63,24 @@ interface EnhancedBooking extends Booking {
   budgetRange?: string;
   preferredContactMethod?: string;
   responseMessage?: string;
+  // Package/Itemization fields
+  packageName?: string;
+  packagePrice?: number;
+  packageItems?: Array<{
+    item: string;
+    quantity?: number;
+    price?: number;
+  }>;
+  addOns?: Array<{
+    name: string;
+    price: number;
+  }>;
+  itemizationType?: 'package' | 'custom';
+  customItems?: Array<{
+    description: string;
+    quantity?: number;
+    price?: number;
+  }>;
 }
 
 interface BookingDetailsModalProps {
@@ -655,6 +673,199 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Receipts Section */}
+          {receipts.length > 0 && (
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-green-600" />
+                Payment Receipts ({receipts.length})
+              </h3>
+              
+              {loadingReceipts ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-600">Loading receipts...</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {receipts.map((receipt) => (
+                    <div key={receipt.id} className="bg-white rounded-lg p-4 border border-green-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-gray-900">#{receipt.receiptNumber}</span>
+                            <span className={cn(
+                              "px-2 py-1 rounded-full text-xs font-medium",
+                              receipt.status === 'completed' ? 'bg-green-100 text-green-700' :
+                              receipt.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-red-100 text-red-700'
+                            )}>
+                              {receipt.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <span>
+                              {new Intl.NumberFormat('en-PH', {
+                                style: 'currency',
+                                currency: receipt.currency || 'PHP'
+                              }).format(receipt.amount)}
+                            </span>
+                            <span className="capitalize">{receipt.paymentType.replace('_', ' ')}</span>
+                            <span>
+                              {new Date(receipt.issuedDate).toLocaleDateString('en-PH')}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleViewReceipt(receipt)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View Receipt"
+                            aria-label="View receipt details"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </button>
+                          
+                          <button
+                            onClick={() => handleDownloadPDF(receipt)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Download PDF"
+                            aria-label="Download receipt as PDF"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Package/Itemization Details Section */}
+          {(booking.packageName || booking.customItems) && (
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-purple-600" />
+                Package & Itemization Details
+              </h3>
+
+              {/* Package Information */}
+              {booking.packageName && (
+                <div className="space-y-4">
+                  {/* Package Header */}
+                  <div className="bg-white rounded-lg p-5 border-2 border-purple-200">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="text-xl font-bold text-purple-900">{booking.packageName}</h4>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {booking.itemizationType === 'package' ? 'Pre-designed Package' : 'Custom Package'}
+                        </p>
+                      </div>
+                      {booking.packagePrice && booking.packagePrice > 0 && (
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600">Package Price</p>
+                          <p className="text-2xl font-bold text-purple-700">
+                            {formatCurrency(booking.packagePrice)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Package Items */}
+                    {booking.packageItems && booking.packageItems.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-sm font-semibold text-gray-700 mb-2">Package Includes:</p>
+                        <div className="space-y-2">
+                          {booking.packageItems.map((item, index) => (
+                            <div key={index} className="flex items-center justify-between py-2 px-3 bg-purple-50 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                <span className="text-gray-800">{item.item}</span>
+                                {item.quantity && (
+                                  <span className="text-sm text-gray-600">×{item.quantity}</span>
+                                )}
+                              </div>
+                              {item.price && item.price > 0 && (
+                                <span className="text-sm font-medium text-gray-700">
+                                  {formatCurrency(item.price)}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add-ons */}
+                  {booking.addOns && booking.addOns.length > 0 && (
+                    <div className="bg-white rounded-lg p-5 border border-pink-200">
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <Star className="w-4 h-4 text-pink-500" />
+                        Add-ons & Extras
+                      </h4>
+                      <div className="space-y-2">
+                        {booking.addOns.map((addon, index) => (
+                          <div key={index} className="flex items-center justify-between py-2 px-3 bg-pink-50 rounded-lg">
+                            <span className="text-gray-800">{addon.name}</span>
+                            <span className="text-sm font-semibold text-pink-700">
+                              +{formatCurrency(addon.price)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Custom Items (when no package selected) */}
+              {!booking.packageName && booking.customItems && booking.customItems.length > 0 && (
+                <div className="bg-white rounded-lg p-5 border-2 border-purple-200">
+                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-purple-500" />
+                    Custom Itemization
+                  </h4>
+                  <div className="space-y-2">
+                    {booking.customItems.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between py-2 px-3 bg-purple-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <span className="text-gray-800">{item.description}</span>
+                          {item.quantity && (
+                            <span className="text-sm text-gray-600">×{item.quantity}</span>
+                          )}
+                        </div>
+                        {item.price && item.price > 0 && (
+                          <span className="text-sm font-semibold text-purple-700">
+                            {formatCurrency(item.price)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Package Summary */}
+              {(booking.packagePrice || booking.addOns?.length) && (
+                <div className="mt-4 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg p-4 border-2 border-purple-300">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-900">Package Total</span>
+                    <span className="text-2xl font-bold text-purple-800">
+                      {formatCurrency(
+                        (booking.packagePrice || 0) + 
+                        (booking.addOns?.reduce((sum, addon) => sum + addon.price, 0) || 0)
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

@@ -114,6 +114,24 @@ interface EnhancedBooking {
   daysUntilEvent?: number;
   specialRequests?: string;
   notes?: string;
+  // Package/Itemization fields
+  packageName?: string;
+  packagePrice?: number;
+  packageItems?: Array<{
+    item: string;
+    quantity?: number;
+    price?: number;
+  }>;
+  addOns?: Array<{
+    name: string;
+    price: number;
+  }>;
+  itemizationType?: 'package' | 'custom';
+  customItems?: Array<{
+    description: string;
+    quantity?: number;
+    price?: number;
+  }>;
   serviceItems?: Array<{
     id: string | number;
     name: string;
