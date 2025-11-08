@@ -491,8 +491,8 @@ router.post('/', async (req, res) => {
       console.log(`📋 [Document Check] Vendor type: ${vendorType}`);
       
       // Get approved documents for this vendor
-      // ⚠️ FIXED: Use actualVendorId (user_id) instead of vendorTableId (vendors.id)
-      // The vendor_documents table uses user_id format (e.g., '2-2025-003'), not vendors.id
+      // ✅ FIXED: Query vendor_documents table (correct table name)
+      // vendor_id should match actualVendorId (string format like '2-2025-003')
       const approvedDocs = await sql`
         SELECT DISTINCT document_type 
         FROM vendor_documents 
