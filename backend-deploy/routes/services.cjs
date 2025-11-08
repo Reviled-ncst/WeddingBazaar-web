@@ -492,10 +492,10 @@ router.post('/', async (req, res) => {
       
       // Get approved documents for this vendor
       // ⚠️ FIXED: Use actualVendorId (user_id) instead of vendorTableId (vendors.id)
-      // The documents table uses user_id format (e.g., '2-2025-003'), not vendors.id
+      // The vendor_documents table uses user_id format (e.g., '2-2025-003'), not vendors.id
       const approvedDocs = await sql`
         SELECT DISTINCT document_type 
-        FROM documents 
+        FROM vendor_documents 
         WHERE vendor_id = ${actualVendorId}
         AND verification_status = 'approved'
       `;
