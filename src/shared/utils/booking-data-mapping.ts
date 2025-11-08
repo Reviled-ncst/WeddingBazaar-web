@@ -45,6 +45,14 @@ export interface DatabaseBooking {
   last_payment_date?: string; // Last payment timestamp
   payment_method?: string; // Payment method used
   transaction_id?: string; // Transaction/payment intent ID
+  // 📦 PACKAGE/ITEMIZATION FIELDS (NEW - Nov 8, 2025)
+  package_id?: string;
+  package_name?: string; // Selected package name
+  package_price?: string; // Package price (numeric as string)
+  package_items?: string; // JSON string of package items array
+  selected_addons?: string; // JSON string of selected add-ons array
+  addon_total?: string; // Total add-ons cost (numeric as string)
+  subtotal?: string; // Subtotal (package + add-ons) (numeric as string)
 }
 
 // API response format (camelCase)
@@ -134,6 +142,23 @@ export interface UIBooking {
     eventEndTime?: string;
   };
   responseMessage?: string;
+  // 📦 PACKAGE/ITEMIZATION FIELDS (NEW - Nov 8, 2025)
+  packageId?: string;
+  packageName?: string; // Selected package name
+  packagePrice?: number; // Package price as number
+  packageItems?: Array<{
+    item_name: string;
+    item_description?: string;
+    quantity?: number;
+    unit_price?: number;
+  }>; // Package items array (parsed from JSON)
+  selectedAddons?: Array<{
+    addon_name: string;
+    addon_description?: string;
+    addon_price: number;
+  }>; // Selected add-ons array (parsed from JSON)
+  addonTotal?: number; // Total add-ons cost
+  subtotal?: number; // Subtotal (package + add-ons)
 }
 
 // UI-facing booking stats type
@@ -423,7 +448,43 @@ export function mapDatabaseBookingToUI(dbBooking: DatabaseBooking): UIBooking {
       eventDate: formattedEventDate,
       eventTime: formattedEventTime,
       eventEndTime: formattedEventEndTime,
-    }
+    },
+    
+    // 📦 PACKAGE/ITEMIZATION FIELDS (NEW - Nov 8, 2025)
+    // Map from database snake_case to UI camelCase
+    packageId: (dbBooking as any).package_id,
+    packageName: (dbBooking as any).package_name, // Backend returns this
+    packagePrice: (dbBooking as any).package_price ? parseFloat((dbBooking as any).package_price) : undefined,
+    packageItems: (() => {
+      try {
+        const items = (dbBooking as any).package_items;
+        if (typeof items === 'string') {
+          return JSON.parse(items);
+        } else if (Array.isArray(items)) {
+          return items;
+        }
+        return undefined;
+      } catch (error) {
+        console.error('❌ [Mapping] Failed to parse package_items:', error);
+        return undefined;
+      }
+    })(),
+    selectedAddons: (() => {
+      try {
+        const addons = (dbBooking as any).selected_addons;
+        if (typeof addons === 'string') {
+          return JSON.parse(addons);
+        } else if (Array.isArray(addons)) {
+          return addons;
+        }
+        return undefined;
+      } catch (error) {
+        console.error('❌ [Mapping] Failed to parse selected_addons:', error);
+        return undefined;
+      }
+    })(),
+    addonTotal: (dbBooking as any).addon_total ? parseFloat((dbBooking as any).addon_total) : undefined,
+    subtotal: (dbBooking as any).subtotal ? parseFloat((dbBooking as any).subtotal) : undefined,
   };
 }
 
