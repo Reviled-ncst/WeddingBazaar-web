@@ -277,18 +277,25 @@ router.get('/user/:userId', async (req, res) => {
     const offset = (page - 1) * limit;
     
     // Use couple_id since that's the actual column name
+    // 🔧 FIX: Join with vendors/vendor_profiles to get vendor name
     let query = `
-      SELECT * FROM bookings 
-      WHERE couple_id = $1
+      SELECT 
+        b.*,
+        COALESCE(vp.business_name, v.business_name, 'Unknown Vendor') as vendor_name,
+        vp.business_type as vendor_business_type
+      FROM bookings b
+      LEFT JOIN vendors v ON b.vendor_id = v.user_id
+      LEFT JOIN vendor_profiles vp ON b.vendor_id = vp.user_id
+      WHERE b.couple_id = $1
     `;
     let params = [userId];
     
     if (status && status !== 'all') {
-      query += ` AND status = $${params.length + 1}`;
+      query += ` AND b.status = $${params.length + 1}`;
       params.push(status);
     }
     
-    query += ` ORDER BY ${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    query += ` ORDER BY b.${sortBy} ${sortOrder.toUpperCase()} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(parseInt(limit), parseInt(offset));
     
     const rawBookings = await sql(query, params);
