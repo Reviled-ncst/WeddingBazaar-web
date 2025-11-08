@@ -28,7 +28,7 @@ const subscriptionRoutes = require('./routes/subscriptions/index.cjs'); // NEW M
 const reviewRoutes = require('./routes/reviews.cjs'); // Reviews and ratings system
 const walletRoutes = require('./routes/wallet.cjs'); // Vendor wallet and earnings system
 // const coordinatorRoutes = require('./routes/coordinator/index.cjs'); // DISABLED: Coordinator feature modules (causing deployment timeout)
-const bookingReportsRoutes = require('./routes/booking-reports.cjs'); // Booking reports system (vendor & couple)
+// const bookingReportsRoutes = require('./routes/booking-reports.cjs'); // DISABLED: File does not exist
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -226,7 +226,7 @@ app.use('/api/subscriptions', subscriptionRoutes); // Vendor subscription manage
 app.use('/api/reviews', reviewRoutes); // Reviews and ratings system
 app.use('/api/wallet', walletRoutes); // Vendor wallet and earnings system
 // app.use('/api/coordinator', coordinatorRoutes); // DISABLED: Coordinator feature modules (causing deployment timeout)
-app.use('/api/booking-reports', bookingReportsRoutes); // Booking reports system (vendor & couple)
+// app.use('/api/booking-reports', bookingReportsRoutes); // DISABLED: File does not exist
 
 // Admin routes - Dashboard stats, vendor mappings, documents, users
 app.use('/api/admin', adminRoutes); // Modular admin routes (all endpoints)
