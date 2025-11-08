@@ -509,19 +509,22 @@ export class OptimizedBookingApiService {
       specialRequests: bookingData.special_requests, // Backend expects specialRequests
       
       // 📦 PACKAGE/ITEMIZATION FIELDS (NEW - Nov 8, 2025)
+      // 🔧 CRITICAL FIX: Map from BookingRequestModal field names to backend expected names
       package_id: bookingData.package_id,
-      packageId: bookingData.package_id, // Backend expects packageId
-      package_name: bookingData.package_name,
-      packageName: bookingData.package_name, // Backend expects packageName
-      package_price: bookingData.package_price,
-      packagePrice: bookingData.package_price, // Backend expects packagePrice
-      package_items: bookingData.package_items,
-      packageItems: bookingData.package_items, // Backend expects packageItems
-      selected_addons: bookingData.selected_addons,
-      selectedAddons: bookingData.selected_addons, // Backend expects selectedAddons
-      addon_total: bookingData.addon_total,
-      addonTotal: bookingData.addon_total, // Backend expects addonTotal
-      subtotal: bookingData.subtotal,
+      packageId: bookingData.package_id,
+      selected_package: bookingData.selected_package || bookingData.package_name, // From modal
+      package_name: bookingData.selected_package || bookingData.package_name, // Backend expects this
+      packageName: bookingData.selected_package || bookingData.package_name,
+      selected_package_price: bookingData.package_price, // From modal
+      package_price: bookingData.package_price, // Backend expects this
+      packagePrice: bookingData.package_price,
+      package_items: bookingData.package_items, // From modal (array)
+      packageItems: bookingData.package_items,
+      selected_addons: bookingData.selected_addons, // From modal (array)
+      selectedAddons: bookingData.selected_addons,
+      addon_total: bookingData.addon_total, // From modal (number)
+      addonTotal: bookingData.addon_total,
+      subtotal: bookingData.subtotal, // From modal (number)
       
       // Optimized metadata
       metadata: {
