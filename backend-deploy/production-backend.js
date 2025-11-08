@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const { testConnection } = require('./config/database.cjs');
 
-// Updated: 2025-01-22 - Added public service endpoint for share URLs
+// Updated: 2025-11-07 - Fixed auth profile endpoint infinite loop
 
 // Import route modules
 const authRoutes = require('./routes/auth.cjs');
@@ -21,14 +21,14 @@ const notificationRoutes = require('./routes/notifications.cjs');
 const debugRoutes = require('./routes/debug.cjs');
 const bookingsTestRoutes = require('./routes/bookings-test.cjs');
 const bookingCompletionRoutes = require('./routes/booking-completion.cjs'); // Two-sided completion system
-const adminRoutes = require('./routes/admin.cjs'); // Old admin routes
-const adminUserRoutes = require('./routes/admin/index.cjs'); // New modular admin routes
+const adminRoutes = require('./routes/admin/index.cjs'); // Modular admin routes (documents, bookings, users, etc.)
 const dssRoutes = require('./routes/dss.cjs'); // Decision Support System routes
 const categoryRoutes = require('./routes/categories.cjs'); // Dynamic categories system
 const subscriptionRoutes = require('./routes/subscriptions/index.cjs'); // NEW MODULAR subscription system with PayMongo
 const reviewRoutes = require('./routes/reviews.cjs'); // Reviews and ratings system
 const walletRoutes = require('./routes/wallet.cjs'); // Vendor wallet and earnings system
-const coordinatorRoutes = require('./routes/coordinator/index.cjs'); // Coordinator feature modules
+// const coordinatorRoutes = require('./routes/coordinator/index.cjs'); // DISABLED: Coordinator feature modules (causing deployment timeout)
+const bookingReportsRoutes = require('./routes/booking-reports.cjs'); // Booking reports system (vendor & couple)
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -89,7 +89,7 @@ app.get('/api/health', async (req, res) => {
         error: ''
       },
       environment: process.env.NODE_ENV || 'production',
-      version: '2.7.3-SERVICES-REVERTED',
+      version: '2.7.4-ITEMIZED-PRICES-FIXED',
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       endpoints: {
@@ -143,7 +143,7 @@ app.get('/api/ping', (req, res) => {
   res.json({ 
     success: true, 
     message: 'Wedding Bazaar Backend is running - Modular Architecture',
-    version: '2.7.3-SERVICES-REVERTED',
+    version: '2.7.4-ITEMIZED-PRICES-FIXED',
     timestamp: new Date().toISOString()
   });
 });
@@ -225,11 +225,11 @@ app.use('/api/categories', categoryRoutes); // Dynamic categories system
 app.use('/api/subscriptions', subscriptionRoutes); // Vendor subscription management
 app.use('/api/reviews', reviewRoutes); // Reviews and ratings system
 app.use('/api/wallet', walletRoutes); // Vendor wallet and earnings system
-app.use('/api/coordinator', coordinatorRoutes); // Coordinator feature modules (weddings, milestones, vendors, clients, commissions)
+// app.use('/api/coordinator', coordinatorRoutes); // DISABLED: Coordinator feature modules (causing deployment timeout)
+app.use('/api/booking-reports', bookingReportsRoutes); // Booking reports system (vendor & couple)
 
-// Admin routes - New modular user management system
-app.use('/api/admin', adminUserRoutes); // User management, stats, etc.
-// app.use('/api/admin/legacy', adminRoutes); // Old admin routes (vendor mappings)
+// Admin routes - Dashboard stats, vendor mappings, documents, users
+app.use('/api/admin', adminRoutes); // Modular admin routes (all endpoints)
 
 // DSS routes - Intelligent recommendation system
 app.use('/api/dss', dssRoutes); // Decision Support System endpoints
@@ -272,7 +272,7 @@ app.listen(PORT, () => {
   console.log('🎉========================================🎉');
   console.log('🚀 Wedding Bazaar Backend Server Started');
   console.log('🎉========================================🎉');
-  console.log(`📊 Version: 2.7.3-SERVICES-REVERTED`);
+  console.log(`📊 Version: 2.7.4-ITEMIZED-PRICES-FIXED`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔌 Port: ${PORT}`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);

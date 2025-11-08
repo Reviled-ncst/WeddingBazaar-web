@@ -5,7 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { sql } = require('../config/database.cjs');
+const { sql } = require('../../config/database.cjs'); // ✅ FIX: Correct path from coordinator subfolder
 
 // GET /api/coordinator/whitelabel - Get white label settings
 router.get('/', async (req, res) => {
