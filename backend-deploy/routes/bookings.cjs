@@ -951,7 +951,7 @@ router.post('/', async (req, res) => {
 
 // Create a booking request (POST /api/bookings/request)
 router.post('/request', async (req, res) => {
-  console.log('📝 Creating booking request:', req.body);
+  console.log('📝 Creating booking request - FULL BODY:', JSON.stringify(req.body, null, 2));
   
   try {
     const {
@@ -1001,6 +1001,16 @@ router.post('/request', async (req, res) => {
     // FIX: Don't manually generate ID, let database auto-generate UUID
     // The database schema uses UUID PRIMARY KEY with auto-generation
     
+    // 🔧 CRITICAL DEBUG: Log what totalAmount we're receiving (Nov 8, 2025)
+    console.log('💾 [CRITICAL] totalAmount received:', {
+      totalAmount,
+      type: typeof totalAmount,
+      subtotal,
+      packagePrice,
+      addonTotal,
+      fallback: totalAmount || subtotal || 0
+    });
+    
     console.log('💾 Inserting booking with data:', {
       coupleId,
       vendorId,
@@ -1025,7 +1035,8 @@ router.post('/request', async (req, res) => {
       packageItemsCount: packageItems?.length || 0,
       selectedAddonsCount: selectedAddons?.length || 0,
       addonTotal,
-      subtotal
+      subtotal,
+      totalAmount: totalAmount || subtotal || 0 // SHOW FINAL VALUE
     });
     
     const booking = await sql`
